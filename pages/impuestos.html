@@ -519,17 +519,23 @@ async function initApp() {
 }
 
 // ==================== DATA ====================
+var impSinResp = []; // clientes activos sin responsabilidad fiscal
+
 async function loadContadoras() {
   // Leer clientes de la maestra (fuente única)
   var { data, error } = await sb.from('clientes')
     .select('nombre, contadora_impuestos, responsabilidad_impuestos, activo');
   if (error) { console.error('Error cargando clientes:', error); return; }
+  var activos = (data || []).filter(function(c) { return c.activo !== false; });
   // Filtrar: solo activos con responsabilidad de impuestos
-  var clientes = (data || []).filter(function(c) {
-    return c.activo !== false && c.responsabilidad_impuestos === true;
+  var clientes = activos.filter(function(c) {
+    return c.responsabilidad_impuestos === true;
+  });
+  impSinResp = activos.filter(function(c) {
+    return c.responsabilidad_impuestos !== true;
   });
   // Counts for summary stats
-  impTotalActivos = clientes.length;
+  impTotalActivos = clientes.length + impSinResp.length;
   impSinAsignar = clientes.filter(function(c) { return !c.contadora_impuestos; }).length;
 
   // Construir mapa contadora → [clientes] (ya no depende del mes)
@@ -688,13 +694,16 @@ function renderMain() {
   var sinIniciar = tableRows.filter(function(r) { return r.prog.pct === 0; }).length;
   var avgPct = totalClients > 0 ? Math.round(tableRows.reduce(function(s, r) { return s + r.prog.pct; }, 0) / totalClients) : 0;
 
+  var impSinRespCount = impSinResp.length;
+  var impAsignadosCount = impTotalActivos - impSinRespCount - impSinAsignar;
+
   h += '<div class="summary-stats">';
   h += '<div class="summary-stat"><div class="summary-stat-label">Total clientes</div><div class="summary-stat-value">' + impTotalActivos + '</div></div>';
-  h += '<div class="summary-stat"><div class="summary-stat-label">Asignados</div><div class="summary-stat-value">' + (impTotalActivos - impSinAsignar) + '</div></div>';
+  h += '<div class="summary-stat"><div class="summary-stat-label">Asignados</div><div class="summary-stat-value">' + impAsignadosCount + '</div></div>';
   h += '<div class="summary-stat"><div class="summary-stat-label">Sin asignar</div><div class="summary-stat-value" style="color:' + (impSinAsignar > 0 ? 'var(--amber)' : 'var(--green)') + '">' + impSinAsignar + '</div></div>';
+  h += '<div class="summary-stat"><div class="summary-stat-label">Sin resp. fiscal</div><div class="summary-stat-value" style="color:var(--muted)">' + impSinRespCount + '</div></div>';
   h += '<div class="summary-stat"><div class="summary-stat-label">Completados</div><div class="summary-stat-value" style="color:var(--green)">' + completados + '</div></div>';
   h += '<div class="summary-stat"><div class="summary-stat-label">En progreso</div><div class="summary-stat-value" style="color:var(--amber)">' + enProgreso + '</div></div>';
-  h += '<div class="summary-stat"><div class="summary-stat-label">Sin iniciar</div><div class="summary-stat-value" style="color:var(--red)">' + sinIniciar + '</div></div>';
   h += '<div class="summary-stat"><div class="summary-stat-label">Avance promedio</div><div class="summary-stat-value" style="color:' + getBarColor(avgPct) + '">' + avgPct + '%</div></div>';
   h += '</div>';
 
@@ -707,7 +716,15 @@ function renderMain() {
   h += '<button class="view-toggle-btn' + (impViewMode === 'cards' ? ' active' : '') + '" onclick="impToggleView(\'cards\')">' + iconCards + ' Cuadros</button>';
   h += '</div></div>';
 
-  if (tableRows.length === 0) {
+  // Split into groups
+  var impRowsAsignados = tableRows.filter(function(r) { return r.contadora !== 'Sin asignar'; });
+  var impRowsSinAsignar = tableRows.filter(function(r) { return r.contadora === 'Sin asignar'; });
+  // Sin resp fiscal: solo en vista "Todas"
+  var impShowSinResp = selectedContadora === 'Todas' && userRole === 'admin';
+  var impSinRespSorted = impShowSinResp ? impSinResp.slice().sort(function(a, b) { return (a.nombre || '').localeCompare(b.nombre || '', 'es'); }) : [];
+  var impColCount = 6 + IMPUESTOS.length;
+
+  if (tableRows.length === 0 && impSinRespSorted.length === 0) {
     h += '<div class="empty-state"><div class="emoji">📋</div><p>No hay clientes asignados para ' + MESES_FULL[MESES_KEY.indexOf(selectedMes)] + '.</p></div>';
   } else if (impViewMode === 'table') {
     // Table view
@@ -725,25 +742,69 @@ function renderMain() {
     h += '<th>Estado</th>';
     h += '</tr></thead><tbody>';
 
-    tableRows.forEach(function(r, idx) {
-      var barColor = r.prog.pct === 100 ? 'var(--green)' : r.prog.pct > 0 ? 'var(--amber)' : '#e2e8f0';
-      var isSinAsignar = r.contadora === 'Sin asignar';
-      var statusText = isSinAsignar ? 'Sin asignar' : r.prog.pct === 100 ? 'Completado' : r.prog.pct > 0 ? 'En progreso' : 'Pendiente';
-      var statusClass = isSinAsignar ? 'imp-status-sinasignar' : r.prog.pct === 100 ? 'imp-status-completo' : r.prog.pct > 0 ? 'imp-status-progreso' : 'imp-status-pendiente';
+    var impRowIdx = 0;
 
-      h += '<tr onclick="openDetail(\'' + escJs(r.cliente) + '\',\'' + escJs(r.contadora) + '\')" style="cursor:pointer">';
-      h += '<td style="color:var(--muted);font-size:0.75rem">' + (idx + 1) + '</td>';
-      h += '<td class="client-name">' + esc(r.cliente) + '</td>';
-      h += '<td style="font-size:0.78rem;color:var(--muted)">' + esc(r.contadora) + '</td>';
-      h += '<td><div class="imp-progress-bar"><div class="imp-progress-fill" style="width:' + r.prog.pct + '%;background:' + barColor + '"></div></div><span class="imp-progress-text" style="color:' + getBarColor(r.prog.pct) + '">' + r.prog.pct + '%</span></td>';
-      h += '<td style="font-size:0.78rem;color:var(--muted)">' + r.prog.done + '/' + r.prog.total + '</td>';
-      IMPUESTOS.forEach(function(imp) {
-        var s = r.statuses[imp.id];
-        h += '<td style="text-align:center"><span class="status-badge ' + s + '">' + statusLabel(s) + '</span></td>';
+    // Group: Asignados
+    if (impRowsAsignados.length > 0) {
+      h += '<tr style="background:#f1f5f9"><td colspan="' + impColCount + '" style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--navy);padding:10px 12px">Asignados</td></tr>';
+      impRowsAsignados.forEach(function(r) {
+        impRowIdx++;
+        var barColor = r.prog.pct === 100 ? 'var(--green)' : r.prog.pct > 0 ? 'var(--amber)' : '#e2e8f0';
+        var statusText = r.prog.pct === 100 ? 'Completado' : r.prog.pct > 0 ? 'En progreso' : 'Pendiente';
+        var statusClass = r.prog.pct === 100 ? 'imp-status-completo' : r.prog.pct > 0 ? 'imp-status-progreso' : 'imp-status-pendiente';
+        h += '<tr onclick="openDetail(\'' + escJs(r.cliente) + '\',\'' + escJs(r.contadora) + '\')" style="cursor:pointer">';
+        h += '<td style="color:var(--muted);font-size:0.75rem">' + impRowIdx + '</td>';
+        h += '<td class="client-name">' + esc(r.cliente) + '</td>';
+        h += '<td style="font-size:0.78rem;color:var(--muted)">' + esc(r.contadora) + '</td>';
+        h += '<td><div class="imp-progress-bar"><div class="imp-progress-fill" style="width:' + r.prog.pct + '%;background:' + barColor + '"></div></div><span class="imp-progress-text" style="color:' + getBarColor(r.prog.pct) + '">' + r.prog.pct + '%</span></td>';
+        h += '<td style="font-size:0.78rem;color:var(--muted)">' + r.prog.done + '/' + r.prog.total + '</td>';
+        IMPUESTOS.forEach(function(imp) {
+          var s = r.statuses[imp.id];
+          h += '<td style="text-align:center"><span class="status-badge ' + s + '">' + statusLabel(s) + '</span></td>';
+        });
+        h += '<td><span class="imp-status-badge ' + statusClass + '">' + statusText + '</span></td>';
+        h += '</tr>';
       });
-      h += '<td><span class="imp-status-badge ' + statusClass + '">' + statusText + '</span></td>';
-      h += '</tr>';
-    });
+    }
+
+    // Group: Sin asignar
+    if (impRowsSinAsignar.length > 0) {
+      h += '<tr style="background:#f1f5f9"><td colspan="' + impColCount + '" style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--navy);padding:10px 12px">Sin asignar</td></tr>';
+      impRowsSinAsignar.forEach(function(r) {
+        impRowIdx++;
+        h += '<tr onclick="openDetail(\'' + escJs(r.cliente) + '\',\'' + escJs(r.contadora) + '\')" style="cursor:pointer">';
+        h += '<td style="color:var(--muted);font-size:0.75rem">' + impRowIdx + '</td>';
+        h += '<td class="client-name">' + esc(r.cliente) + '</td>';
+        h += '<td style="font-size:0.78rem;color:var(--muted)">—</td>';
+        h += '<td><div class="imp-progress-bar"><div class="imp-progress-fill" style="width:' + r.prog.pct + '%;background:' + (r.prog.pct > 0 ? 'var(--amber)' : '#e2e8f0') + '"></div></div><span class="imp-progress-text" style="color:' + getBarColor(r.prog.pct) + '">' + r.prog.pct + '%</span></td>';
+        h += '<td style="font-size:0.78rem;color:var(--muted)">' + r.prog.done + '/' + r.prog.total + '</td>';
+        IMPUESTOS.forEach(function(imp) {
+          var s = r.statuses[imp.id];
+          h += '<td style="text-align:center"><span class="status-badge ' + s + '">' + statusLabel(s) + '</span></td>';
+        });
+        h += '<td><span class="imp-status-badge imp-status-sinasignar">Sin asignar</span></td>';
+        h += '</tr>';
+      });
+    }
+
+    // Group: Sin responsabilidad fiscal
+    if (impSinRespSorted.length > 0) {
+      h += '<tr style="background:#f1f5f9"><td colspan="' + impColCount + '" style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--navy);padding:10px 12px">Sin responsabilidad fiscal</td></tr>';
+      impSinRespSorted.forEach(function(sr) {
+        impRowIdx++;
+        h += '<tr style="opacity:0.55">';
+        h += '<td style="color:var(--muted);font-size:0.75rem">' + impRowIdx + '</td>';
+        h += '<td class="client-name">' + esc(sr.nombre) + '</td>';
+        h += '<td style="font-size:0.78rem;color:var(--light)">N/A</td>';
+        h += '<td style="color:var(--light);font-size:0.8rem">—</td>';
+        h += '<td style="color:var(--light);font-size:0.8rem">—</td>';
+        IMPUESTOS.forEach(function() {
+          h += '<td style="text-align:center;color:var(--light)">—</td>';
+        });
+        h += '<td><span class="imp-status-badge" style="background:#f1f5f9;color:var(--muted)">N/A</span></td>';
+        h += '</tr>';
+      });
+    }
 
     h += '</tbody></table></div>';
   } else {
@@ -759,6 +820,18 @@ function renderMain() {
       h += '<div class="client-card-pct" style="color:' + getBarColor(r.prog.pct) + '">' + r.prog.pct + '%</div>';
       h += '</div>';
       h += '<div class="client-card-count">' + r.prog.done + ' de ' + r.prog.total + ' tareas</div>';
+      h += '</div>';
+    });
+    // Cards sin resp fiscal
+    impSinRespSorted.forEach(function(sr) {
+      h += '<div class="client-card" style="opacity:0.55">';
+      h += '<div class="client-card-name">' + esc(sr.nombre) + '</div>';
+      h += '<div class="client-card-contadora" style="color:var(--light)">Sin resp. fiscal</div>';
+      h += '<div class="client-card-progress">';
+      h += '<div class="client-card-bar"><div class="client-card-fill" style="width:0%"></div></div>';
+      h += '<div class="client-card-pct" style="color:var(--light)">N/A</div>';
+      h += '</div>';
+      h += '<div class="client-card-count" style="color:var(--light)">—</div>';
       h += '</div>';
     });
     h += '</div>';
