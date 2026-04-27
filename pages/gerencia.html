@@ -557,6 +557,7 @@
           <option value="Contabilidad completa">Contabilidad completa</option>
           <option value="Solo impuestos">Solo impuestos</option>
           <option value="Solo supervisión">Solo supervisión</option>
+          <option value="Bookkeeping">Bookkeeping</option>
         </select>
       </div>
     </div>
@@ -1239,6 +1240,7 @@ function ccRenderServicios(el) {
   var imp = activos.filter(function(c) { return c.tipo_servicio === 'Solo impuestos'; });
   var contab = activos.filter(function(c) { return c.tipo_servicio === 'Contabilidad completa'; });
   var sup = activos.filter(function(c) { return c.tipo_servicio === 'Solo supervisión'; });
+  var bk = activos.filter(function(c) { return c.tipo_servicio === 'Bookkeeping'; });
   var sinTipo = activos.filter(function(c) { return !c.tipo_servicio; });
 
   function statClass(key) { return ccServFiltro === key ? 'stat cc-serv-stat active' : 'stat cc-serv-stat'; }
@@ -1260,6 +1262,12 @@ function ccRenderServicios(el) {
   html += '<div class="stat-label">Supervisión</div><div class="stat-value" style="color:var(--amber)">' + sup.length + '</div>';
   html += '<div class="stat-sub">' + (total > 0 ? (sup.length / total * 100).toFixed(0) : 0) + '%</div></div>';
 
+  if (bk.length > 0) {
+    html += '<div class="' + statClass('Bookkeeping') + '" onclick="ccServFilter(\'Bookkeeping\')" style="cursor:pointer">';
+    html += '<div class="stat-label">Bookkeeping</div><div class="stat-value" style="color:#8b5cf6">' + bk.length + '</div>';
+    html += '<div class="stat-sub">' + (total > 0 ? (bk.length / total * 100).toFixed(0) : 0) + '%</div></div>';
+  }
+
   if (sinTipo.length > 0) {
     html += '<div class="' + statClass('__sin_tipo') + '" onclick="ccServFilter(\'__sin_tipo\')" style="cursor:pointer">';
     html += '<div class="stat-label">Sin asignar</div><div class="stat-value" style="color:var(--muted)">' + sinTipo.length + '</div>';
@@ -1272,11 +1280,12 @@ function ccRenderServicios(el) {
   if (ccServFiltro === 'Solo impuestos') { lista = imp; titulo = 'Tax One'; }
   else if (ccServFiltro === 'Contabilidad completa') { lista = contab; titulo = 'Contabilidad completa'; }
   else if (ccServFiltro === 'Solo supervisión') { lista = sup; titulo = 'Supervisión'; }
+  else if (ccServFiltro === 'Bookkeeping') { lista = bk; titulo = 'Bookkeeping'; }
   else if (ccServFiltro === '__sin_tipo') { lista = sinTipo; titulo = 'Sin servicio asignado'; }
   else { lista = activos; titulo = 'Todos los clientes'; }
 
-  // Sort: group by service type (imp → contab → sup → sin tipo), then alphabetical
-  var tipoOrden = { 'Solo impuestos': 0, 'Contabilidad completa': 1, 'Solo supervisión': 2 };
+  // Sort: group by service type (imp → contab → sup → bk → sin tipo), then alphabetical
+  var tipoOrden = { 'Solo impuestos': 0, 'Contabilidad completa': 1, 'Solo supervisión': 2, 'Bookkeeping': 3 };
   lista.sort(function(a, b) {
     var aOrd = a.tipo_servicio ? (tipoOrden[a.tipo_servicio] != null ? tipoOrden[a.tipo_servicio] : 99) : 99;
     var bOrd = b.tipo_servicio ? (tipoOrden[b.tipo_servicio] != null ? tipoOrden[b.tipo_servicio] : 99) : 99;
@@ -1305,6 +1314,7 @@ function ccRenderServicios(el) {
       if (tipoKey === 'Solo impuestos') groupLabel = 'Tax One';
       else if (tipoKey === 'Contabilidad completa') groupLabel = 'Contabilidad completa';
       else if (tipoKey === 'Solo supervisión') groupLabel = 'Supervisión';
+      else if (tipoKey === 'Bookkeeping') groupLabel = 'Bookkeeping';
       else groupLabel = 'Sin servicio asignado';
       html += '<tr style="background:#f1f5f9"><td colspan="7" style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--navy);padding:10px 12px">' + groupLabel + '</td></tr>';
       lastTipo = tipoKey;
@@ -1316,6 +1326,7 @@ function ccRenderServicios(el) {
     if (c.tipo_servicio === 'Contabilidad completa') { tipoLabel = 'Contabilidad'; tipoColor = 'var(--green)'; }
     else if (c.tipo_servicio === 'Solo impuestos') { tipoLabel = 'Tax One'; tipoColor = 'var(--blue)'; }
     else if (c.tipo_servicio === 'Solo supervisión') { tipoLabel = 'Supervisión'; tipoColor = 'var(--amber)'; }
+    else if (c.tipo_servicio === 'Bookkeeping') { tipoLabel = 'Bookkeeping'; tipoColor = '#8b5cf6'; }
     else { tipoLabel = 'Sin asignar'; tipoColor = '#94a3b8'; }
 
     html += '<tr>';
@@ -2620,11 +2631,14 @@ function bdRenderClientes() {
     return;
   }
 
-  // Ordenar: activos primero (alfabético), inactivos al final (alfabético)
+  // Ordenar: activos primero, dentro de activos sin tipo_servicio primero, luego el resto, inactivos al final. Siempre alfabético.
   filtered.sort(function(a, b) {
     var aActivo = a.activo !== false ? 0 : 1;
     var bActivo = b.activo !== false ? 0 : 1;
     if (aActivo !== bActivo) return aActivo - bActivo;
+    var aSin = !a.tipo_servicio ? 0 : 1;
+    var bSin = !b.tipo_servicio ? 0 : 1;
+    if (aSin !== bSin) return aSin - bSin;
     return (a.nombre || '').localeCompare(b.nombre || '', 'es');
   });
 
@@ -3065,6 +3079,9 @@ function bdGetAsigForMes(mes) {
   return bdAsignaciones.filter(function(a) {
     return a.mes === mes;
   }).sort(function(a, b) {
+    var aSin = (!a.contadora || a.contadora === 'Sin asignar') ? 0 : 1;
+    var bSin = (!b.contadora || b.contadora === 'Sin asignar') ? 0 : 1;
+    if (aSin !== bSin) return aSin - bSin;
     return (a.cliente || '').localeCompare(b.cliente || '');
   });
 }
