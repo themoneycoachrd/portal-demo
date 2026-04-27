@@ -2514,6 +2514,7 @@ var bdClMes = 'abril';
 var bdContMes = 'abril';
 var bdAsigDirty = false; // track unsaved changes in assignments
 var bdAsigEdits = {}; // { rowIdx: { contadora, serv, adm } }
+var bdTokens = []; // portal client tokens
 
 var clSearch = '';
 var clEditingId = null;
@@ -2541,8 +2542,14 @@ async function bdLoadAsignaciones() {
   bdAsignaciones = data || [];
 }
 
+async function bdLoadTokens() {
+  var { data, error } = await sb.from('portal_clientes_tokens').select('id, cliente, token, activo').order('cliente');
+  if (error) { console.warn('Tabla portal_clientes_tokens no disponible:', error.message); bdTokens = []; return; }
+  bdTokens = data || [];
+}
+
 async function bdLoadAll() {
-  await Promise.all([bdLoadClientes(), bdLoadContadoras(), bdLoadAsignaciones()]);
+  await Promise.all([bdLoadClientes(), bdLoadContadoras(), bdLoadAsignaciones(), bdLoadTokens()]);
 }
 
 // ─── BD Sub-tabs ───
@@ -2551,7 +2558,8 @@ function bdRenderSubTabs() {
   var tabs = [
     { id:'clientes', label:'Clientes' },
     { id:'asignaciones', label:'Asignaciones' },
-    { id:'contadoras', label:'Contadores' }
+    { id:'contadoras', label:'Contadores' },
+    { id:'links', label:'Links Portal' }
   ];
   el.innerHTML = tabs.map(function(t) {
     return '<button class="bd-sub-tab ' + (bdActiveSubTab === t.id ? 'active' : '') + '" onclick="bdSwitchSubTab(\'' + t.id + '\')">' + t.label + '</button>';
@@ -2578,6 +2586,7 @@ function bdRenderContent() {
   if (bdActiveSubTab === 'clientes') bdRenderClientes();
   else if (bdActiveSubTab === 'contadoras') bdRenderContadoras();
   else if (bdActiveSubTab === 'asignaciones') bdRenderAsignaciones();
+  else if (bdActiveSubTab === 'links') bdRenderLinks();
 }
 
 // ═══════════════════════════════════════════
@@ -3366,6 +3375,84 @@ async function bdAsigDeleteRow(id) {
   await bdLoadAsignaciones();
   bdRenderAsignaciones();
   gerShowToast('Asignación eliminada');
+}
+
+// ═══════════════════════════════════════════
+// BD SUB-TAB: LINKS PORTAL
+// ═══════════════════════════════════════════
+
+function bdGetPortalBaseUrl() {
+  var loc = window.location;
+  var base = loc.origin + loc.pathname.replace(/\/[^\/]*$/, '/');
+  return base + 'portal-clientes.html?token=';
+}
+
+function bdRenderLinks() {
+  var el = document.getElementById('bd-content');
+  if (!el) return;
+
+  var activos = bdTokens.filter(function(t) { return t.activo; });
+  activos.sort(function(a, b) { return a.cliente.localeCompare(b.cliente, 'es'); });
+
+  var h = '';
+  h += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">';
+  h += '<div style="font-size:0.85rem;color:var(--muted)">' + activos.length + ' clientes con link activo</div>';
+  h += '<button style="padding:6px 14px;border-radius:8px;font-size:0.78rem;font-weight:600;cursor:pointer;border:1px solid var(--border);background:white;color:var(--navy);font-family:inherit" onclick="bdCopyAllLinks()">Copiar todos los links</button>';
+  h += '</div>';
+
+  if (activos.length === 0) {
+    h += '<div class="cl-empty"><p>No hay tokens generados. Ejecuta el SQL de setup primero.</p></div>';
+    el.innerHTML = h;
+    return;
+  }
+
+  h += '<table class="bd-cont-table">';
+  h += '<thead><tr>';
+  h += '<th style="width:30px">#</th>';
+  h += '<th>Cliente</th>';
+  h += '<th>Link</th>';
+  h += '<th style="width:80px;text-align:center">Copiar</th>';
+  h += '</tr></thead><tbody>';
+
+  var baseUrl = bdGetPortalBaseUrl();
+
+  activos.forEach(function(t, i) {
+    var fullUrl = baseUrl + t.token;
+    h += '<tr>';
+    h += '<td style="color:var(--light);font-size:0.75rem">' + (i + 1) + '</td>';
+    h += '<td style="font-weight:600">' + esc(t.cliente) + '</td>';
+    h += '<td><span style="font-size:0.75rem;color:var(--muted);word-break:break-all" id="link_' + t.id + '">' + esc(fullUrl) + '</span></td>';
+    h += '<td style="text-align:center"><button style="padding:4px 10px;border-radius:6px;font-size:0.72rem;font-weight:600;cursor:pointer;border:1px solid var(--border);background:white;color:var(--blue);font-family:inherit" onclick="bdCopyLink(\'' + esc(fullUrl).replace(/'/g, "\\'") + '\',this)">Copiar</button></td>';
+    h += '</tr>';
+  });
+
+  h += '</tbody></table>';
+  el.innerHTML = h;
+}
+
+function bdCopyLink(url, btn) {
+  navigator.clipboard.writeText(url).then(function() {
+    btn.textContent = 'Copiado';
+    btn.style.color = 'var(--green)';
+    btn.style.borderColor = '#a7f3d0';
+    setTimeout(function() {
+      btn.textContent = 'Copiar';
+      btn.style.color = 'var(--blue)';
+      btn.style.borderColor = '';
+    }, 2000);
+  });
+}
+
+function bdCopyAllLinks() {
+  var activos = bdTokens.filter(function(t) { return t.activo; });
+  activos.sort(function(a, b) { return a.cliente.localeCompare(b.cliente, 'es'); });
+  var baseUrl = bdGetPortalBaseUrl();
+  var text = activos.map(function(t) {
+    return t.cliente + ': ' + baseUrl + t.token;
+  }).join('\n');
+  navigator.clipboard.writeText(text).then(function() {
+    gerShowToast('Todos los links copiados al portapapeles');
+  });
 }
 
 // ══════════════════════════════════════════════════════════════
