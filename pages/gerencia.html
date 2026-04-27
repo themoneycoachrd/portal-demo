@@ -2548,8 +2548,8 @@ function bdRenderSubTabs() {
   var el = document.getElementById('bdSubTabs');
   var tabs = [
     { id:'clientes', label:'Clientes' },
-    { id:'contadoras', label:'Contadoras' },
-    { id:'asignaciones', label:'Asignaciones' }
+    { id:'asignaciones', label:'Asignaciones' },
+    { id:'contadoras', label:'Contadores' }
   ];
   el.innerHTML = tabs.map(function(t) {
     return '<button class="bd-sub-tab ' + (bdActiveSubTab === t.id ? 'active' : '') + '" onclick="bdSwitchSubTab(\'' + t.id + '\')">' + t.label + '</button>';
