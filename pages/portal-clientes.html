@@ -32,7 +32,7 @@ body { font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-se
 .month-tab:hover { background:#eef0f4; }
 .month-tab.active { background:var(--navy); color:white; border-color:var(--navy); }
 
-.content { padding:24px; max-width:900px; margin:0 auto; }
+.content { padding:24px; max-width:1200px; margin:0 auto; }
 
 .dash-card { background:white; border-radius:12px; border:1px solid var(--border); padding:18px 20px; display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; }
 .dash-card-left { display:flex; align-items:center; gap:14px; }
@@ -92,6 +92,41 @@ body { font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-se
 .toast.show { opacity:1; transform:translateY(0); }
 
 .footer { text-align:center; padding:20px; font-size:0.75rem; color:var(--light); }
+
+/* Admin index — reutiliza design system de contabilidad */
+.summary-stats { display:grid; grid-template-columns:repeat(auto-fit, minmax(130px,1fr)); gap:12px; margin-bottom:20px; }
+.summary-stat { background:white; border-radius:12px; padding:16px; border:1px solid var(--border); text-align:center; }
+.summary-stat-label { font-size:0.65rem; text-transform:uppercase; letter-spacing:0.5px; color:var(--light); font-weight:600; }
+.summary-stat-value { font-size:1.6rem; font-weight:800; margin-top:4px; }
+
+.check-table { width:100%; border-collapse:collapse; font-size:0.82rem; background:white; border-radius:12px; overflow:hidden; border:1px solid var(--border); }
+.check-table th { text-align:left; padding:10px 12px; font-size:0.65rem; text-transform:uppercase; letter-spacing:0.3px; color:var(--muted); border-bottom:2px solid var(--border); background:#f8fafc; }
+.check-table th.center { text-align:center; }
+.check-table td { padding:8px 12px; border-bottom:1px solid #f1f5f9; vertical-align:middle; }
+.check-table td.center { text-align:center; }
+.check-table tr:hover td { background:#fafbfc; }
+.check-table tr { cursor:pointer; }
+.check-table tr.group-row td { background:#f0f2f5; font-weight:700; font-size:0.72rem; color:var(--navy); text-transform:uppercase; letter-spacing:0.4px; border-bottom:2px solid var(--border); padding:6px 12px; }
+
+.pc-status-badge { display:inline-block; padding:3px 10px; border-radius:12px; font-size:0.72rem; font-weight:600; }
+.pc-status-completo { background:#d1fae5; color:#065f46; }
+.pc-status-progreso { background:#dbeafe; color:#1e40af; }
+.pc-status-pendiente { background:#f3f4f6; color:#6b7280; }
+.pc-status-urgente { background:#fee2e2; color:#991b1b; }
+.pc-status-sinasignar { background:#fef3c7; color:#92400e; }
+
+.pc-progress { display:flex; align-items:center; gap:8px; }
+.pc-progress-bar { width:80px; height:6px; background:#eef0f4; border-radius:3px; overflow:hidden; }
+.pc-progress-fill { height:100%; border-radius:3px; }
+.pc-progress-text { font-size:0.75rem; font-weight:700; min-width:32px; }
+
+.contadora-pills { display:flex; gap:4px; flex-wrap:wrap; margin-top:10px; }
+.contadora-pill { padding:5px 14px; border-radius:8px; font-size:0.78rem; font-weight:600; cursor:pointer; border:1px solid var(--border); background:white; color:var(--muted); transition:all 0.12s; font-family:inherit; }
+.contadora-pill:hover { background:#eef0f4; }
+.contadora-pill.active { background:var(--navy); color:white; border-color:var(--navy); }
+
+.pc-back-btn { display:inline-flex; align-items:center; gap:6px; padding:8px 16px; border-radius:8px; font-size:0.82rem; font-weight:600; cursor:pointer; border:1px solid var(--border); background:white; color:var(--muted); font-family:inherit; margin-bottom:16px; }
+.pc-back-btn:hover { background:#eef0f4; }
 
 body.embed .header, body.embed .login-overlay { display:none !important; }
 body.embed .main-tabs { margin-left:0; }
@@ -215,7 +250,11 @@ var CHECKLIST = {
 var clienteNombre = '';
 var clienteToken = '';
 var isAdminMode = false;
+var adminShowingIndex = true; // admin starts at index view
 var allTokens = []; // admin mode: list of all client tokens
+var allClientes = []; // admin mode: full client list from maestra
+var allPortalData = []; // admin mode: all portal_clientes_data rows
+var selectedContadora = 'Todas'; // admin index filter
 var selectedTab = 'dashboard';
 var selectedMes = '';
 var portalData = {};   // { 'TSS||abril': { item_id: value, ... }, ... }
@@ -473,28 +512,29 @@ async function initAdmin(isEmbed2) {
   }
 
   isAdminMode = true;
+  adminShowingIndex = true;
   if (isEmbed2) document.body.classList.add('embed');
 
-  // Load all tokens for client selector
-  var { data: tokens } = await sb.from('portal_clientes_tokens')
-    .select('cliente, token')
-    .eq('activo', true)
-    .order('cliente');
-  allTokens = tokens || [];
+  selectedMes = getCurrentMonth();
 
-  if (allTokens.length > 0) {
-    clienteNombre = allTokens[0].cliente;
-  }
+  // Load clients, tokens and all portal data in parallel
+  var [tokensRes, clientesRes, portalDataRes] = await Promise.all([
+    sb.from('portal_clientes_tokens').select('cliente, token').eq('activo', true).order('cliente'),
+    sb.from('clientes').select('nombre, contadora_impuestos, responsabilidad_impuestos, activo').eq('activo', true).order('nombre'),
+    sb.from('portal_clientes_data').select('*')
+  ]);
+
+  allTokens = tokensRes.data || [];
+  allClientes = clientesRes.data || [];
+  allPortalData = portalDataRes.data || [];
 
   document.getElementById('loginOverlay').style.display = 'none';
-  document.getElementById('clientName').innerHTML = buildClientSelector();
+  document.getElementById('clientName').textContent = 'Admin';
   document.getElementById('app').style.display = '';
+  document.getElementById('mainTabs').style.display = 'none';
 
-  selectedMes = getCurrentMonth();
-  await Promise.all([loadData(), loadFiles()]);
-  renderTabs();
   renderNav();
-  render();
+  renderAdminIndex();
 }
 
 async function doLogin() {
@@ -511,19 +551,238 @@ async function doLogin() {
   await initAdmin(false);
 }
 
-function buildClientSelector() {
-  var h = '<select onchange="switchCliente(this.value)" style="background:rgba(255,255,255,0.15);color:white;border:1px solid rgba(255,255,255,0.3);border-radius:8px;padding:4px 10px;font-size:0.8rem;font-family:inherit;cursor:pointer">';
-  allTokens.forEach(function(t) {
-    h += '<option value="' + esc(t.cliente) + '"' + (t.cliente === clienteNombre ? ' selected' : '') + '>' + esc(t.cliente) + '</option>';
+// ==================== ADMIN INDEX ====================
+function getClienteData(nombre, mes) {
+  // Build portalData-like object for a specific client from allPortalData
+  var result = {};
+  allPortalData.forEach(function(r) {
+    if (r.cliente === nombre && r.mes === mes) {
+      result[r.impuesto] = r.datos || {};
+    }
   });
-  h += '</select>';
-  return h;
+  return result;
 }
 
-async function switchCliente(nombre) {
+function getClienteTaxProgress(nombre, mes, impuestoId) {
+  var items = CHECKLIST[impuestoId];
+  if (!items) return { done: 0, total: 0, pct: 0 };
+  var clientData = getClienteData(nombre, mes);
+  var countable = items.filter(function(it) { return !it.subOf; });
+  var total = countable.length;
+  var done = 0;
+
+  countable.forEach(function(it) {
+    if (it.type === 'auto') {
+      // Check source tab data
+      var srcData = clientData[it.sourceTab];
+      var srcItem = CHECKLIST[it.sourceTab] ? CHECKLIST[it.sourceTab].find(function(si) { return si.id === it.sourceId; }) : null;
+      if (srcItem && srcItem.type === 'yesno' && srcData && srcData[it.sourceId] === true) done++;
+      else if (srcItem && srcItem.type === 'upload') {
+        // For uploads we can't easily check from allPortalData, count as not done
+      }
+    } else if (it.type === 'yesno') {
+      var d = clientData[impuestoId];
+      if (d && d[it.id] === true) done++;
+    } else if (it.type === 'monto') {
+      var d2 = clientData[impuestoId];
+      if (d2 && d2[it.id] !== null && d2[it.id] !== '' && d2[it.id] !== 0) done++;
+    }
+  });
+
+  return { done: done, total: total, pct: total > 0 ? Math.round(done / total * 100) : 0 };
+}
+
+function getClienteOverallProgress(nombre, mes) {
+  var totalDone = 0, totalItems = 0;
+  IMPUESTOS.forEach(function(imp) {
+    var p = getClienteTaxProgress(nombre, mes, imp.id);
+    totalDone += p.done;
+    totalItems += p.total;
+  });
+  return { done: totalDone, total: totalItems, pct: totalItems > 0 ? Math.round(totalDone / totalItems * 100) : 0 };
+}
+
+function getClienteTaxStatus(nombre, mes, impuestoId) {
+  var prog = getClienteTaxProgress(nombre, mes, impuestoId);
+  if (prog.pct === 100) return 'verde';
+  var dl = getDeadlineDate(impuestoId, mes);
+  if (dl) {
+    var days = getDaysUntil(new Date(dl.getTime()));
+    if (days < 0) return 'rojo';
+    if (days <= 2 && prog.pct < 100) return 'rojo';
+  }
+  if (prog.done > 0) return 'amarillo';
+  return 'gris';
+}
+
+function getContadorasFromClientes() {
+  var map = {};
+  allClientes.forEach(function(c) {
+    var ct = c.contadora_impuestos || 'Sin asignar';
+    if (!map[ct]) map[ct] = [];
+    map[ct].push(c);
+  });
+  return map;
+}
+
+function renderAdminNav() {
+  var el = document.getElementById('navArea');
+  var contMap = getContadorasFromClientes();
+  var contNames = Object.keys(contMap).sort(function(a, b) {
+    if (a === 'Sin asignar') return 1;
+    if (b === 'Sin asignar') return -1;
+    return a.localeCompare(b);
+  });
+
+  var h = '<div class="nav-area"><div class="month-tabs">';
+  MESES_KEY.forEach(function(m, i) {
+    h += '<button class="month-tab' + (m === selectedMes ? ' active' : '') + '" onclick="idxSwitchMonth(\'' + m + '\')">' + MESES_LABEL[i] + '</button>';
+  });
+  h += '</div>';
+
+  if (contNames.length > 1) {
+    h += '<div class="contadora-pills">';
+    h += '<button class="contadora-pill' + (selectedContadora === 'Todas' ? ' active' : '') + '" onclick="idxSwitchContadora(\'Todas\')">Todas</button>';
+    contNames.forEach(function(name) {
+      h += '<button class="contadora-pill' + (selectedContadora === name ? ' active' : '') + '" onclick="idxSwitchContadora(\'' + esc(name).replace(/'/g, "\\'") + '\')">' + esc(name) + ' (' + contMap[name].length + ')</button>';
+    });
+    h += '</div>';
+  }
+
+  h += '</div>';
+  el.innerHTML = h;
+}
+
+function idxSwitchMonth(mes) {
+  selectedMes = mes;
+  renderAdminNav();
+  renderAdminIndex();
+}
+
+function idxSwitchContadora(name) {
+  selectedContadora = name;
+  renderAdminNav();
+  renderAdminIndex();
+}
+
+function renderAdminIndex() {
+  var el = document.getElementById('content');
+
+  // Filter clients
+  var clientes = allClientes.slice();
+  if (selectedContadora !== 'Todas') {
+    clientes = clientes.filter(function(c) {
+      var ct = c.contadora_impuestos || 'Sin asignar';
+      return ct === selectedContadora;
+    });
+  }
+
+  // Sort: Sin asignar al final
+  clientes.sort(function(a, b) {
+    var ca = a.contadora_impuestos || 'Sin asignar';
+    var cb = b.contadora_impuestos || 'Sin asignar';
+    if (ca === 'Sin asignar' && cb !== 'Sin asignar') return 1;
+    if (cb === 'Sin asignar' && ca !== 'Sin asignar') return -1;
+    return a.nombre.localeCompare(b.nombre);
+  });
+
+  // Stats
+  var completados = 0, enProgreso = 0, sinIniciar = 0;
+  clientes.forEach(function(c) {
+    var p = getClienteOverallProgress(c.nombre, selectedMes);
+    if (p.pct === 100) completados++;
+    else if (p.done > 0) enProgreso++;
+    else sinIniciar++;
+  });
+
+  // Avance promedio
+  var totalPct = 0;
+  clientes.forEach(function(c) { totalPct += getClienteOverallProgress(c.nombre, selectedMes).pct; });
+  var avgPct = clientes.length > 0 ? Math.round(totalPct / clientes.length) : 0;
+
+  var h = '';
+
+  // Summary stats (mismo pattern que contabilidad)
+  h += '<div class="summary-stats">';
+  h += '<div class="summary-stat"><div class="summary-stat-label">Total clientes</div><div class="summary-stat-value">' + clientes.length + '</div></div>';
+  h += '<div class="summary-stat"><div class="summary-stat-label">Completados</div><div class="summary-stat-value" style="color:var(--green)">' + completados + '</div></div>';
+  h += '<div class="summary-stat"><div class="summary-stat-label">En progreso</div><div class="summary-stat-value" style="color:var(--amber)">' + enProgreso + '</div></div>';
+  h += '<div class="summary-stat"><div class="summary-stat-label">Sin iniciar</div><div class="summary-stat-value" style="color:var(--muted)">' + sinIniciar + '</div></div>';
+  h += '<div class="summary-stat"><div class="summary-stat-label">Avance promedio</div><div class="summary-stat-value" style="color:' + progressColor(avgPct) + '">' + avgPct + '%</div></div>';
+  h += '</div>';
+
+  // Table (check-table pattern de contabilidad)
+  h += '<div style="overflow-x:auto"><table class="check-table">';
+  h += '<thead><tr>';
+  h += '<th style="width:30px">#</th>';
+  h += '<th>Cliente</th>';
+  h += '<th>Contadora</th>';
+  IMPUESTOS.forEach(function(imp) {
+    h += '<th class="center">' + imp.label + '</th>';
+  });
+  h += '<th class="center">Avance</th>';
+  h += '<th class="center">Estado</th>';
+  h += '</tr></thead><tbody>';
+
+  clientes.forEach(function(c, i) {
+    var overall = getClienteOverallProgress(c.nombre, selectedMes);
+    var ct = c.contadora_impuestos || 'Sin asignar';
+
+    h += '<tr onclick="idxOpenCliente(\'' + esc(c.nombre).replace(/'/g, "\\'") + '\')">';
+    h += '<td style="color:var(--light);font-size:0.75rem">' + (i + 1) + '</td>';
+    h += '<td style="font-weight:600">' + esc(c.nombre) + '</td>';
+    h += '<td style="font-size:0.78rem;color:var(--muted)">' + esc(ct) + '</td>';
+
+    IMPUESTOS.forEach(function(imp) {
+      var status = getClienteTaxStatus(c.nombre, selectedMes, imp.id);
+      var prog = getClienteTaxProgress(c.nombre, selectedMes, imp.id);
+      h += '<td class="center"><span class="pc-status-badge ' + (status === 'verde' ? 'pc-status-completo' : status === 'rojo' ? 'pc-status-urgente' : status === 'amarillo' ? 'pc-status-progreso' : 'pc-status-pendiente') + '">' + prog.done + '/' + prog.total + '</span></td>';
+    });
+
+    h += '<td class="center">';
+    h += '<div class="pc-progress">';
+    h += '<div class="pc-progress-bar"><div class="pc-progress-fill" style="width:' + overall.pct + '%;background:' + progressColor(overall.pct) + '"></div></div>';
+    h += '<div class="pc-progress-text" style="color:' + progressColor(overall.pct) + '">' + overall.pct + '%</div>';
+    h += '</div></td>';
+
+    // Status badge
+    var overallStatus = overall.pct === 100 ? 'Completado' : overall.pct > 0 ? 'En progreso' : 'Pendiente';
+    var overallClass = overall.pct === 100 ? 'pc-status-completo' : overall.pct > 0 ? 'pc-status-progreso' : 'pc-status-pendiente';
+    if (ct === 'Sin asignar') { overallStatus = 'Sin asignar'; overallClass = 'pc-status-sinasignar'; }
+    h += '<td class="center"><span class="pc-status-badge ' + overallClass + '">' + overallStatus + '</span></td>';
+
+    h += '</tr>';
+  });
+
+  h += '</tbody></table></div>';
+  el.innerHTML = h;
+}
+
+async function idxOpenCliente(nombre) {
   clienteNombre = nombre;
+  adminShowingIndex = false;
+  selectedTab = 'dashboard';
+
   await Promise.all([loadData(), loadFiles()]);
+
+  document.getElementById('mainTabs').style.display = '';
+  document.getElementById('clientName').textContent = nombre;
+  renderTabs();
+  renderNav();
   render();
+}
+
+function idxBackToIndex() {
+  adminShowingIndex = true;
+  clienteNombre = '';
+  portalData = {};
+  portalFiles = {};
+  selectedTab = 'dashboard';
+
+  document.getElementById('mainTabs').style.display = 'none';
+  document.getElementById('clientName').textContent = 'Admin';
+  renderAdminNav();
+  renderAdminIndex();
 }
 
 // ==================== RENDER ====================
@@ -543,6 +802,10 @@ function switchTab(tabId) {
 }
 
 function renderNav() {
+  if (isAdminMode && adminShowingIndex) {
+    renderAdminNav();
+    return;
+  }
   var el = document.getElementById('navArea');
   var h = '<div class="nav-area"><div class="month-tabs">';
   MESES_KEY.forEach(function(m, i) {
@@ -554,22 +817,31 @@ function renderNav() {
 
 function switchMonth(mes) {
   selectedMes = mes;
-  renderNav();
-  render();
+  if (isAdminMode && adminShowingIndex) {
+    renderAdminNav();
+    renderAdminIndex();
+  } else {
+    renderNav();
+    render();
+  }
 }
 
 function render() {
   var el = document.getElementById('content');
+  var backHtml = '';
+  if (isAdminMode && !adminShowingIndex) {
+    backHtml = '<button class="pc-back-btn" onclick="idxBackToIndex()">← Volver al listado</button>';
+  }
   if (selectedTab === 'dashboard') {
-    renderDashboard(el);
+    renderDashboard(el, backHtml);
   } else {
-    renderChecklist(el, selectedTab);
+    renderChecklist(el, selectedTab, backHtml);
   }
 }
 
 // ==================== DASHBOARD ====================
-function renderDashboard(el) {
-  var h = '';
+function renderDashboard(el, backHtml) {
+  var h = backHtml || '';
 
   h += '<div style="margin-bottom:20px"><span style="font-size:1.1rem;font-weight:700">' + MESES_FULL[MESES_KEY.indexOf(selectedMes)] + ' 2026</span>';
   h += '<span style="font-size:0.85rem;color:var(--muted);margin-left:12px">Resumen de impuestos</span></div>';
@@ -603,12 +875,12 @@ function renderDashboard(el) {
 }
 
 // ==================== CHECKLIST TABS ====================
-function renderChecklist(el, impuesto) {
+function renderChecklist(el, impuesto, backHtml) {
   var items = CHECKLIST[impuesto];
   if (!items) { el.innerHTML = ''; return; }
 
   var prog = getTaxProgress(impuesto, selectedMes);
-  var h = '';
+  var h = backHtml || '';
 
   h += '<div style="margin-bottom:16px"><span style="font-size:1.1rem;font-weight:700">' + esc(impuesto) + '</span>';
   h += '<span style="font-size:0.85rem;color:var(--muted);margin-left:12px">' + MESES_FULL[MESES_KEY.indexOf(selectedMes)] + ' 2026</span></div>';
