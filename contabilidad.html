@@ -1,0 +1,1841 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Contabilidad — Account One 2026</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root {
+  --navy: #1a2332;
+  --navy-mid: #2a3a4e;
+  --blue: #4361ee;
+  --green: #10b981;
+  --red: #ef4444;
+  --amber: #f59e0b;
+  --purple: #8b5cf6;
+  --pink: #ec4899;
+  --bg: #f4f6f9;
+  --card: #ffffff;
+  --border: #e8ecf1;
+  --text: #1a2332;
+  --muted: #7c8495;
+  --light: #a3aab8;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif; background:var(--bg); color:var(--text); line-height:1.5; }
+
+/* ─── Login ─── */
+.login-overlay { position:fixed; top:0; left:0; right:0; bottom:0; background:var(--bg); display:flex; align-items:center; justify-content:center; z-index:1000; }
+.login-box { background:white; border-radius:16px; padding:40px; width:100%; max-width:400px; box-shadow:0 4px 24px rgba(0,0,0,0.08); border:1px solid var(--border); }
+.login-box h2 { font-size:1.4rem; color:var(--navy); margin-bottom:4px; }
+.login-box .subtitle { font-size:0.85rem; color:var(--muted); margin-bottom:24px; }
+.login-box .field { margin-bottom:16px; }
+.login-box .field label { display:block; font-size:0.78rem; font-weight:600; color:var(--muted); margin-bottom:6px; }
+.login-box .field input { width:100%; padding:10px 14px; border:1px solid var(--border); border-radius:10px; font-size:0.9rem; font-family:inherit; background:#fafbfc; }
+.login-box .field input:focus { outline:none; border-color:var(--blue); box-shadow:0 0 0 3px rgba(67,97,238,0.1); background:white; }
+.login-btn { width:100%; padding:11px; background:var(--navy); color:white; border:none; border-radius:10px; font-size:0.9rem; font-weight:600; cursor:pointer; margin-top:8px; }
+.login-btn:hover { background:var(--navy-mid); }
+.login-btn:disabled { opacity:0.6; cursor:not-allowed; }
+.login-error { color:var(--red); font-size:0.8rem; margin-top:12px; display:none; }
+
+/* ─── Header ─── */
+.header { background:var(--navy); color:white; padding:20px 24px; }
+.header-inner { display:flex; justify-content:space-between; align-items:center; }
+.header h1 { font-size:1.3rem; font-weight:700; }
+.header p { font-size:0.85rem; opacity:0.6; margin-top:2px; }
+.user-bar { display:flex; align-items:center; gap:12px; }
+.user-bar .user-name { font-size:0.8rem; opacity:0.9; background:rgba(255,255,255,0.15); padding:4px 12px; border-radius:20px; }
+.btn-logout { font-size:0.75rem; padding:4px 12px; background:rgba(255,255,255,0.15); color:white; border:1px solid rgba(255,255,255,0.3); border-radius:6px; cursor:pointer; }
+.btn-logout:hover { background:rgba(255,255,255,0.25); }
+
+/* ─── Breadcrumb ─── */
+.breadcrumb-bar { display:flex; align-items:center; gap:6px; padding:10px 24px; background:white; border-bottom:1px solid var(--border); font-size:13px; }
+.breadcrumb-bar a { color:var(--muted); text-decoration:none; font-weight:500; cursor:pointer; }
+.breadcrumb-bar a:hover { color:var(--navy); text-decoration:underline; }
+.breadcrumb-bar .sep { color:var(--light); font-size:11px; }
+.breadcrumb-bar .current { color:var(--text); font-weight:600; }
+
+/* ─── Main tabs (Checklist | KPI) ─── */
+.main-tabs { display:flex; background:var(--card); border-bottom:2px solid var(--border); }
+.main-tab { padding:12px 24px; cursor:pointer; font-weight:600; font-size:0.9rem; color:var(--muted); border-bottom:3px solid transparent; transition:all 0.15s; background:none; border-top:none; border-left:none; border-right:none; font-family:inherit; }
+.main-tab:hover { color:var(--text); }
+.main-tab.active { color:var(--navy); border-bottom-color:var(--navy); }
+
+/* ─── Sub tabs (KPI admin: Detalle | Trimestral) ─── */
+.sub-tabs { display:flex; background:var(--card); border-bottom:1px solid var(--border); }
+.sub-tab { padding:8px 16px; cursor:pointer; font-weight:600; font-size:0.8rem; color:var(--muted); border-bottom:2px solid transparent; transition:all 0.15s; background:none; border-top:none; border-left:none; border-right:none; font-family:inherit; }
+.sub-tab:hover { color:var(--text); }
+.sub-tab.active { color:var(--navy); border-bottom-color:var(--navy); }
+
+/* ─── Quarter bar & month tabs ─── */
+.quarter-bar { display:flex; gap:6px; padding:12px 24px; background:var(--bg); border-bottom:1px solid var(--border); }
+.q-btn { flex:1; padding:10px 8px; border-radius:10px; font-size:13px; font-weight:700; cursor:pointer; border:2px solid var(--border); background:white; color:var(--muted); transition:all 0.2s; text-align:center; font-family:inherit; }
+.q-btn:hover { border-color:var(--blue); background:#f8fafc; }
+.q-btn.active { background:var(--navy); color:white; border-color:var(--navy); }
+.q-btn .q-label { font-size:15px; }
+.q-btn .q-months { font-size:10px; opacity:0.6; margin-top:2px; }
+
+.month-tabs { display:flex; gap:4px; flex-wrap:wrap; }
+.month-tab { padding:6px 14px; border-radius:8px; font-size:0.8rem; font-weight:600; cursor:pointer; border:1px solid var(--border); background:white; color:var(--muted); transition:all 0.12s; font-family:inherit; }
+.month-tab:hover { background:#eef0f4; }
+.month-tab.active { background:var(--navy); color:white; border-color:var(--navy); }
+
+/* ─── Nav area (checklist) ─── */
+.nav-area { padding:12px 24px; background:var(--bg); border-bottom:1px solid var(--border); }
+.contadora-pills { display:flex; gap:4px; flex-wrap:wrap; }
+.contadora-pill { padding:5px 14px; border-radius:20px; font-size:0.78rem; font-weight:600; cursor:pointer; border:1px solid var(--border); background:white; color:var(--muted); transition:all 0.12s; font-family:inherit; }
+.contadora-pill:hover { background:#eef0f4; }
+.contadora-pill.active { background:var(--navy); color:white; border-color:var(--navy); }
+
+/* ─── Content ─── */
+.content { padding:24px; max-width:1100px; margin:0 auto; }
+
+/* ─── Summary stats (checklist) ─── */
+.summary-stats { display:grid; grid-template-columns:repeat(auto-fit, minmax(130px,1fr)); gap:12px; margin-bottom:20px; }
+.summary-stat { background:white; border-radius:12px; padding:16px; border:1px solid var(--border); text-align:center; }
+.summary-stat-label { font-size:0.65rem; text-transform:uppercase; letter-spacing:0.5px; color:var(--light); font-weight:600; }
+.summary-stat-value { font-size:1.6rem; font-weight:800; margin-top:4px; }
+
+/* ─── Client cards (checklist) ─── */
+.client-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(280px,1fr)); gap:12px; }
+.client-card { background:white; border:2px solid var(--border); border-radius:12px; padding:18px; cursor:pointer; transition:all 0.2s; }
+.client-card:hover { border-color:var(--blue); transform:translateY(-2px); box-shadow:0 4px 12px rgba(0,0,0,0.08); }
+.client-card-name { font-size:15px; font-weight:700; margin-bottom:4px; }
+.client-card-contadora { font-size:11px; color:var(--light); margin-bottom:10px; }
+.client-card-progress { display:flex; align-items:center; gap:8px; }
+.client-card-bar { flex:1; height:8px; background:#f1f5f9; border-radius:4px; overflow:hidden; }
+.client-card-fill { height:100%; border-radius:4px; transition:width 0.3s; }
+.client-card-pct { font-size:12px; font-weight:700; min-width:36px; text-align:right; }
+.client-card-count { font-size:11px; color:var(--muted); margin-top:4px; }
+
+/* ─── View toggle ─── */
+.view-toggle-row { display:flex; justify-content:flex-start; margin-bottom:12px; }
+.view-toggle { display:inline-flex; border:1px solid var(--border); border-radius:8px; overflow:hidden; background:white; }
+.view-toggle-btn { padding:5px 12px; font-size:0.75rem; font-weight:600; cursor:pointer; border:none; background:white; color:var(--muted); font-family:inherit; transition:all 0.12s; display:flex; align-items:center; gap:5px; }
+.view-toggle-btn:not(:last-child) { border-right:1px solid var(--border); }
+.view-toggle-btn:hover { background:#f3f4f6; color:var(--text); }
+.view-toggle-btn.active { background:var(--navy); color:white; }
+.view-toggle-btn svg { width:14px; height:14px; }
+
+/* ─── Client table view (checklist) ─── */
+.ck-client-table { width:100%; border-collapse:collapse; background:var(--card); border-radius:12px; overflow:hidden; border:1px solid var(--border); }
+.ck-client-table th { background:#f8f9fb; padding:10px 14px; text-align:left; font-size:0.68rem; text-transform:uppercase; letter-spacing:0.05em; color:var(--muted); font-weight:700; border-bottom:1px solid var(--border); }
+.ck-client-table td { padding:10px 14px; font-size:0.82rem; border-bottom:1px solid #f0f2f5; }
+.ck-client-table tr:hover td { background:#fafbfc; cursor:pointer; }
+.ck-client-table tr:last-child td { border-bottom:none; }
+.ck-table-name { font-weight:700; color:var(--navy); }
+.ck-table-contadora { font-size:0.75rem; color:var(--light); }
+.ck-progress-bar { width:100px; height:8px; background:#eef0f4; border-radius:4px; overflow:hidden; display:inline-block; vertical-align:middle; margin-right:6px; }
+.ck-progress-fill { height:100%; border-radius:4px; }
+.ck-progress-text { font-size:0.75rem; color:var(--muted); }
+.ck-status-badge { display:inline-block; padding:3px 10px; border-radius:12px; font-size:0.72rem; font-weight:600; }
+.ck-status-completo { background:#d1fae5; color:#065f46; }
+.ck-status-progreso { background:#dbeafe; color:#1e40af; }
+.ck-status-pendiente { background:#f3f4f6; color:#6b7280; }
+.ck-status-sinasignar { background:#fef3c7; color:#92400e; }
+
+/* ─── Detail view (checklist) ─── */
+.detail-header { display:flex; align-items:center; gap:12px; margin-bottom:16px; }
+.detail-back { padding:6px 14px; border-radius:8px; font-size:12px; font-weight:600; cursor:pointer; border:1px solid var(--border); background:white; color:var(--muted); font-family:inherit; }
+.detail-back:hover { background:#eef0f4; }
+.detail-title { font-size:18px; font-weight:800; }
+.detail-sub { font-size:12px; color:var(--muted); }
+
+.progress-row { display:flex; align-items:center; gap:12px; margin-bottom:16px; background:white; border-radius:10px; padding:14px 18px; border:1px solid var(--border); }
+.progress-row .pr-count { font-size:14px; font-weight:700; min-width:90px; }
+.progress-row .pr-bar { flex:1; height:10px; background:#f1f5f9; border-radius:5px; overflow:hidden; }
+.progress-row .pr-fill { height:100%; border-radius:5px; transition:width 0.3s; }
+.progress-row .pr-pct { font-size:13px; font-weight:700; min-width:40px; text-align:right; }
+
+/* ─── Checklist table ─── */
+.check-table { width:100%; border-collapse:collapse; font-size:0.82rem; background:white; border-radius:12px; overflow:hidden; border:1px solid var(--border); }
+.check-table th { text-align:left; padding:10px 12px; font-size:0.65rem; text-transform:uppercase; letter-spacing:0.3px; color:var(--muted); border-bottom:2px solid var(--border); background:#f8fafc; }
+.check-table th.center { text-align:center; }
+.check-table td { padding:8px 12px; border-bottom:1px solid #f1f5f9; vertical-align:middle; }
+.check-table td.center { text-align:center; }
+.check-table tr:hover td { background:#fafbfc; }
+.check-table tr.row-done td { background:#f0fdf4; }
+.check-table tr.row-overdue td { background:#fef2f2; }
+.check-table tr.group-row td { background:#f0f2f5; font-weight:700; font-size:0.72rem; color:var(--navy); text-transform:uppercase; letter-spacing:0.4px; border-bottom:2px solid var(--border); padding:6px 12px; }
+
+/* ─── Type badges (checklist) ─── */
+.tipo-badge { display:inline-block; padding:2px 8px; border-radius:6px; font-size:10px; font-weight:700; letter-spacing:0.2px; white-space:nowrap; }
+.tipo-tss { background:#eef2ff; color:#4361ee; }
+.tipo-ir3 { background:#f3f0ff; color:#8b5cf6; }
+.tipo-ir17 { background:#fffbeb; color:#d97706; }
+.tipo-anticipo { background:#fdf2f8; color:#db2777; }
+.tipo-itbis { background:#ecfdf5; color:#059669; }
+.tipo-cierre { background:#f1f5f9; color:#64748b; }
+.tipo-nomina { background:#eff6ff; color:#2563eb; }
+
+/* ─── Selector de contadora (KPI) ─── */
+.selector-screen { text-align:center; padding:40px 20px; }
+.selector-screen h2 { font-size:18px; font-weight:700; margin-bottom:8px; }
+.selector-screen p { font-size:13px; color:var(--muted); margin-bottom:24px; }
+.selector-grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(180px,1fr)); gap:12px; max-width:600px; margin:0 auto; }
+.selector-card { background:white; border:2px solid var(--border); border-radius:12px; padding:20px 16px; cursor:pointer; transition:all 0.2s; }
+.selector-card:hover { border-color:var(--blue); transform:translateY(-2px); box-shadow:0 4px 12px rgba(0,0,0,0.08); }
+.selector-card .sc-dot { width:14px; height:14px; border-radius:50%; margin:0 auto 10px; }
+.selector-card .sc-name { font-size:15px; font-weight:700; }
+.selector-card .sc-tier { font-size:11px; color:var(--light); margin-top:2px; }
+.selector-card .sc-obj { font-size:12px; color:var(--muted); margin-top:6px; }
+
+/* ─── Score overview (KPI) ─── */
+.score-overview { background:white; border-radius:14px; border:1px solid var(--border); padding:20px; margin-bottom:20px; display:grid; grid-template-columns:auto 1fr; gap:20px; align-items:center; }
+.score-big { text-align:center; min-width:100px; }
+.score-big .num { font-size:48px; font-weight:900; line-height:1; }
+.score-big .of { font-size:13px; color:var(--light); }
+.score-big .label { display:inline-block; margin-top:6px; padding:3px 12px; border-radius:10px; font-size:12px; font-weight:700; }
+.score-breakdown { display:grid; grid-template-columns:1fr; gap:6px; }
+.score-row { display:flex; align-items:center; gap:8px; }
+.score-row-label { font-size:12px; color:var(--muted); width:120px; min-width:120px; }
+.score-row-bar { flex:1; height:10px; background:#f1f5f9; border-radius:5px; overflow:hidden; }
+.score-row-fill { height:100%; border-radius:5px; transition:width 0.3s; }
+.score-row-pts { font-size:12px; font-weight:700; width:50px; text-align:right; }
+.escala-mini { display:grid; grid-template-columns:repeat(4,1fr); gap:6px; margin-top:8px; }
+.escala-item { text-align:center; padding:8px 4px; border-radius:8px; border:1px solid var(--border); transition:all 0.2s; }
+.escala-item.active { border-width:2px; }
+.escala-range { font-size:14px; font-weight:800; }
+.escala-name { font-size:9px; font-weight:600; text-transform:uppercase; letter-spacing:0.3px; margin-top:1px; }
+
+@media (max-width:768px) { .score-overview { grid-template-columns:1fr; } }
+
+/* ─── Bono card (KPI) ─── */
+.bono-card { background:linear-gradient(135deg, #1a2332 0%, #2a3a4e 50%, #3b5998 100%); border-radius:14px; padding:24px; margin-bottom:20px; color:white; position:relative; overflow:hidden; }
+.bono-card::before { content:''; position:absolute; top:-30px; right:-30px; width:120px; height:120px; background:rgba(255,255,255,0.06); border-radius:50%; }
+.bono-header { display:flex; align-items:center; gap:10px; margin-bottom:16px; position:relative; z-index:1; }
+.bono-icon { width:36px; height:36px; border-radius:10px; background:rgba(255,255,255,0.15); display:flex; align-items:center; justify-content:center; font-size:18px; }
+.bono-header-text h3 { font-size:14px; font-weight:700; margin-bottom:1px; }
+.bono-header-text span { font-size:11px; opacity:0.65; }
+.bono-body { display:grid; grid-template-columns:1fr 1fr 1fr; gap:16px; position:relative; z-index:1; }
+.bono-item { text-align:center; }
+.bono-item-label { font-size:10px; text-transform:uppercase; letter-spacing:0.4px; opacity:0.6; margin-bottom:4px; }
+.bono-item-value { font-size:22px; font-weight:900; }
+.bono-item-sub { font-size:11px; opacity:0.5; margin-top:2px; }
+.bono-pct-badge { display:inline-block; padding:3px 10px; border-radius:8px; font-size:12px; font-weight:700; margin-top:4px; }
+.bono-msg { text-align:center; margin-top:16px; padding-top:14px; border-top:1px solid rgba(255,255,255,0.12); position:relative; z-index:1; }
+.bono-msg p { font-size:13px; font-weight:600; }
+.bono-msg span { font-size:11px; opacity:0.5; }
+@media (max-width:500px) { .bono-body { grid-template-columns:1fr; gap:10px; } }
+
+/* ─── Component cards (KPI) ─── */
+.comp-card { background:white; border-radius:12px; border:1px solid var(--border); margin-bottom:16px; overflow:hidden; }
+.comp-header { display:flex; align-items:center; justify-content:space-between; padding:14px 18px; border-bottom:1px solid #f1f5f9; }
+.comp-header-left { display:flex; align-items:center; gap:10px; }
+.comp-num { width:28px; height:28px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:800; color:white; }
+.comp-title { font-size:14px; font-weight:700; }
+.comp-weight { font-size:11px; color:var(--light); }
+.comp-score-pill { padding:4px 12px; border-radius:8px; font-size:12px; font-weight:700; }
+.comp-body { padding:18px; }
+
+/* ─── Digitacion table (KPI) ─── */
+.dig-table { width:100%; border-collapse:collapse; font-size:0.82rem; }
+.dig-table th { text-align:center; padding:8px 6px; font-size:0.65rem; text-transform:uppercase; letter-spacing:0.3px; color:var(--muted); border-bottom:2px solid var(--border); background:#f8fafc; }
+.dig-table th:first-child { text-align:left; }
+.dig-table td { padding:6px; border-bottom:1px solid #f1f5f9; text-align:center; vertical-align:middle; }
+.dig-table td:first-child { text-align:left; font-weight:600; }
+.dig-table tr:hover td { background:#fafbfc; }
+.dig-table .total-row td { border-top:2px solid var(--border); font-weight:700; background:#f8fafc; }
+.dig-input { width:56px; padding:5px 4px; border:1px solid var(--border); border-radius:6px; font-size:0.85rem; text-align:center; font-family:inherit; -moz-appearance:textfield; }
+.dig-input::-webkit-outer-spin-button, .dig-input::-webkit-inner-spin-button { -webkit-appearance:none; margin:0; }
+.dig-input:focus { outline:none; border-color:var(--blue); box-shadow:0 0 0 3px rgba(67,97,238,0.1); }
+.dig-cell { display:flex; flex-direction:column; align-items:center; gap:2px; }
+.fri-dot { width:7px; height:7px; border-radius:50%; display:inline-block; }
+
+/* ─── Stats row (KPI) ─── */
+.dig-stats { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-bottom:14px; }
+.dig-stat { background:#f8fafc; border-radius:8px; padding:10px; text-align:center; }
+.dig-stat-label { font-size:10px; text-transform:uppercase; color:var(--light); letter-spacing:0.3px; }
+.dig-stat-value { font-size:20px; font-weight:800; margin-top:2px; }
+
+/* ─── Progress (KPI) ─── */
+.progress-bar { width:100%; height:10px; background:#f1f5f9; border-radius:5px; overflow:hidden; }
+.progress-fill { height:100%; border-radius:5px; transition:width 0.3s; }
+.res-progress { display:flex; align-items:center; gap:12px; margin-bottom:14px; }
+.res-count { font-size:14px; font-weight:700; }
+
+/* ─── Client table (KPI resumenes + video) ─── */
+.client-table { width:100%; border-collapse:collapse; font-size:0.82rem; }
+.client-table th { text-align:left; padding:8px 10px; background:#f8fafc; font-size:0.65rem; font-weight:700; text-transform:uppercase; color:var(--muted); letter-spacing:0.3px; border-bottom:2px solid var(--border); }
+.client-table td { padding:8px 10px; border-bottom:1px solid #f1f5f9; vertical-align:middle; }
+.client-table tr:hover td { background:#fafbfc; }
+.row-done { background:#f0fdf4 !important; }
+
+/* ─── Semaforo dot ─── */
+.sem-dot { width:10px; height:10px; border-radius:50%; display:inline-block; vertical-align:middle; margin-right:4px; }
+
+/* ─── Toggle group ─── */
+.toggle-group { display:flex; gap:0; }
+.toggle-opt { padding:5px 14px; font-size:11px; font-weight:600; cursor:pointer; border:1px solid var(--border); background:white; color:var(--muted); transition:all 0.15s; font-family:inherit; }
+.toggle-opt:first-child { border-radius:6px 0 0 6px; }
+.toggle-opt:last-child { border-radius:0 6px 6px 0; border-left:none; }
+.toggle-opt.active-yes { background:#ecfdf5; color:#065f46; border-color:#a7f3d0; }
+.toggle-opt.active-no { background:#fef2f2; color:#991b1b; border-color:#fecaca; }
+
+/* ─── Trimestral table (KPI) ─── */
+.tri-table { width:100%; border-collapse:collapse; font-size:0.82rem; }
+.tri-table th { text-align:left; padding:10px 12px; font-size:0.68rem; text-transform:uppercase; letter-spacing:0.5px; color:var(--muted); border-bottom:2px solid var(--border); }
+.tri-table th.center { text-align:center; }
+.tri-table td { padding:10px 12px; border-bottom:1px solid #f1f3f7; }
+.tri-table td.center { text-align:center; }
+.tri-table tr:hover td { background:#fafbfc; }
+.score-badge { display:inline-block; padding:3px 10px; border-radius:8px; font-weight:700; font-size:0.78rem; min-width:42px; text-align:center; }
+.score-excelente { background:#ecfdf5; color:#059669; }
+.score-bueno { background:#eef2ff; color:#4361ee; }
+.score-aceptable { background:#fffbeb; color:#d97706; }
+.score-sinbono { background:#fef2f2; color:#dc2626; }
+.score-empty { background:#f5f7fa; color:var(--light); }
+.bono-pill { display:inline-block; padding:3px 10px; border-radius:8px; font-weight:700; font-size:0.78rem; }
+.bono-100 { background:#ecfdf5; color:#059669; }
+.bono-75 { background:#eef2ff; color:#4361ee; }
+.bono-50 { background:#fffbeb; color:#d97706; }
+.bono-0 { background:#fef2f2; color:#dc2626; }
+
+.card { background:var(--card); border-radius:12px; padding:20px; border:1px solid var(--border); margin-bottom:16px; }
+.card h3 { font-size:0.85rem; font-weight:700; color:var(--muted); margin-bottom:14px; text-transform:uppercase; letter-spacing:0.3px; }
+.stats { display:grid; grid-template-columns:repeat(auto-fit, minmax(140px,1fr)); gap:12px; margin-bottom:20px; }
+.stat { background:var(--card); border-radius:12px; padding:16px; border:1px solid var(--border); }
+.stat-label { font-size:0.65rem; text-transform:uppercase; letter-spacing:0.5px; color:var(--light); font-weight:600; }
+.stat-value { font-size:1.6rem; font-weight:800; margin-top:4px; }
+.stat-sub { font-size:0.7rem; color:var(--light); margin-top:4px; }
+
+.note { background:#fffbeb; border:1px solid #fde68a; border-radius:8px; padding:10px 14px; font-size:0.78rem; color:#92400e; margin-bottom:16px; }
+.save-bar { display:flex; gap:8px; margin-top:16px; padding-top:16px; border-top:1px solid var(--border); }
+.btn { padding:8px 18px; border-radius:8px; font-size:0.82rem; font-weight:600; cursor:pointer; border:none; font-family:inherit; transition:all 0.12s; }
+.btn-primary { background:var(--navy); color:white; }
+.btn-primary:hover { background:var(--navy-mid); }
+.btn-primary:disabled { opacity:0.6; cursor:not-allowed; }
+
+.hidden { display:none; }
+.footer { text-align:center; font-size:0.75rem; color:var(--light); padding:20px; }
+.empty { text-align:center; padding:40px; color:var(--light); font-size:0.88rem; }
+
+body.embed .login-overlay { display:none !important; }
+body.embed .header { display:none !important; }
+body.embed .breadcrumb-bar { display:none !important; }
+body.embed #app-wrapper { display:block !important; }
+body.embed .footer { display:none !important; }
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div class="login-overlay" id="login-screen">
+  <div class="login-box">
+    <h2>Account One</h2>
+    <p class="subtitle">Inicia sesion para continuar</p>
+    <div class="field">
+      <label>Email</label>
+      <input type="email" id="login-email" placeholder="tu@accountone.do">
+    </div>
+    <div class="field">
+      <label>Contrasena</label>
+      <input type="password" id="login-password" placeholder="••••••••">
+    </div>
+    <button class="login-btn" id="btn-login" onclick="handleLogin()">Entrar</button>
+    <div class="login-error" id="login-error"></div>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app-wrapper" class="hidden">
+
+<div class="header">
+  <div class="header-inner">
+    <div>
+      <h1>Contabilidad</h1>
+      <p>Account One — 2026</p>
+    </div>
+    <div class="user-bar">
+      <span class="user-name" id="user-display-name"></span>
+      <button class="btn-logout" onclick="handleLogout()">Salir</button>
+    </div>
+  </div>
+</div>
+
+<div class="breadcrumb-bar">
+  <a href="index.html">Account One</a>
+  <span class="sep">›</span>
+  <span class="current">Contabilidad</span>
+</div>
+
+<div class="main-tabs" id="mainTabs"></div>
+<div id="navArea"></div>
+<div class="content" id="content"></div>
+<div class="footer">Conectado a Supabase — los datos se guardan en la nube.</div>
+
+</div>
+
+<script>
+// ==================== CONFIG ====================
+const SUPABASE_URL = 'https://ouetusstqvpyjeycfdio.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im91ZXR1c3N0cXZweWpleWNmZGlvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY2NDcwNzksImV4cCI6MjA5MjIyMzA3OX0.Bsys947JLGEuf3zdBF2GPFdbJVJtaZdC4YEmyBU5Bow';
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+const MESES = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+const MESES_LABEL = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+const MESES_FULL = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+
+const QUARTERS = [
+  { id:1, label:'Q1', meses:['enero','febrero','marzo'], cierre:'Marzo' },
+  { id:2, label:'Q2', meses:['abril','mayo','junio'], cierre:'Junio' },
+  { id:3, label:'Q3', meses:['julio','agosto','septiembre'], cierre:'Septiembre' },
+  { id:4, label:'Q4', meses:['octubre','noviembre','diciembre'], cierre:'Diciembre' }
+];
+
+const KPI_CONTADORAS = [
+  { nombre:'Beliani', tier:'Contadora I', objetivo:1000, salario:45000, color:'#8b5cf6' },
+  { nombre:'Yessica', tier:'Contadora I', objetivo:1000, salario:45000, color:'#f59e0b' },
+  { nombre:'Taina', tier:'Contadora II', objetivo:500, salario:60000, color:'#4361ee' },
+  { nombre:'Victoria', tier:'Por definir', objetivo:500, salario:45000, color:'#ec4899' }
+];
+
+const KPI_ESCALA = [
+  { min:90, max:100, label:'Excelente', bonoPct:100, color:'#10b981', bg:'#ecfdf5', css:'score-excelente', bonoCss:'bono-100' },
+  { min:80, max:89,  label:'Bueno',     bonoPct:75,  color:'#4361ee', bg:'#eef2ff', css:'score-bueno', bonoCss:'bono-75' },
+  { min:70, max:79,  label:'Aceptable', bonoPct:50,  color:'#f59e0b', bg:'#fffbeb', css:'score-aceptable', bonoCss:'bono-50' },
+  { min:0,  max:69,  label:'Sin bono',  bonoPct:0,   color:'#ef4444', bg:'#fef2f2', css:'score-sinbono', bonoCss:'bono-0' }
+];
+
+const MV_EXCEPTION = { contadora: 'Beliani', cliente: 'Mv Creative' };
+
+const EXCLUIDAS = ['Milka', 'Yolenny'];
+
+// ─── 23 items del checklist, ordenados por fecha cronologica ───
+const ITEM_GROUPS = [
+  { label: 'Nomina → TSS / IR-3 — Presentacion dia 3', from: 0, to: 6 },
+  { label: 'Proveedores informales — Presentacion dia 10', from: 7, to: 12 },
+  { label: 'Anticipo — Presentacion dia 15', from: 13, to: 13 },
+  { label: 'ITBIS — Presentacion dia 20', from: 14, to: 18 },
+  { label: 'Presentacion mensual', from: 19, to: 23 }
+];
+
+const ITEMS = [
+  // ── Nomina → TSS / IR-3 (todo deadline dia 3, firma dia 28) ──
+  { id:'solicitud_nomina',        n:1,  label:'Solicitud de Nomina',                       tipoCss:'tipo-nomina',   impuesto:'TSS / IR-3',    dia:3,  mesRel:1 },
+  { id:'recepcion_nomina',        n:2,  label:'Recepcion de Nomina',                        tipoCss:'tipo-nomina',   impuesto:'TSS / IR-3',    dia:3,  mesRel:1 },
+  { id:'registro_nomina',         n:3,  label:'Registro de Nomina',                         tipoCss:'tipo-nomina',   impuesto:'TSS / IR-3',    dia:3,  mesRel:1 },
+  { id:'informar_impuestos',      n:4,  label:'Informar a Impuestos (via Trello)',           tipoCss:'tipo-nomina',   impuesto:'TSS / IR-3',    dia:3,  mesRel:1 },
+  { id:'autorizacion_tss_nomina', n:5,  label:'Subir autorizacion de TSS al cliente',       tipoCss:'tipo-nomina',   impuesto:'TSS / IR-3',    dia:3,  mesRel:1 },
+  { id:'autorizacion_tss',        n:6,  label:'Subir autorizacion al cliente (TSS)',        tipoCss:'tipo-tss',      impuesto:'TSS / IR-3',    dia:3,  mesRel:1 },
+  { id:'autorizacion_ir3',        n:7,  label:'Subir Autorizacion de IR-3 al cliente',      tipoCss:'tipo-ir3',      impuesto:'TSS / IR-3',    dia:3,  mesRel:1 },
+
+  // ── Proveedores informales (deadline dia 10, firma dia 5) ──
+  { id:'solicitar_proveedores',   n:8,  label:'Solicitar Proveedores Informales',           tipoCss:'tipo-ir17',     impuesto:'Proveedores',   dia:10, mesRel:1 },
+  { id:'recepcion_proveedores',   n:9,  label:'Recepcion de Proveedores Informales',        tipoCss:'tipo-ir17',     impuesto:'Proveedores',   dia:10, mesRel:1 },
+  { id:'registrar_proveedores',   n:10, label:'Registrar gastos de Proveedores Informales', tipoCss:'tipo-ir17',     impuesto:'Proveedores',   dia:10, mesRel:1 },
+  { id:'borrador_ir17',           n:11, label:'Realizar Borrador de IR-17',                 tipoCss:'tipo-ir17',     impuesto:'Proveedores',   dia:10, mesRel:1 },
+  { id:'enviar_ir17',             n:12, label:'Enviar borrador de IR-17 al cliente',        tipoCss:'tipo-ir17',     impuesto:'Proveedores',   dia:10, mesRel:1 },
+  { id:'notificacion_ir17',       n:13, label:'Subir Notificacion de pago IR-17',           tipoCss:'tipo-ir17',     impuesto:'Proveedores',   dia:10, mesRel:1 },
+
+  // ── Anticipo (deadline dia 15, firma dia 10) ──
+  { id:'autorizacion_anticipo',   n:14, label:'Subir autorizacion de Anticipo al cliente',  tipoCss:'tipo-anticipo', impuesto:'Anticipo',      dia:15, mesRel:1 },
+
+  // ── ITBIS (deadline dia 20, firma dia 15) ──
+  { id:'verificar_facturas',      n:15, label:'Verificar facturas de gastos pendientes',    tipoCss:'tipo-itbis',    impuesto:'ITBIS',         dia:20, mesRel:1 },
+  { id:'solicitar_facturas',      n:16, label:'Solicitar o confirmar facturas de gastos',   tipoCss:'tipo-itbis',    impuesto:'ITBIS',         dia:20, mesRel:1 },
+  { id:'facturas_registradas',    n:17, label:'Facturas de Gastos registradas',             tipoCss:'tipo-itbis',    impuesto:'ITBIS',         dia:20, mesRel:1 },
+  { id:'borrador_itbis',          n:18, label:'Realizar Borrador ITBIS',                    tipoCss:'tipo-itbis',    impuesto:'ITBIS',         dia:20, mesRel:1 },
+  { id:'enviar_itbis',            n:19, label:'Enviar autorizacion de pago ITBIS',          tipoCss:'tipo-itbis',    impuesto:'ITBIS',         dia:20, mesRel:1 },
+
+  // ── Presentacion mensual (registro gastos dia 5, lo demas dia 30) ──
+  { id:'registros_realizados',    n:20, label:'Registrar gastos',                           tipoCss:'tipo-cierre',   impuesto:'Presentacion',  dia:5,  mesRel:1, firmaOffset:4 },
+  { id:'presupuesto',             n:21, label:'Realizar Presupuesto y ejecucion',           tipoCss:'tipo-cierre',   impuesto:'Presentacion',  dia:30, mesRel:1 },
+  { id:'proyeccion_impuestos',    n:22, label:'Realizar Proyeccion de impuestos',           tipoCss:'tipo-cierre',   impuesto:'Presentacion',  dia:30, mesRel:1 },
+  { id:'resumen_declaracion',     n:23, label:'Realizar resumen de declaracion del mes',    tipoCss:'tipo-cierre',   impuesto:'Presentacion',  dia:30, mesRel:1 },
+  { id:'video_reunion',           n:24, label:'Grabar video o reunion con cliente',         tipoCss:'tipo-cierre',   impuesto:'Presentacion',  dia:30, mesRel:1 }
+];
+
+// ==================== SHARED HELPERS ====================
+
+function todayStr() {
+  const h = new Date();
+  return h.getFullYear() + '-' + String(h.getMonth()+1).padStart(2,'0') + '-' + String(h.getDate()).padStart(2,'0');
+}
+
+function formatDateShort(dateStr) {
+  if (!dateStr) return '';
+  const d = new Date(dateStr + 'T12:00:00');
+  const dia = d.getDate();
+  const ms = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+  return dia + ' ' + ms[d.getMonth()];
+}
+
+function getBarColor(pct) {
+  return pct >= 90 ? 'var(--green)' : pct >= 70 ? 'var(--amber)' : 'var(--red)';
+}
+
+function esc(s) { return s.replace(/'/g, "\\'"); }
+
+function isExcluida(name) {
+  for (let i = 0; i < EXCLUIDAS.length; i++) {
+    if (name.indexOf(EXCLUIDAS[i]) === 0) return true;
+  }
+  return false;
+}
+
+function getCurrentMonth() {
+  const m = new Date().getMonth();
+  return MESES[m];
+}
+
+function getCurrentQuarter() {
+  const m = new Date().getMonth();
+  return Math.floor(m / 3) + 1;
+}
+
+function sortContadoras(arr) {
+  return arr.sort(function(a, b) {
+    const aLast = a === 'Sin asignar' || a === 'Sin Asignar';
+    const bLast = b === 'Sin asignar' || b === 'Sin Asignar';
+    if (aLast && !bLast) return 1;
+    if (!aLast && bLast) return -1;
+    if (a === 'Taina' && b !== 'Taina') return -1;
+    if (b === 'Taina' && a !== 'Taina') return 1;
+    return a.localeCompare(b);
+  });
+}
+
+function canEdit(contadoraNombre) {
+  if (userRole === 'admin') return true;
+  return userName.includes(contadoraNombre);
+}
+
+// KPI-specific helpers
+function getEscala(score) { return KPI_ESCALA.find(e => score >= e.min && score <= e.max) || KPI_ESCALA[3]; }
+function getBonoBase(contadora) { const c = KPI_CONTADORAS.find(x => x.nombre === contadora); return c ? Math.round(c.salario / 3) : 0; }
+function formatMoney(n) { return 'RD$' + n.toLocaleString(); }
+function getVideoTipo(mes) { const idx = MESES.indexOf(mes); return (idx % 3 === 2) ? 'Reunion' : 'Video'; }
+function getQuarterInfo(mes) { const idx = MESES.indexOf(mes); const q = Math.floor(idx / 3) + 1; const pos = (idx % 3) + 1; return { q, pos, label:'Q' + q + ' — Mes ' + pos + ' de 3' }; }
+function getCategoriaColor(total) { if (total >= 90) return '#10b981'; if (total >= 80) return '#4361ee'; if (total >= 70) return '#f59e0b'; return '#ef4444'; }
+function isMonthPast(mesIdx) { const now = new Date(); const end = new Date(2026, mesIdx + 1, 0, 23, 59, 59); return now > end; }
+function isMvException(contadora, cliente) { return contadora === MV_EXCEPTION.contadora && cliente === MV_EXCEPTION.cliente; }
+function isFriday(dateStr) { if (!dateStr) return null; return new Date(dateStr + 'T12:00:00').getDay() === 5; }
+
+// Checklist-specific helpers
+function getDeadlineDate(mesIdx, item) {
+  let targetMonth = mesIdx + item.mesRel;
+  let targetYear = 2026;
+  if (targetMonth > 11) { targetMonth -= 12; targetYear++; }
+  const lastDay = new Date(targetYear, targetMonth + 1, 0).getDate();
+  const dia = Math.min(item.dia, lastDay);
+  return new Date(targetYear, targetMonth, dia, 12, 0, 0);
+}
+
+function getFirmaDate(mesIdx, item) {
+  const deadline = getDeadlineDate(mesIdx, item);
+  const firma = new Date(deadline.getTime());
+  const offset = item.firmaOffset || 5;
+  firma.setDate(firma.getDate() - offset);
+  return firma;
+}
+
+function formatDeadline(mesIdx, item) {
+  const d = getDeadlineDate(mesIdx, item);
+  return formatDateShort(d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0'));
+}
+
+function formatFirma(mesIdx, item) {
+  const d = getFirmaDate(mesIdx, item);
+  return formatDateShort(d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0'));
+}
+
+function getCheckSemaforo(fecha, mesIdx, item) {
+  if (!fecha) return '';
+  const deadline = getDeadlineDate(mesIdx, item);
+  const firma = getFirmaDate(mesIdx, item);
+  const done = new Date(fecha + 'T12:00:00');
+
+  if (done <= firma) return '<span class="sem-dot" style="background:var(--green)" title="Antes de firma"></span>';
+  if (done <= deadline) return '<span class="sem-dot" style="background:var(--amber)" title="Entre firma y limite"></span>';
+  return '<span class="sem-dot" style="background:var(--red)" title="Fuera de plazo"></span>';
+}
+
+function isOverdue(mesIdx, item) {
+  const deadline = getDeadlineDate(mesIdx, item);
+  return new Date() > deadline;
+}
+
+// KPI semaforo for resumenes/video
+function getSemaforo(fecha, mesIdx) {
+  if (!fecha) return '';
+  const day = new Date(fecha + 'T12:00:00').getDate();
+  const fechaMonth = new Date(fecha + 'T12:00:00').getMonth();
+  if (fechaMonth > mesIdx) return '<span class="sem-dot" style="background:var(--red)" title="Despues del 30"></span>';
+  if (fechaMonth < mesIdx) return '<span class="sem-dot" style="background:var(--green)" title="Antes del 20"></span>';
+  if (day <= 25) return '<span class="sem-dot" style="background:var(--green)" title="Antes del 25"></span>';
+  if (day <= 30) return '<span class="sem-dot" style="background:var(--amber)" title="Entre 25 y 30"></span>';
+  return '<span class="sem-dot" style="background:var(--red)" title="Despues del 30"></span>';
+}
+
+// ==================== STATE ====================
+
+// Shared
+let userRole = null;
+let userName = '';
+let saving = false;
+
+// Top-level tab
+let mainTab = 'checklist';
+
+// Unified data stores
+let ASIGNACIONES = {};
+let CHECKLIST_DATA = {};
+let DETALLE = {};
+
+// Checklist state
+let ckMes = getCurrentMonth();
+let ckContadora = 'Todas';
+let ckCliente = null;
+let ckClienteContadora = null;
+let ckViewMode = 'table'; // 'table' or 'cards'
+
+// KPI state
+let kpiSubTab = 'detalle';
+let kpiQuarter = getCurrentQuarter();
+let kpiContadora = null;
+let kpiMes = null;
+
+// ==================== UNIFIED ASIGNACIONES ====================
+// Fuente principal: tabla clientes (maestra).
+// Asignaciones solo aporta dato mensual de transacciones digitadas (adm) para KPI.
+
+var CLIENTES_CONTAB = []; // clientes con responsabilidad_contabilidad = true
+var CLIENTES_SIN_RESP = []; // clientes activos sin responsabilidad contable
+var ASIG_ADM = {};        // { "cliente_mes": adm } — transacciones digitadas por mes
+
+async function loadAsignaciones() {
+  // 1. Cargar clientes de la maestra
+  const { data: cData, error: cErr } = await sb.from('clientes')
+    .select('nombre, contadora_contabilidad, monto_adm, responsabilidad_contabilidad, activo');
+  if (cErr) { console.error('Error cargando clientes:', cErr); return; }
+  var activos = (cData || []).filter(c => c.activo !== false);
+  CLIENTES_CONTAB = activos.filter(c => c.responsabilidad_contabilidad === true);
+  CLIENTES_SIN_RESP = activos.filter(c => c.responsabilidad_contabilidad !== true);
+
+  // 2. Cargar asignaciones para datos mensuales de digitación (KPI)
+  const { data: aData } = await sb.from('asignaciones').select('cliente, mes, adm');
+  ASIG_ADM = {};
+  (aData || []).forEach(r => {
+    if (r.cliente && r.mes) ASIG_ADM[r.cliente + '_' + r.mes] = r.adm || 0;
+  });
+
+  // 3. Construir ASIGNACIONES (misma estructura para compatibilidad)
+  ASIGNACIONES = {};
+  CLIENTES_CONTAB.forEach(c => {
+    const cont = c.contadora_contabilidad;
+    if (cont && isExcluida(cont)) return;
+    var grupo = cont || 'Sin asignar';
+    MESES.forEach(mes => {
+      const key = grupo + '_' + mes;
+      if (!ASIGNACIONES[key]) ASIGNACIONES[key] = [];
+      const adm = ASIG_ADM[c.nombre + '_' + mes] || 0;
+      ASIGNACIONES[key].push({
+        nombre: c.nombre,
+        transacciones: adm,
+        contratado: c.monto_adm || 0
+      });
+    });
+  });
+}
+
+// Returns array of objects {nombre, transacciones, contratado} — for KPI
+function getClients(contadora, mes) {
+  const key = contadora + '_' + mes;
+  return ASIGNACIONES[key] || [];
+}
+
+// Returns sorted array of client name strings — for checklist
+function getClientNames(contadora, mes) {
+  const clients = getClients(contadora, mes);
+  return clients.map(c => c.nombre).sort();
+}
+
+// Returns all unique contadora names from maestra
+function getContadoraNames() {
+  const names = {};
+  var hasSinAsignar = false;
+  CLIENTES_CONTAB.forEach(c => {
+    if (c.contadora_contabilidad && !isExcluida(c.contadora_contabilidad)) {
+      names[c.contadora_contabilidad] = true;
+    } else if (!c.contadora_contabilidad) {
+      hasSinAsignar = true;
+    }
+  });
+  var sorted = sortContadoras(Object.keys(names));
+  if (hasSinAsignar) sorted.push('Sin asignar');
+  return sorted;
+}
+
+// ==================== CHECKLIST DATA ====================
+
+async function loadChecklistData() {
+  const { data, error } = await sb.from('checklist_contadores').select('*').eq('anio', 2026);
+  if (error) { console.error('Error cargando checklist:', error); return; }
+  CHECKLIST_DATA = {};
+  (data || []).forEach(r => {
+    const key = r.contadora + '_' + r.cliente + '_' + r.mes;
+    CHECKLIST_DATA[key] = { _id: r.id, datos: r.datos || {} };
+  });
+}
+
+function getCheckData(contadora, cliente, mes) {
+  const key = contadora + '_' + cliente + '_' + mes;
+  if (!CHECKLIST_DATA[key]) {
+    CHECKLIST_DATA[key] = { _id: null, datos: {} };
+  }
+  const d = CHECKLIST_DATA[key].datos;
+  ITEMS.forEach(item => {
+    if (!d[item.id]) d[item.id] = { done: false, fecha: '' };
+  });
+  return CHECKLIST_DATA[key];
+}
+
+function getProgress(contadora, cliente, mes) {
+  const entry = getCheckData(contadora, cliente, mes);
+  let done = 0;
+  ITEMS.forEach(item => {
+    if (entry.datos[item.id] && entry.datos[item.id].done) done++;
+  });
+  return { done: done, total: ITEMS.length, pct: Math.round(done / ITEMS.length * 100) };
+}
+
+async function saveChecklist(contadora, cliente, mes) {
+  if (saving) return;
+  saving = true;
+  const key = contadora + '_' + cliente + '_' + mes;
+  const entry = CHECKLIST_DATA[key];
+  if (!entry) { saving = false; return; }
+
+  try {
+    if (entry._id) {
+      const { error } = await sb.from('checklist_contadores')
+        .update({ datos: entry.datos, updated_at: new Date().toISOString() })
+        .eq('id', entry._id);
+      if (error) { console.error('Error guardando:', error); alert('Error guardando. Verifica tus permisos.'); }
+    } else {
+      const { data, error } = await sb.from('checklist_contadores')
+        .insert({ contadora: contadora, cliente: cliente, mes: mes, anio: 2026, datos: entry.datos })
+        .select();
+      if (error) { console.error('Error insertando:', error); alert('Error guardando. Verifica tus permisos.'); }
+      else if (data && data[0]) entry._id = data[0].id;
+    }
+  } finally {
+    saving = false;
+  }
+}
+
+// ==================== KPI DATA ====================
+
+async function loadDetalle() {
+  const { data, error } = await sb.from('kpi_detalle').select('*').eq('anio', 2026);
+  if (error) { console.error('Error cargando kpi_detalle:', error); return; }
+  DETALLE = {};
+  (data || []).forEach(r => {
+    const key = r.contadora + '_' + r.mes;
+    DETALLE[key] = { _id: r.id, datos: r.datos || {} };
+  });
+}
+
+function emptyWeeks() {
+  return [{qty:0,fecha:''},{qty:0,fecha:''},{qty:0,fecha:''},{qty:0,fecha:''},{qty:0,fecha:''}];
+}
+
+function getDetalle(contadora, mes) {
+  const key = contadora + '_' + mes;
+  if (!DETALLE[key]) {
+    DETALLE[key] = { _id: null, datos: { digitacion: {}, resumenes: {}, video: {} } };
+  }
+  const d = DETALLE[key].datos;
+  if (!d.digitacion) d.digitacion = {};
+  if (!d.resumenes) d.resumenes = {};
+  if (!d.video) d.video = {};
+
+  const clients = getClients(contadora, mes);
+  clients.forEach(c => {
+    // Digitacion: migrate old [number] format to [{qty,fecha}]
+    if (!d.digitacion[c.nombre]) {
+      d.digitacion[c.nombre] = emptyWeeks();
+    } else {
+      const arr = d.digitacion[c.nombre];
+      if (arr.length > 0 && typeof arr[0] === 'number') {
+        d.digitacion[c.nombre] = arr.map(qty => ({qty: qty || 0, fecha: ''}));
+      }
+      // Pad to 5 weeks if short
+      while (d.digitacion[c.nombre].length < 5) d.digitacion[c.nombre].push({qty:0,fecha:''});
+    }
+    // Resumenes: migrate foto → link
+    if (!d.resumenes[c.nombre]) {
+      d.resumenes[c.nombre] = { done: false, fecha: '', link: '' };
+    } else {
+      if (d.resumenes[c.nombre].foto !== undefined) {
+        if (!d.resumenes[c.nombre].link) d.resumenes[c.nombre].link = '';
+        delete d.resumenes[c.nombre].foto;
+      }
+      if (d.resumenes[c.nombre].link === undefined) d.resumenes[c.nombre].link = '';
+    }
+    // Video
+    if (!d.video[c.nombre]) d.video[c.nombre] = { done: false, fecha: '', link: '' };
+  });
+  return DETALLE[key];
+}
+
+function getWeekQty(weekObj) {
+  if (typeof weekObj === 'object') return weekObj.qty || 0;
+  return weekObj || 0;
+}
+
+// Dynamic Adm: uses previous month actual, falls back to asignaciones
+function getEffectiveAdm(contadora, mes, clientName) {
+  if (isMvException(contadora, clientName)) return 0;
+  const mesIdx = MESES.indexOf(mes);
+  if (mesIdx > 0) {
+    const prevMes = MESES[mesIdx - 1];
+    const prevKey = contadora + '_' + prevMes;
+    const prevEntry = DETALLE[prevKey];
+    if (prevEntry && prevEntry.datos && prevEntry.datos.digitacion && prevEntry.datos.digitacion[clientName]) {
+      const weeks = prevEntry.datos.digitacion[clientName];
+      let total = 0;
+      weeks.forEach(w => { total += (typeof w === 'object' ? (w.qty || 0) : (w || 0)); });
+      if (total > 0) return total;
+    }
+  }
+  const clients = getClients(contadora, mes);
+  const cl = clients.find(c => c.nombre === clientName);
+  return cl ? cl.transacciones : 0;
+}
+
+function getEffectiveAdmTotal(contadora, mes) {
+  const clients = getClients(contadora, mes);
+  return clients.reduce((s, c) => s + getEffectiveAdm(contadora, mes, c.nombre), 0);
+}
+
+async function saveDetalle(contadora, mes) {
+  if (saving) return;
+  saving = true;
+  const key = contadora + '_' + mes;
+  const entry = DETALLE[key];
+  if (!entry) { saving = false; return; }
+
+  try {
+    if (entry._id) {
+      const { error } = await sb.from('kpi_detalle').update({ datos: entry.datos, updated_at: new Date().toISOString() }).eq('id', entry._id);
+      if (error) { console.error('Error guardando:', error); alert('Error guardando. Verifica tus permisos.'); }
+    } else {
+      const { data, error } = await sb.from('kpi_detalle').insert({ contadora, mes, anio: 2026, datos: entry.datos }).select();
+      if (error) { console.error('Error insertando:', error); alert('Error guardando. Verifica tus permisos.'); }
+      else if (data && data[0]) entry._id = data[0].id;
+    }
+    await syncKpiScores(contadora, mes);
+  } finally {
+    saving = false;
+  }
+}
+
+async function syncKpiScores(contadora, mes) {
+  const scores = calcScoresForContadora(contadora, mes);
+  const total = calcTotal(scores.digScore, scores.resScore, scores.vidScore);
+  const { error } = await sb.from('kpi_scores').upsert({
+    contadora, mes, anio: 2026,
+    digitacion: scores.digScore,
+    resumenes: scores.resScore,
+    video_reunion: scores.vidScore,
+    total: total
+  }, { onConflict: 'contadora,mes,anio', ignoreDuplicates: false });
+  if (error) console.error('Error syncing kpi_scores:', error);
+}
+
+// ==================== KPI SCORING ====================
+
+function calcTotal(dig, res, vid) {
+  return Math.round(dig * 5 + res * 3 + vid * 2);
+}
+
+function calcScoresForContadora(contadora, mes) {
+  const entry = getDetalle(contadora, mes);
+  const clients = getClients(contadora, mes);
+  const d = entry.datos;
+
+  let digActual = 0;
+  let admTotal = 0;
+  clients.forEach(c => {
+    const effAdm = getEffectiveAdm(contadora, mes, c.nombre);
+    if (isMvException(contadora, c.nombre)) return;
+    const weeks = d.digitacion[c.nombre] || emptyWeeks();
+    digActual += weeks.reduce((s, w) => s + getWeekQty(w), 0);
+    admTotal += effAdm;
+  });
+  const digScore = admTotal > 0 ? Math.min(10, Math.round(digActual / admTotal * 10 * 10) / 10) : 10;
+
+  const resTotal = clients.length;
+  const resDone = clients.filter(c => d.resumenes[c.nombre] && d.resumenes[c.nombre].done).length;
+  const resScore = resTotal > 0 ? Math.round(resDone / resTotal * 10 * 10) / 10 : 10;
+
+  const vidTotal = clients.length;
+  const vidDone = clients.filter(c => d.video[c.nombre] && d.video[c.nombre].done).length;
+  const vidScore = vidTotal > 0 ? Math.round(vidDone / vidTotal * 10 * 10) / 10 : 10;
+
+  return { digScore, resScore, vidScore, digActual, admTotal, resDone, resTotal, vidDone, vidTotal };
+}
+
+function getTotalForMonth(contadora, mes) {
+  const s = calcScoresForContadora(contadora, mes);
+  return calcTotal(s.digScore, s.resScore, s.vidScore);
+}
+
+function getQuarterAvg(contadora, qMeses) {
+  const scores = qMeses.map(m => {
+    const clients = getClients(contadora, m);
+    if (clients.length === 0) return null;
+    return getTotalForMonth(contadora, m);
+  });
+  const valid = scores.filter(s => s !== null && s > 0);
+  if (valid.length === 0) return 0;
+  return Math.round(valid.reduce((a, b) => a + b, 0) / valid.length);
+}
+
+function getQuarterBonoData(contadora, qNum) {
+  const q = QUARTERS[qNum - 1];
+  const bonoBase = getBonoBase(contadora);
+  const monthScores = q.meses.map(m => {
+    const clients = getClients(contadora, m);
+    if (clients.length === 0) return null;
+    return getTotalForMonth(contadora, m);
+  });
+  const projectedScores = q.meses.map((m, i) => {
+    const mesIdx = MESES.indexOf(m);
+    if (monthScores[i] === null) return null;
+    if (isMonthPast(mesIdx)) return monthScores[i];
+    return Math.max(monthScores[i], 100);
+  });
+  const avgReal = getAvg(monthScores);
+  const avgProjected = getAvg(projectedScores);
+  const escala = getEscala(avgProjected);
+  const bonoReal = Math.round(bonoBase * escala.bonoPct / 100);
+  return { monthScores, projectedScores, avgScore: avgReal, avgProjected, escala, bonoBase, bonoReal, cierre: q.cierre, qLabel: q.label + ' 2026' };
+}
+
+function getAvg(arr) {
+  const valid = arr.filter(s => s !== null);
+  if (valid.length === 0) return 0;
+  return Math.round(valid.reduce((a, b) => a + b, 0) / valid.length);
+}
+
+function getVisibleContadoras() {
+  if (userRole === 'admin') return KPI_CONTADORAS;
+  return KPI_CONTADORAS.filter(c => userName.includes(c.nombre));
+}
+
+// ==================== AUTH ====================
+
+async function handleLogin() {
+  const email = document.getElementById('login-email').value.trim();
+  const password = document.getElementById('login-password').value;
+  const errorEl = document.getElementById('login-error');
+  const btn = document.getElementById('btn-login');
+  if (!email || !password) { errorEl.textContent = 'Ingresa email y contrasena.'; errorEl.style.display = 'block'; return; }
+  btn.disabled = true; btn.textContent = 'Entrando...'; errorEl.style.display = 'none';
+  const { data, error } = await sb.auth.signInWithPassword({ email, password });
+  if (error) { errorEl.textContent = 'Email o contrasena incorrectos.'; errorEl.style.display = 'block'; btn.disabled = false; btn.textContent = 'Entrar'; return; }
+  await loadUserProfile();
+  await showApp();
+}
+
+async function handleLogout() {
+  await sb.auth.signOut();
+  userRole = null; userName = '';
+  document.getElementById('app-wrapper').classList.add('hidden');
+  document.getElementById('login-screen').style.display = 'flex';
+  document.getElementById('login-password').value = '';
+}
+
+async function loadUserProfile() {
+  const { data: { user } } = await sb.auth.getUser();
+  if (!user) return;
+  const { data: profile } = await sb.from('profiles').select('nombre, rol').eq('id', user.id).single();
+  if (profile) { userRole = profile.rol; userName = profile.nombre || user.email; }
+  else { userRole = 'contadora'; userName = user.email; }
+}
+
+// ==================== NAVIGATION ====================
+
+function switchMainTab(tab) {
+  mainTab = tab;
+  renderAll();
+}
+
+// Checklist navigation
+function ckSwitchMonth(m) {
+  ckMes = m;
+  ckCliente = null;
+  ckClienteContadora = null;
+  renderAll();
+}
+
+function ckSwitchContadora(name) {
+  ckContadora = name;
+  ckCliente = null;
+  ckClienteContadora = null;
+  renderAll();
+}
+
+function ckSelectClient(contadora, cliente) {
+  ckCliente = cliente;
+  ckClienteContadora = contadora;
+  renderCkContent();
+}
+
+function ckBackToClients() {
+  ckCliente = null;
+  ckClienteContadora = null;
+  renderCkContent();
+}
+
+function ckToggleView(mode) {
+  ckViewMode = mode;
+  renderCkContent();
+}
+
+// KPI navigation
+function kpiSwitchSubTab(tab) {
+  kpiSubTab = tab;
+  kpiContadora = null;
+  renderAll();
+}
+
+function kpiSwitchQuarter(qNum) {
+  kpiQuarter = qNum;
+  const q = QUARTERS[qNum - 1];
+  kpiMes = q.meses[0];
+  renderKpiNav();
+  renderKpiContent();
+}
+
+function kpiSwitchMonth(m) {
+  kpiMes = m;
+  renderKpiNav();
+  renderKpiContent();
+}
+
+function kpiSelectContadora(nombre) {
+  kpiContadora = nombre;
+  const q = QUARTERS[kpiQuarter - 1];
+  if (!kpiMes || !q.meses.includes(kpiMes)) kpiMes = q.meses[0];
+  renderKpiNav();
+  renderKpiContent();
+}
+
+function kpiGoBackToSelector() {
+  kpiContadora = null;
+  renderKpiNav();
+  renderKpiContent();
+}
+
+// ==================== UNIFIED DISPATCHER ====================
+
+function renderAll() {
+  renderMainTabs();
+  if (mainTab === 'checklist') { renderCkNav(); renderCkContent(); }
+  else { renderKpiNav(); renderKpiContent(); }
+}
+
+function renderMainTabs() {
+  const el = document.getElementById('mainTabs');
+  const tabs = [
+    { id:'checklist', label:'Checklist' },
+    { id:'kpi', label:'KPI' }
+  ];
+  el.innerHTML = tabs.map(t =>
+    '<button class="main-tab ' + (mainTab === t.id ? 'active' : '') + '" onclick="switchMainTab(\'' + t.id + '\')">' + t.label + '</button>'
+  ).join('');
+}
+
+// ==================== CHECKLIST RENDERING ====================
+
+function renderCkNav() {
+  const el = document.getElementById('navArea');
+  let html = '<div class="nav-area">';
+
+  // Month tabs
+  html += '<div class="month-tabs">';
+  MESES.forEach((m, i) => {
+    html += '<button class="month-tab' + (ckMes === m ? ' active' : '') + '" onclick="ckSwitchMonth(\'' + m + '\')">' + MESES_LABEL[i] + '</button>';
+  });
+  html += '</div>';
+
+  // Contadora pills (admin only)
+  if (userRole === 'admin') {
+    const contadoras = getContadoraNames();
+    html += '<div class="contadora-pills" style="margin-top:10px">';
+    html += '<button class="contadora-pill' + (ckContadora === 'Todas' ? ' active' : '') + '" onclick="ckSwitchContadora(\'Todas\')">Todas</button>';
+    contadoras.forEach(name => {
+      html += '<button class="contadora-pill' + (ckContadora === name ? ' active' : '') + '" onclick="ckSwitchContadora(\'' + esc(name) + '\')">' + name + '</button>';
+    });
+    html += '</div>';
+  }
+
+  html += '</div>';
+  el.innerHTML = html;
+}
+
+function renderCkContent() {
+  const el = document.getElementById('content');
+
+  if (ckCliente && ckClienteContadora) {
+    renderCkDetail(el);
+    return;
+  }
+
+  renderCkClientList(el);
+}
+
+function renderCkClientList(el) {
+  const mesIdx = MESES.indexOf(ckMes);
+  let contadoras = getContadoraNames();
+
+  // Filter by role or selection
+  if (userRole !== 'admin') {
+    let myName = '';
+    contadoras.forEach(c => {
+      if (userName.indexOf(c) >= 0) myName = c;
+    });
+    contadoras = myName ? [myName] : [];
+  } else if (ckContadora !== 'Todas') {
+    contadoras = [ckContadora];
+  }
+
+  // Build client list
+  const clients = [];
+  contadoras.forEach(c => {
+    const cls = getClientNames(c, ckMes);
+    cls.forEach(cl => {
+      const prog = getProgress(c, cl, ckMes);
+      clients.push({ contadora: c, cliente: cl, done: prog.done, total: prog.total, pct: prog.pct });
+    });
+  });
+  clients.sort((a, b) => {
+    const aSin = a.contadora === 'Sin asignar' ? 1 : 0;
+    const bSin = b.contadora === 'Sin asignar' ? 1 : 0;
+    if (aSin !== bSin) return aSin - bSin;
+    return a.cliente.localeCompare(b.cliente, 'es');
+  });
+
+  if (clients.length === 0) {
+    el.innerHTML = '<div class="empty">No hay clientes asignados para ' + MESES_FULL[mesIdx] + '.</div>';
+    return;
+  }
+
+  // Summary
+  const totalClients = clients.length;
+  const completados = clients.filter(c => c.pct === 100).length;
+  const enProgreso = clients.filter(c => c.pct > 0 && c.pct < 100).length;
+  const sinIniciar = clients.filter(c => c.pct === 0).length;
+  const avgPct = Math.round(clients.reduce((s, c) => s + c.pct, 0) / totalClients);
+  const totalActivos = CLIENTES_CONTAB.length + CLIENTES_SIN_RESP.length;
+  const sinRespCount = CLIENTES_SIN_RESP.length;
+  const sinAsignarCount = CLIENTES_CONTAB.filter(c => !c.contadora_contabilidad).length;
+  const asignadosCount = CLIENTES_CONTAB.length - sinAsignarCount;
+
+  let html = '';
+  html += '<div class="summary-stats">';
+  html += '<div class="summary-stat"><div class="summary-stat-label">Total clientes</div><div class="summary-stat-value">' + totalActivos + '</div></div>';
+  html += '<div class="summary-stat"><div class="summary-stat-label">Asignados</div><div class="summary-stat-value">' + asignadosCount + '</div></div>';
+  html += '<div class="summary-stat"><div class="summary-stat-label">Sin asignar</div><div class="summary-stat-value" style="color:' + (sinAsignarCount > 0 ? 'var(--amber)' : 'var(--green)') + '">' + sinAsignarCount + '</div></div>';
+  html += '<div class="summary-stat"><div class="summary-stat-label">Sin resp. contable</div><div class="summary-stat-value" style="color:var(--muted)">' + sinRespCount + '</div></div>';
+  html += '<div class="summary-stat"><div class="summary-stat-label">Completados</div><div class="summary-stat-value" style="color:var(--green)">' + completados + '</div></div>';
+  html += '<div class="summary-stat"><div class="summary-stat-label">En progreso</div><div class="summary-stat-value" style="color:var(--amber)">' + enProgreso + '</div></div>';
+  html += '<div class="summary-stat"><div class="summary-stat-label">Avance promedio</div><div class="summary-stat-value" style="color:' + getBarColor(avgPct) + '">' + avgPct + '%</div></div>';
+  html += '</div>';
+
+  // View toggle
+  var iconCards = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>';
+  var iconTable = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3" y2="18"/><line x1="9" y1="6" x2="9" y2="18"/></svg>';
+  html += '<div class="view-toggle-row">';
+  html += '<div class="view-toggle">';
+  html += '<button class="view-toggle-btn' + (ckViewMode === 'table' ? ' active' : '') + '" onclick="ckToggleView(\'table\')">' + iconTable + ' Tabla</button>';
+  html += '<button class="view-toggle-btn' + (ckViewMode === 'cards' ? ' active' : '') + '" onclick="ckToggleView(\'cards\')">' + iconCards + ' Cuadros</button>';
+  html += '</div></div>';
+
+  // Separate clients into groups: assigned, sin asignar
+  var ckAsignados = clients.filter(c => c.contadora !== 'Sin asignar');
+  var ckSinAsignar = clients.filter(c => c.contadora === 'Sin asignar');
+  // Sin responsabilidad contable: solo mostrar en vista "Todas"
+  var ckShowSinResp = ckContadora === 'Todas' && userRole === 'admin';
+  var ckSinResp = ckShowSinResp ? CLIENTES_SIN_RESP.slice().sort((a, b) => (a.nombre || '').localeCompare(b.nombre || '', 'es')) : [];
+
+  if (ckViewMode === 'table') {
+    // Table view
+    html += '<div style="overflow-x:auto">';
+    html += '<table class="ck-client-table"><thead><tr>';
+    html += '<th style="width:36px">#</th>';
+    html += '<th>Cliente</th>';
+    html += '<th>Contadora</th>';
+    html += '<th>Progreso</th>';
+    html += '<th>Tareas</th>';
+    html += '<th>Estado</th>';
+    html += '</tr></thead><tbody>';
+    var ckRowIdx = 0;
+    // Group: Asignados
+    if (ckAsignados.length > 0) {
+      html += '<tr style="background:#f1f5f9"><td colspan="6" style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--navy);padding:10px 12px">Asignados</td></tr>';
+      ckAsignados.forEach(c => {
+        ckRowIdx++;
+        const barColor = c.pct === 100 ? 'var(--green)' : c.pct > 0 ? 'var(--amber)' : '#e2e8f0';
+        html += '<tr onclick="ckSelectClient(\'' + esc(c.contadora) + '\',\'' + esc(c.cliente) + '\')">';
+        html += '<td style="color:var(--muted);font-size:0.75rem">' + ckRowIdx + '</td>';
+        html += '<td class="ck-table-name">' + c.cliente + '</td>';
+        html += '<td class="ck-table-contadora">' + c.contadora + '</td>';
+        html += '<td><div class="ck-progress-bar"><div class="ck-progress-fill" style="width:' + c.pct + '%;background:' + barColor + '"></div></div><span style="font-size:0.78rem;font-weight:700;color:' + getBarColor(c.pct) + '">' + c.pct + '%</span></td>';
+        html += '<td><span class="ck-progress-text">' + c.done + '/' + c.total + '</span></td>';
+        var statusText = c.pct === 100 ? 'Completado' : c.pct > 0 ? 'En progreso' : 'Pendiente';
+        var statusClass = c.pct === 100 ? 'ck-status-completo' : c.pct > 0 ? 'ck-status-progreso' : 'ck-status-pendiente';
+        html += '<td><span class="ck-status-badge ' + statusClass + '">' + statusText + '</span></td>';
+        html += '</tr>';
+      });
+    }
+    // Group: Sin asignar
+    if (ckSinAsignar.length > 0) {
+      html += '<tr style="background:#f1f5f9"><td colspan="6" style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--navy);padding:10px 12px">Sin asignar</td></tr>';
+      ckSinAsignar.forEach(c => {
+        ckRowIdx++;
+        html += '<tr onclick="ckSelectClient(\'' + esc(c.contadora) + '\',\'' + esc(c.cliente) + '\')">';
+        html += '<td style="color:var(--muted);font-size:0.75rem">' + ckRowIdx + '</td>';
+        html += '<td class="ck-table-name">' + c.cliente + '</td>';
+        html += '<td class="ck-table-contadora">—</td>';
+        html += '<td><div class="ck-progress-bar"><div class="ck-progress-fill" style="width:0%;background:#e2e8f0"></div></div><span style="font-size:0.78rem;font-weight:700;color:var(--muted)">0%</span></td>';
+        html += '<td><span class="ck-progress-text">' + c.done + '/' + c.total + '</span></td>';
+        html += '<td><span class="ck-status-badge ck-status-sinasignar">Sin asignar</span></td>';
+        html += '</tr>';
+      });
+    }
+    // Group: Sin responsabilidad contable
+    if (ckSinResp.length > 0) {
+      html += '<tr style="background:#f1f5f9"><td colspan="6" style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--navy);padding:10px 12px">Sin responsabilidad contable</td></tr>';
+      ckSinResp.forEach(sr => {
+        ckRowIdx++;
+        html += '<tr style="opacity:0.55">';
+        html += '<td style="color:var(--muted);font-size:0.75rem">' + ckRowIdx + '</td>';
+        html += '<td class="ck-table-name">' + esc(sr.nombre) + '</td>';
+        html += '<td class="ck-table-contadora" style="color:var(--light)">N/A</td>';
+        html += '<td style="color:var(--light);font-size:0.8rem">—</td>';
+        html += '<td style="color:var(--light);font-size:0.8rem">—</td>';
+        html += '<td><span class="ck-status-badge" style="background:#f1f5f9;color:var(--muted)">N/A</span></td>';
+        html += '</tr>';
+      });
+    }
+    html += '</tbody></table></div>';
+  } else {
+    // Card view
+    html += '<div class="client-grid">';
+    clients.forEach(c => {
+      const barColor = c.pct === 100 ? 'var(--green)' : c.pct > 0 ? 'var(--amber)' : '#e2e8f0';
+      html += '<div class="client-card" onclick="ckSelectClient(\'' + esc(c.contadora) + '\',\'' + esc(c.cliente) + '\')">';
+      html += '<div class="client-card-name">' + c.cliente + '</div>';
+      html += '<div class="client-card-contadora">' + c.contadora + '</div>';
+      html += '<div class="client-card-progress">';
+      html += '<div class="client-card-bar"><div class="client-card-fill" style="width:' + c.pct + '%;background:' + barColor + '"></div></div>';
+      html += '<div class="client-card-pct" style="color:' + getBarColor(c.pct) + '">' + c.pct + '%</div>';
+      html += '</div>';
+      html += '<div class="client-card-count">' + c.done + ' de ' + c.total + ' tareas</div>';
+      html += '</div>';
+    });
+    // Cards for sin resp contable
+    ckSinResp.forEach(sr => {
+      html += '<div class="client-card" style="opacity:0.55">';
+      html += '<div class="client-card-name">' + esc(sr.nombre) + '</div>';
+      html += '<div class="client-card-contadora" style="color:var(--light)">Sin resp. contable</div>';
+      html += '<div class="client-card-progress">';
+      html += '<div class="client-card-bar"><div class="client-card-fill" style="width:0%"></div></div>';
+      html += '<div class="client-card-pct" style="color:var(--light)">N/A</div>';
+      html += '</div>';
+      html += '<div class="client-card-count" style="color:var(--light)">—</div>';
+      html += '</div>';
+    });
+    html += '</div>';
+  }
+
+  el.innerHTML = html;
+}
+
+function renderCkDetail(el) {
+  const contadora = ckClienteContadora;
+  const cliente = ckCliente;
+  const mes = ckMes;
+  const mesIdx = MESES.indexOf(mes);
+  const entry = getCheckData(contadora, cliente, mes);
+  const prog = getProgress(contadora, cliente, mes);
+  const editable = canEdit(contadora);
+
+  let html = '';
+
+  // Header
+  html += '<div class="detail-header">';
+  html += '<button class="detail-back" onclick="ckBackToClients()">&#8592; Volver</button>';
+  html += '<div><div class="detail-title">' + cliente + '</div>';
+  html += '<div class="detail-sub">' + contadora + ' · ' + MESES_FULL[mesIdx] + ' 2026</div></div>';
+  html += '</div>';
+
+  // Progress
+  const barColor = getBarColor(prog.pct);
+  html += '<div class="progress-row">';
+  html += '<div class="pr-count">' + prog.done + ' de ' + prog.total + '</div>';
+  html += '<div class="pr-bar"><div class="pr-fill" style="width:' + prog.pct + '%;background:' + barColor + '"></div></div>';
+  html += '<div class="pr-pct" style="color:' + barColor + '">' + prog.pct + '%</div>';
+  html += '</div>';
+
+  // Table
+  html += '<div style="overflow-x:auto">';
+  html += '<table class="check-table"><thead><tr>';
+  html += '<th style="width:30px">#</th>';
+  html += '<th>Tarea</th>';
+  html += '<th style="width:90px">Impuesto</th>';
+  html += '<th style="width:65px" class="center">Firma</th>';
+  html += '<th style="width:65px" class="center">Limite</th>';
+  html += '<th style="width:100px" class="center">Estado</th>';
+  html += '<th style="width:85px" class="center">Fecha</th>';
+  html += '</tr></thead><tbody>';
+
+  ITEMS.forEach((item, idx) => {
+    // Insert group header row
+    const group = ITEM_GROUPS.find(g => g.from === idx);
+    if (group) {
+      html += '<tr class="group-row"><td colspan="7">' + group.label + '</td></tr>';
+    }
+
+    const d = entry.datos[item.id] || { done: false, fecha: '' };
+    const limiteStr = formatDeadline(mesIdx, item);
+    const firmaStr = formatFirma(mesIdx, item);
+    const sem = d.fecha ? getCheckSemaforo(d.fecha, mesIdx, item) : '';
+    const overdue = !d.done && isOverdue(mesIdx, item);
+    const rowClass = d.done ? 'row-done' : (overdue ? 'row-overdue' : '');
+    const fechaDisplay = d.fecha
+      ? sem + formatDateShort(d.fecha)
+      : (overdue ? '<span style="color:var(--red);font-size:10px;font-weight:600">Vencido</span>' : '<span style="color:var(--light)">—</span>');
+
+    html += '<tr class="' + rowClass + '">';
+    html += '<td style="color:var(--light);font-size:11px">' + item.n + '</td>';
+    html += '<td style="font-weight:600;font-size:0.8rem">' + item.label + '</td>';
+    html += '<td><span class="tipo-badge ' + item.tipoCss + '">' + item.impuesto + '</span></td>';
+    html += '<td class="center" style="font-size:11px;color:var(--muted)">' + firmaStr + '</td>';
+    html += '<td class="center" style="font-size:11px;color:var(--muted)">' + limiteStr + '</td>';
+
+    if (editable) {
+      html += '<td class="center"><div class="toggle-group">';
+      html += '<button class="toggle-opt ' + (d.done ? 'active-yes' : '') + '" onclick="handleCkToggle(\'' + esc(contadora) + '\',\'' + esc(cliente) + '\',\'' + mes + '\',\'' + item.id + '\',true)">Si</button>';
+      html += '<button class="toggle-opt ' + (!d.done ? 'active-no' : '') + '" onclick="handleCkToggle(\'' + esc(contadora) + '\',\'' + esc(cliente) + '\',\'' + mes + '\',\'' + item.id + '\',false)">No</button>';
+      html += '</div></td>';
+    } else {
+      html += '<td class="center">' + (d.done ? '<span style="color:var(--green);font-weight:600">Si</span>' : '<span style="color:var(--light)">No</span>') + '</td>';
+    }
+
+    html += '<td class="center" style="font-size:0.78rem">' + fechaDisplay + '</td>';
+    html += '</tr>';
+  });
+
+  html += '</tbody></table></div>';
+
+  // Save bar
+  if (editable) {
+    html += '<div class="save-bar"><button class="btn btn-primary" id="btn-ck-save" onclick="handleCkSave()">Guardar cambios</button></div>';
+  }
+
+  el.innerHTML = html;
+}
+
+// ==================== KPI RENDERING ====================
+
+function renderKpiNav() {
+  const el = document.getElementById('navArea');
+  let html = '';
+
+  // Sub-tabs for admin
+  if (userRole === 'admin') {
+    html += '<div class="sub-tabs">';
+    html += '<button class="sub-tab ' + (kpiSubTab === 'detalle' ? 'active' : '') + '" onclick="kpiSwitchSubTab(\'detalle\')">Detalle por Contadora</button>';
+    html += '<button class="sub-tab ' + (kpiSubTab === 'trimestral' ? 'active' : '') + '" onclick="kpiSwitchSubTab(\'trimestral\')">Resumen Trimestral</button>';
+    html += '</div>';
+  }
+
+  if (kpiSubTab === 'trimestral' && userRole === 'admin') {
+    html += '<div class="quarter-bar">' + QUARTERS.map(q =>
+      '<button class="q-btn ' + (kpiQuarter === q.id ? 'active' : '') + '" onclick="kpiSwitchQuarter(' + q.id + ')"><div class="q-label">' + q.label + '</div><div class="q-months">' + q.meses.map(m => MESES_LABEL[MESES.indexOf(m)]).join(' · ') + '</div></button>'
+    ).join('') + '</div>';
+    el.innerHTML = html;
+    return;
+  }
+
+  // Detalle mode: quarter bar always
+  html += '<div class="quarter-bar">' + QUARTERS.map(q =>
+    '<button class="q-btn ' + (kpiQuarter === q.id ? 'active' : '') + '" onclick="kpiSwitchQuarter(' + q.id + ')"><div class="q-label">' + q.label + '</div><div class="q-months">' + q.meses.map(m => MESES_LABEL[MESES.indexOf(m)]).join(' · ') + '</div></button>'
+  ).join('') + '</div>';
+
+  if (kpiContadora) {
+    const q = QUARTERS[kpiQuarter - 1];
+    html += '<div style="display:flex;align-items:center;gap:12px;padding:10px 24px;background:var(--bg);border-bottom:1px solid var(--border)">';
+    // Only show back button for admin
+    if (userRole === 'admin') {
+      html += '<button class="btn" style="padding:5px 12px;font-size:12px;background:white;color:var(--muted);border:1px solid var(--border)" onclick="kpiGoBackToSelector()">← Volver</button>';
+    }
+    html += '<div class="month-tabs">' + q.meses.map(m => {
+      const idx = MESES.indexOf(m);
+      return '<button class="month-tab ' + (kpiMes === m ? 'active' : '') + '" onclick="kpiSwitchMonth(\'' + m + '\')">' + MESES_FULL[idx] + '</button>';
+    }).join('') + '</div>';
+    html += '</div>';
+  }
+  el.innerHTML = html;
+}
+
+function renderKpiContent() {
+  const el = document.getElementById('content');
+  if (kpiSubTab === 'trimestral' && userRole === 'admin') return renderTrimestral(el);
+  if (!kpiContadora && userRole === 'admin') return renderKpiSelector(el);
+  if (!kpiContadora) { el.innerHTML = '<div class="empty">Cargando...</div>'; return; }
+  renderKPIDetail(el);
+}
+
+// ==================== KPI SELECTOR (admin only) ====================
+
+function renderKpiSelector(el) {
+  const contadoras = getVisibleContadoras();
+  el.innerHTML = '<div class="selector-screen"><h2>Selecciona una contadora</h2><p>Elige el perfil para ver y editar su KPI del mes.</p><div class="selector-grid">' +
+    contadoras.map(c => {
+      const q = QUARTERS[kpiQuarter - 1];
+      const avg = getQuarterAvg(c.nombre, q.meses);
+      const escala = getEscala(avg);
+      return '<div class="selector-card" onclick="kpiSelectContadora(\'' + c.nombre + '\')"><div class="sc-dot" style="background:' + c.color + '"></div><div class="sc-name">' + c.nombre + '</div><div class="sc-tier">' + c.tier + '</div><div class="sc-obj">Objetivo: ' + c.objetivo.toLocaleString() + ' tx</div>' + (avg > 0 ? '<div style="margin-top:8px"><span class="score-badge ' + escala.css + '">' + avg + ' pts</span></div>' : '') + '</div>';
+    }).join('') +
+  '</div></div>';
+}
+
+// ==================== KPI DETAIL VIEW ====================
+
+function renderKPIDetail(el) {
+  const c = kpiContadora;
+  const mes = kpiMes;
+  const mesIdx = MESES.indexOf(mes);
+  const cfg = KPI_CONTADORAS.find(x => x.nombre === c);
+  const col = cfg.color;
+  const entry = getDetalle(c, mes);
+  const clients = getClients(c, mes);
+  const scores = calcScoresForContadora(c, mes);
+  const total = calcTotal(scores.digScore, scores.resScore, scores.vidScore);
+  const escala = getEscala(total);
+  const vidTipo = getVideoTipo(mes);
+  const editable = canEdit(c);
+  const bono = getQuarterBonoData(c, kpiQuarter);
+  const q = QUARTERS[kpiQuarter - 1];
+
+  if (clients.length === 0) {
+    el.innerHTML = '<div class="empty">No hay clientes asignados para ' + c + ' en ' + MESES_FULL[mesIdx] + '.<br>Verifica la tabla de asignaciones.</div>';
+    return;
+  }
+
+  const digPct = scores.admTotal > 0 ? Math.min(100, Math.round(scores.digActual / scores.admTotal * 100)) : 0;
+  const resPct = scores.resTotal > 0 ? Math.round(scores.resDone / scores.resTotal * 100) : 0;
+  const vidPct = scores.vidTotal > 0 ? Math.round(scores.vidDone / scores.vidTotal * 100) : 0;
+
+  let html = '';
+
+  // ── Score overview ──
+  html += '<div class="score-overview">';
+  html += '<div class="score-big"><div class="num" style="color:' + escala.color + '">' + total + '</div><div class="of">de 100 · ' + MESES_FULL[mesIdx] + '</div><div class="label" style="background:' + escala.bg + ';color:' + escala.color + '">' + escala.label + '</div></div>';
+  html += '<div class="score-breakdown">';
+  html += '<div class="score-row"><span class="score-row-label">Digitacion (50%)</span><div class="score-row-bar"><div class="score-row-fill" style="width:' + (scores.digScore * 10) + '%;background:' + col + '"></div></div><span class="score-row-pts">' + Math.round(scores.digScore * 5) + ' pts</span></div>';
+  html += '<div class="score-row"><span class="score-row-label">Resumenes (30%)</span><div class="score-row-bar"><div class="score-row-fill" style="width:' + (scores.resScore * 10) + '%;background:' + col + '"></div></div><span class="score-row-pts">' + Math.round(scores.resScore * 3) + ' pts</span></div>';
+  html += '<div class="score-row"><span class="score-row-label">' + vidTipo + ' (20%)</span><div class="score-row-bar"><div class="score-row-fill" style="width:' + (scores.vidScore * 10) + '%;background:' + col + '"></div></div><span class="score-row-pts">' + Math.round(scores.vidScore * 2) + ' pts</span></div>';
+  html += '<div class="escala-mini">';
+  KPI_ESCALA.forEach(e => {
+    const active = total >= e.min && total <= e.max;
+    const montoNivel = Math.round(bono.bonoBase * e.bonoPct / 100);
+    html += '<div class="escala-item ' + (active ? 'active' : '') + '" style="' + (active ? 'border-color:' + e.color + ';border-width:2px;background:' + e.bg : '') + '"><div class="escala-range" style="color:' + e.color + '">' + e.min + '-' + e.max + '</div><div class="escala-name" style="color:' + e.color + '">' + e.label + '</div><div style="font-size:9px;color:' + e.color + ';margin-top:1px;opacity:0.8">' + e.bonoPct + '%</div><div style="font-size:11px;color:' + e.color + ';font-weight:800;margin-top:3px">' + formatMoney(montoNivel) + '</div></div>';
+  });
+  html += '</div></div></div>';
+
+  // ── Bono trimestral ──
+  html += '<div class="bono-card"><div class="bono-header"><div class="bono-icon">💰</div><div class="bono-header-text"><h3>Bono ' + q.label + ' 2026</h3><span>Cierre: ' + q.cierre + ' · Promedio de ' + bono.monthScores.filter(s => s !== null).length + ' mes(es)</span></div></div>';
+  html += '<div class="bono-body">';
+  html += '<div class="bono-item"><div class="bono-item-label">Bono base</div><div class="bono-item-value">' + formatMoney(bono.bonoBase) + '</div><div class="bono-item-sub">1/3 del salario</div></div>';
+  html += '<div class="bono-item"><div class="bono-item-label">Proyeccion ' + q.label + '</div><div class="bono-item-value">' + bono.avgProjected + '<span style="font-size:14px;opacity:0.5">/100</span></div>';
+  html += '<div style="display:flex;gap:4px;justify-content:center;margin-top:6px;flex-wrap:wrap">';
+  bono.monthScores.forEach((s, i) => {
+    const mLabel = MESES_LABEL[MESES.indexOf(q.meses[i])];
+    const mIdx = MESES.indexOf(q.meses[i]);
+    const past = isMonthPast(mIdx);
+    if (s === null) { html += '<span style="font-size:10px;padding:2px 6px;border-radius:4px;background:rgba(255,255,255,0.1);opacity:0.4">' + mLabel + ': —</span>'; return; }
+    if (!past) { html += '<span style="font-size:10px;padding:2px 6px;border-radius:4px;background:rgba(255,255,255,0.12);color:#6ee7b7">' + mLabel + ': ' + s + ' → 100</span>'; return; }
+    const clr = s >= 70 ? '#6ee7b7' : '#fca5a5';
+    html += '<span style="font-size:10px;padding:2px 6px;border-radius:4px;background:rgba(255,255,255,0.12);color:' + clr + '">' + mLabel + ': ' + s + '</span>';
+  });
+  html += '</div>';
+  html += '<div class="bono-pct-badge" style="background:' + bono.escala.bg + ';color:' + bono.escala.color + ';margin-top:6px">' + bono.escala.bonoPct + '% del bono</div></div>';
+  html += '<div class="bono-item"><div class="bono-item-label">Vas a cobrar</div><div class="bono-item-value" style="color:' + (bono.bonoReal > 0 ? '#6ee7b7' : '#fca5a5') + '">' + formatMoney(bono.bonoReal) + '</div><div class="bono-item-sub">' + bono.escala.label + '</div></div>';
+  html += '</div>';
+  if (bono.bonoReal > 0) {
+    html += '<div class="bono-msg"><p>Vas en camino a cobrar ' + formatMoney(bono.bonoReal) + ' en ' + q.cierre + '.</p><span>Completa tus tareas para mantener este nivel.</span></div>';
+  } else {
+    html += '<div class="bono-msg"><p style="color:#fca5a5">Necesitas subir tu promedio a 70+ para activar el bono.</p><span>Todavia hay tiempo, completa tus tareas pendientes.</span></div>';
+  }
+  html += '</div>';
+
+  // ── 1. Digitacion ──
+  html += '<div class="comp-card"><div class="comp-header"><div class="comp-header-left"><div class="comp-num" style="background:' + col + '">1</div><div><div class="comp-title">Digitacion de transacciones · ' + MESES_FULL[mesIdx] + '</div><div class="comp-weight">Peso: 50% · Maximo: 50 puntos</div></div></div>';
+  html += '<span class="comp-score-pill" style="background:' + escala.bg + ';color:' + col + '">' + scores.digScore + '/10 → ' + Math.round(scores.digScore * 5) + ' pts</span></div>';
+  html += '<div class="comp-body">';
+
+  html += '<div class="dig-stats"><div class="dig-stat"><div class="dig-stat-label">Objetivo</div><div class="dig-stat-value">' + cfg.objetivo.toLocaleString() + '</div></div>';
+  html += '<div class="dig-stat"><div class="dig-stat-label">Tx meta (Adm)</div><div class="dig-stat-value">' + scores.admTotal + '</div></div>';
+  html += '<div class="dig-stat"><div class="dig-stat-label">Tx digitadas</div><div class="dig-stat-value" style="color:' + getBarColor(digPct) + '">' + scores.digActual + '</div></div></div>';
+
+  // Client x Week table with Contratado + Adm columns
+  html += '<div style="overflow-x:auto"><table class="dig-table"><thead><tr><th style="text-align:left">Cliente</th><th>Contratado</th><th>Adm</th><th>Sem 1</th><th>Sem 2</th><th>Sem 3</th><th>Sem 4</th><th>Sem 5</th><th>Total</th></tr></thead><tbody>';
+
+  let grandTotal = 0;
+  clients.forEach(cl => {
+    const weeks = entry.datos.digitacion[cl.nombre] || emptyWeeks();
+    const clientTotal = weeks.reduce((s, w) => s + getWeekQty(w), 0);
+    if (!isMvException(c, cl.nombre)) grandTotal += clientTotal;
+    const cln = cl.nombre.replace(/'/g, "\\'");
+    const effAdm = getEffectiveAdm(c, mes, cl.nombre);
+    const isMv = isMvException(c, cl.nombre);
+    const admLabel = isMv ? '<span style="color:var(--purple);font-weight:600">MV 0</span>' : effAdm;
+
+    html += '<tr' + (isMv ? ' style="opacity:0.6"' : '') + '><td style="font-weight:600">' + cl.nombre + '</td>';
+    html += '<td>' + cl.contratado + '</td>';
+    html += '<td>' + admLabel + '</td>';
+
+    for (let w = 0; w < 5; w++) {
+      const wObj = weeks[w] || {qty:0,fecha:''};
+      const qty = getWeekQty(wObj);
+      const fecha = typeof wObj === 'object' ? (wObj.fecha || '') : '';
+      const friCheck = isFriday(fecha);
+      const dotHtml = fecha ? '<span class="fri-dot" style="background:' + (friCheck ? 'var(--green)' : 'var(--red)') + '" title="' + formatDateShort(fecha) + (friCheck ? ' (viernes)' : ' (no viernes)') + '"></span>' : '';
+
+      if (editable && !isMv) {
+        html += '<td><div class="dig-cell"><input type="number" class="dig-input" value="' + (qty || '') + '" min="0" data-contadora="' + c + '" data-mes="' + mes + '" data-client="' + cln + '" data-week="' + w + '" onchange="handleDigChange(this)">' + dotHtml + '</div></td>';
+      } else {
+        html += '<td><div class="dig-cell">' + (qty || 0) + dotHtml + '</div></td>';
+      }
+    }
+    const pctClient = effAdm > 0 ? Math.round(clientTotal / effAdm * 100) : 0;
+    const totalColor = isMv ? 'var(--light)' : getBarColor(pctClient);
+    html += '<td style="font-weight:700;color:' + totalColor + '">' + clientTotal + '</td></tr>';
+  });
+
+  // Total row
+  html += '<tr class="total-row"><td>Total</td><td></td><td>' + scores.admTotal + '</td>';
+  const weekTotals = [0,0,0,0,0];
+  clients.forEach(cl => {
+    if (isMvException(c, cl.nombre)) return;
+    const weeks = entry.datos.digitacion[cl.nombre] || emptyWeeks();
+    weeks.forEach((w, i) => { weekTotals[i] += getWeekQty(w); });
+  });
+  weekTotals.forEach(wt => { html += '<td>' + wt + '</td>'; });
+  html += '<td style="color:' + getBarColor(digPct) + '">' + grandTotal + '</td></tr>';
+  html += '</tbody></table></div>';
+
+  html += '<div style="display:flex;align-items:center;gap:8px;margin-top:10px"><span style="font-size:12px;color:var(--muted)">Avance:</span><div class="progress-bar" style="flex:1"><div class="progress-fill" style="width:' + digPct + '%;background:' + getBarColor(digPct) + '"></div></div><span style="font-size:12px;font-weight:700;color:' + getBarColor(digPct) + '">' + digPct + '%</span></div>';
+  html += '</div></div>';
+
+  // ── 2. Resumenes ──
+  const mesAnteriorLabel = mesIdx > 0 ? MESES_FULL[mesIdx - 1] : MESES_FULL[11];
+  html += '<div class="comp-card"><div class="comp-header"><div class="comp-header-left"><div class="comp-num" style="background:' + col + '">2</div><div><div class="comp-title">Resumenes de declaracion · ' + mesAnteriorLabel + '</div><div class="comp-weight">Peso: 30% · Maximo: 30 puntos · Limite: dia 30 de ' + MESES_FULL[mesIdx] + '</div></div></div>';
+  html += '<span class="comp-score-pill" style="background:' + escala.bg + ';color:' + col + '">' + scores.resScore + '/10 → ' + Math.round(scores.resScore * 3) + ' pts</span></div>';
+  html += '<div class="comp-body">';
+  html += '<div class="res-progress"><div class="res-count">' + scores.resDone + ' de ' + scores.resTotal + ' clientes</div><div class="progress-bar" style="flex:1"><div class="progress-fill" style="width:' + resPct + '%;background:' + getBarColor(resPct) + '"></div></div><span style="font-size:12px;font-weight:700;color:' + getBarColor(resPct) + '">' + resPct + '%</span></div>';
+
+  html += '<table class="client-table"><tr><th>Cliente</th><th style="width:60px">Tx</th><th style="width:120px">Entregado?</th><th style="width:100px">Fecha</th><th style="width:120px">Link</th></tr>';
+  clients.forEach(cl => {
+    const r = entry.datos.resumenes[cl.nombre] || { done: false, fecha: '', link: '' };
+    const cln = cl.nombre.replace(/'/g, "\\'");
+    const effAdm = getEffectiveAdm(c, mes, cl.nombre);
+    const sem = r.fecha ? getSemaforo(r.fecha, mesIdx) : '';
+    const fechaDisplay = r.fecha ? sem + formatDateShort(r.fecha) : '<span style="color:var(--light)">Pendiente</span>';
+
+    const linkHtml = !editable
+      ? (r.link ? '<a href="' + r.link + '" target="_blank" style="font-size:11px;color:var(--blue)">Ver</a>' : '<span style="font-size:11px;color:var(--light)">—</span>')
+      : (r.done
+        ? (r.link
+          ? '<span style="font-size:11px;color:var(--green);font-weight:600;cursor:pointer" onclick="handleResLink(\'' + cln + '\',\'\')" title="Quitar link">✓ Link</span>'
+          : '<span style="font-size:11px;color:var(--amber);font-weight:600;cursor:pointer;text-decoration:underline" onclick="promptResLink(\'' + cln + '\')" title="Agregar link">Agregar</span>')
+        : '<span style="font-size:11px;color:var(--light)">—</span>');
+
+    html += '<tr class="' + (r.done ? 'row-done' : '') + '"><td style="font-weight:600">' + cl.nombre + '</td><td>' + effAdm + '</td><td>';
+    if (editable) {
+      html += '<div class="toggle-group"><button class="toggle-opt ' + (r.done ? 'active-yes' : '') + '" onclick="handleRes(\'' + cln + '\',true)">Si</button><button class="toggle-opt ' + (!r.done ? 'active-no' : '') + '" onclick="handleRes(\'' + cln + '\',false)">No</button></div>';
+    } else {
+      html += r.done ? '<span style="color:var(--green);font-weight:600">Si</span>' : '<span style="color:var(--light)">No</span>';
+    }
+    html += '</td><td style="font-size:0.78rem">' + fechaDisplay + '</td><td>' + linkHtml + '</td></tr>';
+  });
+  html += '</table></div></div>';
+
+  // ── 3. Video / Reunion ──
+  html += '<div class="comp-card"><div class="comp-header"><div class="comp-header-left"><div class="comp-num" style="background:' + col + '">3</div><div><div class="comp-title">' + vidTipo + ' con clientes · ' + mesAnteriorLabel + '</div><div class="comp-weight">Peso: 20% · Maximo: 20 puntos · Limite: dia 30 de ' + MESES_FULL[mesIdx] + '</div></div></div>';
+  html += '<span class="comp-score-pill" style="background:' + escala.bg + ';color:' + col + '">' + scores.vidScore + '/10 → ' + Math.round(scores.vidScore * 2) + ' pts</span></div>';
+  html += '<div class="comp-body">';
+
+  html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px"><div style="background:#f8fafc;border-radius:8px;padding:10px"><div style="font-size:10px;text-transform:uppercase;color:var(--light);letter-spacing:0.3px">Ciclo trimestral</div><div style="font-size:14px;font-weight:700;margin-top:2px">' + getQuarterInfo(mes).label + '</div></div><div style="background:#f8fafc;border-radius:8px;padding:10px"><div style="font-size:10px;text-transform:uppercase;color:var(--light);letter-spacing:0.3px">Tipo requerido</div><div style="font-size:14px;font-weight:700;margin-top:2px;color:' + (vidTipo === 'Reunion' ? 'var(--purple)' : 'var(--blue)') + '">' + vidTipo + '</div></div></div>';
+
+  html += '<div class="res-progress"><div class="res-count">' + scores.vidDone + ' de ' + scores.vidTotal + ' clientes</div><div class="progress-bar" style="flex:1"><div class="progress-fill" style="width:' + vidPct + '%;background:' + getBarColor(vidPct) + '"></div></div><span style="font-size:12px;font-weight:700;color:' + getBarColor(vidPct) + '">' + vidPct + '%</span></div>';
+
+  html += '<table class="client-table"><tr><th>Cliente</th><th style="width:60px">Tx</th><th style="width:120px">Se realizo?</th><th style="width:100px">Fecha</th><th style="width:120px">Link</th></tr>';
+  clients.forEach(cl => {
+    const vd = entry.datos.video[cl.nombre] || { done: false, fecha: '', link: '' };
+    const vcln = cl.nombre.replace(/'/g, "\\'");
+    const effAdm = getEffectiveAdm(c, mes, cl.nombre);
+    const sem = vd.fecha ? getSemaforo(vd.fecha, mesIdx) : '';
+    const fechaDisplay = vd.fecha ? sem + formatDateShort(vd.fecha) : '<span style="color:var(--light)">Pendiente</span>';
+
+    const linkHtml = !editable
+      ? (vd.link ? '<a href="' + vd.link + '" target="_blank" style="font-size:11px;color:var(--blue)">Ver</a>' : '<span style="font-size:11px;color:var(--light)">—</span>')
+      : (vd.done
+        ? (vd.link
+          ? '<span style="font-size:11px;color:var(--green);font-weight:600;cursor:pointer" onclick="handleVidLink(\'' + vcln + '\',\'\')" title="Quitar link">✓ Link</span>'
+          : '<span style="font-size:11px;color:var(--amber);font-weight:600;cursor:pointer;text-decoration:underline" onclick="promptVidLink(\'' + vcln + '\')" title="Agregar link">Agregar</span>')
+        : '<span style="font-size:11px;color:var(--light)">—</span>');
+
+    html += '<tr class="' + (vd.done ? 'row-done' : '') + '"><td style="font-weight:600">' + cl.nombre + '</td><td>' + effAdm + '</td><td>';
+    if (editable) {
+      html += '<div class="toggle-group"><button class="toggle-opt ' + (vd.done ? 'active-yes' : '') + '" onclick="handleVid(\'' + vcln + '\',true)">Si</button><button class="toggle-opt ' + (!vd.done ? 'active-no' : '') + '" onclick="handleVid(\'' + vcln + '\',false)">No</button></div>';
+    } else {
+      html += vd.done ? '<span style="color:var(--green);font-weight:600">Si</span>' : '<span style="color:var(--light)">No</span>';
+    }
+    html += '</td><td style="font-size:0.78rem">' + fechaDisplay + '</td><td>' + linkHtml + '</td></tr>';
+  });
+  html += '</table></div></div>';
+
+  // Save bar
+  if (editable) {
+    html += '<div class="save-bar"><button class="btn btn-primary" id="btn-kpi-save" onclick="handleKpiSave()">Guardar cambios</button></div>';
+  }
+
+  el.innerHTML = html;
+}
+
+// ==================== TRIMESTRAL VIEW (KPI admin only) ====================
+
+function renderTrimestral(el) {
+  const q = QUARTERS[kpiQuarter - 1];
+  const contadoras = getVisibleContadoras();
+  const allAvgs = contadoras.map(c => getQuarterAvg(c.nombre, q.meses));
+  const filledAvgs = allAvgs.filter(a => a > 0);
+  const teamAvg = filledAvgs.length > 0 ? Math.round(filledAvgs.reduce((a, b) => a + b, 0) / filledAvgs.length) : 0;
+  const excelentes = filledAvgs.filter(a => a >= 90).length;
+  const sinBono = filledAvgs.filter(a => a > 0 && a < 70).length;
+  const totalBonoPool = contadoras.reduce((s, c) => {
+    const avg = getQuarterAvg(c.nombre, q.meses);
+    const esc = getEscala(avg);
+    return s + Math.round(getBonoBase(c.nombre) * esc.bonoPct / 100);
+  }, 0);
+
+  let html = '';
+  html += '<div class="stats">';
+  html += '<div class="stat"><div class="stat-label">Promedio equipo</div><div class="stat-value" style="color:' + getCategoriaColor(teamAvg) + '">' + teamAvg + '</div><div class="stat-sub">' + q.label + ' 2026</div></div>';
+  html += '<div class="stat"><div class="stat-label">Excelentes</div><div class="stat-value" style="color:var(--green)">' + excelentes + '</div><div class="stat-sub">de ' + contadoras.length + '</div></div>';
+  html += '<div class="stat"><div class="stat-label">Sin bono</div><div class="stat-value" style="color:var(--red)">' + sinBono + '</div><div class="stat-sub">&lt; 70 pts</div></div>';
+  html += '<div class="stat"><div class="stat-label">Bono total ' + q.label + '</div><div class="stat-value" style="color:var(--navy)">RD$ ' + totalBonoPool.toLocaleString() + '</div><div class="stat-sub">del pool disponible</div></div>';
+  html += '</div>';
+
+  html += '<div class="card"><h3>Scores ' + q.label + ' 2026</h3><div style="overflow-x:auto"><table class="tri-table"><thead><tr><th>Contadora</th><th>Tier</th>';
+  q.meses.forEach(m => { html += '<th class="center">' + MESES_FULL[MESES.indexOf(m)] + '</th>'; });
+  html += '<th class="center">Promedio</th><th class="center">Categoria</th><th class="center">Bono</th></tr></thead><tbody>';
+
+  contadoras.forEach(c => {
+    const avg = getQuarterAvg(c.nombre, q.meses);
+    const esc = getEscala(avg);
+    const bonoMonto = Math.round(getBonoBase(c.nombre) * esc.bonoPct / 100);
+    html += '<tr><td><div style="display:flex;align-items:center;gap:8px"><div style="width:8px;height:8px;border-radius:50%;background:' + c.color + '"></div><strong>' + c.nombre + '</strong></div></td>';
+    html += '<td style="color:var(--muted);font-size:0.78rem">' + c.tier + '</td>';
+    q.meses.forEach(m => {
+      const t = getTotalForMonth(c.nombre, m);
+      const cls = getClients(c.nombre, m);
+      if (t > 0 && cls.length > 0) {
+        const mEsc = getEscala(t);
+        html += '<td class="center"><span class="score-badge ' + mEsc.css + '">' + t + '</span></td>';
+      } else {
+        html += '<td class="center"><span class="score-badge score-empty">—</span></td>';
+      }
+    });
+    if (avg > 0) {
+      html += '<td class="center"><span class="score-badge ' + esc.css + '" style="font-size:0.88rem">' + avg + '</span></td>';
+      html += '<td class="center"><span style="font-size:0.78rem;color:' + getCategoriaColor(avg) + ';font-weight:600">' + esc.label + '</span></td>';
+      html += '<td class="center"><span class="bono-pill ' + esc.bonoCss + '">RD$ ' + bonoMonto.toLocaleString() + '</span></td>';
+    } else {
+      html += '<td class="center"><span class="score-badge score-empty">—</span></td><td class="center">—</td><td class="center">—</td>';
+    }
+    html += '</tr>';
+  });
+  html += '</tbody></table></div></div>';
+
+  html += '<div class="card"><h3>Escala de evaluacion</h3><div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px">';
+  KPI_ESCALA.forEach(e => {
+    html += '<div style="background:' + e.bg + ';border-radius:8px;padding:12px;text-align:center"><div style="font-size:0.7rem;color:' + e.color + ';font-weight:600">' + e.label.toUpperCase() + '</div><div style="font-size:1.1rem;font-weight:800;color:' + e.color + ';margin-top:2px">' + e.min + '-' + e.max + '</div><div style="font-size:0.7rem;color:' + e.color + ';margin-top:2px">' + e.bonoPct + '% del bono</div></div>';
+  });
+  html += '</div></div>';
+  el.innerHTML = html;
+}
+
+// ==================== CHECKLIST EVENT HANDLERS ====================
+
+function handleCkToggle(contadora, cliente, mes, itemId, done) {
+  const entry = getCheckData(contadora, cliente, mes);
+  if (!entry.datos[itemId]) entry.datos[itemId] = { done: false, fecha: '' };
+  entry.datos[itemId].done = done;
+  entry.datos[itemId].fecha = done ? todayStr() : '';
+  renderCkContent();
+}
+
+async function handleCkSave() {
+  const btn = document.getElementById('btn-ck-save');
+  if (!btn) return;
+  btn.disabled = true;
+  btn.textContent = 'Guardando...';
+
+  await saveChecklist(ckClienteContadora, ckCliente, ckMes);
+
+  btn.disabled = false;
+  btn.textContent = 'Guardar cambios';
+}
+
+// ==================== KPI EVENT HANDLERS ====================
+
+function handleDigChange(input) {
+  const contadora = input.dataset.contadora;
+  const mes = input.dataset.mes;
+  const client = input.dataset.client;
+  const week = parseInt(input.dataset.week);
+  const value = parseInt(input.value) || 0;
+  const entry = getDetalle(contadora, mes);
+  if (!entry.datos.digitacion[client]) entry.datos.digitacion[client] = emptyWeeks();
+  entry.datos.digitacion[client][week] = { qty: value, fecha: value > 0 ? todayStr() : '' };
+}
+
+function handleRes(clientName, done) {
+  const entry = getDetalle(kpiContadora, kpiMes);
+  if (!entry.datos.resumenes[clientName]) entry.datos.resumenes[clientName] = { done: false, fecha: '', link: '' };
+  entry.datos.resumenes[clientName].done = done;
+  if (done) {
+    entry.datos.resumenes[clientName].fecha = todayStr();
+  } else {
+    entry.datos.resumenes[clientName].fecha = '';
+    entry.datos.resumenes[clientName].link = '';
+  }
+  renderKpiContent();
+}
+
+function handleResLink(clientName, link) {
+  const entry = getDetalle(kpiContadora, kpiMes);
+  if (entry.datos.resumenes[clientName]) entry.datos.resumenes[clientName].link = link;
+  renderKpiContent();
+}
+
+function promptResLink(clientName) {
+  const link = prompt('Pega el link del resumen para ' + clientName + ':');
+  if (link && link.trim()) handleResLink(clientName, link.trim());
+}
+
+function handleVid(clientName, done) {
+  const entry = getDetalle(kpiContadora, kpiMes);
+  if (!entry.datos.video[clientName]) entry.datos.video[clientName] = { done: false, fecha: '', link: '' };
+  entry.datos.video[clientName].done = done;
+  if (done) {
+    entry.datos.video[clientName].fecha = todayStr();
+  } else {
+    entry.datos.video[clientName].fecha = '';
+    entry.datos.video[clientName].link = '';
+  }
+  renderKpiContent();
+}
+
+function handleVidLink(clientName, link) {
+  const entry = getDetalle(kpiContadora, kpiMes);
+  if (entry.datos.video[clientName]) entry.datos.video[clientName].link = link;
+  renderKpiContent();
+}
+
+function promptVidLink(clientName) {
+  const link = prompt('Pega el link del video para ' + clientName + ':');
+  if (link && link.trim()) handleVidLink(clientName, link.trim());
+}
+
+async function handleKpiSave() {
+  const btn = document.getElementById('btn-kpi-save');
+  if (!btn) return;
+  btn.disabled = true;
+  btn.textContent = 'Guardando...';
+
+  document.querySelectorAll('.dig-input').forEach(input => {
+    const contadora = input.dataset.contadora;
+    const mes = input.dataset.mes;
+    const client = input.dataset.client;
+    const week = parseInt(input.dataset.week);
+    const value = parseInt(input.value) || 0;
+    const entry = getDetalle(contadora, mes);
+    if (!entry.datos.digitacion[client]) entry.datos.digitacion[client] = emptyWeeks();
+    const existing = entry.datos.digitacion[client][week];
+    const oldQty = typeof existing === 'object' ? (existing.qty || 0) : (existing || 0);
+    // Only update fecha if value changed
+    if (value !== oldQty) {
+      entry.datos.digitacion[client][week] = { qty: value, fecha: value > 0 ? todayStr() : '' };
+    } else if (typeof existing !== 'object') {
+      entry.datos.digitacion[client][week] = { qty: value, fecha: '' };
+    }
+  });
+
+  await saveDetalle(kpiContadora, kpiMes);
+  btn.disabled = false;
+  btn.textContent = 'Guardar cambios';
+  renderKpiContent();
+}
+
+// ==================== INIT ====================
+
+const loginPwdEl = document.getElementById('login-password');
+const loginEmailEl = document.getElementById('login-email');
+if (loginPwdEl) loginPwdEl.addEventListener('keydown', e => { if (e.key === 'Enter') handleLogin(); });
+if (loginEmailEl) loginEmailEl.addEventListener('keydown', e => { if (e.key === 'Enter') document.getElementById('login-password').focus(); });
+
+const isEmbed = new URLSearchParams(window.location.search).get('embed') === '1';
+if (isEmbed) document.body.classList.add('embed');
+
+async function showApp() {
+  document.getElementById('login-screen').style.display = 'none';
+  document.getElementById('app-wrapper').classList.remove('hidden');
+  document.getElementById('user-display-name').textContent = userName;
+
+  // Load all data
+  await Promise.all([loadAsignaciones(), loadChecklistData(), loadDetalle()]);
+
+  // Set initial states
+  kpiQuarter = getCurrentQuarter();
+  const qObj = QUARTERS[kpiQuarter - 1];
+  kpiMes = qObj.meses[0];
+
+  // Contadora: auto-filter
+  if (userRole !== 'admin') {
+    // Checklist: filter to their name
+    const contadoras = getContadoraNames();
+    contadoras.forEach(c => { if (userName.includes(c)) ckContadora = c; });
+    // KPI: auto-select
+    const match = KPI_CONTADORAS.find(c => userName.includes(c.nombre));
+    if (match) kpiContadora = match.nombre;
+  }
+
+  renderAll();
+}
+
+async function init() {
+  const { data: { session } } = await sb.auth.getSession();
+  if (session) {
+    await loadUserProfile();
+    await showApp();
+  } else if (isEmbed) {
+    document.body.innerHTML = '<div style="text-align:center;padding:60px;color:#7c8495;">Sesion no encontrada. Recarga la pagina principal.</div>';
+  }
+}
+
+init();
+</script>
+</body>
+</html>
