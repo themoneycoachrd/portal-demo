@@ -1145,7 +1145,6 @@ function renderCkClientList(el) {
   html += '<div class="summary-stat"><div class="summary-stat-label">Sin resp. contable</div><div class="summary-stat-value" style="color:var(--muted)">' + sinRespCount + '</div></div>';
   html += '<div class="summary-stat"><div class="summary-stat-label">Completados</div><div class="summary-stat-value" style="color:var(--green)">' + completados + '</div></div>';
   html += '<div class="summary-stat"><div class="summary-stat-label">En progreso</div><div class="summary-stat-value" style="color:var(--amber)">' + enProgreso + '</div></div>';
-  html += '<div class="summary-stat"><div class="summary-stat-label">Sin iniciar</div><div class="summary-stat-value" style="color:var(--red)">' + sinIniciar + '</div></div>';
   html += '<div class="summary-stat"><div class="summary-stat-label">Avance promedio</div><div class="summary-stat-value" style="color:' + getBarColor(avgPct) + '">' + avgPct + '%</div></div>';
   html += '</div>';
 
@@ -1161,8 +1160,9 @@ function renderCkClientList(el) {
   // Separate clients into groups: assigned, sin asignar
   var ckAsignados = clients.filter(c => c.contadora !== 'Sin asignar');
   var ckSinAsignar = clients.filter(c => c.contadora === 'Sin asignar');
-  // Sin responsabilidad contable (sorted alphabetically)
-  var ckSinResp = CLIENTES_SIN_RESP.slice().sort((a, b) => (a.nombre || '').localeCompare(b.nombre || '', 'es'));
+  // Sin responsabilidad contable: solo mostrar en vista "Todas"
+  var ckShowSinResp = ckContadora === 'Todas' && userRole === 'admin';
+  var ckSinResp = ckShowSinResp ? CLIENTES_SIN_RESP.slice().sort((a, b) => (a.nombre || '').localeCompare(b.nombre || '', 'es')) : [];
 
   if (ckViewMode === 'table') {
     // Table view

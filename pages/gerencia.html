@@ -2622,12 +2622,12 @@ function bdRenderClientes() {
   var clMesIdx = BD_MESES.indexOf(bdClMes);
   var clLastDayObj = new Date(2026, clMesIdx + 1, 0);
   var clLastDayStr = '2026-' + String(clMesIdx + 1).padStart(2, '0') + '-' + String(clLastDayObj.getDate()).padStart(2, '0');
+  // Inactivos: cualquier cliente que NO está activo al cierre del mes,
+  // pero que sí existía (entró antes o durante ese mes, o no tiene fecha_entrada = pre-existente)
   var clInactivosMes = bdClientes.filter(function(c) {
-    if (c.fecha_salida && c.fecha_salida <= clLastDayStr && c.fecha_entrada && c.fecha_entrada <= clLastDayStr) return true;
-    if (c.activo === false && !c.fecha_salida) return true;
-    return false;
-  }).filter(function(c) {
-    return clActivosMes.indexOf(c) === -1;
+    if (clActivosMes.indexOf(c) >= 0) return false; // ya está en activos
+    var entered = !c.fecha_entrada || c.fecha_entrada <= clLastDayStr;
+    return entered; // si entró antes del cierre del mes, es inactivo (porque ya salió o tiene activo=false)
   });
   var allForMes = clActivosMes.concat(clInactivosMes);
 
