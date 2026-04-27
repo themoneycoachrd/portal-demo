@@ -93,12 +93,36 @@ body { font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-se
 
 .footer { text-align:center; padding:20px; font-size:0.75rem; color:var(--light); }
 
-body.embed .header { display:none; }
+body.embed .header, body.embed .login-overlay { display:none !important; }
 body.embed .main-tabs { margin-left:0; }
 body.embed .content { padding-top:12px; }
+
+.login-overlay { position:fixed; inset:0; background:var(--navy); display:flex; align-items:center; justify-content:center; z-index:9999; }
+.login-box { background:white; padding:40px 36px; border-radius:16px; width:100%; max-width:380px; box-shadow:0 20px 60px rgba(0,0,0,0.3); }
+.login-box h2 { font-size:1.2rem; margin-bottom:4px; color:var(--navy); }
+.login-box p { font-size:0.82rem; color:var(--muted); margin-bottom:24px; }
+.login-box label { font-size:0.78rem; font-weight:600; color:var(--muted); display:block; margin-bottom:6px; text-transform:uppercase; letter-spacing:0.3px; }
+.login-box input { width:100%; padding:10px 14px; border:1px solid var(--border); border-radius:8px; font-size:0.9rem; font-family:inherit; margin-bottom:16px; }
+.login-box input:focus { outline:none; border-color:var(--blue); box-shadow:0 0 0 3px rgba(67,97,238,0.1); }
+.login-box button { width:100%; padding:12px; border:none; border-radius:8px; background:var(--blue); color:white; font-size:0.9rem; font-weight:600; cursor:pointer; font-family:inherit; }
+.login-box button:hover { opacity:0.9; }
+.login-error { color:var(--red); font-size:0.8rem; margin-bottom:12px; display:none; }
 </style>
 </head>
 <body>
+
+<div id="loginOverlay" class="login-overlay" style="display:none">
+  <div class="login-box">
+    <h2>Portal de Clientes</h2>
+    <p>Acceso de administrador — Account One</p>
+    <div id="loginError" class="login-error"></div>
+    <label>Correo</label>
+    <input type="email" id="loginEmail" placeholder="correo@accountone.do">
+    <label>Contraseña</label>
+    <input type="password" id="loginPass" placeholder="••••••••" onkeydown="if(event.key==='Enter')doLogin()">
+    <button onclick="doLogin()">Iniciar sesión</button>
+  </div>
+</div>
 
 <div id="errorScreen" class="error-screen" style="display:none">
   <div>
@@ -423,20 +447,33 @@ async function init() {
   }
 
   // Mode 2: Admin access (embedded or direct, authenticated)
+  var isEmbed2 = isEmbed;
   var { data: { session } } = await sb.auth.getSession();
   if (!session) {
-    document.getElementById('errorScreen').style.display = 'flex';
+    if (isEmbed2) {
+      document.body.innerHTML = '<div style="text-align:center;padding:60px;color:#7c8495;">Sesion no encontrada. Recarga la pagina principal.</div>';
+    } else {
+      document.getElementById('loginOverlay').style.display = 'flex';
+    }
     return;
   }
 
+  await initAdmin(isEmbed2);
+}
+
+async function initAdmin(isEmbed2) {
+  var { data: { session } } = await sb.auth.getSession();
+  if (!session) return;
+
   var { data: profile } = await sb.from('profiles').select('role').eq('id', session.user.id).single();
   if (!profile || profile.role !== 'admin') {
+    document.getElementById('loginOverlay').style.display = 'none';
     document.getElementById('errorScreen').style.display = 'flex';
     return;
   }
 
   isAdminMode = true;
-  if (isEmbed) document.body.classList.add('embed');
+  if (isEmbed2) document.body.classList.add('embed');
 
   // Load all tokens for client selector
   var { data: tokens } = await sb.from('portal_clientes_tokens')
@@ -449,6 +486,7 @@ async function init() {
     clienteNombre = allTokens[0].cliente;
   }
 
+  document.getElementById('loginOverlay').style.display = 'none';
   document.getElementById('clientName').innerHTML = buildClientSelector();
   document.getElementById('app').style.display = '';
 
@@ -457,6 +495,20 @@ async function init() {
   renderTabs();
   renderNav();
   render();
+}
+
+async function doLogin() {
+  var email = document.getElementById('loginEmail').value.trim();
+  var pass = document.getElementById('loginPass').value;
+  var errEl = document.getElementById('loginError');
+  errEl.style.display = 'none';
+
+  if (!email || !pass) { errEl.textContent = 'Ingresa correo y contraseña'; errEl.style.display = 'block'; return; }
+
+  var { error } = await sb.auth.signInWithPassword({ email: email, password: pass });
+  if (error) { errEl.textContent = 'Credenciales incorrectas'; errEl.style.display = 'block'; return; }
+
+  await initAdmin(false);
 }
 
 function buildClientSelector() {
