@@ -3049,25 +3049,21 @@ async function bdContSave() {
 // ═══════════════════════════════════════════
 
 function bdGetContadorasForAsig() {
-  // Active contadoras excluding facturacion type
+  // Active contadoras (all types, including facturacion)
   if (bdContadoras.length > 0) {
-    return bdContadoras.filter(function(c) { return c.activa && c.tipo !== 'facturacion'; }).map(function(c) { return c.nombre; });
+    return bdContadoras.filter(function(c) { return c.activa; }).map(function(c) { return c.nombre; });
   }
   // Fallback: derive from asignaciones data
   var names = {};
   bdAsignaciones.forEach(function(a) {
-    if (a.contadora && a.contadora !== 'Karina') names[a.contadora] = true;
+    if (a.contadora) names[a.contadora] = true;
   });
   return Object.keys(names).sort();
 }
 
 function bdGetAsigForMes(mes) {
-  // Get assignments for selected month, exclude facturación contadoras
-  var facContadoras = bdContadoras.filter(function(c) { return c.tipo === 'facturacion'; }).map(function(c) { return c.nombre; });
-  if (facContadoras.length === 0) facContadoras = ['Karina']; // fallback
-
   return bdAsignaciones.filter(function(a) {
-    return a.mes === mes && facContadoras.indexOf(a.contadora) < 0;
+    return a.mes === mes;
   }).sort(function(a, b) {
     return (a.cliente || '').localeCompare(b.cliente || '');
   });
@@ -3087,18 +3083,23 @@ function bdRenderAsignaciones() {
   var rows = bdGetAsigForMes(bdAsigMes);
   var contadoraNames = bdGetContadorasForAsig();
 
-  // Summary
+  // Summary — total from maestra, asignados from rows
+  var totalActivos = bdClientes.filter(function(c) { return c.activo !== false; }).length;
   var contadoraCounts = {};
   rows.forEach(function(r) {
     var c = r.contadora || 'Sin asignar';
     contadoraCounts[c] = (contadoraCounts[c] || 0) + 1;
   });
-  var sinAsignar = contadoraCounts['Sin asignar'] || 0;
+  var sinAsignarRows = contadoraCounts['Sin asignar'] || 0;
+  var asignadosEnTabla = rows.length - sinAsignarRows;
+  var sinAsignarTotal = totalActivos - asignadosEnTabla;
+  var contadorasActivas = Object.keys(contadoraCounts).filter(function(k) { return k !== 'Sin asignar'; }).length;
 
   h += '<div class="bd-summary">';
-  h += '<div class="bd-summary-item"><div class="bd-summary-count">' + rows.length + '</div><div class="bd-summary-label">Clientes asignados</div></div>';
-  h += '<div class="bd-summary-item"><div class="bd-summary-count">' + Object.keys(contadoraCounts).filter(function(k) { return k !== 'Sin asignar'; }).length + '</div><div class="bd-summary-label">Contadoras activas</div></div>';
-  h += '<div class="bd-summary-item"><div class="bd-summary-count" style="color:' + (sinAsignar > 0 ? 'var(--red)' : 'var(--green)') + '">' + sinAsignar + '</div><div class="bd-summary-label">Sin asignar</div></div>';
+  h += '<div class="bd-summary-item"><div class="bd-summary-count">' + totalActivos + '</div><div class="bd-summary-label">Total clientes</div></div>';
+  h += '<div class="bd-summary-item"><div class="bd-summary-count">' + asignadosEnTabla + '</div><div class="bd-summary-label">Asignados</div></div>';
+  h += '<div class="bd-summary-item"><div class="bd-summary-count" style="color:' + (sinAsignarTotal > 0 ? 'var(--red)' : 'var(--green)') + '">' + sinAsignarTotal + '</div><div class="bd-summary-label">Sin asignar</div></div>';
+  h += '<div class="bd-summary-item"><div class="bd-summary-count">' + contadorasActivas + '</div><div class="bd-summary-label">Contadoras activas</div></div>';
   h += '</div>';
 
   if (rows.length === 0) {
