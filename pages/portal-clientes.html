@@ -1,0 +1,678 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Portal de Clientes — Account One</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root {
+  --navy: #1a2332; --navy-mid: #2a3a4e; --blue: #4361ee; --green: #10b981;
+  --red: #ef4444; --amber: #f59e0b; --purple: #8b5cf6;
+  --bg: #f4f6f9; --card: #ffffff; --border: #e8ecf1;
+  --text: #1a2332; --muted: #7c8495; --light: #a3aab8;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif; background:var(--bg); color:var(--text); line-height:1.5; }
+
+.header { background:var(--navy); color:white; padding:20px 24px; }
+.header-inner { display:flex; justify-content:space-between; align-items:center; }
+.header h1 { font-size:1.3rem; font-weight:700; }
+.header p { font-size:0.85rem; opacity:0.6; margin-top:2px; }
+.header .client-badge { font-size:0.8rem; opacity:0.9; background:rgba(255,255,255,0.15); padding:4px 12px; border-radius:20px; }
+
+.main-tabs { display:flex; background:var(--card); border-bottom:2px solid var(--border); overflow-x:auto; }
+.main-tab { padding:12px 18px; cursor:pointer; font-weight:600; font-size:0.85rem; color:var(--muted); border-bottom:3px solid transparent; margin-bottom:-2px; transition:all 0.15s; background:none; border-top:none; border-left:none; border-right:none; font-family:inherit; white-space:nowrap; }
+.main-tab:hover { color:var(--text); }
+.main-tab.active { color:var(--navy); border-bottom-color:var(--navy); }
+
+.nav-area { padding:18px 24px 12px 24px; background:var(--bg); border-bottom:1px solid var(--border); }
+.month-tabs { display:flex; gap:4px; flex-wrap:wrap; }
+.month-tab { padding:6px 14px; border-radius:8px; font-size:0.8rem; font-weight:600; cursor:pointer; border:1px solid var(--border); background:white; color:var(--muted); transition:all 0.12s; font-family:inherit; }
+.month-tab:hover { background:#eef0f4; }
+.month-tab.active { background:var(--navy); color:white; border-color:var(--navy); }
+
+.content { padding:24px; max-width:900px; margin:0 auto; }
+
+.dash-card { background:white; border-radius:12px; border:1px solid var(--border); padding:18px 20px; display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; }
+.dash-card-left { display:flex; align-items:center; gap:14px; }
+.dash-card-label { font-weight:700; font-size:0.95rem; }
+.dash-card-deadline { font-size:0.78rem; color:var(--muted); margin-top:2px; }
+.dash-card-right { display:flex; align-items:center; gap:12px; }
+.dash-progress-bar { width:100px; height:8px; background:#eef0f4; border-radius:4px; overflow:hidden; }
+.dash-progress-fill { height:100%; border-radius:4px; transition:width 0.3s; }
+.dash-progress-text { font-size:0.8rem; font-weight:700; min-width:36px; text-align:right; }
+.dash-status { display:inline-block; padding:4px 12px; border-radius:20px; font-size:0.72rem; font-weight:700; min-width:80px; text-align:center; }
+.dash-status.gris { background:#f3f4f6; color:#6b7280; }
+.dash-status.amarillo { background:#fef3c7; color:#92400e; }
+.dash-status.rojo { background:#fee2e2; color:#991b1b; }
+.dash-status.verde { background:#d1fae5; color:#065f46; }
+
+.task-section { background:white; border-radius:12px; border:1px solid var(--border); overflow:hidden; }
+.task-row { display:flex; align-items:center; justify-content:space-between; padding:14px 20px; border-bottom:1px solid #f1f5f9; gap:12px; }
+.task-row:last-child { border-bottom:none; }
+.task-row.auto { background:#f8fafc; }
+.task-row.sub { padding-left:44px; background:#fafbfc; }
+.task-num { width:24px; height:24px; border-radius:50%; background:#eef0f4; display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:700; color:var(--muted); flex-shrink:0; }
+.task-num.done { background:#d1fae5; color:#065f46; }
+.task-label { flex:1; font-size:0.88rem; }
+.task-label .auto-tag { font-size:0.68rem; background:#dbeafe; color:#1e40af; padding:2px 8px; border-radius:4px; margin-left:8px; font-weight:600; }
+.task-label .note { display:block; font-size:0.75rem; color:var(--muted); margin-top:2px; }
+
+.toggle-group { display:flex; gap:0; }
+.toggle-opt { padding:6px 16px; font-size:12px; font-weight:600; cursor:pointer; border:1px solid var(--border); background:white; color:var(--muted); transition:all 0.15s; font-family:inherit; }
+.toggle-opt:first-child { border-radius:6px 0 0 6px; }
+.toggle-opt:last-child { border-radius:0 6px 6px 0; border-left:none; }
+.toggle-opt.active-yes { background:#ecfdf5; color:#065f46; border-color:#a7f3d0; }
+.toggle-opt.active-no { background:#fef2f2; color:#991b1b; border-color:#fecaca; }
+
+.upload-btn { display:inline-flex; align-items:center; gap:6px; padding:7px 16px; border-radius:8px; font-size:0.8rem; font-weight:600; cursor:pointer; border:1px solid var(--border); background:white; color:var(--muted); font-family:inherit; transition:all 0.15s; }
+.upload-btn:hover { background:#eef0f4; border-color:#ccc; }
+.upload-btn.has-file { background:#ecfdf5; color:#065f46; border-color:#a7f3d0; }
+.upload-btn svg { width:14px; height:14px; }
+
+.file-list { display:flex; flex-wrap:wrap; gap:6px; margin-top:6px; }
+.file-chip { display:inline-flex; align-items:center; gap:4px; padding:3px 10px; border-radius:6px; font-size:0.72rem; font-weight:600; background:#f0f4ff; color:#1e40af; }
+.file-chip .remove-file { cursor:pointer; color:#991b1b; font-size:14px; margin-left:4px; }
+
+.input-monto { padding:7px 12px; border:1px solid var(--border); border-radius:8px; font-size:0.85rem; font-family:inherit; background:white; width:140px; }
+.input-monto:focus { outline:none; border-color:var(--blue); box-shadow:0 0 0 3px rgba(67,97,238,0.1); }
+
+.section-progress { display:flex; align-items:center; gap:10px; padding:14px 20px; background:#f8fafc; border-bottom:1px solid var(--border); }
+.section-progress-label { font-size:0.78rem; font-weight:600; color:var(--muted); }
+.section-progress-bar { flex:1; height:8px; background:#eef0f4; border-radius:4px; overflow:hidden; max-width:200px; }
+.section-progress-fill { height:100%; border-radius:4px; transition:width 0.3s; }
+.section-progress-text { font-size:0.82rem; font-weight:700; }
+
+.error-screen { display:flex; align-items:center; justify-content:center; min-height:60vh; text-align:center; color:var(--muted); }
+.error-screen h2 { font-size:1.2rem; color:var(--text); margin-bottom:8px; }
+.error-screen p { font-size:0.9rem; }
+
+.toast { position:fixed; bottom:24px; right:24px; background:var(--navy); color:white; padding:12px 20px; border-radius:10px; font-size:0.85rem; font-weight:500; z-index:999; opacity:0; transform:translateY(10px); transition:all 0.3s; pointer-events:none; }
+.toast.show { opacity:1; transform:translateY(0); }
+
+.footer { text-align:center; padding:20px; font-size:0.75rem; color:var(--light); }
+
+body.embed .header { display:none; }
+body.embed .main-tabs { margin-left:0; }
+body.embed .content { padding-top:12px; }
+</style>
+</head>
+<body>
+
+<div id="errorScreen" class="error-screen" style="display:none">
+  <div>
+    <h2>Enlace no válido</h2>
+    <p>Este enlace de acceso no es válido o ha expirado.<br>Contacta a Account One para obtener uno nuevo.</p>
+  </div>
+</div>
+
+<div id="app" style="display:none">
+  <div class="header">
+    <div class="header-inner">
+      <div><h1>Portal de Clientes</h1><p>Account One — Impuestos</p></div>
+      <span class="client-badge" id="clientName"></span>
+    </div>
+  </div>
+
+  <div class="main-tabs" id="mainTabs"></div>
+  <div id="navArea"></div>
+  <div class="content" id="content"></div>
+  <div class="footer">Conectado de forma segura — Account One</div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+var SUPABASE_URL = 'https://ouetusstqvpyjeycfdio.supabase.co';
+var SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im91ZXR1c3N0cXZweWpleWNmZGlvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY2NDcwNzksImV4cCI6MjA5MjIyMzA3OX0.Bsys947JLGEuf3zdBF2GPFdbJVJtaZdC4YEmyBU5Bow';
+var sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+var MESES_KEY = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+var MESES_LABEL = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+var MESES_FULL = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+
+var IMPUESTOS = [
+  { id: 'TSS', label: 'TSS', deadline: 3 },
+  { id: 'IR-3', label: 'IR-3', deadline: 10 },
+  { id: 'IR-17', label: 'IR-17', deadline: 10 },
+  { id: 'Anticipo', label: 'Anticipo', deadline: 15 },
+  { id: 'ITBIS', label: 'ITBIS', deadline: 20 }
+];
+
+var TABS = [
+  { id: 'dashboard', label: 'Dashboard' },
+  { id: 'TSS', label: 'TSS' },
+  { id: 'IR-3', label: 'IR-3' },
+  { id: 'IR-17', label: 'IR-17' },
+  { id: 'Anticipo', label: 'Anticipo' },
+  { id: 'ITBIS', label: 'ITBIS' }
+];
+
+// Checklist definitions per tax type
+// type: 'yesno' | 'upload' | 'monto' | 'auto'
+var CHECKLIST = {
+  'TSS': [
+    { id: 'novedades_nomina', label: 'Hubo novedades en nómina', type: 'yesno' },
+    { id: 'cargar_nomina', label: 'Cargar la nómina', type: 'upload', accept: '.xlsx,.xls,.csv', fileType: 'nomina' },
+    { id: 'cargar_volantes_nomina', label: 'Cargar los volantes de pago de nómina', type: 'upload', accept: '.pdf,.jpg,.jpeg,.png', fileType: 'volantes_nomina', multi: true },
+    { id: 'autorizacion_tss', label: 'Recibí la autorización de pago de TSS', type: 'yesno' },
+    { id: 'pague_tss', label: 'Pagué la TSS', type: 'yesno' }
+  ],
+  'IR-3': [
+    { id: 'cargar_nomina', label: 'Nómina cargada', type: 'auto', sourceTab: 'TSS', sourceId: 'cargar_nomina' },
+    { id: 'cargar_volantes_nomina', label: 'Volantes de pago cargados', type: 'auto', sourceTab: 'TSS', sourceId: 'cargar_volantes_nomina' },
+    { id: 'autorizacion_ir3', label: 'Recibí la autorización de pago', type: 'yesno' },
+    { id: 'pague_ir3', label: 'Pagué el IR-3', type: 'yesno' }
+  ],
+  'IR-17': [
+    { id: 'pagos_informales', label: 'Hubo pagos a informales este mes', type: 'yesno' },
+    { id: 'cargar_excel_informales', label: 'Cargar el Excel de pagos a informales', type: 'upload', accept: '.xlsx,.xls,.csv', fileType: 'pagos_informales' },
+    { id: 'cargar_volantes_informales', label: 'Cargar los volantes de pagos a informales', type: 'upload', accept: '.pdf,.jpg,.jpeg,.png', fileType: 'volantes_informales', multi: true }
+  ],
+  'Anticipo': [
+    { id: 'autorizacion_anticipo', label: 'Recibí la autorización de pago', type: 'yesno' },
+    { id: 'pague_anticipo', label: 'Pagué el anticipo', type: 'yesno' }
+  ],
+  'ITBIS': [
+    { id: 'facturas_mes', label: 'Cargaste todas las facturas del mes', type: 'yesno' },
+    { id: 'facturas_estimadas', label: 'Facturas estimadas (monto aproximado)', type: 'monto' },
+    { id: 'cargar_excel_facturas', label: 'Cargaste el Excel de las facturas', type: 'upload', accept: '.xlsx,.xls,.csv', fileType: 'facturas_excel' },
+    { id: 'ncf_bancos', label: 'Cargaste los NCF de los bancos', type: 'yesno' },
+    { id: 'facturas_atrasadas', label: 'Tienes facturas atrasadas', type: 'yesno' },
+    { id: 'solicitar_pago_cuenta', label: 'Quiero solicitar un pago a cuenta', type: 'yesno', subOf: 'facturas_atrasadas', note: 'Solo si tienes facturas después del día 10 del próximo mes' },
+    { id: 'borrador_itbis', label: 'Recibí el borrador de ITBIS', type: 'yesno' },
+    { id: 'aprobo_borrador', label: 'Aprobé el borrador', type: 'yesno' },
+    { id: 'pague_itbis', label: 'Pagué el ITBIS', type: 'yesno' }
+  ]
+};
+
+// ==================== STATE ====================
+var clienteNombre = '';
+var clienteToken = '';
+var isAdminMode = false;
+var allTokens = []; // admin mode: list of all client tokens
+var selectedTab = 'dashboard';
+var selectedMes = '';
+var portalData = {};   // { 'TSS||abril': { item_id: value, ... }, ... }
+var portalFiles = {};  // { 'TSS||abril||nomina': [{id, nombre_archivo, storage_path}], ... }
+var saving = false;
+
+// ==================== UTILS ====================
+function esc(s) { return (s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/'/g,'&#39;'); }
+
+function getCurrentMonth() {
+  return MESES_KEY[new Date().getMonth()];
+}
+
+function dataKey(impuesto, mes) {
+  return impuesto + '||' + mes;
+}
+
+function fileKey(impuesto, mes, fileType) {
+  return impuesto + '||' + mes + '||' + fileType;
+}
+
+function getDeadlineDate(impuestoId, mesKey) {
+  var mi = MESES_KEY.indexOf(mesKey);
+  var deadlineMonth = mi + 1;
+  var deadlineYear = 2026;
+  if (deadlineMonth > 11) { deadlineMonth = 0; deadlineYear++; }
+  var imp = IMPUESTOS.find(function(i) { return i.id === impuestoId; });
+  if (!imp) return null;
+  return new Date(deadlineYear, deadlineMonth, imp.deadline);
+}
+
+function formatDateShort(d) {
+  if (!d) return '';
+  var months = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+  return d.getDate() + ' ' + months[d.getMonth()] + ' ' + d.getFullYear();
+}
+
+function getDaysUntil(d) {
+  var now = new Date(); now.setHours(0,0,0,0); d.setHours(0,0,0,0);
+  return Math.ceil((d - now) / (1000 * 60 * 60 * 24));
+}
+
+function getItemValue(impuesto, mes, itemId) {
+  var dk = dataKey(impuesto, mes);
+  var d = portalData[dk];
+  if (!d) return null;
+  return d[itemId] !== undefined ? d[itemId] : null;
+}
+
+function setItemValue(impuesto, mes, itemId, value) {
+  var dk = dataKey(impuesto, mes);
+  if (!portalData[dk]) portalData[dk] = {};
+  portalData[dk][itemId] = value;
+  saveData(impuesto, mes);
+  render();
+}
+
+function isItemDone(impuesto, mes, itemId) {
+  var items = CHECKLIST[impuesto];
+  if (!items) return false;
+  var item = items.find(function(it) { return it.id === itemId; });
+  if (!item) return false;
+
+  if (item.type === 'auto') {
+    return isItemDone(item.sourceTab, mes, item.sourceId);
+  }
+  if (item.type === 'yesno') {
+    return getItemValue(impuesto, mes, itemId) === true;
+  }
+  if (item.type === 'upload') {
+    var fk = fileKey(impuesto, mes, item.fileType);
+    return portalFiles[fk] && portalFiles[fk].length > 0;
+  }
+  if (item.type === 'monto') {
+    var v = getItemValue(impuesto, mes, itemId);
+    return v !== null && v !== '' && v !== 0;
+  }
+  return false;
+}
+
+function getTaxProgress(impuesto, mes) {
+  var items = CHECKLIST[impuesto];
+  if (!items) return { done: 0, total: 0, pct: 0 };
+  var countable = items.filter(function(it) { return !it.subOf; });
+  var total = countable.length;
+  var done = 0;
+  countable.forEach(function(it) {
+    if (isItemDone(impuesto, mes, it.id)) done++;
+  });
+  return { done: done, total: total, pct: total > 0 ? Math.round(done / total * 100) : 0 };
+}
+
+function getTaxStatus(impuesto, mes) {
+  var prog = getTaxProgress(impuesto, mes);
+  if (prog.pct === 100) return 'verde';
+  var dl = getDeadlineDate(impuesto, mes);
+  if (dl) {
+    var days = getDaysUntil(dl);
+    if (days < 0) return 'rojo';
+    if (days <= 2 && prog.pct < 100) return 'rojo';
+  }
+  if (prog.done > 0) return 'amarillo';
+  return 'gris';
+}
+
+function statusLabel(s) {
+  if (s === 'verde') return 'Completado';
+  if (s === 'rojo') return 'Urgente';
+  if (s === 'amarillo') return 'En progreso';
+  return 'Pendiente';
+}
+
+function progressColor(pct) {
+  if (pct === 100) return 'var(--green)';
+  if (pct >= 50) return 'var(--amber)';
+  if (pct > 0) return 'var(--blue)';
+  return '#d1d5db';
+}
+
+function showToast(msg) {
+  var t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(function() { t.classList.remove('show'); }, 2500);
+}
+
+// ==================== DATA ====================
+async function loadData() {
+  var { data, error } = await sb.from('portal_clientes_data')
+    .select('*')
+    .eq('cliente', clienteNombre);
+  if (error) { console.error('Error cargando datos:', error); return; }
+  portalData = {};
+  (data || []).forEach(function(r) {
+    var dk = dataKey(r.impuesto, r.mes);
+    portalData[dk] = r.datos || {};
+  });
+}
+
+async function loadFiles() {
+  var { data, error } = await sb.from('portal_clientes_archivos')
+    .select('*')
+    .eq('cliente', clienteNombre);
+  if (error) { console.error('Error cargando archivos:', error); return; }
+  portalFiles = {};
+  (data || []).forEach(function(r) {
+    var fk = fileKey(r.impuesto, r.mes, r.tipo);
+    if (!portalFiles[fk]) portalFiles[fk] = [];
+    portalFiles[fk].push({ id: r.id, nombre_archivo: r.nombre_archivo, storage_path: r.storage_path });
+  });
+}
+
+async function saveData(impuesto, mes) {
+  if (saving) return;
+  saving = true;
+  var dk = dataKey(impuesto, mes);
+  var datos = portalData[dk] || {};
+  var { error } = await sb.from('portal_clientes_data').upsert({
+    cliente: clienteNombre,
+    mes: mes,
+    impuesto: impuesto,
+    datos: datos,
+    updated_at: new Date().toISOString()
+  }, { onConflict: 'cliente,mes,impuesto' });
+  saving = false;
+  if (error) { console.error('Error guardando:', error); showToast('Error al guardar'); }
+}
+
+async function uploadFile(impuesto, mes, fileType, file) {
+  var path = clienteNombre + '/' + mes + '/' + impuesto + '/' + fileType + '/' + Date.now() + '_' + file.name;
+  showToast('Subiendo ' + file.name + '...');
+
+  var { error: uploadError } = await sb.storage.from('portal-clientes').upload(path, file);
+  if (uploadError) { console.error('Error subiendo:', uploadError); showToast('Error al subir archivo'); return; }
+
+  var { error: dbError } = await sb.from('portal_clientes_archivos').insert({
+    cliente: clienteNombre,
+    mes: mes,
+    impuesto: impuesto,
+    tipo: fileType,
+    nombre_archivo: file.name,
+    storage_path: path,
+    size_bytes: file.size
+  });
+  if (dbError) { console.error('Error registrando archivo:', dbError); showToast('Error al registrar archivo'); return; }
+
+  await loadFiles();
+  showToast(file.name + ' subido');
+  render();
+}
+
+async function removeFile(fileId, storagePath) {
+  await sb.storage.from('portal-clientes').remove([storagePath]);
+  await sb.from('portal_clientes_archivos').delete().eq('id', fileId);
+  await loadFiles();
+  showToast('Archivo eliminado');
+  render();
+}
+
+// ==================== INIT ====================
+async function init() {
+  var params = new URLSearchParams(location.search);
+  clienteToken = params.get('token');
+  var isEmbed = params.get('embed') === '1';
+
+  // Mode 1: Client access via token
+  if (clienteToken) {
+    var { data, error } = await sb.from('portal_clientes_tokens')
+      .select('cliente')
+      .eq('token', clienteToken)
+      .eq('activo', true)
+      .single();
+
+    if (error || !data) {
+      document.getElementById('errorScreen').style.display = 'flex';
+      return;
+    }
+
+    clienteNombre = data.cliente;
+    document.getElementById('clientName').textContent = clienteNombre;
+    document.getElementById('app').style.display = '';
+
+    selectedMes = getCurrentMonth();
+    await Promise.all([loadData(), loadFiles()]);
+    renderTabs();
+    renderNav();
+    render();
+    return;
+  }
+
+  // Mode 2: Admin access (embedded or direct, authenticated)
+  var { data: { session } } = await sb.auth.getSession();
+  if (!session) {
+    document.getElementById('errorScreen').style.display = 'flex';
+    return;
+  }
+
+  var { data: profile } = await sb.from('profiles').select('role').eq('id', session.user.id).single();
+  if (!profile || profile.role !== 'admin') {
+    document.getElementById('errorScreen').style.display = 'flex';
+    return;
+  }
+
+  isAdminMode = true;
+  if (isEmbed) document.body.classList.add('embed');
+
+  // Load all tokens for client selector
+  var { data: tokens } = await sb.from('portal_clientes_tokens')
+    .select('cliente, token')
+    .eq('activo', true)
+    .order('cliente');
+  allTokens = tokens || [];
+
+  if (allTokens.length > 0) {
+    clienteNombre = allTokens[0].cliente;
+  }
+
+  document.getElementById('clientName').innerHTML = buildClientSelector();
+  document.getElementById('app').style.display = '';
+
+  selectedMes = getCurrentMonth();
+  await Promise.all([loadData(), loadFiles()]);
+  renderTabs();
+  renderNav();
+  render();
+}
+
+function buildClientSelector() {
+  var h = '<select onchange="switchCliente(this.value)" style="background:rgba(255,255,255,0.15);color:white;border:1px solid rgba(255,255,255,0.3);border-radius:8px;padding:4px 10px;font-size:0.8rem;font-family:inherit;cursor:pointer">';
+  allTokens.forEach(function(t) {
+    h += '<option value="' + esc(t.cliente) + '"' + (t.cliente === clienteNombre ? ' selected' : '') + '>' + esc(t.cliente) + '</option>';
+  });
+  h += '</select>';
+  return h;
+}
+
+async function switchCliente(nombre) {
+  clienteNombre = nombre;
+  await Promise.all([loadData(), loadFiles()]);
+  render();
+}
+
+// ==================== RENDER ====================
+function renderTabs() {
+  var el = document.getElementById('mainTabs');
+  var h = '';
+  TABS.forEach(function(tab) {
+    h += '<button class="main-tab' + (selectedTab === tab.id ? ' active' : '') + '" onclick="switchTab(\'' + tab.id + '\')">' + esc(tab.label) + '</button>';
+  });
+  el.innerHTML = h;
+}
+
+function switchTab(tabId) {
+  selectedTab = tabId;
+  renderTabs();
+  render();
+}
+
+function renderNav() {
+  var el = document.getElementById('navArea');
+  var h = '<div class="nav-area"><div class="month-tabs">';
+  MESES_KEY.forEach(function(m, i) {
+    h += '<button class="month-tab' + (m === selectedMes ? ' active' : '') + '" onclick="switchMonth(\'' + m + '\')">' + MESES_LABEL[i] + '</button>';
+  });
+  h += '</div></div>';
+  el.innerHTML = h;
+}
+
+function switchMonth(mes) {
+  selectedMes = mes;
+  renderNav();
+  render();
+}
+
+function render() {
+  var el = document.getElementById('content');
+  if (selectedTab === 'dashboard') {
+    renderDashboard(el);
+  } else {
+    renderChecklist(el, selectedTab);
+  }
+}
+
+// ==================== DASHBOARD ====================
+function renderDashboard(el) {
+  var h = '';
+
+  h += '<div style="margin-bottom:20px"><span style="font-size:1.1rem;font-weight:700">' + MESES_FULL[MESES_KEY.indexOf(selectedMes)] + ' 2026</span>';
+  h += '<span style="font-size:0.85rem;color:var(--muted);margin-left:12px">Resumen de impuestos</span></div>';
+
+  IMPUESTOS.forEach(function(imp) {
+    var prog = getTaxProgress(imp.id, selectedMes);
+    var status = getTaxStatus(imp.id, selectedMes);
+    var dl = getDeadlineDate(imp.id, selectedMes);
+    var dlStr = dl ? formatDateShort(dl) : '';
+    var daysLeft = dl ? getDaysUntil(dl) : 999;
+    var daysText = '';
+    if (daysLeft < 0) daysText = 'Vencido';
+    else if (daysLeft === 0) daysText = 'Hoy';
+    else if (daysLeft === 1) daysText = 'Mañana';
+    else daysText = daysLeft + ' días';
+
+    h += '<div class="dash-card" style="cursor:pointer" onclick="switchTab(\'' + imp.id + '\')">';
+    h += '<div class="dash-card-left">';
+    h += '<div>';
+    h += '<div class="dash-card-label">' + esc(imp.label) + '</div>';
+    h += '<div class="dash-card-deadline">Límite: ' + dlStr + ' (' + daysText + ')</div>';
+    h += '</div></div>';
+    h += '<div class="dash-card-right">';
+    h += '<div class="dash-progress-bar"><div class="dash-progress-fill" style="width:' + prog.pct + '%;background:' + progressColor(prog.pct) + '"></div></div>';
+    h += '<div class="dash-progress-text" style="color:' + progressColor(prog.pct) + '">' + prog.pct + '%</div>';
+    h += '<div class="dash-status ' + status + '">' + statusLabel(status) + '</div>';
+    h += '</div></div>';
+  });
+
+  el.innerHTML = h;
+}
+
+// ==================== CHECKLIST TABS ====================
+function renderChecklist(el, impuesto) {
+  var items = CHECKLIST[impuesto];
+  if (!items) { el.innerHTML = ''; return; }
+
+  var prog = getTaxProgress(impuesto, selectedMes);
+  var h = '';
+
+  h += '<div style="margin-bottom:16px"><span style="font-size:1.1rem;font-weight:700">' + esc(impuesto) + '</span>';
+  h += '<span style="font-size:0.85rem;color:var(--muted);margin-left:12px">' + MESES_FULL[MESES_KEY.indexOf(selectedMes)] + ' 2026</span></div>';
+
+  h += '<div class="task-section">';
+
+  // Progress bar header
+  h += '<div class="section-progress">';
+  h += '<div class="section-progress-label">Progreso</div>';
+  h += '<div class="section-progress-bar"><div class="section-progress-fill" style="width:' + prog.pct + '%;background:' + progressColor(prog.pct) + '"></div></div>';
+  h += '<div class="section-progress-text" style="color:' + progressColor(prog.pct) + '">' + prog.done + '/' + prog.total + ' (' + prog.pct + '%)</div>';
+  h += '</div>';
+
+  var num = 0;
+  items.forEach(function(item) {
+    var done = isItemDone(impuesto, selectedMes, item.id);
+
+    // Sub-items: only show if parent is 'yes'
+    if (item.subOf) {
+      var parentVal = getItemValue(impuesto, selectedMes, item.subOf);
+      if (parentVal !== true) return;
+    }
+
+    if (!item.subOf) num++;
+    var rowClass = 'task-row';
+    if (item.type === 'auto') rowClass += ' auto';
+    if (item.subOf) rowClass += ' sub';
+
+    h += '<div class="' + rowClass + '">';
+    h += '<div class="task-num' + (done ? ' done' : '') + '">' + (item.subOf ? '↳' : num) + '</div>';
+    h += '<div class="task-label">' + esc(item.label);
+    if (item.type === 'auto') h += '<span class="auto-tag">Automático desde ' + esc(item.sourceTab) + '</span>';
+    if (item.note) h += '<span class="note">' + esc(item.note) + '</span>';
+    h += '</div>';
+
+    // Control
+    if (item.type === 'yesno') {
+      h += renderYesNo(impuesto, item.id);
+    } else if (item.type === 'upload') {
+      h += renderUpload(impuesto, item);
+    } else if (item.type === 'monto') {
+      h += renderMonto(impuesto, item.id);
+    } else if (item.type === 'auto') {
+      h += renderAutoStatus(item, done);
+    }
+
+    h += '</div>';
+
+    // File list for uploads
+    if (item.type === 'upload') {
+      var fk = fileKey(impuesto, selectedMes, item.fileType);
+      var files = portalFiles[fk] || [];
+      if (files.length > 0) {
+        h += '<div style="padding:0 20px 10px 58px"><div class="file-list">';
+        files.forEach(function(f) {
+          h += '<span class="file-chip">' + esc(f.nombre_archivo);
+          h += '<span class="remove-file" onclick="event.stopPropagation();removeFile(' + f.id + ',\'' + esc(f.storage_path).replace(/'/g, "\\'") + '\')">&times;</span>';
+          h += '</span>';
+        });
+        h += '</div></div>';
+      }
+    }
+  });
+
+  h += '</div>';
+  el.innerHTML = h;
+}
+
+function renderYesNo(impuesto, itemId) {
+  var val = getItemValue(impuesto, selectedMes, itemId);
+  var h = '<div class="toggle-group">';
+  h += '<button class="toggle-opt' + (val === true ? ' active-yes' : '') + '" onclick="setItemValue(\'' + impuesto + '\',\'' + selectedMes + '\',\'' + itemId + '\',true)">Sí</button>';
+  h += '<button class="toggle-opt' + (val === false ? ' active-no' : '') + '" onclick="setItemValue(\'' + impuesto + '\',\'' + selectedMes + '\',\'' + itemId + '\',false)">No</button>';
+  h += '</div>';
+  return h;
+}
+
+function renderUpload(impuesto, item) {
+  var fk = fileKey(impuesto, selectedMes, item.fileType);
+  var files = portalFiles[fk] || [];
+  var hasFiles = files.length > 0;
+  var inputId = 'upload_' + impuesto.replace(/-/g,'') + '_' + item.id;
+
+  var h = '<div>';
+  h += '<input type="file" id="' + inputId + '" accept="' + (item.accept || '*') + '"' + (item.multi ? ' multiple' : '') + ' style="display:none" onchange="handleUpload(\'' + impuesto + '\',\'' + selectedMes + '\',\'' + item.fileType + '\',this)">';
+  h += '<button class="upload-btn' + (hasFiles ? ' has-file' : '') + '" onclick="document.getElementById(\'' + inputId + '\').click()">';
+  h += '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>';
+  h += hasFiles ? files.length + ' archivo' + (files.length > 1 ? 's' : '') : 'Subir archivo';
+  h += '</button></div>';
+  return h;
+}
+
+function renderMonto(impuesto, itemId) {
+  var val = getItemValue(impuesto, selectedMes, itemId);
+  var h = '<input type="number" class="input-monto" placeholder="RD$ 0.00" value="' + (val || '') + '" onchange="setItemValue(\'' + impuesto + '\',\'' + selectedMes + '\',\'' + itemId + '\',this.value?parseFloat(this.value):null)">';
+  return h;
+}
+
+function renderAutoStatus(item, done) {
+  if (done) {
+    return '<span style="font-size:0.78rem;font-weight:600;color:var(--green)">✓ Completado</span>';
+  }
+  return '<span style="font-size:0.78rem;font-weight:600;color:var(--muted)">Pendiente en ' + esc(item.sourceTab) + '</span>';
+}
+
+function handleUpload(impuesto, mes, fileType, input) {
+  var files = input.files;
+  if (!files || files.length === 0) return;
+  for (var i = 0; i < files.length; i++) {
+    uploadFile(impuesto, mes, fileType, files[i]);
+  }
+  input.value = '';
+}
+
+// ==================== START ====================
+init();
+</script>
+</body>
+</html>
