@@ -2631,14 +2631,19 @@ function bdRenderClientes() {
     return;
   }
 
-  // Ordenar: activos primero, dentro de activos sin tipo_servicio primero, luego el resto, inactivos al final. Siempre alfabético.
+  // Ordenar: sin asignar primero, luego clientes asignados, inactivos al final. Siempre alfabético.
+  function clClientesSinAsignar(c) {
+    return !c.contadora_contabilidad && !c.contadora_impuestos;
+  }
   filtered.sort(function(a, b) {
     var aActivo = a.activo !== false ? 0 : 1;
     var bActivo = b.activo !== false ? 0 : 1;
     if (aActivo !== bActivo) return aActivo - bActivo;
-    var aSin = !a.tipo_servicio ? 0 : 1;
-    var bSin = !b.tipo_servicio ? 0 : 1;
-    if (aSin !== bSin) return aSin - bSin;
+    if (aActivo === 0) {
+      var aSin = clClientesSinAsignar(a) ? 0 : 1;
+      var bSin = clClientesSinAsignar(b) ? 0 : 1;
+      if (aSin !== bSin) return aSin - bSin;
+    }
     return (a.nombre || '').localeCompare(b.nombre || '', 'es');
   });
 
@@ -2652,9 +2657,9 @@ function bdRenderClientes() {
   var colCount = userRole === 'admin' ? 9 : 8;
   filtered.forEach(function(c, idx) {
     var isInactivo = c.activo === false;
-    var groupKey = isInactivo ? '__inactivo' : (!c.tipo_servicio ? '__sin_tipo' : '__asignado');
+    var groupKey = isInactivo ? '__inactivo' : (clClientesSinAsignar(c) ? '__sin_asignar' : '__clientes');
     if (groupKey !== clLastGroup) {
-      var groupLabel = groupKey === '__sin_tipo' ? 'Sin servicio asignado' : groupKey === '__asignado' ? 'Clientes asignados' : 'Inactivos';
+      var groupLabel = groupKey === '__sin_asignar' ? 'Sin asignar' : groupKey === '__clientes' ? 'Clientes' : 'Inactivos';
       h += '<tr style="background:#f1f5f9"><td colspan="' + colCount + '" style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--navy);padding:10px 12px">' + groupLabel + '</td></tr>';
       clLastGroup = groupKey;
     }
