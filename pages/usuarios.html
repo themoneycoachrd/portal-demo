@@ -1,0 +1,746 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Usuarios y Permisos — Account One</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root {
+  --navy: #1a2332; --navy-mid: #2a3a4e; --blue: #4361ee; --green: #10b981;
+  --red: #ef4444; --amber: #f59e0b; --purple: #8b5cf6;
+  --bg: #f4f6f9; --card: #ffffff; --border: #e8ecf1;
+  --text: #1a2332; --muted: #7c8495; --light: #a3aab8;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif; background:var(--bg); color:var(--text); line-height:1.5; }
+
+/* ─── Login ─── */
+.login-overlay { position:fixed; top:0; left:0; right:0; bottom:0; background:var(--bg); display:flex; align-items:center; justify-content:center; z-index:1000; }
+.login-box { background:white; border-radius:16px; padding:40px; width:100%; max-width:400px; box-shadow:0 4px 24px rgba(0,0,0,0.08); border:1px solid var(--border); }
+.login-box h2 { font-size:1.4rem; color:var(--navy); margin-bottom:4px; }
+.login-box .subtitle { font-size:0.85rem; color:var(--muted); margin-bottom:24px; }
+.login-box .field { margin-bottom:16px; }
+.login-box .field label { display:block; font-size:0.78rem; font-weight:600; color:var(--muted); margin-bottom:6px; }
+.login-box .field input { width:100%; padding:10px 14px; border:1px solid var(--border); border-radius:10px; font-size:0.9rem; font-family:inherit; background:#fafbfc; }
+.login-box .field input:focus { outline:none; border-color:var(--blue); box-shadow:0 0 0 3px rgba(67,97,238,0.1); background:white; }
+.login-btn { width:100%; padding:11px; background:var(--navy); color:white; border:none; border-radius:10px; font-size:0.9rem; font-weight:600; cursor:pointer; margin-top:8px; }
+.login-btn:hover { background:var(--navy-mid); }
+.login-btn:disabled { opacity:0.6; cursor:not-allowed; }
+.login-error { color:var(--red); font-size:0.8rem; margin-top:12px; display:none; }
+
+/* ─── Header ─── */
+.header { background:var(--navy); color:white; padding:20px 24px; }
+.header-inner { display:flex; justify-content:space-between; align-items:center; }
+.header h1 { font-size:1.3rem; font-weight:700; }
+.header p { font-size:0.85rem; opacity:0.6; margin-top:2px; }
+.user-bar { display:flex; align-items:center; gap:12px; }
+.user-bar .user-name { font-size:0.8rem; opacity:0.9; background:rgba(255,255,255,0.15); padding:4px 12px; border-radius:20px; }
+.btn-logout { font-size:0.75rem; padding:4px 12px; background:rgba(255,255,255,0.15); color:white; border:1px solid rgba(255,255,255,0.3); border-radius:6px; cursor:pointer; }
+
+/* ─── Breadcrumb ─── */
+.breadcrumb-bar { display:flex; align-items:center; gap:6px; padding:10px 24px; background:white; border-bottom:1px solid var(--border); font-size:13px; }
+.breadcrumb-bar a { color:var(--muted); text-decoration:none; font-weight:500; }
+.breadcrumb-bar a:hover { color:var(--navy); text-decoration:underline; }
+.breadcrumb-bar .sep { color:var(--light); font-size:11px; }
+.breadcrumb-bar .current { color:var(--text); font-weight:600; }
+
+/* ─── Content ─── */
+.content { padding:24px; max-width:1100px; margin:0 auto; }
+
+/* ─── Tabs ─── */
+.tabs { display:flex; gap:0; margin-bottom:24px; background:white; border-radius:12px; border:1px solid var(--border); overflow:hidden; }
+.tab { flex:1; padding:14px 20px; text-align:center; font-size:0.88rem; font-weight:600; cursor:pointer; transition:all 0.15s; color:var(--muted); background:white; border:none; font-family:inherit; }
+.tab:not(:last-child) { border-right:1px solid var(--border); }
+.tab:hover { background:#fafbfc; color:var(--text); }
+.tab.active { background:var(--navy); color:white; }
+
+/* ─── Cards ─── */
+.card { background:white; border-radius:12px; border:1px solid var(--border); margin-bottom:12px; overflow:hidden; transition:box-shadow 0.15s; }
+.card:hover { box-shadow:0 2px 12px rgba(0,0,0,0.04); }
+.card-header { display:flex; align-items:center; gap:14px; padding:16px 20px; cursor:pointer; transition:background 0.12s; }
+.card-header:hover { background:#fafbfc; }
+.card-header.expanded { background:#f5f7fa; border-bottom:1px solid var(--border); }
+.card-avatar { width:40px; height:40px; border-radius:50%; display:flex; align-items:center; justify-content:center; color:white; font-weight:700; font-size:0.95rem; flex-shrink:0; }
+.card-info { flex:1; min-width:0; }
+.card-info-name { font-size:0.95rem; font-weight:700; }
+.card-info-sub { font-size:0.78rem; color:var(--muted); }
+.card-badge { font-size:0.68rem; font-weight:700; padding:3px 10px; border-radius:8px; text-transform:uppercase; letter-spacing:0.3px; }
+.card-arrow { font-size:14px; color:var(--light); transition:transform 0.2s; }
+.card-arrow.open { transform:rotate(180deg); }
+.card-detail { max-height:0; overflow:hidden; transition:max-height 0.35s ease; }
+.card-detail.open { max-height:2000px; }
+.card-detail-inner { padding:24px; }
+
+/* ─── Permission matrix table ─── */
+.perm-matrix { width:100%; border-collapse:collapse; font-size:0.82rem; }
+.perm-matrix thead th { text-align:center; padding:10px 8px; font-size:0.68rem; text-transform:uppercase; letter-spacing:0.5px; color:var(--muted); font-weight:700; border-bottom:2px solid var(--border); }
+.perm-matrix thead th:first-child { text-align:left; width:200px; }
+.perm-matrix tbody td { padding:10px 8px; text-align:center; border-bottom:1px solid #f1f3f7; }
+.perm-matrix tbody td:first-child { text-align:left; font-weight:600; font-size:0.84rem; }
+.perm-matrix tbody td .screen-section { font-size:0.68rem; color:var(--light); font-weight:400; display:block; }
+.perm-matrix tbody tr:hover td { background:#fafbfc; }
+.perm-matrix tbody tr:last-child td { border-bottom:none; }
+
+/* ─── Toggle switch ─── */
+.toggle { position:relative; display:inline-block; width:38px; height:20px; }
+.toggle input { opacity:0; width:0; height:0; }
+.toggle-slider { position:absolute; cursor:pointer; top:0; left:0; right:0; bottom:0; background:#d1d5db; border-radius:20px; transition:0.2s; }
+.toggle-slider::before { content:''; position:absolute; height:14px; width:14px; left:3px; bottom:3px; background:white; border-radius:50%; transition:0.2s; box-shadow:0 1px 3px rgba(0,0,0,0.15); }
+.toggle input:checked + .toggle-slider { background:var(--green); }
+.toggle input:checked + .toggle-slider::before { transform:translateX(18px); }
+
+/* ─── Checkbox for groups ─── */
+.group-check { display:flex; align-items:center; gap:12px; padding:12px 16px; background:var(--bg); border-radius:10px; margin-bottom:8px; transition:background 0.12s; cursor:pointer; }
+.group-check:hover { background:#eef0f4; }
+.group-check input[type="checkbox"] { width:18px; height:18px; accent-color:var(--blue); cursor:pointer; }
+.group-check-label { font-size:0.88rem; font-weight:600; flex:1; }
+.group-check-count { font-size:0.72rem; color:var(--light); }
+
+/* ─── Buttons ─── */
+.btn { padding:8px 20px; border-radius:8px; font-size:0.82rem; font-weight:600; cursor:pointer; border:none; font-family:inherit; transition:all 0.12s; }
+.btn-primary { background:var(--navy); color:white; }
+.btn-primary:hover { background:var(--navy-mid); }
+.btn-ghost { background:transparent; color:var(--muted); border:1px solid var(--border); }
+.btn-ghost:hover { background:var(--bg); }
+.btn-green { background:var(--green); color:white; }
+.btn-green:hover { background:#059669; }
+.btn-red { background:transparent; color:var(--red); border:1px solid #fecaca; font-size:0.75rem; padding:5px 12px; }
+.btn-red:hover { background:#fef2f2; }
+
+.save-bar { display:flex; align-items:center; gap:10px; margin-top:20px; padding-top:16px; border-top:1px solid var(--border); }
+.save-msg { font-size:0.75rem; font-weight:600; margin-left:auto; }
+
+/* ─── Create group form ─── */
+.create-bar { display:flex; gap:10px; margin-bottom:20px; }
+.create-bar input { flex:1; padding:10px 14px; border:1px solid var(--border); border-radius:10px; font-size:0.88rem; font-family:inherit; background:white; }
+.create-bar input:focus { outline:none; border-color:var(--blue); box-shadow:0 0 0 3px rgba(67,97,238,0.1); }
+
+/* ─── Invite form ─── */
+.invite-card { background:var(--card); border:1px solid var(--border); border-radius:12px; padding:20px; margin-bottom:20px; }
+.invite-card h4 { font-size:0.9rem; color:var(--navy); margin-bottom:14px; }
+.invite-row { display:flex; gap:10px; flex-wrap:wrap; align-items:flex-end; }
+.invite-field { flex:1; min-width:140px; }
+.invite-field label { display:block; font-size:0.72rem; font-weight:600; color:var(--muted); margin-bottom:4px; }
+.invite-field input,
+.invite-field select { width:100%; padding:9px 12px; border:1px solid var(--border); border-radius:10px; font-size:0.85rem; font-family:inherit; background:#fafbfc; }
+.invite-field input:focus,
+.invite-field select:focus { outline:none; border-color:var(--blue); box-shadow:0 0 0 3px rgba(67,97,238,0.1); background:white; }
+.invite-btn { padding:9px 18px; background:var(--blue); color:white; border:none; border-radius:10px; font-size:0.82rem; font-weight:600; cursor:pointer; white-space:nowrap; height:38px; }
+.invite-btn:hover { background:#3451d1; }
+.invite-btn:disabled { opacity:0.5; cursor:not-allowed; }
+.invite-msg { font-size:0.78rem; margin-top:10px; font-weight:600; }
+
+/* ─── Toast ─── */
+.toast { position:fixed; bottom:24px; right:24px; padding:12px 20px; border-radius:10px; font-size:0.82rem; font-weight:600; color:white; z-index:600; opacity:0; transform:translateY(10px); transition:all 0.3s; pointer-events:none; }
+.toast.show { opacity:1; transform:translateY(0); }
+.toast.success { background:var(--green); }
+.toast.error { background:var(--red); }
+
+/* ─── Misc ─── */
+.hidden { display:none; }
+.empty { text-align:center; padding:40px; color:var(--light); font-size:0.88rem; }
+.footer { text-align:center; font-size:0.75rem; color:var(--light); padding:20px; }
+.section-label { font-size:0.72rem; font-weight:700; text-transform:uppercase; letter-spacing:0.5px; color:var(--muted); margin-bottom:12px; display:flex; align-items:center; gap:8px; }
+.section-label::after { content:''; flex:1; height:1px; background:var(--border); }
+
+/* ─── Embed ─── */
+body.embed .login-overlay { display:none !important; }
+body.embed .header { display:none !important; }
+body.embed .breadcrumb-bar { display:none !important; }
+body.embed #app-wrapper { display:block !important; }
+body.embed .footer { display:none !important; }
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div class="login-overlay" id="login-screen">
+  <div class="login-box">
+    <h2>Account One</h2>
+    <p class="subtitle">Inicia sesion para continuar</p>
+    <div class="field"><label>Email</label><input type="email" id="login-email" placeholder="tu@accountone.do"></div>
+    <div class="field"><label>Contrasena</label><input type="password" id="login-password" placeholder="••••••••"></div>
+    <button class="login-btn" id="btn-login" onclick="handleLogin()">Entrar</button>
+    <div class="login-error" id="login-error"></div>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app-wrapper" class="hidden">
+<div class="header">
+  <div class="header-inner">
+    <div><h1>Usuarios y Permisos</h1><p>Configuracion de accesos del portal</p></div>
+    <div class="user-bar">
+      <span class="user-name" id="user-display-name"></span>
+      <button class="btn-logout" onclick="handleLogout()">Salir</button>
+    </div>
+  </div>
+</div>
+<div class="breadcrumb-bar">
+  <a href="index.html">Account One</a><span class="sep">›</span>
+  <a href="index.html">Configuracion</a><span class="sep">›</span>
+  <span class="current">Usuarios y Permisos</span>
+</div>
+<div class="content" id="content"></div>
+<div class="footer">Conectado a Supabase</div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="usrToast"></div>
+
+<script>
+// ==================== CONFIG ====================
+var SUPABASE_URL = 'https://ouetusstqvpyjeycfdio.supabase.co';
+var SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im91ZXR1c3N0cXZweWpleWNmZGlvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY2NDcwNzksImV4cCI6MjA5MjIyMzA3OX0.Bsys947JLGEuf3zdBF2GPFdbJVJtaZdC4YEmyBU5Bow';
+var sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+// ─── Pantallas del portal ───
+var PANTALLAS = [
+  { id:'control-clientes',   label:'Control de Clientes',   section:'Gerencia' },
+  { id:'control-contadoras', label:'Control de Contadoras',  section:'Gerencia' },
+  { id:'comercial',          label:'Comercial',              section:'Comercial' },
+  { id:'checklist',          label:'Checklist Mensual',      section:'Contadoras' },
+  { id:'kpi',                label:'KPI',                    section:'Contadoras' },
+  { id:'impuestos',          label:'Impuestos',              section:'Impuestos' },
+  { id:'implementaciones',   label:'Implementaciones',       section:'Implementaciones' },
+  { id:'portal-clientes',    label:'Portal de Clientes',     section:'Portal' },
+  { id:'usuarios',           label:'Usuarios y Permisos',    section:'Configuracion' }
+];
+
+var HABILIDADES = [
+  { id:'consulta',  label:'Consulta' },
+  { id:'adicion',   label:'Adicion' },
+  { id:'edicion',   label:'Edicion' },
+  { id:'anulacion', label:'Anulacion' },
+  { id:'eliminar',  label:'Eliminar' }
+];
+
+var AVATAR_COLORS = ['#4361ee','#8b5cf6','#10b981','#f59e0b','#ec4899','#06b6d4','#ef4444','#6366f1'];
+var GROUP_COLORS = ['#4361ee','#8b5cf6','#10b981','#f59e0b','#ec4899','#06b6d4','#ef4444','#6366f1','#0ea5e9','#f97316'];
+
+// ==================== STATE ====================
+var userRole = null;
+var userName = '';
+var activeTab = 'grupos';
+var allGrupos = [];
+var allUsers = [];
+var allAssignments = []; // {user_id, grupo_id}
+var openCards = {};
+var editGrupoBuffer = {}; // grupo_id → permisos copy
+var editUserBuffer = {};  // user_id → [grupo_ids]
+
+// ==================== DATA ====================
+async function loadGrupos() {
+  var r = await sb.from('grupos').select('*').order('nombre');
+  return r.data || [];
+}
+
+async function loadUsers() {
+  var r = await sb.from('profiles').select('id, nombre, rol, email').order('nombre');
+  return r.data || [];
+}
+
+async function loadAssignments() {
+  var r = await sb.from('usuario_grupos').select('*');
+  return r.data || [];
+}
+
+async function saveGrupoPermisos(grupoId, permisos) {
+  var r = await sb.from('grupos').update({ permisos: permisos }).eq('id', grupoId);
+  return !r.error;
+}
+
+async function createGrupo(nombre) {
+  var defaultPermisos = {};
+  PANTALLAS.forEach(function(p) {
+    defaultPermisos[p.id] = {};
+    HABILIDADES.forEach(function(h) { defaultPermisos[p.id][h.id] = false; });
+  });
+  var r = await sb.from('grupos').insert({ nombre: nombre, permisos: defaultPermisos }).select().single();
+  return r.data;
+}
+
+async function deleteGrupo(grupoId) {
+  // First remove all user assignments
+  await sb.from('usuario_grupos').delete().eq('grupo_id', grupoId);
+  var r = await sb.from('grupos').delete().eq('id', grupoId);
+  return !r.error;
+}
+
+async function saveUserGroups(userId, grupoIds) {
+  // Delete existing
+  await sb.from('usuario_grupos').delete().eq('user_id', userId);
+  // Insert new
+  if (grupoIds.length > 0) {
+    var rows = grupoIds.map(function(gid) { return { user_id: userId, grupo_id: gid }; });
+    var r = await sb.from('usuario_grupos').insert(rows);
+    return !r.error;
+  }
+  return true;
+}
+
+// ==================== RENDER ====================
+async function renderApp() {
+  var el = document.getElementById('content');
+  if (userRole !== 'admin') {
+    el.innerHTML = '<div class="empty" style="padding:60px"><h2 style="font-size:1.1rem;color:var(--navy);margin-bottom:8px">Acceso restringido</h2><p style="color:var(--muted)">Solo administradores pueden gestionar usuarios y permisos.</p></div>';
+    return;
+  }
+
+  el.innerHTML = '<div class="empty">Cargando...</div>';
+  allGrupos = await loadGrupos();
+  allUsers = await loadUsers();
+  allAssignments = await loadAssignments();
+
+  var html = '';
+
+  // Tabs
+  html += '<div class="tabs">';
+  html += '<button class="tab' + (activeTab === 'grupos' ? ' active' : '') + '" onclick="switchTab(\'grupos\')">Grupos</button>';
+  html += '<button class="tab' + (activeTab === 'usuarios' ? ' active' : '') + '" onclick="switchTab(\'usuarios\')">Usuarios</button>';
+  html += '</div>';
+
+  if (activeTab === 'grupos') {
+    html += renderGruposTab();
+  } else {
+    html += renderUsuariosTab();
+  }
+
+  el.innerHTML = html;
+}
+
+// ─── TAB: GRUPOS ───
+function renderGruposTab() {
+  var html = '';
+
+  // Create group bar
+  html += '<div class="create-bar">';
+  html += '<input type="text" id="new-group-name" placeholder="Nombre del nuevo grupo...">';
+  html += '<button class="btn btn-green" onclick="handleCreateGrupo()">Crear grupo</button>';
+  html += '</div>';
+
+  allGrupos.forEach(function(grupo, idx) {
+    var isOpen = openCards['g_' + grupo.id] || false;
+    var color = GROUP_COLORS[idx % GROUP_COLORS.length];
+    var memberCount = allAssignments.filter(function(a) { return a.grupo_id === grupo.id; }).length;
+
+    html += '<div class="card">';
+
+    // Header
+    html += '<div class="card-header' + (isOpen ? ' expanded' : '') + '" onclick="toggleCard(\'g_' + grupo.id + '\')">';
+    html += '<div class="card-avatar" style="background:' + color + '">' + grupo.nombre.charAt(0) + '</div>';
+    html += '<div class="card-info">';
+    html += '<div class="card-info-name">' + grupo.nombre + '</div>';
+    html += '<div class="card-info-sub">' + memberCount + ' miembro' + (memberCount !== 1 ? 's' : '') + '</div>';
+    html += '</div>';
+    html += '<span class="card-arrow' + (isOpen ? ' open' : '') + '">▼</span>';
+    html += '</div>';
+
+    // Detail
+    html += '<div class="card-detail' + (isOpen ? ' open' : '') + '">';
+    if (isOpen) {
+      // Init buffer if needed
+      if (!editGrupoBuffer[grupo.id]) {
+        editGrupoBuffer[grupo.id] = JSON.parse(JSON.stringify(grupo.permisos || {}));
+      }
+      var buf = editGrupoBuffer[grupo.id];
+
+      html += '<div class="card-detail-inner">';
+
+      // Matrix table
+      html += '<table class="perm-matrix"><thead><tr>';
+      html += '<th>Pantalla</th>';
+      HABILIDADES.forEach(function(h) {
+        html += '<th>' + h.label + '</th>';
+      });
+      html += '</tr></thead><tbody>';
+
+      PANTALLAS.forEach(function(p) {
+        var perms = buf[p.id] || {};
+        html += '<tr>';
+        html += '<td>' + p.label + '<span class="screen-section">' + p.section + '</span></td>';
+        HABILIDADES.forEach(function(h) {
+          var checked = perms[h.id] === true;
+          html += '<td><label class="toggle"><input type="checkbox"' + (checked ? ' checked' : '') + ' onchange="updateGrupoPerm(' + grupo.id + ',\'' + p.id + '\',\'' + h.id + '\',this.checked)"><span class="toggle-slider"></span></label></td>';
+        });
+        html += '</tr>';
+      });
+
+      html += '</tbody></table>';
+
+      // Save bar
+      html += '<div class="save-bar">';
+      html += '<button class="btn btn-primary" onclick="handleSaveGrupo(' + grupo.id + ')">Guardar cambios</button>';
+      html += '<button class="btn btn-ghost" onclick="handleResetGrupo(' + grupo.id + ')">Descartar</button>';
+      if (grupo.nombre !== 'Admin') {
+        html += '<button class="btn btn-red" onclick="handleDeleteGrupo(' + grupo.id + ',\'' + grupo.nombre + '\')">Eliminar grupo</button>';
+      }
+      html += '<span class="save-msg" id="save-g-' + grupo.id + '"></span>';
+      html += '</div>';
+
+      html += '</div>';
+    }
+    html += '</div></div>';
+  });
+
+  if (allGrupos.length === 0) {
+    html += '<div class="empty">No hay grupos creados.</div>';
+  }
+
+  return html;
+}
+
+// ─── TAB: USUARIOS ───
+function usrShowToast(msg, type) {
+  var t = document.getElementById('usrToast');
+  t.textContent = msg;
+  t.className = 'toast ' + (type || 'success') + ' show';
+  setTimeout(function() { t.classList.remove('show'); }, 3000);
+}
+
+function renderUsuariosTab() {
+  var html = '';
+
+  // Invite form (only admin)
+  if (userRole === 'admin') {
+    html += '<div class="invite-card">';
+    html += '<h4>Invitar nuevo usuario</h4>';
+    html += '<div class="invite-row">';
+    html += '<div class="invite-field"><label>Correo *</label><input type="email" id="invite-email" placeholder="correo@accountone.do"></div>';
+    html += '<div class="invite-field"><label>Nombre</label><input type="text" id="invite-nombre" placeholder="Nombre completo"></div>';
+    html += '<div class="invite-field"><label>Rol</label><select id="invite-role"><option value="contadora">Contadora</option><option value="admin">Admin</option></select></div>';
+    html += '<button class="invite-btn" id="invite-btn" onclick="handleInviteUser()">Enviar invitación</button>';
+    html += '</div>';
+    html += '<div class="invite-msg" id="invite-msg"></div>';
+    html += '</div>';
+  }
+
+  allUsers.forEach(function(user, idx) {
+    var isOpen = openCards['u_' + user.id] || false;
+    var color = AVATAR_COLORS[idx % AVATAR_COLORS.length];
+    var initial = (user.nombre || '?').charAt(0).toUpperCase();
+
+    // Current groups
+    var userGroupIds = allAssignments.filter(function(a) { return a.user_id === user.id; }).map(function(a) { return a.grupo_id; });
+    var userGroupNames = userGroupIds.map(function(gid) {
+      var g = allGrupos.find(function(gr) { return gr.id === gid; });
+      return g ? g.nombre : '';
+    }).filter(function(n) { return n; });
+
+    var groupsLabel = userGroupNames.length > 0 ? userGroupNames.join(', ') : 'Sin grupo';
+
+    html += '<div class="card">';
+
+    // Header
+    html += '<div class="card-header' + (isOpen ? ' expanded' : '') + '" onclick="toggleCard(\'u_' + user.id + '\')">';
+    html += '<div class="card-avatar" style="background:' + color + '">' + initial + '</div>';
+    html += '<div class="card-info">';
+    html += '<div class="card-info-name">' + (user.nombre || 'Sin nombre') + '</div>';
+    html += '<div class="card-info-sub">' + (user.email || '') + '</div>';
+    html += '</div>';
+    html += '<span class="card-badge" style="background:#eef2ff;color:#4361ee;font-size:0.65rem;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + groupsLabel + '</span>';
+    html += '<span class="card-arrow' + (isOpen ? ' open' : '') + '">▼</span>';
+    html += '</div>';
+
+    // Detail
+    html += '<div class="card-detail' + (isOpen ? ' open' : '') + '">';
+    if (isOpen) {
+      if (!editUserBuffer[user.id]) {
+        editUserBuffer[user.id] = userGroupIds.slice();
+      }
+      var buf = editUserBuffer[user.id];
+
+      html += '<div class="card-detail-inner">';
+      html += '<div class="section-label">Grupos asignados</div>';
+
+      allGrupos.forEach(function(grupo, gi) {
+        var isIn = buf.indexOf(grupo.id) >= 0;
+        var gColor = GROUP_COLORS[gi % GROUP_COLORS.length];
+        var memberCount = allAssignments.filter(function(a) { return a.grupo_id === grupo.id; }).length;
+
+        html += '<label class="group-check">';
+        html += '<input type="checkbox"' + (isIn ? ' checked' : '') + ' onchange="updateUserGroup(\'' + user.id + '\',' + grupo.id + ',this.checked)">';
+        html += '<span class="group-check-label" style="color:' + gColor + '">' + grupo.nombre + '</span>';
+        html += '<span class="group-check-count">' + memberCount + ' miembros</span>';
+        html += '</label>';
+      });
+
+      // Show effective permissions summary
+      var effective = computeEffectivePerms(buf);
+      var accessCount = 0;
+      PANTALLAS.forEach(function(p) {
+        if (effective[p.id] && effective[p.id].consulta) accessCount++;
+      });
+
+      html += '<div style="margin-top:16px;padding:14px;background:#f0fdf4;border-radius:10px;font-size:0.8rem;color:#059669;">';
+      html += 'Acceso efectivo: <strong>' + accessCount + ' de ' + PANTALLAS.length + '</strong> pantallas con consulta';
+      html += '</div>';
+
+      // Save bar
+      html += '<div class="save-bar">';
+      html += '<button class="btn btn-primary" onclick="handleSaveUser(\'' + user.id + '\')">Guardar</button>';
+      html += '<button class="btn btn-ghost" onclick="handleResetUser(\'' + user.id + '\')">Descartar</button>';
+      html += '<span class="save-msg" id="save-u-' + user.id + '"></span>';
+      html += '</div>';
+
+      html += '</div>';
+    }
+    html += '</div></div>';
+  });
+
+  if (allUsers.length === 0) {
+    html += '<div class="empty">No se encontraron usuarios.</div>';
+  }
+
+  return html;
+}
+
+// Compute effective permissions (union of all assigned groups)
+function computeEffectivePerms(grupoIds) {
+  var result = {};
+  PANTALLAS.forEach(function(p) {
+    result[p.id] = {};
+    HABILIDADES.forEach(function(h) { result[p.id][h.id] = false; });
+  });
+
+  grupoIds.forEach(function(gid) {
+    var grupo = allGrupos.find(function(g) { return g.id === gid; });
+    if (!grupo || !grupo.permisos) return;
+    PANTALLAS.forEach(function(p) {
+      var gp = grupo.permisos[p.id];
+      if (!gp) return;
+      HABILIDADES.forEach(function(h) {
+        if (gp[h.id] === true) result[p.id][h.id] = true;
+      });
+    });
+  });
+
+  return result;
+}
+
+// ==================== ACTIONS ====================
+function switchTab(tab) {
+  activeTab = tab;
+  openCards = {};
+  editGrupoBuffer = {};
+  editUserBuffer = {};
+  renderApp();
+}
+
+function toggleCard(key) {
+  openCards[key] = !openCards[key];
+  if (!openCards[key]) {
+    // Clear buffer
+    if (key.indexOf('g_') === 0) delete editGrupoBuffer[parseInt(key.slice(2))];
+    if (key.indexOf('u_') === 0) delete editUserBuffer[key.slice(2)];
+  }
+  renderApp();
+}
+
+function updateGrupoPerm(grupoId, pantallaId, habId, value) {
+  if (!editGrupoBuffer[grupoId]) return;
+  if (!editGrupoBuffer[grupoId][pantallaId]) {
+    editGrupoBuffer[grupoId][pantallaId] = {};
+    HABILIDADES.forEach(function(h) { editGrupoBuffer[grupoId][pantallaId][h.id] = false; });
+  }
+  editGrupoBuffer[grupoId][pantallaId][habId] = value;
+}
+
+function updateUserGroup(userId, grupoId, checked) {
+  if (!editUserBuffer[userId]) return;
+  var idx = editUserBuffer[userId].indexOf(grupoId);
+  if (checked && idx < 0) editUserBuffer[userId].push(grupoId);
+  if (!checked && idx >= 0) editUserBuffer[userId].splice(idx, 1);
+}
+
+async function handleSaveGrupo(grupoId) {
+  var buf = editGrupoBuffer[grupoId];
+  if (!buf) return;
+  var msg = document.getElementById('save-g-' + grupoId);
+  if (msg) { msg.textContent = 'Guardando...'; msg.style.color = 'var(--muted)'; }
+
+  var ok = await saveGrupoPermisos(grupoId, buf);
+  if (ok) {
+    if (msg) { msg.textContent = 'Guardado'; msg.style.color = 'var(--green)'; }
+    allGrupos = await loadGrupos();
+    delete editGrupoBuffer[grupoId];
+    setTimeout(function() { renderApp(); }, 600);
+  } else {
+    if (msg) { msg.textContent = 'Error'; msg.style.color = 'var(--red)'; }
+  }
+}
+
+function handleResetGrupo(grupoId) {
+  delete editGrupoBuffer[grupoId];
+  renderApp();
+}
+
+async function handleDeleteGrupo(grupoId, nombre) {
+  if (!confirm('Eliminar el grupo "' + nombre + '"? Los usuarios asignados perderan estos permisos.')) return;
+  var ok = await deleteGrupo(grupoId);
+  if (ok) {
+    delete openCards['g_' + grupoId];
+    delete editGrupoBuffer[grupoId];
+    allGrupos = await loadGrupos();
+    allAssignments = await loadAssignments();
+    renderApp();
+  } else {
+    alert('Error eliminando grupo.');
+  }
+}
+
+async function handleCreateGrupo() {
+  var input = document.getElementById('new-group-name');
+  var nombre = input.value.trim();
+  if (!nombre) { input.focus(); return; }
+
+  var exists = allGrupos.find(function(g) { return g.nombre.toLowerCase() === nombre.toLowerCase(); });
+  if (exists) { alert('Ya existe un grupo con ese nombre.'); return; }
+
+  var created = await createGrupo(nombre);
+  if (created) {
+    input.value = '';
+    allGrupos = await loadGrupos();
+    renderApp();
+  } else {
+    alert('Error creando grupo.');
+  }
+}
+
+async function handleSaveUser(userId) {
+  var buf = editUserBuffer[userId];
+  if (!buf) return;
+  var msg = document.getElementById('save-u-' + userId);
+  if (msg) { msg.textContent = 'Guardando...'; msg.style.color = 'var(--muted)'; }
+
+  var ok = await saveUserGroups(userId, buf);
+  if (ok) {
+    if (msg) { msg.textContent = 'Guardado'; msg.style.color = 'var(--green)'; }
+    allAssignments = await loadAssignments();
+    delete editUserBuffer[userId];
+    setTimeout(function() { renderApp(); }, 600);
+  } else {
+    if (msg) { msg.textContent = 'Error'; msg.style.color = 'var(--red)'; }
+  }
+}
+
+function handleResetUser(userId) {
+  delete editUserBuffer[userId];
+  renderApp();
+}
+
+// ==================== INVITE USER ====================
+async function handleInviteUser() {
+  var email = document.getElementById('invite-email').value.trim();
+  var nombre = document.getElementById('invite-nombre').value.trim();
+  var role = document.getElementById('invite-role').value;
+  var msgEl = document.getElementById('invite-msg');
+  var btn = document.getElementById('invite-btn');
+
+  if (!email) {
+    msgEl.textContent = 'El correo es obligatorio.';
+    msgEl.style.color = 'var(--red)';
+    return;
+  }
+
+  btn.disabled = true; btn.textContent = 'Enviando...';
+  msgEl.textContent = '';
+
+  // Llamar a la función de base de datos
+  var { data, error } = await sb.rpc('invite_user', {
+    p_email: email,
+    p_nombre: nombre || email.split('@')[0],
+    p_role: role
+  });
+
+  btn.disabled = false; btn.textContent = 'Enviar invitación';
+
+  if (error) {
+    msgEl.textContent = 'Error: ' + error.message;
+    msgEl.style.color = 'var(--red)';
+    console.error('Error invitando usuario:', error);
+    return;
+  }
+
+  if (data && data.error) {
+    msgEl.textContent = data.error;
+    msgEl.style.color = 'var(--red)';
+    return;
+  }
+
+  // Success
+  document.getElementById('invite-email').value = '';
+  document.getElementById('invite-nombre').value = '';
+  usrShowToast('Invitación enviada a ' + email);
+  msgEl.textContent = '';
+
+  // Reload users
+  allUsers = await loadUsers();
+  allAssignments = await loadAssignments();
+  renderApp();
+}
+
+// ==================== AUTH ====================
+async function handleLogin() {
+  var email = document.getElementById('login-email').value.trim();
+  var password = document.getElementById('login-password').value;
+  var errorEl = document.getElementById('login-error');
+  var btn = document.getElementById('btn-login');
+
+  if (!email || !password) { errorEl.textContent = 'Ingresa email y contrasena.'; errorEl.style.display = 'block'; return; }
+
+  btn.disabled = true; btn.textContent = 'Entrando...'; errorEl.style.display = 'none';
+  var result = await sb.auth.signInWithPassword({ email: email, password: password });
+
+  if (result.error) {
+    errorEl.textContent = 'Email o contrasena incorrectos.'; errorEl.style.display = 'block';
+    btn.disabled = false; btn.textContent = 'Entrar'; return;
+  }
+  await loadUserProfile();
+  await showApp();
+}
+
+async function handleLogout() {
+  await sb.auth.signOut();
+  userRole = null; userName = '';
+  document.getElementById('app-wrapper').classList.add('hidden');
+  document.getElementById('login-screen').style.display = 'flex';
+  document.getElementById('login-password').value = '';
+}
+
+async function loadUserProfile() {
+  var result = await sb.auth.getUser();
+  var user = result.data ? result.data.user : null;
+  if (!user) return;
+  var pr = await sb.from('profiles').select('nombre, rol').eq('id', user.id).single();
+  if (pr.data) { userRole = pr.data.rol; userName = pr.data.nombre || user.email; }
+  else { userRole = 'contadora'; userName = user.email; }
+}
+
+async function showApp() {
+  document.getElementById('login-screen').style.display = 'none';
+  document.getElementById('app-wrapper').classList.remove('hidden');
+  document.getElementById('user-display-name').textContent = userName;
+  await renderApp();
+}
+
+// ==================== INIT ====================
+var loginPwdEl = document.getElementById('login-password');
+var loginEmailEl = document.getElementById('login-email');
+if (loginPwdEl) loginPwdEl.addEventListener('keydown', function(e) { if (e.key === 'Enter') handleLogin(); });
+if (loginEmailEl) loginEmailEl.addEventListener('keydown', function(e) { if (e.key === 'Enter') document.getElementById('login-password').focus(); });
+
+var isEmbed = new URLSearchParams(window.location.search).get('embed') === '1';
+if (isEmbed) document.body.classList.add('embed');
+
+async function init() {
+  var result = await sb.auth.getSession();
+  var session = result.data ? result.data.session : null;
+  if (session) { await loadUserProfile(); await showApp(); }
+  else if (isEmbed) { document.body.innerHTML = '<div style="text-align:center;padding:60px;color:#7c8495;">Sesion no encontrada. Recarga la pagina principal.</div>'; }
+}
+init();
+</script>
+</body>
+</html>

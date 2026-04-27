@@ -1,0 +1,1445 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pipeline de Ventas - Account One</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+/* ==================== DESIGN SYSTEM ==================== */
+:root {
+  --navy: #1e3a5f;
+  --blue: #3b82f6;
+  --green: #10b981;
+  --red: #ef4444;
+  --amber: #f59e0b;
+  --bg: #f8fafc;
+  --card: #ffffff;
+  --border: #e5e7eb;
+  --text: #1f2937;
+  --muted: #6b7280;
+  --light: #9ca3af;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.5;
+}
+
+/* ==================== LAYOUT ==================== */
+.header {
+  background: linear-gradient(135deg, #1e3a5f, #2d4a7a);
+  color: white;
+  padding: 24px;
+}
+.header h1 { font-size: 1.5rem; font-weight: 700; }
+.header p { opacity: 0.8; font-size: 0.9rem; margin-top: 4px; }
+
+.breadcrumb-bar { display:flex; align-items:center; gap:6px; padding:10px 24px; background:white; border-bottom:1px solid var(--border); font-size:13px; }
+.breadcrumb-bar a { color:var(--muted); text-decoration:none; font-weight:500; }
+.breadcrumb-bar a:hover { color:var(--navy); text-decoration:underline; }
+.breadcrumb-bar .sep { color:var(--light); font-size:11px; }
+.breadcrumb-bar .current { color:var(--text); font-weight:600; }
+
+.main-tabs {
+  display: flex;
+  background: var(--card);
+  border-bottom: 2px solid var(--border);
+}
+.main-tab {
+  padding: 12px 24px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 0.95rem;
+  color: var(--muted);
+  border-bottom: 3px solid transparent;
+  transition: all 0.2s;
+  background: none;
+  border-top: none; border-left: none; border-right: none;
+}
+.main-tab:hover { color: var(--text); }
+.main-tab.active { color: var(--navy); border-bottom-color: var(--navy); }
+
+.container { max-width: 1200px; margin: 0 auto; padding: 20px; }
+
+.card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 16px;
+}
+
+/* ==================== MONTH TABS ==================== */
+.month-tabs {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+.month-tab {
+  padding: 6px 14px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 0.85rem;
+  font-weight: 500;
+  background: var(--card);
+  border: 1px solid var(--border);
+  color: var(--muted);
+  transition: all 0.2s;
+}
+.month-tab:hover { border-color: var(--blue); color: var(--blue); }
+.month-tab.active { background: var(--navy); color: white; border-color: var(--navy); }
+
+/* ==================== SUMMARY STATS ==================== */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+  gap: 8px;
+  margin-bottom: 16px;
+}
+.stats-grid-pipeline {
+  grid-template-columns: repeat(5, 1fr);
+}
+.stat-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 6px;
+  text-align: center;
+}
+.stat-card .label { font-size: 0.65rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.3px; }
+.stat-card .value { font-size: 1.1rem; font-weight: 700; margin-top: 2px; }
+.stat-card .value.green { color: var(--green); }
+.stat-card .value.amber { color: var(--amber); }
+.stat-card .value.red { color: var(--red); }
+.stat-card .value.blue { color: var(--blue); }
+.stat-card .value.navy { color: var(--navy); }
+
+/* ==================== FUNNEL ==================== */
+.funnel-bar {
+  display: flex;
+  align-items: center;
+  margin-bottom: 8px;
+  gap: 10px;
+}
+.funnel-label {
+  width: 160px;
+  text-align: right;
+  font-size: 0.8rem;
+  color: var(--muted);
+  flex-shrink: 0;
+}
+.funnel-track { flex: 1; background: #f1f5f9; border-radius: 6px; height: 28px; position: relative; }
+.funnel-fill {
+  height: 100%;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  padding-left: 10px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: white;
+  min-width: 30px;
+  transition: width 0.4s ease;
+}
+.funnel-count { margin-left: 8px; font-size: 0.8rem; font-weight: 600; color: var(--text); }
+
+/* ==================== FILTER BAR ==================== */
+.filter-bar {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.filter-bar label { font-size: 0.8rem; color: var(--muted); font-weight: 500; }
+.filter-bar select {
+  padding: 6px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 0.85rem;
+  background: var(--card);
+  color: var(--text);
+  cursor: pointer;
+}
+
+/* ==================== BADGES ==================== */
+.badge {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.badge-caliente { background: #fee2e2; color: #991b1b; }
+.badge-tibio { background: #fef3c7; color: #92400e; }
+.badge-frio { background: #dbeafe; color: #1e40af; }
+.badge-esperando-demo { background: #e0e7ff; color: #3730a3; }
+.badge-esperando-cotizacion { background: #fef3c7; color: #92400e; }
+.badge-cotizacion-enviada { background: #dbeafe; color: #1e40af; }
+.badge-seguimiento { background: #ede9fe; color: #5b21b6; }
+.badge-cerrado-ganado { background: #d1fae5; color: #065f46; }
+.badge-cerrado-perdido { background: #fee2e2; color: #991b1b; }
+.badge-no-show { background: #f3f4f6; color: #6b7280; }
+.badge-no-aplica { background: #f3f4f6; color: #6b7280; }
+
+/* ==================== TABLE ==================== */
+.table-wrapper { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+th {
+  text-align: left;
+  padding: 10px 8px;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--muted);
+  border-bottom: 2px solid var(--border);
+  white-space: nowrap;
+}
+td {
+  padding: 10px 8px;
+  border-bottom: 1px solid var(--border);
+  vertical-align: middle;
+}
+tr:hover { background: #f8fafc; }
+tr.expanded { background: #f0f9ff; }
+
+/* ==================== EDIT FORM ==================== */
+.edit-row td { padding: 16px 8px; background: #f0f9ff; }
+.edit-form {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 12px;
+}
+.edit-form .field label {
+  display: block;
+  font-size: 0.75rem;
+  color: var(--muted);
+  margin-bottom: 4px;
+  font-weight: 500;
+}
+.edit-form .field input,
+.edit-form .field select,
+.edit-form .field textarea {
+  width: 100%;
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 0.85rem;
+  font-family: inherit;
+}
+.edit-form .field textarea { resize: vertical; min-height: 60px; }
+.edit-actions { display: flex; gap: 8px; margin-top: 12px; }
+
+/* ==================== BUTTONS ==================== */
+.btn {
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  transition: all 0.2s;
+}
+.btn-primary { background: var(--navy); color: white; }
+.btn-primary:hover { background: #2d4a7a; }
+.btn-danger { background: var(--red); color: white; }
+.btn-danger:hover { background: #dc2626; }
+.btn-ghost { background: transparent; color: var(--muted); border: 1px solid var(--border); }
+.btn-ghost:hover { background: #f1f5f9; }
+.btn-add {
+  display: block;
+  width: 100%;
+  padding: 12px;
+  background: var(--card);
+  border: 2px dashed var(--border);
+  border-radius: 10px;
+  color: var(--muted);
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.btn-add:hover { border-color: var(--blue); color: var(--blue); }
+
+/* ==================== ROAS ==================== */
+.roas-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 12px;
+  margin-bottom: 20px;
+}
+.chart-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+  gap: 16px;
+  margin-bottom: 20px;
+}
+.chart-card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 16px; }
+.chart-card h3 { font-size: 0.9rem; color: var(--text); margin-bottom: 12px; }
+
+.roas-table-wrapper { overflow-x: auto; }
+.roas-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+.roas-table th { text-align: right; padding: 8px; font-size: 0.75rem; text-transform: uppercase; color: var(--muted); border-bottom: 2px solid var(--border); }
+.roas-table th:first-child { text-align: left; }
+.roas-table td { text-align: right; padding: 8px; border-bottom: 1px solid var(--border); }
+.roas-table td:first-child { text-align: left; font-weight: 600; }
+.roas-table tr:hover { background: #f8fafc; }
+.roas-table .editable { cursor: pointer; }
+.roas-table .editable:hover { background: #eff6ff; border-radius: 4px; }
+.roas-table input.inline-edit {
+  width: 80px;
+  padding: 2px 6px;
+  border: 1px solid var(--blue);
+  border-radius: 4px;
+  font-size: 0.85rem;
+  text-align: right;
+  font-family: inherit;
+}
+
+/* ==================== MISC ==================== */
+.empty-state {
+  text-align: center;
+  padding: 40px 20px;
+  color: var(--muted);
+}
+.footer {
+  text-align: center;
+  padding: 20px;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+.hidden { display: none; }
+.currency { font-variant-numeric: tabular-nums; }
+
+/* Embed mode: hide login, header, breadcrumb */
+body.embed .login-overlay { display: none !important; }
+body.embed .header { display: none !important; }
+body.embed .breadcrumb-bar { display: none !important; }
+body.embed #app-wrapper { display: block !important; }
+body.embed .footer { display: none !important; }
+
+/* ==================== LOGIN SCREEN ==================== */
+.login-overlay {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: linear-gradient(135deg, #1e3a5f 0%, #2d4a7a 50%, #1e3a5f 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+.login-box {
+  background: white;
+  border-radius: 16px;
+  padding: 40px;
+  width: 100%;
+  max-width: 400px;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+}
+.login-box h2 {
+  font-size: 1.4rem;
+  color: var(--navy);
+  margin-bottom: 4px;
+}
+.login-box .subtitle {
+  font-size: 0.85rem;
+  color: var(--muted);
+  margin-bottom: 24px;
+}
+.login-box .field {
+  margin-bottom: 16px;
+}
+.login-box .field label {
+  display: block;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 6px;
+}
+.login-box .field input {
+  width: 100%;
+  padding: 10px 14px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 0.95rem;
+  font-family: inherit;
+  transition: border-color 0.2s;
+}
+.login-box .field input:focus {
+  outline: none;
+  border-color: var(--blue);
+  box-shadow: 0 0 0 3px rgba(59,130,246,0.1);
+}
+.login-btn {
+  width: 100%;
+  padding: 12px;
+  background: var(--navy);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+  margin-top: 8px;
+}
+.login-btn:hover { background: #2d4a7a; }
+.login-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+.login-error {
+  color: var(--red);
+  font-size: 0.8rem;
+  margin-top: 12px;
+  display: none;
+}
+
+/* ==================== USER BAR ==================== */
+.user-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 8px;
+}
+.user-bar .user-name {
+  font-size: 0.8rem;
+  opacity: 0.9;
+  background: rgba(255,255,255,0.15);
+  padding: 4px 12px;
+  border-radius: 20px;
+}
+.user-bar .user-role {
+  font-size: 0.7rem;
+  opacity: 0.7;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.btn-logout {
+  font-size: 0.75rem;
+  padding: 4px 12px;
+  background: rgba(255,255,255,0.15);
+  color: white;
+  border: 1px solid rgba(255,255,255,0.3);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.btn-logout:hover { background: rgba(255,255,255,0.25); }
+</style>
+</head>
+<body>
+
+<!-- LOGIN SCREEN -->
+<div class="login-overlay" id="login-screen">
+  <div class="login-box">
+    <h2>Account One</h2>
+    <p class="subtitle">Inicia sesión para continuar</p>
+    <div class="field">
+      <label>Email</label>
+      <input type="email" id="login-email" placeholder="tu@accountone.do">
+    </div>
+    <div class="field">
+      <label>Contraseña</label>
+      <input type="password" id="login-password" placeholder="••••••••">
+    </div>
+    <button class="login-btn" id="btn-login" onclick="handleLogin()">Entrar</button>
+    <div class="login-error" id="login-error"></div>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app-wrapper" class="hidden">
+
+<div class="header">
+  <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+    <div>
+      <h1>Pipeline de Ventas - Account One</h1>
+      <p>2026</p>
+    </div>
+    <div class="user-bar">
+      <span class="user-name" id="user-display-name"></span>
+      <button class="btn-logout" onclick="handleLogout()">Salir</button>
+    </div>
+  </div>
+</div>
+
+<div class="breadcrumb-bar">
+  <a href="index.html">Account One</a>
+  <span class="sep">›</span>
+  <span class="current">Pipeline de Ventas</span>
+</div>
+
+<div class="main-tabs">
+  <button class="main-tab active" data-tab="roas">ROAS</button>
+  <button class="main-tab" data-tab="pipeline">Pipeline</button>
+</div>
+
+<div id="tab-roas" class="container"></div>
+<div id="tab-pipeline" class="container hidden"></div>
+
+<div class="footer">Conectado a Supabase — los datos se guardan en la nube.</div>
+
+</div><!-- /app-wrapper -->
+
+<script>
+// ==================== TYPES ====================
+const MONTHS = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+const MONTH_LABELS = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+const FUNNEL_STEPS = ['Esperando Demo','Esperando Cotizaci\u00f3n','Cotizaci\u00f3n Enviada','Seguimiento','Cerrado Ganado','Cerrado Perdido','No Show','No Aplica'];
+const TEMPS = ['Caliente','Tibio','Frio'];
+
+const FUNNEL_COLORS = {
+  'Esperando Demo': '#6366f1',
+  'Esperando Cotizaci\u00f3n': '#f59e0b',
+  'Cotizaci\u00f3n Enviada': '#3b82f6',
+  'Seguimiento': '#8b5cf6',
+  'Cerrado Ganado': '#10b981',
+  'Cerrado Perdido': '#ef4444',
+  'No Show': '#9ca3af',
+  'No Aplica': '#9ca3af'
+};
+
+const TEMP_DISPLAY = { 'Caliente': 'Caliente', 'Tibio': 'Tibio', 'Frio': 'Fr\u00edo' };
+
+// ==================== UTILS ====================
+function fmt(n) { return n != null ? n.toLocaleString('es-DO') : '0'; }
+function fmtCurrency(n) { return 'US$ ' + fmt(n); }
+function fmtPct(n) { return (n || 0).toFixed(1) + '%'; }
+
+function badgeClass(step) {
+  return 'badge-' + step.toLowerCase()
+    .replace(/\u00f3/g,'o').replace(/\u00ed/g,'i')
+    .replace(/ /g,'-');
+}
+
+function tempBadgeClass(temp) {
+  return 'badge-' + temp.toLowerCase().replace(/\u00ed/g,'i');
+}
+
+function leadTotal(lead) {
+  return (lead.impl || 0) + (lead.fe || 0) + (lead.serv || 0) + (lead.soft || 0);
+}
+
+function leadVendido(lead, includeSoft) {
+  // Vendido = Impl + FE con descuento. Servicio no entra. Software suma a partir de marzo.
+  const desc = (lead.desc != null ? lead.desc : 25) / 100;
+  let total = (lead.impl || 0) * (1 - desc) + (lead.fe || 0) * (1 - desc);
+  if (includeSoft) total += (lead.soft || 0);
+  return total;
+}
+
+// ==================== SUPABASE ====================
+const SUPABASE_URL = 'https://ouetusstqvpyjeycfdio.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im91ZXR1c3N0cXZweWpleWNmZGlvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY2NDcwNzksImV4cCI6MjA5MjIyMzA3OX0.Bsys947JLGEuf3zdBF2GPFdbJVJtaZdC4YEmyBU5Bow';
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+// ==================== SERVICES ====================
+
+async function loadData() {
+  const data = { pipeline: {}, roas: {} };
+  MONTHS.forEach(m => {
+    data.pipeline[m] = [];
+    data.roas[m] = { leads:0, presupuesto:0, ejecutado:0, cierres:0, vendido:0, cotizado:0, cpa:0, retorno:0, roas:0 };
+  });
+
+  // Cargar leads desde Supabase
+  const { data: leads, error: leadsErr } = await sb
+    .from('leads').select('*').eq('anio', 2026);
+  if (leadsErr) console.error('Error cargando leads:', leadsErr);
+  if (leads) {
+    leads.forEach(row => {
+      if (!data.pipeline[row.mes]) return;
+      data.pipeline[row.mes].push({
+        _id: row.id,
+        n: row.nombre, t: row.tipo || '', e: row.empresa || '',
+        temp: row.temperatura || 'Tibio',
+        demo: row.demo || '',
+        f: row.funnel,
+        impl: parseFloat(row.impl) || 0,
+        fe: parseFloat(row.fe) || 0,
+        serv: parseFloat(row.serv) || 0,
+        soft: parseFloat(row.soft) || 0,
+        desc: parseFloat(row.descuento),
+        notas: row.notas || '',
+        categoria: row.categoria || ''
+      });
+    });
+  }
+
+  // Cargar ROAS desde Supabase
+  const { data: roasRows, error: roasErr } = await sb
+    .from('roas_mensual').select('*').eq('anio', 2026);
+  if (roasErr) console.error('Error cargando ROAS:', roasErr);
+  if (roasRows) {
+    roasRows.forEach(row => {
+      if (!data.roas[row.mes]) return;
+      data.roas[row.mes] = {
+        _id: row.id,
+        leads: row.leads,
+        presupuesto: parseFloat(row.presupuesto) || 0,
+        ejecutado: parseFloat(row.ejecutado) || 0,
+        cierres: row.cierres,
+        vendido: parseFloat(row.vendido) || 0,
+        cotizado: parseFloat(row.cotizado) || 0,
+        cpa: parseFloat(row.cpa) || 0,
+        retorno: parseFloat(row.retorno) || 0,
+        roas: parseFloat(row.roas) || 0
+      };
+    });
+  }
+  return data;
+}
+
+// Guardar un lead nuevo en Supabase y devolver el ID
+async function dbInsertLead(mes, lead) {
+  const { data, error } = await sb.from('leads').insert({
+    mes, anio: 2026,
+    nombre: lead.n, tipo: lead.t || '', empresa: lead.e || '',
+    temperatura: lead.temp || 'Tibio', demo: lead.demo || null,
+    funnel: lead.f, impl: lead.impl || 0, fe: lead.fe || 0,
+    serv: lead.serv || 0, soft: lead.soft || 0,
+    descuento: lead.desc != null ? lead.desc : 25,
+    notas: lead.notas || '',
+    categoria: lead.categoria || ''
+  }).select();
+  if (error) { console.error('Error insertando lead:', error); return null; }
+  return data && data[0] ? data[0].id : null;
+}
+
+// Actualizar un lead existente
+async function dbUpdateLead(lead) {
+  if (!lead._id) return;
+  await sb.from('leads').update({
+    nombre: lead.n, tipo: lead.t || '', empresa: lead.e || '',
+    temperatura: lead.temp || 'Tibio', demo: lead.demo || null,
+    funnel: lead.f, impl: lead.impl || 0, fe: lead.fe || 0,
+    serv: lead.serv || 0, soft: lead.soft || 0,
+    descuento: lead.desc != null ? lead.desc : 25,
+    notas: lead.notas || '',
+    categoria: lead.categoria || ''
+  }).eq('id', lead._id);
+}
+
+// Eliminar un lead
+async function dbDeleteLead(lead) {
+  if (!lead._id) return;
+  await sb.from('leads').delete().eq('id', lead._id);
+}
+
+// Actualizar ROAS de un mes
+async function dbUpdateRoas(mes, r) {
+  if (!r._id) return;
+  await sb.from('roas_mensual').update({
+    leads: r.leads, presupuesto: r.presupuesto,
+    ejecutado: r.ejecutado, cierres: r.cierres,
+    vendido: r.vendido, cotizado: r.cotizado,
+    cpa: r.cpa, retorno: r.retorno, roas: r.roas
+  }).eq('id', r._id);
+}
+
+function syncRoasFromPipeline() {
+  MONTHS.forEach((m, idx) => {
+    const leads = APP.data.pipeline[m] || [];
+    if (!APP.data.roas[m]) return;
+    const ganados = leads.filter(l => l.f === 'Cerrado Ganado');
+    const includeSoft = idx >= 2; // marzo en adelante
+    const totalVendido = ganados.reduce((s, l) => s + leadVendido(l, includeSoft), 0);
+    const totalCotizado = leads.reduce((s, l) => s + leadTotal(l), 0);
+    APP.data.roas[m].leads = leads.length;
+    APP.data.roas[m].cierres = ganados.length;
+    APP.data.roas[m].vendido = Math.round(totalVendido * 100) / 100;
+    APP.data.roas[m].cotizado = Math.round(totalCotizado * 100) / 100;
+    // Recalcular derivados
+    const ejec = APP.data.roas[m].ejecutado || 0;
+    APP.data.roas[m].cpa = ganados.length > 0 ? Math.round(ejec / ganados.length * 100) / 100 : 0;
+    APP.data.roas[m].retorno = Math.round((totalVendido - ejec) * 100) / 100;
+    APP.data.roas[m].roas = ejec > 0 ? Math.round(totalVendido / ejec * 100) / 100 : 0;
+  });
+  // Guardar ROAS actualizados en Supabase (en background)
+  MONTHS.forEach(m => {
+    const r = APP.data.roas[m];
+    if (r && r._id) dbUpdateRoas(m, r);
+  });
+}
+
+// ==================== HOOKS (state) ====================
+let APP = {
+  data: null,
+  activeTab: 'roas',
+  currentMonth: 'abril',
+  filterTemp: 'Todos',
+  filterStep: 'Todos',
+  searchText: '',
+  expandedRow: -1,
+  addingLead: false,
+  editingRoas: null, // {month, field}
+  charts: {},
+  userRole: null,  // 'admin', 'ventas', 'contadora', etc.
+  userName: ''
+};
+
+// ==================== COMPONENTS ====================
+
+function renderMainTabs() {
+  document.querySelectorAll('.main-tab').forEach(tab => {
+    tab.classList.toggle('active', tab.dataset.tab === APP.activeTab);
+    tab.onclick = () => {
+      APP.activeTab = tab.dataset.tab;
+      renderMainTabs();
+      renderApp();
+    };
+  });
+  document.getElementById('tab-pipeline').classList.toggle('hidden', APP.activeTab !== 'pipeline');
+  document.getElementById('tab-roas').classList.toggle('hidden', APP.activeTab !== 'roas');
+}
+
+function renderPipeline() {
+  const container = document.getElementById('tab-pipeline');
+  const leads = APP.data.pipeline[APP.currentMonth] || [];
+
+  // Apply filters
+  let filtered = leads.slice();
+  if (APP.searchText) {
+    const q = APP.searchText.toLowerCase();
+    filtered = filtered.filter(l => (l.n||'').toLowerCase().includes(q) || (l.e||'').toLowerCase().includes(q) || (l.t||'').toLowerCase().includes(q));
+  }
+  if (APP.filterTemp !== 'Todos') {
+    filtered = filtered.filter(l => l.temp === APP.filterTemp);
+  }
+  if (APP.filterStep !== 'Todos') {
+    filtered = filtered.filter(l => l.f === APP.filterStep);
+  }
+
+  // Sort: Ganado primero, luego por temperatura (Caliente > Tibio > Frio)
+  const SORT_ORDER = { 'Cerrado Ganado': 0 };
+  const TEMP_ORDER = { 'Caliente': 1, 'Tibio': 2, 'Frio': 3 };
+  filtered.sort((a, b) => {
+    const aGroup = SORT_ORDER[a.f] != null ? 0 : 1;
+    const bGroup = SORT_ORDER[b.f] != null ? 0 : 1;
+    if (aGroup !== bGroup) return aGroup - bGroup;
+    return (TEMP_ORDER[a.temp] || 4) - (TEMP_ORDER[b.temp] || 4);
+  });
+
+  // Stats
+  const totalLeads = leads.length;
+  const totalCotizado = leads.reduce((s, l) => s + leadTotal(l), 0);
+  const ganados = leads.filter(l => l.f === 'Cerrado Ganado');
+  const cierres = ganados.length;
+  const pctCierre = totalLeads > 0 ? (cierres / totalLeads * 100) : 0;
+  const includeSoft = MONTHS.indexOf(APP.currentMonth) >= 2; // marzo en adelante suma software
+  const totalVendido = ganados.reduce((s, l) => s + leadVendido(l, includeSoft), 0);
+  const roasMonth = APP.data.roas[APP.currentMonth] || {};
+  const invertido = roasMonth.ejecutado || 0;
+  const ganancia = totalVendido - invertido;
+  const roasVal = invertido > 0 ? totalVendido / invertido : 0;
+  const cpl = totalLeads > 0 ? invertido / totalLeads : 0;
+  const cpa = cierres > 0 ? invertido / cierres : 0;
+
+  // Funnel counts (from all leads, not filtered)
+  const funnelCounts = {};
+  FUNNEL_STEPS.forEach(s => { funnelCounts[s] = 0; });
+  leads.forEach(l => { if (funnelCounts[l.f] !== undefined) funnelCounts[l.f]++; });
+  const maxFunnel = Math.max(1, ...Object.values(funnelCounts));
+
+  let html = '';
+
+  // Month tabs
+  html += '<div class="month-tabs">';
+  MONTHS.forEach((m, i) => {
+    html += `<button class="month-tab ${m === APP.currentMonth ? 'active' : ''}" data-month="${m}">${MONTH_LABELS[i]}</button>`;
+  });
+  html += '</div>';
+
+  // Summary stats
+  const isVentas = APP.userRole === 'ventas';
+  html += '<div class="stats-grid stats-grid-pipeline">';
+  html += `<div class="stat-card"><div class="label">Total Leads</div><div class="value navy">${totalLeads}</div></div>`;
+  if (!isVentas) html += `<div class="stat-card"><div class="label">Costo x Lead</div><div class="value amber">${fmtCurrency(Math.round(cpl))}</div></div>`;
+  html += `<div class="stat-card"><div class="label">Cierres</div><div class="value green">${cierres}</div></div>`;
+  if (!isVentas) html += `<div class="stat-card"><div class="label">Costo Adquisición</div><div class="value amber">${fmtCurrency(Math.round(cpa))}</div></div>`;
+  html += `<div class="stat-card"><div class="label">% de Cierre</div><div class="value navy">${fmtPct(pctCierre)}</div></div>`;
+  html += '</div>';
+  if (!isVentas) {
+    html += '<div class="stats-grid stats-grid-pipeline">';
+    html += `<div class="stat-card"><div class="label">Total Cotizado</div><div class="value blue">${fmtCurrency(totalCotizado)}</div></div>`;
+    html += `<div class="stat-card"><div class="label">Total Vendido</div><div class="value green">${fmtCurrency(Math.round(totalVendido))}</div></div>`;
+    html += `<div class="stat-card"><div class="label">Invertido</div><div class="value amber">${fmtCurrency(invertido)}</div></div>`;
+    html += `<div class="stat-card"><div class="label">Ganancia</div><div class="value ${ganancia >= 0 ? 'green' : 'red'}">${fmtCurrency(Math.round(ganancia))}</div></div>`;
+    html += `<div class="stat-card"><div class="label">ROAS</div><div class="value blue">${roasVal.toFixed(2)}x</div></div>`;
+    html += '</div>';
+  }
+
+  // Funnel
+  if (totalLeads > 0) {
+    html += '<div class="card"><h3 style="font-size:0.9rem;margin-bottom:12px;">Embudo de Ventas</h3>';
+    FUNNEL_STEPS.forEach(step => {
+      const count = funnelCounts[step];
+      const pct = (count / maxFunnel * 100);
+      html += `<div class="funnel-bar">
+        <div class="funnel-label">${step}</div>
+        <div class="funnel-track">
+          <div class="funnel-fill" style="width:${Math.max(pct, count > 0 ? 8 : 0)}%;background:${FUNNEL_COLORS[step]}">${count > 0 ? count : ''}</div>
+        </div>
+        <div class="funnel-count">${count}</div>
+      </div>`;
+    });
+    html += '</div>';
+  }
+
+  // Filters
+  html += '<div class="filter-bar">';
+  html += `<input type="text" id="search-lead" placeholder="Buscar por nombre..." value="${esc(APP.searchText)}" style="padding:6px 12px;border:1px solid var(--border);border-radius:8px;font-size:0.85rem;width:200px;">`;
+  html += '<label>Paso:</label><select id="filter-step"><option value="Todos">Todos</option>';
+  FUNNEL_STEPS.forEach(s => { html += `<option value="${s}" ${APP.filterStep === s ? 'selected' : ''}>${s}</option>`; });
+  html += '</select>';
+  html += '<label>Temperatura:</label><select id="filter-temp"><option value="Todos">Todos</option>';
+  TEMPS.forEach(t => { html += `<option value="${t}" ${APP.filterTemp === t ? 'selected' : ''}>${TEMP_DISPLAY[t]}</option>`; });
+  html += '</select>';
+  html += '</div>';
+
+  // Add lead button + form (arriba de la tabla)
+  html += `<button class="btn-add" id="btn-add-lead" style="margin-bottom:12px;">+ Agregar Lead</button>`;
+  if (APP.addingLead) {
+    html += renderAddLeadForm();
+  }
+
+  // Table
+  if (filtered.length > 0) {
+    html += '<div class="card"><div class="table-wrapper"><table>';
+    html += '<thead><tr><th>#</th><th>Nombre</th><th>Empresa</th><th>Temp</th><th>Demo</th><th>Funnel</th><th>Impl</th><th>FE</th><th>Serv</th><th>Soft</th>';
+    if (!isVentas) html += '<th>Cotizado</th><th>Desc%</th><th>Vendido</th>';
+    html += '<th>Notas</th><th>Categoria</th></tr></thead>';
+    html += '<tbody>';
+    filtered.forEach((lead, idx) => {
+      const realIdx = leads.indexOf(lead);
+      const isExpanded = APP.expandedRow === realIdx;
+      const isGanado = lead.f === 'Cerrado Ganado';
+      const descPct = lead.desc != null ? lead.desc : 25;
+      const vendido = isGanado ? leadVendido(lead, includeSoft) : 0;
+      html += `<tr class="${isExpanded ? 'expanded' : ''}${isGanado ? ' ganado-row' : ''}" data-idx="${realIdx}" style="cursor:pointer;${isGanado ? 'background:#ecfdf5;' : ''}">
+        <td>${idx + 1}</td>
+        <td><strong>${lead.n}</strong></td>
+        <td>${lead.e || lead.t}</td>
+        <td><span class="badge ${tempBadgeClass(lead.temp)}">${TEMP_DISPLAY[lead.temp]}</span></td>
+        <td>${lead.demo ? lead.demo.substring(5) : '-'}</td>
+        <td><span class="badge ${badgeClass(lead.f)}">${lead.f}</span></td>
+        <td class="currency">${fmt(lead.impl)}</td>
+        <td class="currency">${fmt(lead.fe)}</td>
+        <td class="currency">${fmt(lead.serv)}</td>
+        <td class="currency">${fmt(lead.soft)}</td>
+        ${!isVentas ? `<td class="currency"><strong>${fmt(leadTotal(lead))}</strong></td>
+        <td>${isGanado ? descPct + '%' : '-'}</td>
+        <td class="currency">${isGanado ? '<strong>' + fmt(Math.round(vendido)) + '</strong>' : '-'}</td>` : ''}
+        <td>${lead.notas}</td>
+        <td>${lead.categoria ? '<span class="badge" style="background:#f0f4ff;color:#4361ee;font-size:10px">' + lead.categoria + '</span>' : '-'}</td>
+      </tr>`;
+      if (isExpanded) {
+        html += renderEditRow(lead, realIdx);
+      }
+    });
+    html += '</tbody></table></div></div>';
+  } else if (!APP.addingLead) {
+    html += '<div class="empty-state">Sin datos para este mes.</div>';
+  }
+
+  container.innerHTML = html;
+  bindPipelineEvents();
+}
+
+function renderEditRow(lead, idx) {
+  const descVal = lead.desc != null ? lead.desc : 25;
+  const colSpan = APP.userRole === 'ventas' ? 12 : 15;
+  return `<tr class="edit-row"><td colspan="${colSpan}">
+    <div class="edit-form" style="grid-template-columns:repeat(5,1fr);">
+      <div class="field"><label>Nombre</label><input type="text" data-field="n" value="${esc(lead.n)}"></div>
+      <div class="field"><label>Tipo de Empresa</label><input type="text" data-field="t" value="${esc(lead.t)}"></div>
+      <div class="field"><label>Empresa</label><input type="text" data-field="e" value="${esc(lead.e)}"></div>
+      <div class="field"><label>Temperatura</label>
+        <select data-field="temp">
+          ${TEMPS.map(t => `<option value="${t}" ${lead.temp === t ? 'selected' : ''}>${TEMP_DISPLAY[t]}</option>`).join('')}
+        </select>
+      </div>
+      <div class="field"><label>Paso del Funnel</label>
+        <select data-field="f">
+          ${FUNNEL_STEPS.map(s => `<option value="${s}" ${lead.f === s ? 'selected' : ''}>${s}</option>`).join('')}
+        </select>
+      </div>
+    </div>
+    <div class="edit-form" style="grid-template-columns:repeat(5,1fr);margin-top:8px;">
+      <div class="field"><label>Fecha Demo</label><input type="date" data-field="demo" value="${lead.demo}"></div>
+      <div class="field"><label>Implementación</label><input type="number" data-field="impl" value="${lead.impl}"></div>
+      <div class="field"><label>FE</label><input type="number" data-field="fe" value="${lead.fe}"></div>
+      <div class="field"><label>Servicio</label><input type="number" data-field="serv" value="${lead.serv}"></div>
+      <div class="field"><label>Software</label><input type="number" data-field="soft" value="${lead.soft}"></div>
+    </div>
+    <div class="edit-form" style="grid-template-columns:1fr 2fr 2fr;margin-top:8px;">
+      <div class="field"><label>Descuento % (Impl + FE)</label><input type="number" data-field="desc" value="${descVal}" min="0" max="100"></div>
+      <div class="field"><label>Notas</label><textarea data-field="notas">${esc(lead.notas)}</textarea></div>
+      <div class="field"><label>Categoria</label>
+        <select data-field="categoria">
+          <option value="" ${!lead.categoria ? 'selected' : ''}>Sin categoria</option>
+          <option value="Implementacion" ${lead.categoria === 'Implementacion' ? 'selected' : ''}>Implementacion</option>
+          <option value="Facturacion Electronica" ${lead.categoria === 'Facturacion Electronica' ? 'selected' : ''}>Facturacion Electronica</option>
+          <option value="Recurrente" ${lead.categoria === 'Recurrente' ? 'selected' : ''}>Recurrente</option>
+        </select>
+      </div>
+    </div>
+    <div class="edit-actions">
+      <button class="btn btn-primary" data-action="save" data-idx="${idx}">Guardar</button>
+      <button class="btn btn-danger" data-action="delete" data-idx="${idx}">Eliminar</button>
+      <button class="btn btn-ghost" data-action="cancel">Cancelar</button>
+    </div>
+  </td></tr>`;
+}
+
+function renderAddLeadForm() {
+  return `<div class="card" id="add-lead-form">
+    <h3 style="font-size:0.95rem;margin-bottom:12px;">Nuevo Lead</h3>
+    <div class="edit-form" style="grid-template-columns:repeat(5,1fr);">
+      <div class="field"><label>Nombre</label><input type="text" data-field="n" value=""></div>
+      <div class="field"><label>Tipo de Empresa</label><input type="text" data-field="t" value=""></div>
+      <div class="field"><label>Empresa</label><input type="text" data-field="e" value=""></div>
+      <div class="field"><label>Temperatura</label>
+        <select data-field="temp">
+          ${TEMPS.map(t => `<option value="${t}">${TEMP_DISPLAY[t]}</option>`).join('')}
+        </select>
+      </div>
+      <div class="field"><label>Paso del Funnel</label>
+        <select data-field="f">
+          ${FUNNEL_STEPS.map(s => `<option value="${s}">${s}</option>`).join('')}
+        </select>
+      </div>
+    </div>
+    <div class="edit-form" style="grid-template-columns:repeat(5,1fr);margin-top:12px;">
+      <div class="field"><label>Fecha Demo</label><input type="date" data-field="demo" value=""></div>
+      <div class="field"><label>Implementaci\u00f3n</label><input type="number" data-field="impl" value="0"></div>
+      <div class="field"><label>Facturaci\u00f3n Electr\u00f3nica</label><input type="number" data-field="fe" value="0"></div>
+      <div class="field"><label>Servicio</label><input type="number" data-field="serv" value="0"></div>
+      <div class="field"><label>Software</label><input type="number" data-field="soft" value="0"></div>
+    </div>
+    <div class="edit-form" style="grid-template-columns:1fr 2fr 1fr;margin-top:12px;">
+      <div class="field"><label>Descuento % (Impl + FE)</label><input type="number" data-field="desc" value="25" min="0" max="100"></div>
+      <div class="field"><label>Notas</label><textarea data-field="notas"></textarea></div>
+      <div class="field"><label>Categoria</label>
+        <select data-field="categoria">
+          <option value="">Sin categoria</option>
+          <option value="Implementacion">Implementacion</option>
+          <option value="Facturacion Electronica">Facturacion Electronica</option>
+          <option value="Recurrente">Recurrente</option>
+        </select>
+      </div>
+    </div>
+    <div class="edit-actions">
+      <button class="btn btn-primary" id="btn-save-new">Guardar</button>
+      <button class="btn btn-ghost" id="btn-cancel-new">Cancelar</button>
+    </div>
+  </div>`;
+}
+
+function esc(str) {
+  return (str || '').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function bindPipelineEvents() {
+  // Month tabs
+  document.querySelectorAll('.month-tab').forEach(tab => {
+    tab.onclick = () => {
+      APP.currentMonth = tab.dataset.month;
+      APP.expandedRow = -1;
+      APP.addingLead = false;
+      renderPipeline();
+    };
+  });
+
+  // Search + Filters
+  const searchInput = document.getElementById('search-lead');
+  if (searchInput) searchInput.oninput = () => { APP.searchText = searchInput.value; renderPipeline(); setTimeout(() => { const el = document.getElementById('search-lead'); if(el){ el.focus(); el.selectionStart = el.selectionEnd = el.value.length; } }, 0); };
+  const filterTemp = document.getElementById('filter-temp');
+  const filterStep = document.getElementById('filter-step');
+  if (filterTemp) filterTemp.onchange = () => { APP.filterTemp = filterTemp.value; renderPipeline(); };
+  if (filterStep) filterStep.onchange = () => { APP.filterStep = filterStep.value; renderPipeline(); };
+
+  // Row click to expand
+  document.querySelectorAll('tr[data-idx]').forEach(row => {
+    row.onclick = (e) => {
+      if (e.target.closest('.edit-row') || e.target.closest('.edit-actions')) return;
+      const idx = parseInt(row.dataset.idx);
+      APP.expandedRow = APP.expandedRow === idx ? -1 : idx;
+      APP.addingLead = false;
+      renderPipeline();
+    };
+  });
+
+  // Edit actions
+  document.querySelectorAll('[data-action="save"]').forEach(btn => {
+    btn.onclick = (e) => {
+      e.stopPropagation();
+      const idx = parseInt(btn.dataset.idx);
+      const editRow = btn.closest('.edit-row');
+      const lead = APP.data.pipeline[APP.currentMonth][idx];
+      editRow.querySelectorAll('[data-field]').forEach(input => {
+        const field = input.dataset.field;
+        const val = input.value;
+        if (['impl','fe','serv','soft','desc'].includes(field)) {
+          lead[field] = parseFloat(val) || 0;
+        } else {
+          lead[field] = val;
+        }
+      });
+      dbUpdateLead(lead); // Guardar en Supabase
+      syncRoasFromPipeline();
+      APP.expandedRow = -1;
+      renderPipeline();
+    };
+  });
+
+  document.querySelectorAll('[data-action="delete"]').forEach(btn => {
+    btn.onclick = (e) => {
+      e.stopPropagation();
+      const idx = parseInt(btn.dataset.idx);
+      if (confirm('Eliminar este lead?')) {
+        const lead = APP.data.pipeline[APP.currentMonth][idx];
+        dbDeleteLead(lead); // Borrar de Supabase
+        APP.data.pipeline[APP.currentMonth].splice(idx, 1);
+        syncRoasFromPipeline();
+        APP.expandedRow = -1;
+        renderPipeline();
+      }
+    };
+  });
+
+  document.querySelectorAll('[data-action="cancel"]').forEach(btn => {
+    btn.onclick = (e) => {
+      e.stopPropagation();
+      APP.expandedRow = -1;
+      renderPipeline();
+    };
+  });
+
+  // Add lead
+  const btnAdd = document.getElementById('btn-add-lead');
+  if (btnAdd) btnAdd.onclick = () => { APP.addingLead = true; APP.expandedRow = -1; renderPipeline(); };
+
+  const btnSaveNew = document.getElementById('btn-save-new');
+  if (btnSaveNew) {
+    btnSaveNew.onclick = async () => {
+      const form = document.getElementById('add-lead-form');
+      const newLead = {};
+      form.querySelectorAll('[data-field]').forEach(input => {
+        const field = input.dataset.field;
+        const val = input.value;
+        if (['impl','fe','serv','soft','desc'].includes(field)) {
+          newLead[field] = parseFloat(val) || 0;
+        } else {
+          newLead[field] = val;
+        }
+      });
+      if (!newLead.n || !newLead.n.trim()) { alert('El nombre es obligatorio.'); return; }
+      // Insertar en Supabase y obtener ID antes de agregar al array
+      const newId = await dbInsertLead(APP.currentMonth, newLead);
+      if (newId) newLead._id = newId;
+      APP.data.pipeline[APP.currentMonth].push(newLead);
+      syncRoasFromPipeline();
+      APP.addingLead = false;
+      renderPipeline();
+    };
+  }
+
+  const btnCancelNew = document.getElementById('btn-cancel-new');
+  if (btnCancelNew) btnCancelNew.onclick = () => { APP.addingLead = false; renderPipeline(); };
+}
+
+// ==================== ROAS COMPONENTS ====================
+
+function renderROAS() {
+  const container = document.getElementById('tab-roas');
+  const roas = APP.data.roas;
+
+  // Only months with data
+  const activeMonths = MONTHS.filter(m => roas[m] && roas[m].leads > 0);
+
+  // General totals across all active months
+  const totLeads = activeMonths.reduce((s,m) => s + roas[m].leads, 0);
+  const totPresupuesto = activeMonths.reduce((s,m) => s + roas[m].presupuesto, 0);
+  const totEjecutado = activeMonths.reduce((s,m) => s + roas[m].ejecutado, 0);
+  const totCierres = activeMonths.reduce((s,m) => s + roas[m].cierres, 0);
+  const totVendido = activeMonths.reduce((s,m) => s + roas[m].vendido, 0);
+  const totCpl = totLeads > 0 ? totEjecutado / totLeads : 0;
+  const totPctCierre = totLeads > 0 ? (totCierres / totLeads * 100) : 0;
+  const totCpa = totCierres > 0 ? totEjecutado / totCierres : 0;
+  const totRetorno = totVendido - totEjecutado;
+  const totRoas = totEjecutado > 0 ? totVendido / totEjecutado : 0;
+
+  let html = '';
+
+  const isVentas = APP.userRole === 'ventas';
+
+  // General summary cards
+  if (activeMonths.length > 0) {
+    html += '<h3 style="font-size:1rem;margin-bottom:12px;">Resumen General 2026</h3>';
+    if (isVentas) {
+      // Ventas solo ve: Leads, Cierres, % de Cierre
+      html += '<div class="stats-grid" style="grid-template-columns:repeat(3,1fr);">';
+      html += `<div class="stat-card"><div class="label">Leads</div><div class="value navy">${fmt(totLeads)}</div></div>`;
+      html += `<div class="stat-card"><div class="label">Cierres</div><div class="value green">${fmt(totCierres)}</div></div>`;
+      html += `<div class="stat-card"><div class="label">% de Cierre</div><div class="value green">${fmtPct(totPctCierre)}</div></div>`;
+      html += '</div>';
+    } else {
+      // Admin ve todo
+      html += '<div class="stats-grid" style="grid-template-columns:repeat(5,1fr);">';
+      html += `<div class="stat-card"><div class="label">Leads</div><div class="value navy">${fmt(totLeads)}</div></div>`;
+      html += `<div class="stat-card"><div class="label">CPL</div><div class="value amber">${fmtCurrency(Math.round(totCpl * 100) / 100)}</div></div>`;
+      html += `<div class="stat-card"><div class="label">Cierres</div><div class="value green">${fmt(totCierres)}</div></div>`;
+      html += `<div class="stat-card"><div class="label">CPA</div><div class="value amber">${fmtCurrency(Math.round(totCpa * 100) / 100)}</div></div>`;
+      html += `<div class="stat-card"><div class="label">% de Cierre</div><div class="value green">${fmtPct(totPctCierre)}</div></div>`;
+      html += '</div>';
+      html += '<div class="stats-grid" style="grid-template-columns:repeat(4,1fr);">';
+      html += `<div class="stat-card"><div class="label">Ejecutado</div><div class="value navy">${fmtCurrency(totEjecutado)}</div></div>`;
+      html += `<div class="stat-card"><div class="label">Monto Vendido</div><div class="value green">${fmtCurrency(totVendido)}</div></div>`;
+      html += `<div class="stat-card"><div class="label">Retorno</div><div class="value blue">${fmtCurrency(Math.round(totRetorno))}</div></div>`;
+      html += `<div class="stat-card"><div class="label">ROAS</div><div class="value blue">${totRoas.toFixed(2)}x</div></div>`;
+      html += '</div>';
+    }
+  }
+
+  // Charts — ventas solo ve Leads vs Cierres y % de Cierre
+  html += '<div class="chart-grid">';
+  html += '<div class="chart-card"><h3>Leads y Cierres por Mes</h3><canvas id="chart-leads-cierres"></canvas></div>';
+  html += '<div class="chart-card"><h3>% de Cierre</h3><canvas id="chart-pct-cierre"></canvas></div>';
+  if (!isVentas) {
+    html += '<div class="chart-card"><h3>Cotizado vs Vendido</h3><canvas id="chart-cotizado-vendido"></canvas></div>';
+    html += '<div class="chart-card"><h3>CPL (US$)</h3><canvas id="chart-costo-lead"></canvas></div>';
+  }
+  html += '</div>';
+
+  // Monthly ROAS table — solo para admin
+  if (!isVentas) {
+    html += '<div class="card"><h3 style="font-size:0.95rem;margin-bottom:12px;">Detalle Mensual <span style="font-weight:400;font-size:0.8rem;color:var(--muted);">(presupuesto y ejecutado editables, lo dem\u00e1s se calcula del pipeline)</span></h3>';
+    html += '<div class="roas-table-wrapper"><table class="roas-table">';
+    html += '<thead><tr><th>Mes</th><th>Leads</th><th>Presupuesto</th><th>Ejecutado</th><th>CPL</th><th>Cierres</th><th>% Cierre</th><th>Monto Vendido</th><th>CPA</th><th>Retorno</th><th>ROAS</th></tr></thead>';
+    html += '<tbody>';
+    activeMonths.forEach((m) => {
+      const i = MONTHS.indexOf(m);
+      const d = roas[m];
+      const cpl = d.leads > 0 ? d.ejecutado / d.leads : 0;
+      const pctCierre = d.leads > 0 ? (d.cierres / d.leads * 100) : 0;
+      const cpa = d.cierres > 0 ? d.ejecutado / d.cierres : 0;
+      const retorno = d.vendido - d.ejecutado;
+      const roasVal = d.ejecutado > 0 ? d.vendido / d.ejecutado : 0;
+
+      html += '<tr>';
+      html += `<td>${MONTH_LABELS[i]}</td>`;
+      html += `<td>${fmt(d.leads)}</td>`;
+
+      const isEditingPres = APP.editingRoas && APP.editingRoas.month === m && APP.editingRoas.field === 'presupuesto';
+      if (isEditingPres) {
+        html += `<td><input class="inline-edit" type="number" data-roas-month="${m}" data-roas-field="presupuesto" value="${d.presupuesto}" autofocus></td>`;
+      } else {
+        html += `<td class="editable" data-roas-month="${m}" data-roas-field="presupuesto">${fmtCurrency(d.presupuesto)}</td>`;
+      }
+
+      const isEditingEjec = APP.editingRoas && APP.editingRoas.month === m && APP.editingRoas.field === 'ejecutado';
+      if (isEditingEjec) {
+        html += `<td><input class="inline-edit" type="number" data-roas-month="${m}" data-roas-field="ejecutado" value="${d.ejecutado}" autofocus></td>`;
+      } else {
+        html += `<td class="editable" data-roas-month="${m}" data-roas-field="ejecutado">${fmtCurrency(d.ejecutado)}</td>`;
+      }
+
+      html += `<td>${fmtCurrency(Math.round(cpl * 100) / 100)}</td>`;
+      html += `<td>${fmt(d.cierres)}</td>`;
+      html += `<td>${fmtPct(pctCierre)}</td>`;
+      html += `<td>${fmtCurrency(d.vendido)}</td>`;
+      html += `<td>${fmtCurrency(Math.round(cpa * 100) / 100)}</td>`;
+      html += `<td>${fmtCurrency(Math.round(retorno))}</td>`;
+      html += `<td>${roasVal.toFixed(2)}x</td>`;
+      html += '</tr>';
+    });
+
+    html += '<tr style="font-weight:700;border-top:2px solid var(--navy);">';
+    html += '<td>Total</td>';
+    html += `<td>${fmt(totLeads)}</td>`;
+    html += `<td>${fmtCurrency(totPresupuesto)}</td>`;
+    html += `<td>${fmtCurrency(totEjecutado)}</td>`;
+    html += `<td>${fmtCurrency(Math.round(totCpl * 100) / 100)}</td>`;
+    html += `<td>${fmt(totCierres)}</td>`;
+    html += `<td>${fmtPct(totPctCierre)}</td>`;
+    html += `<td>${fmtCurrency(totVendido)}</td>`;
+    html += `<td>${fmtCurrency(Math.round(totCpa * 100) / 100)}</td>`;
+    html += `<td>${fmtCurrency(Math.round(totRetorno))}</td>`;
+    html += `<td>${totRoas.toFixed(2)}x</td>`;
+    html += '</tr>';
+
+    html += '</tbody></table></div></div>';
+  }
+
+  container.innerHTML = html;
+  bindROASEvents();
+  renderCharts();
+}
+
+function bindROASEvents() {
+  // Click to edit ROAS cells
+  document.querySelectorAll('.roas-table .editable').forEach(cell => {
+    cell.onclick = () => {
+      APP.editingRoas = { month: cell.dataset.roasMonth, field: cell.dataset.roasField };
+      renderROAS();
+      const input = document.querySelector('.inline-edit');
+      if (input) { input.focus(); input.select(); }
+    };
+  });
+
+  // Save on blur or enter for inline edit
+  document.querySelectorAll('.inline-edit').forEach(input => {
+    const save = () => {
+      const m = input.dataset.roasMonth;
+      const field = input.dataset.roasField;
+      APP.data.roas[m][field] = parseFloat(input.value) || 0;
+      // Recalcular derivados que dependen de ejecutado
+      syncRoasFromPipeline();
+      APP.editingRoas = null;
+      renderROAS();
+    };
+    input.onblur = save;
+    input.onkeydown = (e) => {
+      if (e.key === 'Enter') save();
+      if (e.key === 'Escape') { APP.editingRoas = null; renderROAS(); }
+    };
+  });
+}
+
+function renderCharts() {
+  // Destroy previous charts
+  Object.values(APP.charts).forEach(c => c.destroy());
+  APP.charts = {};
+
+  const roas = APP.data.roas;
+  const monthsWithData = MONTHS.filter(m => roas[m].leads > 0);
+  const labels = monthsWithData.map(m => MONTH_LABELS[MONTHS.indexOf(m)]);
+
+  const chartDefaults = {
+    responsive: true,
+    maintainAspectRatio: true,
+    plugins: { legend: { position: 'bottom', labels: { font: { size: 12 } } } },
+    scales: { y: { beginAtZero: true } }
+  };
+
+  // 1. Leads + Cierres con % de cierre en tooltip
+  const ctx1 = document.getElementById('chart-leads-cierres');
+  if (ctx1) {
+    const pctCierreData = monthsWithData.map(m => roas[m].leads > 0 ? (roas[m].cierres / roas[m].leads * 100) : 0);
+    APP.charts.leadsCierres = new Chart(ctx1, {
+      type: 'bar',
+      data: {
+        labels,
+        datasets: [
+          { label: 'Leads', data: monthsWithData.map(m => roas[m].leads), backgroundColor: '#3b82f6' },
+          { label: 'Cierres', data: monthsWithData.map(m => roas[m].cierres), backgroundColor: '#10b981' }
+        ]
+      },
+      options: {
+        ...chartDefaults,
+        plugins: {
+          ...chartDefaults.plugins,
+          tooltip: {
+            callbacks: {
+              afterBody: function(items) {
+                const idx = items[0].dataIndex;
+                return '% Cierre: ' + pctCierreData[idx].toFixed(1) + '%';
+              }
+            }
+          }
+        }
+      }
+    });
+  }
+
+  // 2. % de Cierre
+  const ctx2 = document.getElementById('chart-pct-cierre');
+  if (ctx2) {
+    APP.charts.pctCierre = new Chart(ctx2, {
+      type: 'line',
+      data: {
+        labels,
+        datasets: [{
+          label: '% de Cierre',
+          data: monthsWithData.map(m => roas[m].leads > 0 ? (roas[m].cierres / roas[m].leads * 100) : 0),
+          borderColor: '#8b5cf6',
+          backgroundColor: 'rgba(139,92,246,0.1)',
+          fill: true,
+          tension: 0.3
+        }]
+      },
+      options: { ...chartDefaults, scales: { y: { beginAtZero: true, max: 100, ticks: { callback: v => v + '%' } } } }
+    });
+  }
+
+  // 3. Cotizado vs Vendido
+  const ctx3 = document.getElementById('chart-cotizado-vendido');
+  if (ctx3) {
+    APP.charts.cotizadoVendido = new Chart(ctx3, {
+      type: 'bar',
+      data: {
+        labels,
+        datasets: [
+          { label: 'Cotizado', data: monthsWithData.map(m => roas[m].cotizado), backgroundColor: '#3b82f6' },
+          { label: 'Vendido', data: monthsWithData.map(m => roas[m].vendido), backgroundColor: '#10b981' }
+        ]
+      },
+      options: chartDefaults
+    });
+  }
+
+  // 4. CPL
+  const ctx4 = document.getElementById('chart-costo-lead');
+  if (ctx4) {
+    APP.charts.costoLead = new Chart(ctx4, {
+      type: 'line',
+      data: {
+        labels,
+        datasets: [{
+          label: 'CPL (US$)',
+          data: monthsWithData.map(m => roas[m].leads > 0 ? Math.round(roas[m].ejecutado / roas[m].leads * 100) / 100 : 0),
+          borderColor: '#f59e0b',
+          backgroundColor: 'rgba(245,158,11,0.1)',
+          fill: true,
+          tension: 0.3
+        }]
+      },
+      options: chartDefaults
+    });
+  }
+}
+
+// ==================== MAIN APP ====================
+
+function renderApp() {
+  if (APP.activeTab === 'pipeline') {
+    renderPipeline();
+  } else {
+    renderROAS();
+  }
+}
+
+// ==================== AUTH ====================
+
+async function handleLogin() {
+  const email = document.getElementById('login-email').value.trim();
+  const password = document.getElementById('login-password').value;
+  const errorEl = document.getElementById('login-error');
+  const btn = document.getElementById('btn-login');
+
+  if (!email || !password) {
+    errorEl.textContent = 'Ingresa email y contraseña.';
+    errorEl.style.display = 'block';
+    return;
+  }
+
+  btn.disabled = true;
+  btn.textContent = 'Entrando...';
+  errorEl.style.display = 'none';
+
+  const { data, error } = await sb.auth.signInWithPassword({ email, password });
+
+  if (error) {
+    errorEl.textContent = 'Email o contraseña incorrectos.';
+    errorEl.style.display = 'block';
+    btn.disabled = false;
+    btn.textContent = 'Entrar';
+    return;
+  }
+
+  await loadUserProfile();
+  showApp();
+}
+
+async function handleLogout() {
+  await sb.auth.signOut();
+  APP.userRole = null;
+  APP.userName = '';
+  document.getElementById('app-wrapper').classList.add('hidden');
+  document.getElementById('login-screen').style.display = 'flex';
+  document.getElementById('login-password').value = '';
+}
+
+async function loadUserProfile() {
+  const { data: { user } } = await sb.auth.getUser();
+  if (!user) return;
+
+  const { data: profile } = await sb.from('profiles')
+    .select('nombre, rol')
+    .eq('id', user.id)
+    .single();
+
+  if (profile) {
+    APP.userRole = profile.rol;
+    APP.userName = profile.nombre || user.email;
+  } else {
+    // Si no tiene perfil, acceso básico
+    APP.userRole = 'contadora';
+    APP.userName = user.email;
+  }
+}
+
+function showApp() {
+  document.getElementById('login-screen').style.display = 'none';
+  document.getElementById('app-wrapper').classList.remove('hidden');
+  document.getElementById('user-display-name').textContent = APP.userName;
+
+  startApp();
+}
+
+async function startApp() {
+  APP.data = await loadData();
+  MONTHS.forEach(m => {
+    if (!APP.data.pipeline[m]) APP.data.pipeline[m] = [];
+    if (!APP.data.roas[m]) APP.data.roas[m] = { leads:0, presupuesto:0, ejecutado:0, cierres:0, vendido:0, cotizado:0, cpa:0, retorno:0, roas:0 };
+  });
+  ['mayo','junio','julio','agosto'].forEach(m => {
+    if (APP.data.roas[m].leads === 0 && APP.data.roas[m].presupuesto === 0) {
+      APP.data.roas[m].presupuesto = 2000;
+    }
+  });
+  ['septiembre','octubre','noviembre','diciembre'].forEach(m => {
+    if (APP.data.roas[m].leads === 0 && APP.data.roas[m].presupuesto === 0) {
+      APP.data.roas[m].presupuesto = 3000;
+    }
+  });
+  syncRoasFromPipeline();
+  renderMainTabs();
+  renderApp();
+}
+
+// Allow login with Enter key
+document.getElementById('login-password').addEventListener('keydown', e => {
+  if (e.key === 'Enter') handleLogin();
+});
+document.getElementById('login-email').addEventListener('keydown', e => {
+  if (e.key === 'Enter') document.getElementById('login-password').focus();
+});
+
+// Embed mode detection
+const isEmbed = new URLSearchParams(window.location.search).get('embed') === '1';
+if (isEmbed) document.body.classList.add('embed');
+
+// Check if already logged in
+async function init() {
+  const { data: { session } } = await sb.auth.getSession();
+  if (session) {
+    await loadUserProfile();
+    showApp();
+  } else if (isEmbed) {
+    // In embed mode without session, show nothing (parent handles auth)
+    document.body.innerHTML = '<div style="text-align:center;padding:60px;color:#7c8495;">Sesion no encontrada. Recarga la pagina principal.</div>';
+  }
+}
+
+init();
+</script>
+</body>
+</html>

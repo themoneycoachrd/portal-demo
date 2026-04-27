@@ -1,0 +1,699 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Control de Contadoras — Account One</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root {
+  --navy: #1a2332; --navy-mid: #2a3a4e; --blue: #4361ee; --green: #10b981;
+  --red: #ef4444; --amber: #f59e0b; --purple: #8b5cf6;
+  --bg: #f4f6f9; --card: #ffffff; --border: #e8ecf1;
+  --text: #1a2332; --muted: #7c8495; --light: #a3aab8;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif; background:var(--bg); color:var(--text); line-height:1.5; }
+
+/* ─── Login ─── */
+.login-overlay { position:fixed; top:0; left:0; right:0; bottom:0; background:var(--bg); display:flex; align-items:center; justify-content:center; z-index:1000; }
+.login-box { background:white; border-radius:16px; padding:40px; width:100%; max-width:400px; box-shadow:0 4px 24px rgba(0,0,0,0.08); border:1px solid var(--border); }
+.login-box h2 { font-size:1.4rem; color:var(--navy); margin-bottom:4px; }
+.login-box .subtitle { font-size:0.85rem; color:var(--muted); margin-bottom:24px; }
+.login-box .field { margin-bottom:16px; }
+.login-box .field label { display:block; font-size:0.78rem; font-weight:600; color:var(--muted); margin-bottom:6px; }
+.login-box .field input { width:100%; padding:10px 14px; border:1px solid var(--border); border-radius:10px; font-size:0.9rem; font-family:inherit; background:#fafbfc; }
+.login-box .field input:focus { outline:none; border-color:var(--blue); box-shadow:0 0 0 3px rgba(67,97,238,0.1); background:white; }
+.login-btn { width:100%; padding:11px; background:var(--navy); color:white; border:none; border-radius:10px; font-size:0.9rem; font-weight:600; cursor:pointer; margin-top:8px; }
+.login-btn:hover { background:var(--navy-mid); }
+.login-btn:disabled { opacity:0.6; cursor:not-allowed; }
+.login-error { color:var(--red); font-size:0.8rem; margin-top:12px; display:none; }
+
+/* ─── Header ─── */
+.header { background:var(--navy); color:white; padding:20px 24px; }
+.header-inner { display:flex; justify-content:space-between; align-items:center; }
+.header h1 { font-size:1.3rem; font-weight:700; }
+.header p { font-size:0.85rem; opacity:0.6; margin-top:2px; }
+.user-bar { display:flex; align-items:center; gap:12px; }
+.user-bar .user-name { font-size:0.8rem; opacity:0.9; background:rgba(255,255,255,0.15); padding:4px 12px; border-radius:20px; }
+.btn-logout { font-size:0.75rem; padding:4px 12px; background:rgba(255,255,255,0.15); color:white; border:1px solid rgba(255,255,255,0.3); border-radius:6px; cursor:pointer; }
+
+/* ─── Breadcrumb ─── */
+.breadcrumb-bar { display:flex; align-items:center; gap:6px; padding:10px 24px; background:white; border-bottom:1px solid var(--border); font-size:13px; }
+.breadcrumb-bar a { color:var(--muted); text-decoration:none; font-weight:500; }
+.breadcrumb-bar a:hover { color:var(--navy); text-decoration:underline; }
+.breadcrumb-bar .sep { color:var(--light); font-size:11px; }
+.breadcrumb-bar .current { color:var(--text); font-weight:600; }
+
+/* ─── Content ─── */
+.content { padding:24px; max-width:1200px; margin:0 auto; }
+
+/* ─── Month tabs (pill style, matches ventas.html) ─── */
+.month-tabs { display:flex; gap:4px; flex-wrap:wrap; margin-bottom:16px; }
+.month-tab { padding:6px 14px; border-radius:8px; cursor:pointer; font-size:0.85rem; font-weight:500; background:var(--card); border:1px solid var(--border); color:var(--muted); transition:all 0.2s; }
+.month-tab:hover { border-color:var(--blue); color:var(--blue); }
+.month-tab.active { background:var(--navy); color:white; border-color:var(--navy); }
+
+/* ─── Contadora filter pills ─── */
+.contadora-pills { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:20px; }
+.contadora-pill { padding:6px 16px; border-radius:20px; cursor:pointer; font-size:0.82rem; font-weight:600; background:var(--card); border:1px solid var(--border); color:var(--muted); transition:all 0.2s; }
+.contadora-pill:hover { border-color:var(--navy); color:var(--navy); }
+.contadora-pill.active { background:var(--navy); color:white; border-color:var(--navy); }
+
+/* ─── KPI Dashboard ─── */
+.kpi-dashboard { display:grid; grid-template-columns:repeat(3, 1fr); gap:14px; margin-bottom:24px; }
+.kpi-card { background:white; border-radius:12px; border:1px solid var(--border); padding:18px 20px; }
+.kpi-card-title { font-size:0.72rem; text-transform:uppercase; letter-spacing:0.5px; color:var(--muted); font-weight:700; margin-bottom:10px; }
+.kpi-card-value { font-size:1.6rem; font-weight:800; margin-bottom:6px; }
+.kpi-card-sub { font-size:0.72rem; color:var(--light); margin-bottom:10px; }
+.kpi-bar-bg { height:8px; background:#f1f3f7; border-radius:4px; overflow:hidden; }
+.kpi-bar-fill { height:100%; border-radius:4px; transition:width 0.4s ease; }
+
+/* ─── Mini KPI bars inside contadora sections ─── */
+.mini-kpis { display:flex; gap:16px; padding:0 20px 14px; flex-wrap:wrap; }
+.mini-kpi { flex:1; min-width:120px; }
+.mini-kpi-label { font-size:0.68rem; color:var(--muted); font-weight:600; text-transform:uppercase; letter-spacing:0.3px; margin-bottom:4px; }
+.mini-kpi-row { display:flex; align-items:center; gap:8px; }
+.mini-kpi-bar-bg { flex:1; height:6px; background:#f1f3f7; border-radius:3px; overflow:hidden; }
+.mini-kpi-bar-fill { height:100%; border-radius:3px; transition:width 0.4s ease; }
+.mini-kpi-pct { font-size:0.75rem; font-weight:700; min-width:36px; text-align:right; }
+
+/* ─── Contadora expandable section ─── */
+.contadora-section { background:white; border-radius:12px; border:1px solid var(--border); margin-bottom:14px; overflow:hidden; }
+.contadora-header { display:flex; align-items:center; gap:14px; padding:16px 20px; cursor:pointer; transition:background 0.12s; }
+.contadora-header:hover { background:#fafbfc; }
+.contadora-header.expanded { background:#f5f7fa; border-bottom:1px solid var(--border); }
+.contadora-header-avatar { width:36px; height:36px; border-radius:10px; display:flex; align-items:center; justify-content:center; color:white; font-weight:700; font-size:0.9rem; flex-shrink:0; }
+.contadora-header-info { flex:1; }
+.contadora-header-name { font-size:0.95rem; font-weight:700; }
+.contadora-header-count { font-size:0.75rem; color:var(--muted); }
+.contadora-header-arrow { font-size:14px; color:var(--light); transition:transform 0.2s; }
+.contadora-header-arrow.open { transform:rotate(180deg); }
+.contadora-body { max-height:0; overflow:hidden; transition:max-height 0.35s ease; }
+.contadora-body.open { max-height:5000px; }
+
+/* ─── Semaforo table ─── */
+.report-table { width:100%; border-collapse:collapse; font-size:0.82rem; }
+.report-table thead th { text-align:left; padding:12px 14px; font-size:0.68rem; text-transform:uppercase; letter-spacing:0.5px; color:var(--muted); background:#f8f9fb; border-bottom:2px solid var(--border); font-weight:700; }
+.report-table thead th.center { text-align:center; }
+.report-table tbody td { padding:12px 14px; border-bottom:1px solid #f1f3f7; vertical-align:middle; }
+.report-table tbody td.center { text-align:center; }
+.report-table tbody tr:hover td { background:#fafbfc; }
+.report-table tbody tr:last-child td { border-bottom:none; }
+.client-name-cell { font-weight:600; font-size:0.85rem; }
+
+/* ─── Semaforo dots ─── */
+.semaforo { display:inline-flex; align-items:center; justify-content:center; width:28px; height:28px; border-radius:50%; font-size:12px; font-weight:700; }
+.sem-green { background:#ecfdf5; color:#059669; }
+.sem-yellow { background:#fffbeb; color:#d97706; }
+.sem-red { background:#fef2f2; color:#dc2626; }
+.sem-gray { background:#f5f7fa; color:var(--light); }
+.sem-link { font-size:11px; color:var(--blue); text-decoration:none; display:block; margin-top:2px; }
+.sem-link:hover { text-decoration:underline; }
+.sem-date { font-size:10px; color:var(--light); display:block; margin-top:1px; }
+
+/* ─── Contadora edit view (for contadoras filling data) ─── */
+.edit-card { background:white; border-radius:12px; border:1px solid var(--border); margin-bottom:14px; overflow:hidden; }
+.edit-header { display:flex; align-items:center; gap:12px; padding:16px 20px; cursor:pointer; transition:background 0.12s; }
+.edit-header:hover { background:#fafbfc; }
+.edit-header.expanded { background:#f5f7fa; border-bottom:1px solid var(--border); }
+.edit-client-name { font-size:0.95rem; font-weight:700; flex:1; }
+.edit-status { font-size:0.72rem; font-weight:600; padding:3px 10px; border-radius:8px; }
+.edit-arrow { font-size:14px; color:var(--light); transition:transform 0.2s; }
+.edit-arrow.open { transform:rotate(180deg); }
+.edit-body { max-height:0; overflow:hidden; transition:max-height 0.3s ease; }
+.edit-body.open { max-height:800px; padding:20px; }
+.edit-grid { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+.edit-field { background:var(--bg); border-radius:10px; padding:14px; }
+.edit-field-label { font-size:0.7rem; text-transform:uppercase; letter-spacing:0.3px; color:var(--muted); font-weight:700; margin-bottom:8px; }
+.edit-field input { width:100%; padding:8px 12px; border:1px solid var(--border); border-radius:8px; font-size:0.85rem; font-family:inherit; background:white; }
+.edit-field input:focus { outline:none; border-color:var(--blue); box-shadow:0 0 0 3px rgba(67,97,238,0.1); }
+.edit-field-row { display:flex; gap:8px; }
+.edit-field-row input { flex:1; }
+.edit-field-hint { font-size:0.68rem; color:var(--light); margin-top:4px; }
+.edit-save { margin-top:16px; display:flex; gap:8px; }
+.btn { padding:8px 18px; border-radius:8px; font-size:0.82rem; font-weight:600; cursor:pointer; border:none; font-family:inherit; transition:all 0.12s; }
+.btn-primary { background:var(--navy); color:white; }
+.btn-primary:hover { background:var(--navy-mid); }
+.btn-ghost { background:transparent; color:var(--muted); border:1px solid var(--border); }
+
+/* ─── Misc ─── */
+.hidden { display:none; }
+.empty { text-align:center; padding:40px; color:var(--light); font-size:0.88rem; }
+.footer { text-align:center; font-size:0.75rem; color:var(--light); padding:20px; }
+.saving-indicator { font-size:0.72rem; color:var(--green); font-weight:600; margin-left:auto; }
+
+/* ─── Embed ─── */
+body.embed .login-overlay { display:none !important; }
+body.embed .header { display:none !important; }
+body.embed .breadcrumb-bar { display:none !important; }
+body.embed #app-wrapper { display:block !important; }
+body.embed .footer { display:none !important; }
+
+/* ─── Responsive ─── */
+@media (max-width:768px) {
+  .kpi-dashboard { grid-template-columns:1fr; }
+  .mini-kpis { flex-direction:column; }
+  .edit-grid { grid-template-columns:1fr; }
+}
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div class="login-overlay" id="login-screen">
+  <div class="login-box">
+    <h2>Account One</h2>
+    <p class="subtitle">Inicia sesion para continuar</p>
+    <div class="field"><label>Email</label><input type="email" id="login-email" placeholder="tu@accountone.do"></div>
+    <div class="field"><label>Contrasena</label><input type="password" id="login-password" placeholder="••••••••"></div>
+    <button class="login-btn" id="btn-login" onclick="handleLogin()">Entrar</button>
+    <div class="login-error" id="login-error"></div>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app-wrapper" class="hidden">
+<div class="header">
+  <div class="header-inner">
+    <div><h1>Control de Contadoras</h1><p>Reporte de cierre contable — 2026</p></div>
+    <div class="user-bar">
+      <span class="user-name" id="user-display-name"></span>
+      <button class="btn-logout" onclick="handleLogout()">Salir</button>
+    </div>
+  </div>
+</div>
+<div class="breadcrumb-bar">
+  <a href="index.html">Account One</a><span class="sep">›</span>
+  <span class="current">Control de Contadoras</span>
+</div>
+<div class="content" id="content"></div>
+<div class="footer">Conectado a Supabase — los datos se guardan en la nube.</div>
+</div>
+
+<script>
+// ==================== CONFIG ====================
+var SUPABASE_URL = 'https://ouetusstqvpyjeycfdio.supabase.co';
+var SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im91ZXR1c3N0cXZweWpleWNmZGlvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY2NDcwNzksImV4cCI6MjA5MjIyMzA3OX0.Bsys947JLGEuf3zdBF2GPFdbJVJtaZdC4YEmyBU5Bow';
+var sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+var MESES_KEY = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+var MESES_LABEL = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+var MESES_FULL = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+
+// Contadoras excluidas del control (su servicio no lleva estos controles)
+var EXCLUIDAS = ['Karina', 'Milka'];
+function isExcluida(name) {
+  for (var i = 0; i < EXCLUIDAS.length; i++) {
+    if (name.indexOf(EXCLUIDAS[i]) === 0) return true;
+  }
+  return false;
+}
+
+// Contadoras last in sort order
+var CONTADORA_LAST = ['Sin asignar'];
+
+var ITEMS = [
+  { id:'presupuesto', label:'Presupuesto', short:'Pres.' },
+  { id:'proyeccion', label:'Proyeccion de impuestos', short:'Proy.' },
+  { id:'resumen', label:'Resumen de declaracion', short:'Resumen' },
+  { id:'video', label:'Video mensual', short:'Video' }
+];
+
+// KPI groups:
+// Facturas — binary: client has facturas_mes > 0
+// Reportes — partial: average of 3 booleans (presupuesto, proyeccion, resumen filled)
+// Video/Reunion — binary: video_fecha filled
+var KPI_GROUPS = [
+  { id:'facturas', label:'Facturas', calc: function(row) { return (row.facturas_mes && row.facturas_mes > 0) ? 1 : 0; } },
+  { id:'reportes', label:'Reportes', calc: function(row) {
+      var n = 0;
+      if (row.presupuesto_fecha) n++;
+      if (row.proyeccion_fecha) n++;
+      if (row.resumen_fecha) n++;
+      return n / 3;
+    }
+  },
+  { id:'video', label:'Video / Reunion', calc: function(row) { return row.video_fecha ? 1 : 0; } }
+];
+
+// ==================== STATE ====================
+var userRole = null;
+var userName = '';
+var contadorasMap = {};   // contadora name → [client names]
+var selectedMes = '';
+var selectedContadora = 'Todas';
+var reporteData = [];
+var openSections = {};
+var openCards = {};
+
+// ==================== UTILS ====================
+function getCurrentReportMonth() {
+  var now = new Date();
+  var m = now.getMonth();
+  var prev = m === 0 ? 11 : m - 1;
+  return MESES_KEY[prev];
+}
+
+function sortContadoras(names) {
+  var regular = [];
+  var last = [];
+  names.forEach(function(n) {
+    if (CONTADORA_LAST.indexOf(n) >= 0) last.push(n);
+    else regular.push(n);
+  });
+  regular.sort();
+  return regular.concat(last);
+}
+
+function kpiColor(pct) {
+  if (pct >= 80) return 'var(--green)';
+  if (pct >= 50) return 'var(--amber)';
+  return 'var(--red)';
+}
+
+function getSemaforo(fechaStr) {
+  if (!fechaStr) return { color:'gray', label:'—' };
+  var fecha = new Date(fechaStr + 'T12:00:00');
+  var dia = fecha.getDate();
+  if (dia <= 24) return { color:'green', label:dia + '/' + (fecha.getMonth()+1) };
+  if (dia <= 30) return { color:'yellow', label:dia + '/' + (fecha.getMonth()+1) };
+  return { color:'red', label:dia + '/' + (fecha.getMonth()+1) };
+}
+
+function semaforoHTML(fechaStr, link) {
+  var s = getSemaforo(fechaStr);
+  var html = '<span class="semaforo sem-' + s.color + '">' + (s.color === 'gray' ? '—' : '✓') + '</span>';
+  if (s.color !== 'gray') html += '<span class="sem-date">' + s.label + '</span>';
+  if (link) html += '<a class="sem-link" href="' + link + '" target="_blank">Ver</a>';
+  return html;
+}
+
+function completionCount(row) {
+  var done = 0;
+  ITEMS.forEach(function(item) { if (row[item.id + '_fecha']) done++; });
+  return done;
+}
+
+function esc(s) {
+  if (!s) return '';
+  return String(s).replace(/'/g, "\\'").replace(/"/g, '&quot;');
+}
+
+// ==================== KPI CALC ====================
+function calcKPI(clients, lookup, contadora) {
+  var results = [];
+  KPI_GROUPS.forEach(function(kpi) {
+    if (clients.length === 0) { results.push({ id:kpi.id, label:kpi.label, pct:0, done:0, total:0 }); return; }
+    var total = 0;
+    var sum = 0;
+    clients.forEach(function(c) {
+      var key = contadora ? (contadora + '_' + c) : c;
+      var row = lookup[key] || {};
+      total++;
+      sum += kpi.calc(row);
+    });
+    var pct = total > 0 ? Math.round((sum / total) * 100) : 0;
+    results.push({ id:kpi.id, label:kpi.label, pct:pct, done:Math.round(sum * 10)/10, total:total });
+  });
+  return results;
+}
+
+// ==================== SUPABASE ====================
+async function loadContadoras() {
+  var result = await sb.from('asignaciones')
+    .select('contadora, cliente, mes')
+    .eq('anio', 2026)
+    .order('contadora');
+
+  var data = result.data || [];
+  var map = {};
+
+  // Find latest month with data
+  var maxIdx = -1; var maxMes = '';
+  for (var i = 0; i < data.length; i++) {
+    var idx = MESES_KEY.indexOf(data[i].mes);
+    if (idx > maxIdx) { maxIdx = idx; maxMes = data[i].mes; }
+  }
+  if (!maxMes) maxMes = getCurrentReportMonth();
+
+  for (var i = 0; i < data.length; i++) {
+    var row = data[i];
+    if (row.mes !== maxMes) continue;
+    if (!map[row.contadora]) map[row.contadora] = [];
+    if (map[row.contadora].indexOf(row.cliente) === -1) {
+      map[row.contadora].push(row.cliente);
+    }
+  }
+  contadorasMap = map;
+}
+
+async function loadReporteData(mes) {
+  var result = await sb.from('reporte_mensual')
+    .select('*').eq('mes', mes).eq('anio', 2026).order('contadora');
+  return result.data || [];
+}
+
+async function saveReporte(contadora, cliente, mes, fields) {
+  var record = { contadora: contadora, cliente: cliente, mes: mes, anio: 2026 };
+  for (var key in fields) record[key] = fields[key];
+  var result = await sb.from('reporte_mensual').upsert(record, { onConflict: 'contadora,cliente,mes,anio' });
+  if (result.error) { console.error('Error guardando:', result.error); alert('Error guardando. Verifica tus permisos.'); return false; }
+  return true;
+}
+
+// ==================== RENDER ====================
+async function renderApp() {
+  if (userRole === 'admin') {
+    await renderGerencial();
+  } else {
+    await renderContadoraView();
+  }
+}
+
+// ─── VISTA GERENCIAL ───
+async function renderGerencial() {
+  var el = document.getElementById('content');
+  el.innerHTML = '<div class="empty">Cargando...</div>';
+
+  reporteData = await loadReporteData(selectedMes);
+
+  var lookup = {};
+  reporteData.forEach(function(r) { lookup[r.contadora + '_' + r.cliente] = r; });
+
+  // Filter out excluded, then sort
+  var allNames = Object.keys(contadorasMap).filter(function(n) {
+    return !isExcluida(n);
+  });
+  var contadoraNames = sortContadoras(allNames);
+
+  var html = '';
+
+  // ─── Month tabs (pill style) ───
+  html += '<div class="month-tabs">';
+  MESES_KEY.forEach(function(m, i) {
+    html += '<button class="month-tab' + (m === selectedMes ? ' active' : '') + '" onclick="selectedMes=\'' + m + '\';renderApp()">' + MESES_LABEL[i] + '</button>';
+  });
+  html += '</div>';
+
+  // ─── Contadora filter pills ───
+  html += '<div class="contadora-pills">';
+  html += '<button class="contadora-pill' + (selectedContadora === 'Todas' ? ' active' : '') + '" onclick="selectedContadora=\'Todas\';renderApp()">Todas</button>';
+  contadoraNames.forEach(function(name) {
+    html += '<button class="contadora-pill' + (selectedContadora === name ? ' active' : '') + '" onclick="selectedContadora=\'' + esc(name) + '\';renderApp()">' + name + '</button>';
+  });
+  html += '</div>';
+
+  // ─── Determine visible contadoras ───
+  var visibleContadoras = selectedContadora === 'Todas' ? contadoraNames : [selectedContadora];
+
+  // ─── Collect all clients for KPI calc (visible only) ───
+  var allVisibleClients = [];
+  visibleContadoras.forEach(function(contadora) {
+    var clients = contadorasMap[contadora] || [];
+    clients.forEach(function(c) {
+      allVisibleClients.push({ contadora: contadora, cliente: c });
+    });
+  });
+
+  // ─── KPI Dashboard (firm-wide or filtered) ───
+  var kpiResults = [];
+  KPI_GROUPS.forEach(function(kpi) {
+    var total = allVisibleClients.length;
+    var sum = 0;
+    allVisibleClients.forEach(function(item) {
+      var row = lookup[item.contadora + '_' + item.cliente] || {};
+      sum += kpi.calc(row);
+    });
+    var pct = total > 0 ? Math.round((sum / total) * 100) : 0;
+    kpiResults.push({ id:kpi.id, label:kpi.label, pct:pct, done:Math.round(sum * 10)/10, total:total });
+  });
+
+  html += '<div class="kpi-dashboard">';
+  kpiResults.forEach(function(kpi) {
+    var color = kpiColor(kpi.pct);
+    html += '<div class="kpi-card">';
+    html += '<div class="kpi-card-title">' + kpi.label + '</div>';
+    html += '<div class="kpi-card-value" style="color:' + color + '">' + kpi.pct + '%</div>';
+    html += '<div class="kpi-card-sub">' + kpi.done + ' de ' + kpi.total + ' clientes</div>';
+    html += '<div class="kpi-bar-bg"><div class="kpi-bar-fill" style="width:' + kpi.pct + '%;background:' + color + '"></div></div>';
+    html += '</div>';
+  });
+  html += '</div>';
+
+  // ─── Expandable contadora sections ───
+  visibleContadoras.forEach(function(contadora) {
+    var isOpen = openSections[contadora] || false;
+    var clients = (contadorasMap[contadora] || []).slice().sort();
+    if (clients.length === 0) return;
+    var initial = contadora === 'Sin asignar' ? '?' : contadora.charAt(0);
+
+    html += '<div class="contadora-section">';
+
+    // Header
+    html += '<div class="contadora-header' + (isOpen ? ' expanded' : '') + '" onclick="toggleSection(\'' + esc(contadora) + '\')">';
+    html += '<div class="contadora-header-avatar" style="background:var(--navy)">' + initial + '</div>';
+    html += '<div class="contadora-header-info">';
+    html += '<div class="contadora-header-name">' + contadora + '</div>';
+    html += '<div class="contadora-header-count">' + clients.length + ' clientes</div>';
+    html += '</div>';
+    html += '<span class="contadora-header-arrow' + (isOpen ? ' open' : '') + '">▼</span>';
+    html += '</div>';
+
+    // Body
+    html += '<div class="contadora-body' + (isOpen ? ' open' : '') + '">';
+    if (isOpen) {
+      // Mini KPI bars for this contadora
+      var miniKPIs = calcKPI(clients, lookup, contadora);
+      html += '<div class="mini-kpis">';
+      miniKPIs.forEach(function(kpi) {
+        var color = kpiColor(kpi.pct);
+        html += '<div class="mini-kpi">';
+        html += '<div class="mini-kpi-label">' + kpi.label + '</div>';
+        html += '<div class="mini-kpi-row">';
+        html += '<div class="mini-kpi-bar-bg"><div class="mini-kpi-bar-fill" style="width:' + kpi.pct + '%;background:' + color + '"></div></div>';
+        html += '<span class="mini-kpi-pct" style="color:' + color + '">' + kpi.pct + '%</span>';
+        html += '</div></div>';
+      });
+      html += '</div>';
+
+      // Client table
+      html += '<table class="report-table"><thead><tr>';
+      html += '<th>Cliente</th><th class="center">Facturas</th>';
+      ITEMS.forEach(function(item) { html += '<th class="center">' + item.short + '</th>'; });
+      html += '</tr></thead><tbody>';
+
+      clients.forEach(function(cliente) {
+        var row = lookup[contadora + '_' + cliente] || {};
+        html += '<tr>';
+        html += '<td class="client-name-cell">' + cliente + '</td>';
+        html += '<td class="center">' + (row.facturas_mes || '—') + '</td>';
+        ITEMS.forEach(function(item) {
+          html += '<td class="center">' + semaforoHTML(row[item.id + '_fecha'], row[item.id + '_link']) + '</td>';
+        });
+        html += '</tr>';
+      });
+
+      html += '</tbody></table>';
+    }
+    html += '</div></div>';
+  });
+
+  if (visibleContadoras.length === 0 || allVisibleClients.length === 0) {
+    html += '<div class="empty">No hay datos para mostrar.</div>';
+  }
+
+  el.innerHTML = html;
+}
+
+function toggleSection(contadora) {
+  openSections[contadora] = !openSections[contadora];
+  renderApp();
+}
+
+// ─── VISTA CONTADORA ───
+async function renderContadoraView() {
+  var el = document.getElementById('content');
+  el.innerHTML = '<div class="empty">Cargando...</div>';
+
+  var myName = '';
+  var firstName = userName.split(' ')[0];
+  for (var key in contadorasMap) {
+    if (key === firstName || key === userName) { myName = key; break; }
+  }
+
+  var clients = [];
+  if (myName && contadorasMap[myName] && contadorasMap[myName].length > 0) {
+    clients = contadorasMap[myName].slice().sort();
+  } else {
+    var nameVariants = [userName, firstName];
+    for (var v = 0; v < nameVariants.length; v++) {
+      var tryName = nameVariants[v];
+      if (!tryName) continue;
+      var asigResult = await sb.from('asignaciones')
+        .select('cliente, contadora').eq('contadora', tryName).eq('anio', 2026);
+      if (asigResult.data && asigResult.data.length > 0) {
+        myName = tryName;
+        var seen = {};
+        asigResult.data.forEach(function(r) {
+          if (!seen[r.cliente]) { clients.push(r.cliente); seen[r.cliente] = true; }
+        });
+        clients.sort();
+        break;
+      }
+    }
+  }
+
+  if (!myName || clients.length === 0) {
+    el.innerHTML = '<div class="empty">No tienes clientes asignados.</div>';
+    return;
+  }
+
+  reporteData = await loadReporteData(selectedMes);
+  var lookup = {};
+  reporteData.forEach(function(r) { if (r.contadora === myName) lookup[r.cliente] = r; });
+
+  var html = '';
+
+  // Month tabs
+  html += '<div class="month-tabs">';
+  MESES_KEY.forEach(function(m, i) {
+    html += '<button class="month-tab' + (m === selectedMes ? ' active' : '') + '" onclick="selectedMes=\'' + m + '\';renderApp()">' + MESES_LABEL[i] + '</button>';
+  });
+  html += '</div>';
+
+  html += '<span id="save-msg" class="saving-indicator"></span>';
+
+  clients.forEach(function(cliente) {
+    var row = lookup[cliente] || {};
+    var done = completionCount(row);
+    var total = ITEMS.length;
+    var isOpen = openCards[cliente] || false;
+
+    var statusColor = done === total ? 'background:#ecfdf5;color:#059669;' : done > 0 ? 'background:#fffbeb;color:#d97706;' : 'background:#f5f7fa;color:var(--light);';
+    var statusLabel = done === total ? 'Completo' : done + '/' + total;
+
+    html += '<div class="edit-card">';
+    html += '<div class="edit-header' + (isOpen ? ' expanded' : '') + '" onclick="toggleCard(\'' + esc(cliente) + '\')">';
+    html += '<span class="edit-client-name">' + cliente + '</span>';
+    html += '<span class="edit-status" style="' + statusColor + '">' + statusLabel + '</span>';
+    html += '<span class="edit-arrow' + (isOpen ? ' open' : '') + '">▼</span>';
+    html += '</div>';
+
+    html += '<div class="edit-body' + (isOpen ? ' open' : '') + '">';
+    if (isOpen) {
+      html += '<div class="edit-field" style="margin-bottom:16px">';
+      html += '<div class="edit-field-label">Cantidad de facturas del mes</div>';
+      html += '<input type="number" id="f_' + esc(cliente) + '_facturas" value="' + (row.facturas_mes || '') + '" placeholder="0">';
+      html += '</div>';
+
+      html += '<div class="edit-grid">';
+      ITEMS.forEach(function(item) {
+        var fechaVal = row[item.id + '_fecha'] || '';
+        var linkVal = row[item.id + '_link'] || '';
+        html += '<div class="edit-field">';
+        html += '<div class="edit-field-label">' + item.label + '</div>';
+        html += '<div class="edit-field-row"><input type="date" id="f_' + esc(cliente) + '_' + item.id + '_fecha" value="' + fechaVal + '"></div>';
+        html += '<input type="url" id="f_' + esc(cliente) + '_' + item.id + '_link" value="' + linkVal + '" placeholder="Link (opcional)" style="margin-top:6px">';
+        html += '<div class="edit-field-hint">Fecha de entrega + link al documento</div>';
+        html += '</div>';
+      });
+      html += '</div>';
+
+      html += '<div class="edit-save">';
+      html += '<button class="btn btn-primary" onclick="handleSave(\'' + esc(myName) + '\',\'' + esc(cliente) + '\')">Guardar</button>';
+      html += '<button class="btn btn-ghost" onclick="toggleCard(\'' + esc(cliente) + '\')">Cerrar</button>';
+      html += '</div>';
+    }
+    html += '</div></div>';
+  });
+
+  if (clients.length === 0) {
+    html += '<div class="empty">No tienes clientes asignados para este periodo.</div>';
+  }
+  el.innerHTML = html;
+}
+
+function toggleCard(cliente) {
+  openCards[cliente] = !openCards[cliente];
+  renderApp();
+}
+
+async function handleSave(contadora, cliente) {
+  var prefix = 'f_' + cliente.replace(/'/g, "\\'") + '_';
+  var fields = { facturas_mes: parseInt(document.getElementById(prefix + 'facturas').value) || 0 };
+  ITEMS.forEach(function(item) {
+    fields[item.id + '_fecha'] = document.getElementById(prefix + item.id + '_fecha').value || null;
+    fields[item.id + '_link'] = document.getElementById(prefix + item.id + '_link').value || '';
+  });
+
+  var msg = document.getElementById('save-msg');
+  msg.textContent = 'Guardando...';
+  var ok = await saveReporte(contadora, cliente, selectedMes, fields);
+  if (ok) {
+    msg.textContent = 'Guardado';
+    setTimeout(function() { msg.textContent = ''; }, 2000);
+    reporteData = await loadReporteData(selectedMes);
+    renderApp();
+  } else { msg.textContent = 'Error'; }
+}
+
+// ==================== AUTH ====================
+async function handleLogin() {
+  var email = document.getElementById('login-email').value.trim();
+  var password = document.getElementById('login-password').value;
+  var errorEl = document.getElementById('login-error');
+  var btn = document.getElementById('btn-login');
+  if (!email || !password) { errorEl.textContent = 'Ingresa email y contrasena.'; errorEl.style.display = 'block'; return; }
+  btn.disabled = true; btn.textContent = 'Entrando...'; errorEl.style.display = 'none';
+  var result = await sb.auth.signInWithPassword({ email: email, password: password });
+  if (result.error) { errorEl.textContent = 'Email o contrasena incorrectos.'; errorEl.style.display = 'block'; btn.disabled = false; btn.textContent = 'Entrar'; return; }
+  await loadUserProfile();
+  await showApp();
+}
+
+async function handleLogout() {
+  await sb.auth.signOut();
+  userRole = null; userName = '';
+  document.getElementById('app-wrapper').classList.add('hidden');
+  document.getElementById('login-screen').style.display = 'flex';
+  document.getElementById('login-password').value = '';
+}
+
+async function loadUserProfile() {
+  var result = await sb.auth.getUser();
+  var user = result.data ? result.data.user : null;
+  if (!user) return;
+  var pr = await sb.from('profiles').select('nombre, rol').eq('id', user.id).single();
+  if (pr.data) { userRole = pr.data.rol; userName = pr.data.nombre || user.email; }
+  else { userRole = 'contadora'; userName = user.email; }
+}
+
+async function showApp() {
+  document.getElementById('login-screen').style.display = 'none';
+  document.getElementById('app-wrapper').classList.remove('hidden');
+  document.getElementById('user-display-name').textContent = userName;
+  selectedMes = getCurrentReportMonth();
+  await loadContadoras();
+  await renderApp();
+}
+
+// ==================== INIT ====================
+var loginPwdEl = document.getElementById('login-password');
+var loginEmailEl = document.getElementById('login-email');
+if (loginPwdEl) loginPwdEl.addEventListener('keydown', function(e) { if (e.key === 'Enter') handleLogin(); });
+if (loginEmailEl) loginEmailEl.addEventListener('keydown', function(e) { if (e.key === 'Enter') document.getElementById('login-password').focus(); });
+
+var isEmbed = new URLSearchParams(window.location.search).get('embed') === '1';
+if (isEmbed) document.body.classList.add('embed');
+
+async function init() {
+  var result = await sb.auth.getSession();
+  var session = result.data ? result.data.session : null;
+  if (session) { await loadUserProfile(); await showApp(); }
+  else if (isEmbed) { document.body.innerHTML = '<div style="text-align:center;padding:60px;color:#7c8495;">Sesion no encontrada. Recarga la pagina principal.</div>'; }
+}
+init();
+</script>
+</body>
+</html>

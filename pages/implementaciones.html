@@ -1,0 +1,738 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Implementaciones — Account One</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root {
+  --navy: #1a2332; --navy-mid: #2a3a4e; --blue: #4361ee; --green: #10b981;
+  --red: #ef4444; --amber: #f59e0b; --purple: #8b5cf6;
+  --bg: #f4f6f9; --card: #ffffff; --border: #e8ecf1;
+  --text: #1a2332; --muted: #7c8495; --light: #a3aab8;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif; background:var(--bg); color:var(--text); line-height:1.5; }
+.hidden { display:none !important; }
+
+/* ─── Login ─── */
+.login-overlay { position:fixed; top:0; left:0; right:0; bottom:0; background:var(--bg); display:flex; align-items:center; justify-content:center; z-index:1000; }
+.login-box { background:white; border-radius:16px; padding:40px; width:100%; max-width:400px; box-shadow:0 4px 24px rgba(0,0,0,0.08); border:1px solid var(--border); }
+.login-box h2 { font-size:1.4rem; color:var(--navy); margin-bottom:4px; }
+.login-box .subtitle { font-size:0.85rem; color:var(--muted); margin-bottom:24px; }
+.login-box .field { margin-bottom:16px; }
+.login-box .field label { display:block; font-size:0.78rem; font-weight:600; color:var(--muted); margin-bottom:6px; }
+.login-box .field input { width:100%; padding:10px 14px; border:1px solid var(--border); border-radius:10px; font-size:0.9rem; font-family:inherit; background:#fafbfc; }
+.login-box .field input:focus { outline:none; border-color:var(--blue); box-shadow:0 0 0 3px rgba(67,97,238,0.1); background:white; }
+.login-btn { width:100%; padding:11px; background:var(--navy); color:white; border:none; border-radius:10px; font-size:0.9rem; font-weight:600; cursor:pointer; margin-top:8px; }
+.login-btn:hover { background:var(--navy-mid); }
+.login-btn:disabled { opacity:0.6; cursor:not-allowed; }
+.login-error { color:var(--red); font-size:0.8rem; margin-top:12px; display:none; }
+
+/* ─── Header ─── */
+.header { background:var(--navy); color:white; padding:20px 24px; }
+.header-inner { display:flex; justify-content:space-between; align-items:center; }
+.header h1 { font-size:1.3rem; font-weight:700; }
+.header p { font-size:0.85rem; opacity:0.6; margin-top:2px; }
+.user-bar { display:flex; align-items:center; gap:12px; }
+.user-bar .user-name { font-size:0.8rem; opacity:0.9; background:rgba(255,255,255,0.15); padding:4px 12px; border-radius:20px; }
+.btn-logout { font-size:0.75rem; padding:4px 12px; background:rgba(255,255,255,0.15); color:white; border:1px solid rgba(255,255,255,0.3); border-radius:6px; cursor:pointer; }
+
+/* ─── Breadcrumb ─── */
+.breadcrumb-bar { display:flex; align-items:center; gap:6px; padding:10px 24px; background:white; border-bottom:1px solid var(--border); font-size:13px; }
+.breadcrumb-bar a { color:var(--muted); text-decoration:none; font-weight:500; }
+.breadcrumb-bar a:hover { color:var(--navy); text-decoration:underline; }
+.breadcrumb-bar .sep { color:var(--light); font-size:11px; }
+.breadcrumb-bar .current { color:var(--text); font-weight:600; }
+
+/* ─── Content ─── */
+.content { padding:24px; max-width:1200px; margin:0 auto; }
+
+/* ─── Main Tabs ─── */
+.main-tabs { display:flex; gap:0; margin:0 24px; border-bottom:2px solid var(--border); }
+.main-tab { padding:10px 24px; font-size:0.9rem; font-weight:600; color:var(--muted); cursor:pointer; border:none; background:none; border-bottom:2px solid transparent; margin-bottom:-2px; transition:all 0.2s; }
+.main-tab:hover { color:var(--navy); }
+.main-tab.active { color:var(--navy); border-bottom-color:var(--blue); }
+
+/* ─── Month Tabs ─── */
+.month-tabs { display:flex; gap:4px; flex-wrap:wrap; margin-bottom:16px; }
+.month-tab { padding:6px 14px; border-radius:8px; cursor:pointer; font-size:0.85rem; font-weight:500; background:var(--card); border:1px solid var(--border); color:var(--muted); transition:all 0.2s; }
+.month-tab:hover { border-color:var(--blue); color:var(--blue); }
+.month-tab.active { background:var(--navy); color:white; border-color:var(--navy); }
+
+/* ─── Table ─── */
+.impl-table { width:100%; border-collapse:collapse; background:var(--card); border-radius:12px; overflow:hidden; border:1px solid var(--border); }
+.impl-table th { background:#f8f9fb; padding:10px 12px; text-align:left; font-size:0.68rem; text-transform:uppercase; letter-spacing:0.05em; color:var(--muted); font-weight:700; border-bottom:1px solid var(--border); }
+.impl-table td { padding:10px 12px; font-size:0.82rem; border-bottom:1px solid #f0f2f5; vertical-align:middle; }
+.impl-table tr:hover td { background:#fafbfc; }
+.impl-table tr:last-child td { border-bottom:none; }
+.impl-table .client-name { font-weight:600; color:var(--navy); }
+
+/* ─── Status Select ─── */
+.status-select { padding:5px 10px; border:1px solid var(--border); border-radius:8px; font-size:0.8rem; font-family:inherit; background:white; cursor:pointer; min-width:120px; }
+.status-select:focus { outline:none; border-color:var(--blue); box-shadow:0 0 0 3px rgba(67,97,238,0.1); }
+
+/* ─── Semáforo ─── */
+.semaforo { display:inline-block; width:12px; height:12px; border-radius:50%; }
+.semaforo.verde { background:var(--green); }
+.semaforo.amarillo { background:var(--amber); }
+.semaforo.rojo { background:var(--red); }
+.semaforo.gris { background:var(--light); }
+
+/* ─── Buttons ─── */
+.btn-add { display:inline-flex; align-items:center; gap:6px; padding:9px 18px; background:var(--blue); color:white; border:none; border-radius:10px; font-size:0.82rem; font-weight:600; cursor:pointer; margin-bottom:16px; }
+.btn-add:hover { background:#3451d1; }
+
+/* ─── Modal ─── */
+.modal-overlay { position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.4); z-index:500; display:flex; align-items:center; justify-content:center; }
+.modal { background:white; border-radius:16px; padding:28px; width:100%; max-width:500px; box-shadow:0 8px 40px rgba(0,0,0,0.15); }
+.modal h3 { font-size:1.1rem; color:var(--navy); margin-bottom:20px; }
+.modal .field { margin-bottom:14px; }
+.modal .field label { display:block; font-size:0.78rem; font-weight:600; color:var(--muted); margin-bottom:5px; }
+.modal .field input,
+.modal .field select { width:100%; padding:9px 12px; border:1px solid var(--border); border-radius:10px; font-size:0.85rem; font-family:inherit; background:#fafbfc; }
+.modal .field input:focus,
+.modal .field select:focus { outline:none; border-color:var(--blue); box-shadow:0 0 0 3px rgba(67,97,238,0.1); background:white; }
+.modal .field .error-hint { color:var(--red); font-size:0.75rem; margin-top:4px; display:none; }
+.modal-buttons { display:flex; justify-content:flex-end; gap:10px; margin-top:20px; }
+.btn-modal-cancel { padding:9px 18px; background:#f3f4f6; color:var(--muted); border:none; border-radius:10px; font-size:0.82rem; font-weight:600; cursor:pointer; }
+.btn-modal-cancel:hover { background:#e5e7eb; color:var(--text); }
+.btn-modal-save { padding:9px 18px; background:var(--blue); color:white; border:none; border-radius:10px; font-size:0.82rem; font-weight:600; cursor:pointer; }
+.btn-modal-save:hover { background:#3451d1; }
+.btn-modal-save:disabled { opacity:0.5; cursor:not-allowed; }
+
+/* ─── Toast ─── */
+.toast { position:fixed; bottom:24px; right:24px; padding:12px 20px; border-radius:10px; font-size:0.82rem; font-weight:600; color:white; z-index:600; opacity:0; transform:translateY(10px); transition:all 0.3s; pointer-events:none; }
+.toast.show { opacity:1; transform:translateY(0); }
+.toast.success { background:var(--green); }
+.toast.error { background:var(--red); }
+
+/* ─── Empty State ─── */
+.empty-state { text-align:center; padding:60px 20px; color:var(--muted); }
+.empty-state .emoji { font-size:2.5rem; margin-bottom:12px; }
+.empty-state p { font-size:0.9rem; margin-bottom:16px; }
+
+/* ─── Embed ─── */
+body.embed .login-overlay,
+body.embed .header,
+body.embed .breadcrumb-bar { display:none !important; }
+body.embed .content { padding-top:12px; }
+
+/* ─── Footer ─── */
+.footer { text-align:center; padding:20px; font-size:0.75rem; color:var(--light); }
+
+/* ─── Date column ─── */
+.date-cell { white-space:nowrap; font-size:0.8rem; color:var(--text); }
+.date-cell.empty { color:var(--light); font-style:italic; }
+</style>
+</head>
+<body>
+
+<!-- Login -->
+<div class="login-overlay" id="loginOverlay">
+  <div class="login-box">
+    <h2>Implementaciones</h2>
+    <p class="subtitle">Account One</p>
+    <div class="field">
+      <label>Correo</label>
+      <input type="email" id="loginEmail" placeholder="tu@accountone.do">
+    </div>
+    <div class="field">
+      <label>Contraseña</label>
+      <input type="password" id="loginPass" placeholder="••••••••" onkeydown="if(event.key==='Enter')doLogin()">
+    </div>
+    <button class="login-btn" onclick="doLogin()">Entrar</button>
+    <div class="login-error" id="loginError"></div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<!-- App -->
+<div id="app" style="display:none">
+
+<div class="header" id="headerBar">
+  <div class="header-inner">
+    <div><h1>Implementaciones</h1><p>Control de implementaciones y facturación electrónica</p></div>
+    <div class="user-bar">
+      <span class="user-name" id="userName"></span>
+      <button class="btn-logout" onclick="doLogout()">Salir</button>
+    </div>
+  </div>
+</div>
+
+<div class="breadcrumb-bar" id="breadcrumb">
+  <a href="index.html">Inicio</a>
+  <span class="sep">›</span>
+  <span class="current">Implementaciones</span>
+</div>
+
+<div class="main-tabs" id="mainTabs"></div>
+
+<div id="ic-area">
+  <div class="content" id="ic-content"></div>
+</div>
+
+<div id="fe-area" class="hidden">
+  <div class="content" id="fe-content"></div>
+</div>
+
+<div class="footer">Conectado a Supabase — los datos se guardan en la nube.</div>
+</div><!-- /app -->
+
+<!-- Modal IC -->
+<div class="modal-overlay hidden" id="ic-modal-overlay" onclick="if(event.target===this)icCloseModal()">
+  <div class="modal">
+    <h3>Agregar cliente — Implementación</h3>
+    <div class="field">
+      <label>Cliente *</label>
+      <input type="text" id="ic-m-cliente" placeholder="Nombre del cliente">
+      <div class="error-hint" id="ic-m-cliente-err">Campo obligatorio</div>
+    </div>
+    <div class="field">
+      <label>Contadora asignada</label>
+      <select id="ic-m-contadora"><option value="">Sin asignar</option></select>
+    </div>
+    <div class="field">
+      <label>Fecha de inicio</label>
+      <input type="date" id="ic-m-fecha-inicio">
+    </div>
+    <div class="field">
+      <label>Fecha de fin</label>
+      <input type="date" id="ic-m-fecha-fin">
+    </div>
+    <div class="field">
+      <label>Primer mes de responsabilidad</label>
+      <input type="date" id="ic-m-primer-mes">
+    </div>
+    <div class="field">
+      <label>Estatus *</label>
+      <select id="ic-m-estatus">
+        <option value="">— Seleccionar —</option>
+        <option value="Kick-off">Kick-off</option>
+        <option value="Sesión 2">Sesión 2</option>
+        <option value="Sesión 3">Sesión 3</option>
+        <option value="Sesión 4">Sesión 4</option>
+        <option value="Sesión 5">Sesión 5</option>
+        <option value="Go Live">Go Live</option>
+      </select>
+      <div class="error-hint" id="ic-m-estatus-err">Campo obligatorio</div>
+    </div>
+    <div class="modal-buttons">
+      <button class="btn-modal-cancel" onclick="icCloseModal()">Cancelar</button>
+      <button class="btn-modal-save" id="ic-m-save" onclick="icSaveNew()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal FE -->
+<div class="modal-overlay hidden" id="fe-modal-overlay" onclick="if(event.target===this)feCloseModal()">
+  <div class="modal">
+    <h3>Agregar cliente — Facturación Electrónica</h3>
+    <div class="field">
+      <label>Cliente *</label>
+      <input type="text" id="fe-m-cliente" placeholder="Nombre del cliente">
+      <div class="error-hint" id="fe-m-cliente-err">Campo obligatorio</div>
+    </div>
+    <div class="field">
+      <label>Contadora asignada</label>
+      <select id="fe-m-contadora"><option value="">Sin asignar</option></select>
+    </div>
+    <div class="field">
+      <label>Fecha estimada de Go Live</label>
+      <input type="date" id="fe-m-go-live">
+    </div>
+    <div class="field">
+      <label>Estatus *</label>
+      <select id="fe-m-estatus">
+        <option value="">— Seleccionar —</option>
+        <option value="Correo de requisitos iniciales">Correo de requisitos iniciales</option>
+        <option value="Portal de creación de firma virtual personal">Portal de creación de firma virtual personal</option>
+        <option value="Delegación de firma virtual personal">Delegación de firma virtual personal</option>
+        <option value="Configuración en Adm Cloud">Configuración en Adm Cloud</option>
+        <option value="Go Live">Go Live</option>
+      </select>
+      <div class="error-hint" id="fe-m-estatus-err">Campo obligatorio</div>
+    </div>
+    <div class="modal-buttons">
+      <button class="btn-modal-cancel" onclick="feCloseModal()">Cancelar</button>
+      <button class="btn-modal-save" id="fe-m-save" onclick="feSaveNew()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ==================== CONFIG ====================
+var SUPABASE_URL = 'https://ouetusstqvpyjeycfdio.supabase.co';
+var SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im91ZXR1c3N0cXZweWpleWNmZGlvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY2NDcwNzksImV4cCI6MjA5MjIyMzA3OX0.Bsys947JLGEuf3zdBF2GPFdbJVJtaZdC4YEmyBU5Bow';
+var sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+var MESES_LABEL = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+
+var IC_ESTATUS = ['Kick-off','Sesión 2','Sesión 3','Sesión 4','Sesión 5','Go Live'];
+var FE_ESTATUS = [
+  'Correo de requisitos iniciales',
+  'Portal de creación de firma virtual personal',
+  'Delegación de firma virtual personal',
+  'Configuración en Adm Cloud',
+  'Go Live'
+];
+
+// ==================== STATE ====================
+var userRole = null;
+var userName = '';
+var canEdit = false;
+var implMainTab = 'ic'; // 'ic' or 'fe'
+
+// IC data
+var icData = [];
+
+// FE data
+var feData = [];
+var feSelectedMonth = null; // null = Todos
+
+// Contadoras list (for dropdowns)
+var contadorasList = [];
+
+// ==================== UTILS ====================
+function esc(s) { return (s || '').replace(/'/g, "\\'"); }
+
+function formatDate(d) {
+  if (!d) return '';
+  var parts = d.split('-');
+  if (parts.length !== 3) return d;
+  return parts[2] + '/' + parts[1] + '/' + parts[0];
+}
+
+function showToast(msg, type) {
+  var t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast ' + (type || 'success') + ' show';
+  setTimeout(function() { t.classList.remove('show'); }, 2500);
+}
+
+function feSemaforoClass(row) {
+  if (row.estatus === 'Go Live') return 'gris';
+  if (!row.fecha_go_live_estimada) return 'gris';
+  var now = new Date(); now.setHours(0,0,0,0);
+  var dl = new Date(row.fecha_go_live_estimada + 'T00:00:00');
+  var diff = Math.ceil((dl - now) / (1000*60*60*24));
+  if (diff < 0) return 'rojo';
+  if (diff <= 7) return 'amarillo';
+  return 'verde';
+}
+
+function getCurrentMonthIndex() {
+  return new Date().getMonth();
+}
+
+// ==================== AUTH ====================
+async function doLogin() {
+  var email = document.getElementById('loginEmail').value.trim();
+  var pass = document.getElementById('loginPass').value;
+  var errEl = document.getElementById('loginError');
+  errEl.style.display = 'none';
+  if (!email || !pass) { errEl.textContent = 'Completa ambos campos.'; errEl.style.display = 'block'; return; }
+  var btn = document.querySelector('.login-btn');
+  btn.disabled = true; btn.textContent = 'Entrando...';
+  var { error } = await sb.auth.signInWithPassword({ email: email, password: pass });
+  if (error) { errEl.textContent = error.message; errEl.style.display = 'block'; btn.disabled = false; btn.textContent = 'Entrar'; return; }
+  initApp();
+}
+
+async function doLogout() {
+  await sb.auth.signOut();
+  location.reload();
+}
+
+// ==================== INIT ====================
+async function initApp() {
+  if (new URLSearchParams(location.search).get('embed') === '1') {
+    document.body.classList.add('embed');
+  }
+
+  var { data: { session } } = await sb.auth.getSession();
+  if (!session) return;
+
+  document.getElementById('loginOverlay').style.display = 'none';
+  document.getElementById('app').style.display = '';
+
+  // Profile
+  var { data: profile } = await sb.from('profiles').select('nombre, role').eq('id', session.user.id).single();
+  if (profile) {
+    userRole = profile.role;
+    userName = profile.nombre || session.user.email;
+  } else {
+    userRole = 'viewer';
+    userName = session.user.email;
+  }
+  document.getElementById('userName').textContent = userName;
+
+  // Check edit permission via grupos
+  canEdit = (userRole === 'admin');
+  if (!canEdit) {
+    var { data: ugs } = await sb.from('usuario_grupos').select('grupo_id, grupos(permisos)').eq('user_id', session.user.id);
+    if (ugs) {
+      ugs.forEach(function(ug) {
+        var p = ug.grupos && ug.grupos.permisos;
+        if (p && p.implementaciones && (p.implementaciones.edicion || p.implementaciones.adicion)) {
+          canEdit = true;
+        }
+      });
+    }
+  }
+
+  // Load data in parallel
+  await Promise.all([loadContadoras(), loadICData(), loadFEData()]);
+  switchImplTab(implMainTab);
+}
+
+// ==================== DATA LOADING ====================
+async function loadContadoras() {
+  var { data } = await sb.from('contadoras').select('nombre,activa');
+  var names = {};
+  (data || []).forEach(function(r) { if (r.activa) names[r.nombre] = true; });
+  contadorasList = Object.keys(names).sort();
+
+  // Populate modal dropdowns
+  populateContadoraSelect('ic-m-contadora');
+  populateContadoraSelect('fe-m-contadora');
+}
+
+function populateContadoraSelect(elId) {
+  var sel = document.getElementById(elId);
+  sel.innerHTML = '<option value="">Sin asignar</option>';
+  contadorasList.forEach(function(c) {
+    sel.innerHTML += '<option value="' + c + '">' + c + '</option>';
+  });
+}
+
+async function loadICData() {
+  var { data, error } = await sb.from('implementaciones_completas').select('*').order('cliente');
+  if (error) { console.error('Error cargando impl completas:', error); return; }
+  icData = data || [];
+}
+
+async function loadFEData() {
+  var { data, error } = await sb.from('implementaciones_fe').select('*').order('cliente');
+  if (error) { console.error('Error cargando impl FE:', error); return; }
+  feData = data || [];
+}
+
+// ==================== RENDER ====================
+function renderMainTabs() {
+  var tabs = [
+    { id: 'ic', label: 'Implementación Completa' },
+    { id: 'fe', label: 'Facturación Electrónica' }
+  ];
+  document.getElementById('mainTabs').innerHTML = tabs.map(function(t) {
+    return '<button class="main-tab ' + (implMainTab === t.id ? 'active' : '') + '" onclick="switchImplTab(\'' + t.id + '\')">' + t.label + '</button>';
+  }).join('');
+}
+
+function switchImplTab(tab) {
+  implMainTab = tab;
+  renderMainTabs();
+  if (tab === 'ic') {
+    document.getElementById('ic-area').classList.remove('hidden');
+    document.getElementById('fe-area').classList.add('hidden');
+    icRenderAll();
+  } else {
+    document.getElementById('ic-area').classList.add('hidden');
+    document.getElementById('fe-area').classList.remove('hidden');
+    feRenderAll();
+  }
+}
+
+// ==================== IC: IMPLEMENTACIÓN COMPLETA ====================
+function icRenderAll() {
+  var el = document.getElementById('ic-content');
+  var h = '';
+
+  // Add button
+  if (canEdit) {
+    h += '<button class="btn-add" onclick="icOpenModal()">+ Agregar cliente</button>';
+  }
+
+  if (icData.length === 0) {
+    h += '<div class="empty-state"><div class="emoji">🚀</div>';
+    h += '<p>No hay implementaciones registradas.</p>';
+    if (canEdit) h += '<p style="font-size:0.82rem">Usa el botón de arriba para agregar el primer cliente.</p>';
+    h += '</div>';
+    el.innerHTML = h;
+    return;
+  }
+
+  icData.sort(function(a, b) { return (a.cliente || '').localeCompare(b.cliente || '', 'es'); });
+
+  h += '<table class="impl-table">';
+  h += '<thead><tr>';
+  h += '<th style="width:36px">#</th>';
+  h += '<th>Cliente</th>';
+  h += '<th>Contadora</th>';
+  h += '<th>Inicio</th>';
+  h += '<th>Fin</th>';
+  h += '<th>1er mes resp.</th>';
+  h += '<th>Estatus</th>';
+  h += '</tr></thead><tbody>';
+
+  icData.forEach(function(row, idx) {
+    h += '<tr>';
+    h += '<td style="color:var(--muted);font-size:0.75rem">' + (idx + 1) + '</td>';
+    h += '<td class="client-name">' + (row.cliente || '') + '</td>';
+    h += '<td>' + (row.contadora || '<span style="color:var(--light)">Sin asignar</span>') + '</td>';
+    h += '<td class="date-cell' + (!row.fecha_inicio ? ' empty' : '') + '">' + (formatDate(row.fecha_inicio) || '—') + '</td>';
+    h += '<td class="date-cell' + (!row.fecha_fin ? ' empty' : '') + '">' + (formatDate(row.fecha_fin) || '—') + '</td>';
+    h += '<td class="date-cell' + (!row.primer_mes_responsabilidad ? ' empty' : '') + '">' + (formatDate(row.primer_mes_responsabilidad) || '—') + '</td>';
+
+    // Status dropdown or badge
+    if (canEdit) {
+      h += '<td><select class="status-select" onchange="icUpdateEstatus(\'' + row.id + '\',this.value)">';
+      IC_ESTATUS.forEach(function(s) {
+        h += '<option value="' + s + '"' + (row.estatus === s ? ' selected' : '') + '>' + s + '</option>';
+      });
+      h += '</select></td>';
+    } else {
+      h += '<td><span style="font-weight:600;font-size:0.82rem">' + (row.estatus || '—') + '</span></td>';
+    }
+
+    h += '</tr>';
+  });
+
+  h += '</tbody></table>';
+  el.innerHTML = h;
+}
+
+async function icUpdateEstatus(id, estatus) {
+  var { error } = await sb.from('implementaciones_completas').update({ estatus: estatus }).eq('id', id);
+  if (error) { showToast('Error al actualizar', 'error'); console.error(error); return; }
+  // Update local data
+  icData.forEach(function(r) { if (r.id === id) r.estatus = estatus; });
+  showToast('Estatus actualizado');
+}
+
+// IC Modal
+function icOpenModal() {
+  document.getElementById('ic-m-cliente').value = '';
+  document.getElementById('ic-m-contadora').value = '';
+  document.getElementById('ic-m-fecha-inicio').value = '';
+  document.getElementById('ic-m-fecha-fin').value = '';
+  document.getElementById('ic-m-primer-mes').value = '';
+  document.getElementById('ic-m-estatus').value = '';
+  document.getElementById('ic-m-cliente-err').style.display = 'none';
+  document.getElementById('ic-m-estatus-err').style.display = 'none';
+  document.getElementById('ic-modal-overlay').classList.remove('hidden');
+}
+
+function icCloseModal() {
+  document.getElementById('ic-modal-overlay').classList.add('hidden');
+}
+
+async function icSaveNew() {
+  var cliente = document.getElementById('ic-m-cliente').value.trim();
+  var contadora = document.getElementById('ic-m-contadora').value || null;
+  var fechaInicio = document.getElementById('ic-m-fecha-inicio').value || null;
+  var fechaFin = document.getElementById('ic-m-fecha-fin').value || null;
+  var primerMes = document.getElementById('ic-m-primer-mes').value || null;
+  var estatus = document.getElementById('ic-m-estatus').value;
+
+  // Validations
+  var valid = true;
+  if (!cliente) {
+    document.getElementById('ic-m-cliente-err').style.display = 'block';
+    valid = false;
+  } else {
+    document.getElementById('ic-m-cliente-err').style.display = 'none';
+  }
+  if (!estatus) {
+    document.getElementById('ic-m-estatus-err').style.display = 'block';
+    valid = false;
+  } else {
+    document.getElementById('ic-m-estatus-err').style.display = 'none';
+  }
+  if (!valid) return;
+
+  var btn = document.getElementById('ic-m-save');
+  btn.disabled = true; btn.textContent = 'Guardando...';
+
+  var { error } = await sb.from('implementaciones_completas').insert({
+    cliente: cliente,
+    contadora: contadora,
+    fecha_inicio: fechaInicio,
+    fecha_fin: fechaFin,
+    primer_mes_responsabilidad: primerMes,
+    estatus: estatus
+  });
+
+  btn.disabled = false; btn.textContent = 'Guardar';
+
+  if (error) { showToast('Error al guardar: ' + error.message, 'error'); console.error(error); return; }
+
+  icCloseModal();
+  await loadICData();
+  icRenderAll();
+  showToast('Cliente agregado');
+}
+
+// ==================== FE: FACTURACIÓN ELECTRÓNICA ====================
+function feRenderAll() {
+  var el = document.getElementById('fe-content');
+  var h = '';
+
+  // Month pills
+  h += '<div class="month-tabs">';
+  h += '<button class="month-tab' + (feSelectedMonth === null ? ' active' : '') + '" onclick="feSelectedMonth=null;feRenderAll()">Todos</button>';
+  MESES_LABEL.forEach(function(label, i) {
+    h += '<button class="month-tab' + (feSelectedMonth === i ? ' active' : '') + '" onclick="feSelectedMonth=' + i + ';feRenderAll()">' + label + '</button>';
+  });
+  h += '</div>';
+
+  // Add button
+  if (canEdit) {
+    h += '<button class="btn-add" onclick="feOpenModal()">+ Agregar cliente</button>';
+  }
+
+  // Filter data by month
+  var filtered = feData;
+  if (feSelectedMonth !== null) {
+    filtered = feData.filter(function(row) {
+      if (!row.fecha_go_live_estimada) return false;
+      var m = parseInt(row.fecha_go_live_estimada.split('-')[1], 10) - 1;
+      return m === feSelectedMonth;
+    });
+  }
+
+  if (filtered.length === 0) {
+    h += '<div class="empty-state"><div class="emoji">⚡</div>';
+    h += '<p>No hay clientes de facturación electrónica' + (feSelectedMonth !== null ? ' para este mes' : '') + '.</p>';
+    if (canEdit) h += '<p style="font-size:0.82rem">Usa el botón de arriba para agregar el primer cliente.</p>';
+    h += '</div>';
+    el.innerHTML = h;
+    return;
+  }
+
+  filtered.sort(function(a, b) { return (a.cliente || '').localeCompare(b.cliente || '', 'es'); });
+
+  h += '<table class="impl-table">';
+  h += '<thead><tr>';
+  h += '<th style="width:36px">#</th>';
+  h += '<th>Cliente</th>';
+  h += '<th>Contadora</th>';
+  h += '<th>Go Live estimado</th>';
+  h += '<th style="text-align:center">Semáforo</th>';
+  h += '<th>Estatus</th>';
+  h += '</tr></thead><tbody>';
+
+  filtered.forEach(function(row, idx) {
+    var sem = feSemaforoClass(row);
+
+    h += '<tr>';
+    h += '<td style="color:var(--muted);font-size:0.75rem">' + (idx + 1) + '</td>';
+    h += '<td class="client-name">' + (row.cliente || '') + '</td>';
+    h += '<td>' + (row.contadora || '<span style="color:var(--light)">Sin asignar</span>') + '</td>';
+    h += '<td class="date-cell' + (!row.fecha_go_live_estimada ? ' empty' : '') + '">' + (formatDate(row.fecha_go_live_estimada) || '—') + '</td>';
+
+    // Semáforo
+    h += '<td style="text-align:center">';
+    if (row.estatus === 'Go Live') {
+      h += '<span style="color:var(--green);font-weight:700;font-size:1rem">✓</span>';
+    } else {
+      h += '<span class="semaforo ' + sem + '"></span>';
+    }
+    h += '</td>';
+
+    // Status dropdown or text
+    if (canEdit) {
+      h += '<td><select class="status-select" onchange="feUpdateEstatus(\'' + row.id + '\',this.value)">';
+      FE_ESTATUS.forEach(function(s) {
+        h += '<option value="' + s + '"' + (row.estatus === s ? ' selected' : '') + '>' + s + '</option>';
+      });
+      h += '</select></td>';
+    } else {
+      h += '<td><span style="font-weight:600;font-size:0.82rem">' + (row.estatus || '—') + '</span></td>';
+    }
+
+    h += '</tr>';
+  });
+
+  h += '</tbody></table>';
+  el.innerHTML = h;
+}
+
+async function feUpdateEstatus(id, estatus) {
+  var { error } = await sb.from('implementaciones_fe').update({ estatus: estatus }).eq('id', id);
+  if (error) { showToast('Error al actualizar', 'error'); console.error(error); return; }
+  feData.forEach(function(r) { if (r.id === id) r.estatus = estatus; });
+  showToast('Estatus actualizado');
+  feRenderAll(); // re-render to update semáforo
+}
+
+// FE Modal
+function feOpenModal() {
+  document.getElementById('fe-m-cliente').value = '';
+  document.getElementById('fe-m-contadora').value = '';
+  document.getElementById('fe-m-go-live').value = '';
+  document.getElementById('fe-m-estatus').value = '';
+  document.getElementById('fe-m-cliente-err').style.display = 'none';
+  document.getElementById('fe-m-estatus-err').style.display = 'none';
+  document.getElementById('fe-modal-overlay').classList.remove('hidden');
+}
+
+function feCloseModal() {
+  document.getElementById('fe-modal-overlay').classList.add('hidden');
+}
+
+async function feSaveNew() {
+  var cliente = document.getElementById('fe-m-cliente').value.trim();
+  var contadora = document.getElementById('fe-m-contadora').value || null;
+  var goLive = document.getElementById('fe-m-go-live').value || null;
+  var estatus = document.getElementById('fe-m-estatus').value;
+
+  var valid = true;
+  if (!cliente) {
+    document.getElementById('fe-m-cliente-err').style.display = 'block';
+    valid = false;
+  } else {
+    document.getElementById('fe-m-cliente-err').style.display = 'none';
+  }
+  if (!estatus) {
+    document.getElementById('fe-m-estatus-err').style.display = 'block';
+    valid = false;
+  } else {
+    document.getElementById('fe-m-estatus-err').style.display = 'none';
+  }
+  if (!valid) return;
+
+  var btn = document.getElementById('fe-m-save');
+  btn.disabled = true; btn.textContent = 'Guardando...';
+
+  var { error } = await sb.from('implementaciones_fe').insert({
+    cliente: cliente,
+    contadora: contadora,
+    fecha_go_live_estimada: goLive,
+    estatus: estatus
+  });
+
+  btn.disabled = false; btn.textContent = 'Guardar';
+
+  if (error) { showToast('Error al guardar: ' + error.message, 'error'); console.error(error); return; }
+
+  feCloseModal();
+  await loadFEData();
+  feRenderAll();
+  showToast('Cliente agregado');
+}
+
+// ==================== BOOT ====================
+(async function() {
+  if (new URLSearchParams(location.search).get('embed') === '1') {
+    document.body.classList.add('embed');
+  }
+  var { data: { session } } = await sb.auth.getSession();
+  if (session) { initApp(); }
+})();
+</script>
+</body>
+</html>
