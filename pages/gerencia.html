@@ -2648,8 +2648,16 @@ function bdRenderClientes() {
   if (userRole === 'admin') h += '<th></th>';
   h += '</tr></thead><tbody>';
 
+  var clLastGroup = null;
+  var colCount = userRole === 'admin' ? 9 : 8;
   filtered.forEach(function(c, idx) {
     var isInactivo = c.activo === false;
+    var groupKey = isInactivo ? '__inactivo' : (!c.tipo_servicio ? '__sin_tipo' : '__asignado');
+    if (groupKey !== clLastGroup) {
+      var groupLabel = groupKey === '__sin_tipo' ? 'Sin servicio asignado' : groupKey === '__asignado' ? 'Clientes asignados' : 'Inactivos';
+      h += '<tr style="background:#f1f5f9"><td colspan="' + colCount + '" style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--navy);padding:10px 12px">' + groupLabel + '</td></tr>';
+      clLastGroup = groupKey;
+    }
     var rowStyle = isInactivo ? ' style="opacity:0.55"' : '';
     h += '<tr' + rowStyle + '>';
     h += '<td style="color:var(--muted);font-size:0.75rem">' + (idx + 1) + '</td>';
@@ -3142,11 +3150,20 @@ function bdRenderAsignaciones() {
   if (userRole === 'admin') h += '<th></th>';
   h += '</tr></thead><tbody>';
 
+  var asigLastGroup = null;
+  var asigColCount = userRole === 'admin' ? 6 : 5;
   rows.forEach(function(r, idx) {
     var edited = bdAsigEdits[idx];
     var contVal = edited ? edited.contadora : r.contadora;
     var servVal = edited ? edited.serv : r.serv;
     var admVal = edited ? edited.adm : r.adm;
+    var isSinAsignar = !contVal || contVal === 'Sin asignar';
+    var groupKey = isSinAsignar ? '__sin' : '__asig';
+    if (groupKey !== asigLastGroup) {
+      var groupLabel = isSinAsignar ? 'Sin asignar' : 'Asignados';
+      h += '<tr style="background:#f1f5f9"><td colspan="' + asigColCount + '" style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--navy);padding:10px 12px">' + groupLabel + '</td></tr>';
+      asigLastGroup = groupKey;
+    }
 
     h += '<tr>';
     h += '<td style="color:var(--light);font-size:0.75rem">' + (idx + 1) + '</td>';
