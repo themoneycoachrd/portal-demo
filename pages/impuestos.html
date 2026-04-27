@@ -53,7 +53,7 @@ body { font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-se
 
 /* ─── Content ─── */
 .nav-area { padding:12px 24px; background:var(--bg); border-bottom:1px solid var(--border); }
-.content { padding:16px 24px 24px 24px; max-width:1200px; margin:0 auto; }
+.content { padding:24px; max-width:1200px; margin:0 auto; }
 
 /* ─── Summary stats ─── */
 .summary-stats { display:grid; grid-template-columns:repeat(auto-fit, minmax(130px,1fr)); gap:12px; margin-bottom:20px; }
@@ -241,6 +241,8 @@ body.embed .nav-area { margin-top:-12px; }
     <button class="main-tab active" id="tab-checklist" onclick="switchMainTab('checklist')">Checklist</button>
     <button class="main-tab" id="tab-kpi" onclick="switchMainTab('kpi')">KPI</button>
   </div>
+
+  <div id="navArea"></div>
 
   <div class="content">
     <div id="checklistPanel">
@@ -456,6 +458,7 @@ function switchMainTab(tab) {
   document.getElementById('tab-kpi').className = 'main-tab' + (tab === 'kpi' ? ' active' : '');
   document.getElementById('checklistPanel').style.display = tab === 'checklist' ? '' : 'none';
   document.getElementById('kpiPanel').style.display = tab === 'kpi' ? '' : 'none';
+  document.getElementById('navArea').style.display = tab === 'checklist' ? '' : 'none';
   if (tab === 'kpi') renderKpi();
 }
 
@@ -513,6 +516,7 @@ async function initApp() {
   selectedMes = getCurrentMonth();
 
   await Promise.all([loadContadoras(), loadImpuestos()]);
+  renderNav();
   renderMain();
 }
 
@@ -626,6 +630,36 @@ function getBarColor(pct) {
   return 'var(--red)';
 }
 
+function renderNav() {
+  var nav = document.getElementById('navArea');
+  var h = '<div class="nav-area">';
+
+  // Month tabs
+  h += '<div class="month-tabs">';
+  MESES_KEY.forEach(function(m, i) {
+    h += '<button class="month-tab' + (m === selectedMes ? ' active' : '') + '" onclick="selectedMes=\'' + m + '\';renderNav();renderMain()">' + MESES_LABEL[i] + '</button>';
+  });
+  h += '</div>';
+
+  // Contadora pills
+  var mesContadoras = getContadorasForMes(selectedMes);
+  var contNames = sortContadoras(Object.keys(mesContadoras));
+
+  if (selectedContadora !== 'Todas' && contNames.indexOf(selectedContadora) < 0) {
+    selectedContadora = 'Todas';
+  }
+
+  h += '<div class="contadora-pills" style="margin-top:10px">';
+  h += '<button class="contadora-pill' + (selectedContadora === 'Todas' ? ' active' : '') + '" onclick="selectedContadora=\'Todas\';renderNav();renderMain()">Todas</button>';
+  contNames.forEach(function(name) {
+    h += '<button class="contadora-pill' + (selectedContadora === name ? ' active' : '') + '" onclick="selectedContadora=\'' + escJs(name) + '\';renderNav();renderMain()">' + esc(name) + '</button>';
+  });
+  h += '</div>';
+
+  h += '</div>';
+  nav.innerHTML = h;
+}
+
 function renderMain() {
   currentView = 'main';
   document.getElementById('mainView').style.display = '';
@@ -633,34 +667,6 @@ function renderMain() {
 
   var el = document.getElementById('mainView');
   var h = '';
-
-  // Nav area (month tabs + contadora pills) — same layout as contabilidad
-  h += '<div class="nav-area">';
-
-  // Month tabs
-  h += '<div class="month-tabs">';
-  MESES_KEY.forEach(function(m, i) {
-    h += '<button class="month-tab' + (m === selectedMes ? ' active' : '') + '" onclick="selectedMes=\'' + m + '\';renderMain()">' + MESES_LABEL[i] + '</button>';
-  });
-  h += '</div>';
-
-  // Contadora pills (filtered by selected month)
-  var mesContadoras = getContadorasForMes(selectedMes);
-  var contNames = sortContadoras(Object.keys(mesContadoras));
-
-  // Reset selectedContadora if not available in this month
-  if (selectedContadora !== 'Todas' && contNames.indexOf(selectedContadora) < 0) {
-    selectedContadora = 'Todas';
-  }
-
-  h += '<div class="contadora-pills" style="margin-top:10px">';
-  h += '<button class="contadora-pill' + (selectedContadora === 'Todas' ? ' active' : '') + '" onclick="selectedContadora=\'Todas\';renderMain()">Todas</button>';
-  contNames.forEach(function(name) {
-    h += '<button class="contadora-pill' + (selectedContadora === name ? ' active' : '') + '" onclick="selectedContadora=\'' + escJs(name) + '\';renderMain()">' + esc(name) + '</button>';
-  });
-  h += '</div>';
-
-  h += '</div>'; // close nav-area
 
   // Build client list with progress
   var clients = getClientsForMonth();
