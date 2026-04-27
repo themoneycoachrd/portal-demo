@@ -602,6 +602,7 @@ let kpiMes = null;
 // Asignaciones solo aporta dato mensual de transacciones digitadas (adm) para KPI.
 
 var CLIENTES_CONTAB = []; // clientes con responsabilidad_contabilidad = true
+var CLIENTES_SIN_RESP = []; // clientes activos sin responsabilidad contable
 var ASIG_ADM = {};        // { "cliente_mes": adm } — transacciones digitadas por mes
 
 async function loadAsignaciones() {
@@ -609,9 +610,9 @@ async function loadAsignaciones() {
   const { data: cData, error: cErr } = await sb.from('clientes')
     .select('nombre, contadora_contabilidad, monto_adm, responsabilidad_contabilidad, activo');
   if (cErr) { console.error('Error cargando clientes:', cErr); return; }
-  CLIENTES_CONTAB = (cData || []).filter(c =>
-    c.activo !== false && c.responsabilidad_contabilidad === true
-  );
+  var activos = (cData || []).filter(c => c.activo !== false);
+  CLIENTES_CONTAB = activos.filter(c => c.responsabilidad_contabilidad === true);
+  CLIENTES_SIN_RESP = activos.filter(c => c.responsabilidad_contabilidad !== true);
 
   // 2. Cargar asignaciones para datos mensuales de digitación (KPI)
   const { data: aData } = await sb.from('asignaciones').select('cliente, mes, adm');
@@ -1131,14 +1132,17 @@ function renderCkClientList(el) {
   const enProgreso = clients.filter(c => c.pct > 0 && c.pct < 100).length;
   const sinIniciar = clients.filter(c => c.pct === 0).length;
   const avgPct = Math.round(clients.reduce((s, c) => s + c.pct, 0) / totalClients);
-  const totalActivos = CLIENTES_CONTAB.length;
+  const totalActivos = CLIENTES_CONTAB.length + CLIENTES_SIN_RESP.length;
+  const sinRespCount = CLIENTES_SIN_RESP.length;
   const sinAsignarCount = CLIENTES_CONTAB.filter(c => !c.contadora_contabilidad).length;
+  const asignadosCount = CLIENTES_CONTAB.length - sinAsignarCount;
 
   let html = '';
   html += '<div class="summary-stats">';
   html += '<div class="summary-stat"><div class="summary-stat-label">Total clientes</div><div class="summary-stat-value">' + totalActivos + '</div></div>';
-  html += '<div class="summary-stat"><div class="summary-stat-label">Asignados</div><div class="summary-stat-value">' + (totalActivos - sinAsignarCount) + '</div></div>';
+  html += '<div class="summary-stat"><div class="summary-stat-label">Asignados</div><div class="summary-stat-value">' + asignadosCount + '</div></div>';
   html += '<div class="summary-stat"><div class="summary-stat-label">Sin asignar</div><div class="summary-stat-value" style="color:' + (sinAsignarCount > 0 ? 'var(--amber)' : 'var(--green)') + '">' + sinAsignarCount + '</div></div>';
+  html += '<div class="summary-stat"><div class="summary-stat-label">Sin resp. contable</div><div class="summary-stat-value" style="color:var(--muted)">' + sinRespCount + '</div></div>';
   html += '<div class="summary-stat"><div class="summary-stat-label">Completados</div><div class="summary-stat-value" style="color:var(--green)">' + completados + '</div></div>';
   html += '<div class="summary-stat"><div class="summary-stat-label">En progreso</div><div class="summary-stat-value" style="color:var(--amber)">' + enProgreso + '</div></div>';
   html += '<div class="summary-stat"><div class="summary-stat-label">Sin iniciar</div><div class="summary-stat-value" style="color:var(--red)">' + sinIniciar + '</div></div>';
@@ -1154,6 +1158,12 @@ function renderCkClientList(el) {
   html += '<button class="view-toggle-btn' + (ckViewMode === 'cards' ? ' active' : '') + '" onclick="ckToggleView(\'cards\')">' + iconCards + ' Cuadros</button>';
   html += '</div></div>';
 
+  // Separate clients into groups: assigned, sin asignar
+  var ckAsignados = clients.filter(c => c.contadora !== 'Sin asignar');
+  var ckSinAsignar = clients.filter(c => c.contadora === 'Sin asignar');
+  // Sin responsabilidad contable (sorted alphabetically)
+  var ckSinResp = CLIENTES_SIN_RESP.slice().sort((a, b) => (a.nombre || '').localeCompare(b.nombre || '', 'es'));
+
   if (ckViewMode === 'table') {
     // Table view
     html += '<div style="overflow-x:auto">';
@@ -1165,23 +1175,58 @@ function renderCkClientList(el) {
     html += '<th>Tareas</th>';
     html += '<th>Estado</th>';
     html += '</tr></thead><tbody>';
-    clients.forEach((c, idx) => {
-      const barColor = c.pct === 100 ? 'var(--green)' : c.pct > 0 ? 'var(--amber)' : '#e2e8f0';
-      const isSinAsignar = c.contadora === 'Sin asignar';
-      const statusText = isSinAsignar ? 'Sin asignar' : c.pct === 100 ? 'Completado' : c.pct > 0 ? 'En progreso' : 'Pendiente';
-      const statusClass = isSinAsignar ? 'ck-status-sinasignar' : c.pct === 100 ? 'ck-status-completo' : c.pct > 0 ? 'ck-status-progreso' : 'ck-status-pendiente';
-      html += '<tr onclick="ckSelectClient(\'' + esc(c.contadora) + '\',\'' + esc(c.cliente) + '\')">';
-      html += '<td style="color:var(--muted);font-size:0.75rem">' + (idx + 1) + '</td>';
-      html += '<td class="ck-table-name">' + c.cliente + '</td>';
-      html += '<td class="ck-table-contadora">' + c.contadora + '</td>';
-      html += '<td><div class="ck-progress-bar"><div class="ck-progress-fill" style="width:' + c.pct + '%;background:' + barColor + '"></div></div><span style="font-size:0.78rem;font-weight:700;color:' + getBarColor(c.pct) + '">' + c.pct + '%</span></td>';
-      html += '<td><span class="ck-progress-text">' + c.done + '/' + c.total + '</span></td>';
-      html += '<td><span class="ck-status-badge ' + statusClass + '">' + statusText + '</span></td>';
-      html += '</tr>';
-    });
+    var ckRowIdx = 0;
+    // Group: Asignados
+    if (ckAsignados.length > 0) {
+      html += '<tr style="background:#f1f5f9"><td colspan="6" style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--navy);padding:10px 12px">Asignados</td></tr>';
+      ckAsignados.forEach(c => {
+        ckRowIdx++;
+        const barColor = c.pct === 100 ? 'var(--green)' : c.pct > 0 ? 'var(--amber)' : '#e2e8f0';
+        html += '<tr onclick="ckSelectClient(\'' + esc(c.contadora) + '\',\'' + esc(c.cliente) + '\')">';
+        html += '<td style="color:var(--muted);font-size:0.75rem">' + ckRowIdx + '</td>';
+        html += '<td class="ck-table-name">' + c.cliente + '</td>';
+        html += '<td class="ck-table-contadora">' + c.contadora + '</td>';
+        html += '<td><div class="ck-progress-bar"><div class="ck-progress-fill" style="width:' + c.pct + '%;background:' + barColor + '"></div></div><span style="font-size:0.78rem;font-weight:700;color:' + getBarColor(c.pct) + '">' + c.pct + '%</span></td>';
+        html += '<td><span class="ck-progress-text">' + c.done + '/' + c.total + '</span></td>';
+        var statusText = c.pct === 100 ? 'Completado' : c.pct > 0 ? 'En progreso' : 'Pendiente';
+        var statusClass = c.pct === 100 ? 'ck-status-completo' : c.pct > 0 ? 'ck-status-progreso' : 'ck-status-pendiente';
+        html += '<td><span class="ck-status-badge ' + statusClass + '">' + statusText + '</span></td>';
+        html += '</tr>';
+      });
+    }
+    // Group: Sin asignar
+    if (ckSinAsignar.length > 0) {
+      html += '<tr style="background:#f1f5f9"><td colspan="6" style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--navy);padding:10px 12px">Sin asignar</td></tr>';
+      ckSinAsignar.forEach(c => {
+        ckRowIdx++;
+        html += '<tr onclick="ckSelectClient(\'' + esc(c.contadora) + '\',\'' + esc(c.cliente) + '\')">';
+        html += '<td style="color:var(--muted);font-size:0.75rem">' + ckRowIdx + '</td>';
+        html += '<td class="ck-table-name">' + c.cliente + '</td>';
+        html += '<td class="ck-table-contadora">—</td>';
+        html += '<td><div class="ck-progress-bar"><div class="ck-progress-fill" style="width:0%;background:#e2e8f0"></div></div><span style="font-size:0.78rem;font-weight:700;color:var(--muted)">0%</span></td>';
+        html += '<td><span class="ck-progress-text">' + c.done + '/' + c.total + '</span></td>';
+        html += '<td><span class="ck-status-badge ck-status-sinasignar">Sin asignar</span></td>';
+        html += '</tr>';
+      });
+    }
+    // Group: Sin responsabilidad contable
+    if (ckSinResp.length > 0) {
+      html += '<tr style="background:#f1f5f9"><td colspan="6" style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--navy);padding:10px 12px">Sin responsabilidad contable</td></tr>';
+      ckSinResp.forEach(sr => {
+        ckRowIdx++;
+        html += '<tr style="opacity:0.55">';
+        html += '<td style="color:var(--muted);font-size:0.75rem">' + ckRowIdx + '</td>';
+        html += '<td class="ck-table-name">' + esc(sr.nombre) + '</td>';
+        html += '<td class="ck-table-contadora" style="color:var(--light)">N/A</td>';
+        html += '<td style="color:var(--light);font-size:0.8rem">—</td>';
+        html += '<td style="color:var(--light);font-size:0.8rem">—</td>';
+        html += '<td><span class="ck-status-badge" style="background:#f1f5f9;color:var(--muted)">N/A</span></td>';
+        html += '</tr>';
+      });
+    }
     html += '</tbody></table></div>';
   } else {
-    // Card view (original)
+    // Card view
     html += '<div class="client-grid">';
     clients.forEach(c => {
       const barColor = c.pct === 100 ? 'var(--green)' : c.pct > 0 ? 'var(--amber)' : '#e2e8f0';
@@ -1193,6 +1238,18 @@ function renderCkClientList(el) {
       html += '<div class="client-card-pct" style="color:' + getBarColor(c.pct) + '">' + c.pct + '%</div>';
       html += '</div>';
       html += '<div class="client-card-count">' + c.done + ' de ' + c.total + ' tareas</div>';
+      html += '</div>';
+    });
+    // Cards for sin resp contable
+    ckSinResp.forEach(sr => {
+      html += '<div class="client-card" style="opacity:0.55">';
+      html += '<div class="client-card-name">' + esc(sr.nombre) + '</div>';
+      html += '<div class="client-card-contadora" style="color:var(--light)">Sin resp. contable</div>';
+      html += '<div class="client-card-progress">';
+      html += '<div class="client-card-bar"><div class="client-card-fill" style="width:0%"></div></div>';
+      html += '<div class="client-card-pct" style="color:var(--light)">N/A</div>';
+      html += '</div>';
+      html += '<div class="client-card-count" style="color:var(--light)">—</div>';
       html += '</div>';
     });
     html += '</div>';
