@@ -2510,6 +2510,8 @@ var bdClientes = [];
 var bdContadoras = [];
 var bdAsignaciones = [];
 var bdAsigMes = 'abril';
+var bdClMes = 'abril';
+var bdContMes = 'abril';
 var bdAsigDirty = false; // track unsaved changes in assignments
 var bdAsigEdits = {}; // { rowIdx: { contadora, serv, adm } }
 
@@ -2588,16 +2590,51 @@ function clFormatDate(d) {
   return p.length === 3 ? p[2] + '/' + p[1] + '/' + p[0] : d;
 }
 
+function bdGetClientesForMes(mesName) {
+  var mesIdx = BD_MESES.indexOf(mesName);
+  var lastDay = new Date(2026, mesIdx + 1, 0);
+  var lastDayStr = '2026-' + String(mesIdx + 1).padStart(2, '0') + '-' + String(lastDay.getDate()).padStart(2, '0');
+  return bdClientes.filter(function(c) {
+    var entered = !c.fecha_entrada || c.fecha_entrada <= lastDayStr;
+    var notLeft = !c.fecha_salida || c.fecha_salida > lastDayStr;
+    return entered && notLeft;
+  });
+}
+
+function bdSwitchClMes(mes) {
+  bdClMes = mes;
+  bdRenderClientes();
+}
+
 function bdRenderClientes() {
   var el = document.getElementById('bd-content');
   var h = '';
 
-  var activos = bdClientes.filter(function(c) { return c.activo !== false; }).length;
-  var inactivos = bdClientes.length - activos;
-  h += '<div class="cl-stats">';
-  h += '<div class="cl-stat"><div class="cl-stat-count">' + activos + '</div><div class="cl-stat-label">Clientes activos</div></div>';
-  h += '<div class="cl-stat"><div class="cl-stat-count">' + inactivos + '</div><div class="cl-stat-label">Inactivos</div></div>';
-  h += '<div class="cl-stat"><div class="cl-stat-count">' + bdClientes.length + '</div><div class="cl-stat-label">Total</div></div>';
+  // Month pills
+  h += '<div class="bd-month-pills">';
+  BD_MESES.forEach(function(m, i) {
+    h += '<button class="bd-month-pill ' + (bdClMes === m ? 'active' : '') + '" onclick="bdSwitchClMes(\'' + m + '\')">' + BD_MESES_SHORT[i] + '</button>';
+  });
+  h += '</div>';
+
+  // Combine active clients for selected month + inactive clients
+  var clActivosMes = bdGetClientesForMes(bdClMes);
+  var clMesIdx = BD_MESES.indexOf(bdClMes);
+  var clLastDayObj = new Date(2026, clMesIdx + 1, 0);
+  var clLastDayStr = '2026-' + String(clMesIdx + 1).padStart(2, '0') + '-' + String(clLastDayObj.getDate()).padStart(2, '0');
+  var clInactivosMes = bdClientes.filter(function(c) {
+    if (c.fecha_salida && c.fecha_salida <= clLastDayStr && c.fecha_entrada && c.fecha_entrada <= clLastDayStr) return true;
+    if (c.activo === false && !c.fecha_salida) return true;
+    return false;
+  }).filter(function(c) {
+    return clActivosMes.indexOf(c) === -1;
+  });
+  var allForMes = clActivosMes.concat(clInactivosMes);
+
+  h += '<div class="bd-summary">';
+  h += '<div class="bd-summary-item"><div class="bd-summary-count">' + clActivosMes.length + '</div><div class="bd-summary-label">Clientes activos</div></div>';
+  h += '<div class="bd-summary-item"><div class="bd-summary-count">' + clInactivosMes.length + '</div><div class="bd-summary-label">Inactivos</div></div>';
+  h += '<div class="bd-summary-item"><div class="bd-summary-count">' + allForMes.length + '</div><div class="bd-summary-label">Total</div></div>';
   h += '</div>';
 
   h += '<div class="cl-toolbar">';
@@ -2607,10 +2644,10 @@ function bdRenderClientes() {
   }
   h += '</div>';
 
-  var filtered = bdClientes;
+  var filtered = allForMes;
   if (clSearch) {
     var q = clSearch.toLowerCase();
-    filtered = bdClientes.filter(function(c) {
+    filtered = allForMes.filter(function(c) {
       return (c.nombre || '').toLowerCase().indexOf(q) >= 0
         || (c.rnc || '').toLowerCase().indexOf(q) >= 0
         || (c.contadora_contabilidad || '').toLowerCase().indexOf(q) >= 0
@@ -2635,9 +2672,10 @@ function bdRenderClientes() {
   function clClientesSinAsignar(c) {
     return !c.contadora_contabilidad && !c.contadora_impuestos;
   }
+  var clActivosSet = clActivosMes;
   filtered.sort(function(a, b) {
-    var aActivo = a.activo !== false ? 0 : 1;
-    var bActivo = b.activo !== false ? 0 : 1;
+    var aActivo = clActivosSet.indexOf(a) >= 0 ? 0 : 1;
+    var bActivo = clActivosSet.indexOf(b) >= 0 ? 0 : 1;
     if (aActivo !== bActivo) return aActivo - bActivo;
     if (aActivo === 0) {
       var aSin = clClientesSinAsignar(a) ? 0 : 1;
@@ -2656,7 +2694,7 @@ function bdRenderClientes() {
   var clLastGroup = null;
   var colCount = userRole === 'admin' ? 9 : 8;
   filtered.forEach(function(c, idx) {
-    var isInactivo = c.activo === false;
+    var isInactivo = clActivosSet.indexOf(c) < 0;
     var groupKey = isInactivo ? '__inactivo' : (clClientesSinAsignar(c) ? '__sin_asignar' : '__clientes');
     if (groupKey !== clLastGroup) {
       var groupLabel = groupKey === '__sin_asignar' ? 'Sin asignar' : groupKey === '__clientes' ? 'Clientes' : 'Inactivos';
@@ -2951,6 +2989,11 @@ async function clSaveClient() {
 // BD SUB-TAB: CONTADORAS
 // ═══════════════════════════════════════════
 
+function bdSwitchContMes(mes) {
+  bdContMes = mes;
+  bdRenderContadoras();
+}
+
 function bdRenderContadoras() {
   var el = document.getElementById('bd-content');
 
@@ -2962,6 +3005,24 @@ function bdRenderContadoras() {
   }
 
   var h = '';
+
+  // Month pills
+  h += '<div class="bd-month-pills">';
+  BD_MESES.forEach(function(m, i) {
+    h += '<button class="bd-month-pill ' + (bdContMes === m ? 'active' : '') + '" onclick="bdSwitchContMes(\'' + m + '\')">' + BD_MESES_SHORT[i] + '</button>';
+  });
+  h += '</div>';
+
+  // Count clients assigned to each contadora for the selected month
+  var asigMes = bdAsignaciones.filter(function(a) { return a.mes === bdContMes; });
+  var contClientCount = {};
+  asigMes.forEach(function(a) {
+    if (a.contadora && a.contadora !== 'Sin asignar') {
+      contClientCount[a.contadora] = (contClientCount[a.contadora] || 0) + 1;
+    }
+  });
+  var totalAsigMes = asigMes.filter(function(a) { return a.contadora && a.contadora !== 'Sin asignar'; }).length;
+
   var activas = bdContadoras.filter(function(c) { return c.activa; }).length;
   var plenas = bdContadoras.filter(function(c) { return c.activa && c.tipo === 'plena'; }).length;
 
@@ -2969,6 +3030,7 @@ function bdRenderContadoras() {
   h += '<div class="bd-summary-item"><div class="bd-summary-count">' + activas + '</div><div class="bd-summary-label">Activas</div></div>';
   h += '<div class="bd-summary-item"><div class="bd-summary-count">' + plenas + '</div><div class="bd-summary-label">Plenas</div></div>';
   h += '<div class="bd-summary-item"><div class="bd-summary-count">' + (bdContadoras.length - activas) + '</div><div class="bd-summary-label">Inactivas</div></div>';
+  h += '<div class="bd-summary-item"><div class="bd-summary-count">' + totalAsigMes + '</div><div class="bd-summary-label">Clientes asignados</div></div>';
   h += '</div>';
 
   if (userRole === 'admin') {
@@ -2978,17 +3040,19 @@ function bdRenderContadoras() {
   bdContadoras.sort(function(a, b) { return (a.nombre || '').localeCompare(b.nombre || '', 'es'); });
 
   h += '<table class="bd-cont-table">';
-  h += '<thead><tr><th style="width:36px">#</th><th>Nombre</th><th>Tipo</th><th>Capacidad</th><th>Estado</th><th>Notas</th>';
+  h += '<thead><tr><th style="width:36px">#</th><th>Nombre</th><th>Tipo</th><th>Clientes</th><th>Capacidad</th><th>Estado</th><th>Notas</th>';
   if (userRole === 'admin') h += '<th></th>';
   h += '</tr></thead><tbody>';
 
   bdContadoras.forEach(function(c, idx) {
     var tipoCls = 'bd-tipo-' + c.tipo;
     var tipoLabel = c.tipo === 'plena' ? 'Plena' : (c.tipo === 'facturacion' ? 'Facturación' : 'Freelance');
+    var clientesAsig = contClientCount[c.nombre] || 0;
     h += '<tr>';
     h += '<td style="color:var(--muted);font-size:0.75rem">' + (idx + 1) + '</td>';
     h += '<td style="font-weight:600;color:var(--navy)">' + esc(c.nombre) + '</td>';
     h += '<td><span class="' + tipoCls + '">' + tipoLabel + '</span></td>';
+    h += '<td style="font-weight:600">' + clientesAsig + '</td>';
     h += '<td>' + (c.capacidad ? c.capacidad.toLocaleString() : '<span style="color:var(--light)">—</span>') + '</td>';
     h += '<td><span class="' + (c.activa ? 'cl-badge-activo' : 'cl-badge-inactivo') + '">' + (c.activa ? 'Activa' : 'Inactiva') + '</span></td>';
     h += '<td style="font-size:0.8rem;color:var(--muted)">' + esc(c.notas || '') + '</td>';
@@ -3333,11 +3397,13 @@ async function showApp() {
 
   // Init BD state
   bdActiveSubTab = 'clientes';
-  // Set asignaciones month to current month or latest with data
+  // Set BD months to current month or latest with data
   var now = new Date();
   var curMes = BD_MESES[now.getMonth()];
   var mesConDatos = bdAsignaciones.filter(function(a) { return a.mes === curMes; });
   bdAsigMes = mesConDatos.length > 0 ? curMes : (bdAsignaciones.length > 0 ? bdAsignaciones[bdAsignaciones.length - 1].mes : curMes);
+  bdClMes = curMes;
+  bdContMes = curMes;
 
   // Render
   renderGerMainTabs();

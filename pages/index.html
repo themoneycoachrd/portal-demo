@@ -793,12 +793,13 @@ async function loadDashboardData() {
       var lfe = parseFloat(l.fe) || 0;
       var serv = parseFloat(l.serv) || 0;
       var soft = parseFloat(l.soft) || 0;
-      var desc = parseFloat(l.descuento) || 0;
+      var descRaw = l.descuento;
       cotizado += impl + lfe + serv + soft;
       if (l.funnel === 'Cerrado Ganado') {
         cierres++;
-        var tl = impl + lfe + serv + (includeSoft ? soft : 0);
-        vendido += tl * (1 - desc / 100);
+        var descPct = (descRaw != null ? parseFloat(descRaw) : 25) / 100;
+        var tl = (impl * (1 - descPct)) + (lfe * (1 - descPct)) + (includeSoft ? soft : 0);
+        vendido += tl;
         var nombre = l.nombre || '';
         var cat = (l.categoria || '').trim();
         if (cat === 'Recurrente') nombresRec.push(nombre);
