@@ -504,8 +504,8 @@ async function initAdmin(isEmbed2) {
   var { data: { session } } = await sb.auth.getSession();
   if (!session) return;
 
-  var { data: profile } = await sb.from('profiles').select('role').eq('id', session.user.id).single();
-  if (!profile || profile.role !== 'admin') {
+  var { data: profile } = await sb.from('profiles').select('rol').eq('id', session.user.id).single();
+  if (!profile || profile.rol !== 'admin') {
     document.getElementById('loginOverlay').style.display = 'none';
     document.getElementById('errorScreen').style.display = 'flex';
     return;
