@@ -142,6 +142,149 @@ body.embed .content { padding-top:12px; }
 .login-box button { width:100%; padding:12px; border:none; border-radius:8px; background:var(--blue); color:white; font-size:0.9rem; font-weight:600; cursor:pointer; font-family:inherit; }
 .login-box button:hover { opacity:0.9; }
 .login-error { color:var(--red); font-size:0.8rem; margin-bottom:12px; display:none; }
+
+/* ==================== PRESENTACIÓN MENSUAL ==================== */
+.pm-main-tabs { display:flex; gap:0; background:var(--card); border-bottom:2px solid var(--border); }
+.pm-main-tab { padding:12px 24px; cursor:pointer; font-weight:600; font-size:0.9rem; color:var(--muted); border-bottom:3px solid transparent; margin-bottom:-2px; transition:all 0.15s; background:none; border-top:none; border-left:none; border-right:none; font-family:inherit; }
+.pm-main-tab:hover { color:var(--text); }
+.pm-main-tab.active { color:var(--navy); border-bottom-color:var(--navy); }
+
+.pm-sub-tabs { display:flex; gap:0; background:white; border-bottom:1px solid var(--border); }
+.pm-sub-tab { padding:10px 18px; cursor:pointer; font-weight:600; font-size:0.82rem; color:var(--muted); border-bottom:2px solid transparent; margin-bottom:-1px; transition:all 0.12s; background:none; border-top:none; border-left:none; border-right:none; font-family:inherit; white-space:nowrap; }
+.pm-sub-tab:hover { color:var(--text); }
+.pm-sub-tab.active { color:var(--blue); border-bottom-color:var(--blue); }
+
+/* Section cards */
+.pm-section-cards { display:grid; grid-template-columns:repeat(3, 1fr); gap:16px; }
+.pm-section-card { background:var(--card); border:2px solid var(--border); border-radius:12px; padding:32px 24px; text-align:center; cursor:pointer; transition:all 0.2s; }
+.pm-section-card:hover { border-color:var(--blue); transform:translateY(-2px); box-shadow:0 4px 12px rgba(0,0,0,0.08); }
+.pm-section-card .pm-icon { width:64px; height:64px; border-radius:50%; background:var(--bg); margin:0 auto 16px; display:flex; align-items:center; justify-content:center; font-size:1.6rem; }
+.pm-section-card h3 { font-size:15px; font-weight:700; color:var(--navy); margin-bottom:6px; }
+.pm-section-card p { font-size:13px; color:var(--muted); line-height:1.4; }
+
+/* Panels (dual layout) */
+.pm-dual { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:16px; }
+.pm-panel { background:var(--card); border-radius:12px; border:1px solid var(--border); overflow:hidden; }
+.pm-panel-hdr { display:flex; align-items:center; justify-content:space-between; padding:16px 20px; border-bottom:1px solid var(--border); }
+.pm-panel-hdr h3 { font-size:0.88rem; font-weight:700; display:flex; align-items:center; gap:8px; }
+.pm-panel-hdr .pm-hdot { width:10px; height:10px; border-radius:50%; display:inline-block; }
+.pm-panel-hdr .pm-period { font-size:0.78rem; color:var(--blue); font-weight:600; }
+.pm-panel-body { padding:0; }
+.pm-panel-body table { width:100%; border-collapse:collapse; font-size:0.82rem; }
+.pm-panel-body th { text-align:left; padding:10px 20px; font-size:0.65rem; text-transform:uppercase; letter-spacing:0.3px; color:var(--muted); border-bottom:1px solid var(--border); background:#f8fafc; font-weight:700; }
+.pm-panel-body td { padding:14px 20px; border-bottom:1px solid #f1f5f9; }
+.pm-panel-body tr:last-child td { border-bottom:none; }
+
+/* Dark panel header */
+.pm-panel-dark .pm-panel-hdr { background:var(--navy); color:white; border-bottom:none; }
+.pm-panel-dark .pm-panel-hdr h3 { color:white; }
+.pm-panel-dark .pm-panel-body th { background:var(--navy-mid); color:rgba(255,255,255,0.7); border-bottom:1px solid rgba(255,255,255,0.1); }
+.pm-panel-dark .pm-panel-body tr.pm-projected td { background:#fefce8; }
+.pm-panel-dark .pm-panel-body tr.pm-actual td { color:var(--light); }
+
+/* Blue panel header */
+.pm-panel-blue .pm-panel-hdr { background:var(--blue); color:white; border-bottom:none; }
+.pm-panel-blue .pm-panel-hdr h3 { color:white; }
+
+/* Amber panel header */
+.pm-panel-amber .pm-panel-hdr { background:var(--amber); color:white; border-bottom:none; }
+.pm-panel-amber .pm-panel-hdr h3 { color:white; }
+
+/* Total rows, ganancia bar */
+.pm-row-total td { border-top:2px solid var(--border); font-weight:700; background:#fffbeb !important; }
+.pm-ganancia { background:var(--navy); color:white; padding:12px 20px; display:flex; justify-content:space-between; align-items:center; font-size:0.85rem; font-weight:700; }
+.pm-ganancia .pm-amount { color:var(--green); font-size:1.1rem; font-weight:800; }
+
+/* Summary cards */
+.pm-summary-row { display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:12px; margin-bottom:16px; }
+.pm-summary-card { background:var(--card); border-radius:12px; padding:16px 20px; border:1px solid var(--border); }
+.pm-summary-card .pm-sc-label { font-size:0.65rem; text-transform:uppercase; letter-spacing:0.5px; color:var(--light); font-weight:600; margin-bottom:4px; display:flex; align-items:center; justify-content:space-between; }
+.pm-summary-card .pm-sc-value { font-size:1.5rem; font-weight:800; color:var(--green); }
+.pm-summary-card .pm-sc-value.navy { color:var(--navy); }
+.pm-summary-card .pm-sc-sub { font-size:0.7rem; color:var(--light); margin-top:4px; }
+.pm-summary-card.pm-green-accent { border-left:4px solid var(--green); }
+.pm-summary-card.pm-blue-accent { border-left:4px solid var(--blue); }
+
+/* Status badges */
+.pm-badge { display:inline-block; padding:4px 14px; border-radius:20px; font-size:0.68rem; font-weight:700; letter-spacing:0.3px; text-transform:uppercase; }
+.pm-badge-verde { background:#d1fae5; color:#065f46; border:1px solid #a7f3d0; }
+.pm-badge-amarillo { background:#fef3c7; color:#92400e; border:1px solid #fde68a; }
+.pm-badge-rojo { background:#fee2e2; color:#991b1b; border:1px solid #fecaca; }
+
+/* Semáforo dots */
+.pm-sem { display:inline-flex; align-items:center; gap:6px; padding:3px 10px; border-radius:12px; font-size:0.72rem; font-weight:600; }
+.pm-sem.verde { background:#d1fae5; color:#065f46; }
+.pm-sem.amarillo { background:#fef3c7; color:#92400e; }
+.pm-sem.rojo { background:#fee2e2; color:#991b1b; }
+.pm-sem.na { background:#f3f4f6; color:#6b7280; }
+.pm-dot { width:8px; height:8px; border-radius:50%; display:inline-block; }
+.pm-sem.verde .pm-dot { background:var(--green); }
+.pm-sem.amarillo .pm-dot { background:var(--amber); }
+.pm-sem.rojo .pm-dot { background:var(--red); }
+.pm-sem.na .pm-dot { background:#9ca3af; }
+
+/* Variation arrows */
+.pm-var-up { color:var(--red); font-weight:600; font-size:0.78rem; }
+.pm-var-down { color:var(--green); font-weight:600; font-size:0.78rem; }
+.pm-var-neutral { color:var(--muted); font-size:0.78rem; }
+
+/* Note */
+.pm-note { background:#fffbeb; border:1px solid #fde68a; border-radius:8px; padding:10px 14px; font-size:0.78rem; color:#92400e; margin-bottom:16px; }
+
+/* Card generic */
+.pm-card { background:var(--card); border-radius:12px; padding:20px; border:1px solid var(--border); margin-bottom:16px; }
+.pm-card-title { font-size:0.85rem; font-weight:700; color:var(--muted); margin-bottom:14px; text-transform:uppercase; letter-spacing:0.3px; }
+.pm-card table { width:100%; border-collapse:collapse; font-size:0.82rem; }
+.pm-card th { text-align:left; padding:10px 14px; font-size:0.65rem; text-transform:uppercase; letter-spacing:0.3px; color:var(--muted); border-bottom:1px solid var(--border); background:#f8fafc; font-weight:700; }
+.pm-card td { padding:10px 14px; border-bottom:1px solid #f1f5f9; }
+.pm-card tr:last-child td { border-bottom:none; }
+
+/* Text helpers */
+.pm-text-right { text-align:right; }
+.pm-text-center { text-align:center; }
+.pm-font-bold { font-weight:700; }
+.pm-no-data { text-align:center; padding:60px 40px; color:var(--muted); }
+.pm-no-data p { font-size:0.88rem; }
+.pm-section-label { font-size:0.78rem; font-weight:700; text-transform:uppercase; letter-spacing:0.3px; color:var(--muted); margin-bottom:10px; }
+
+/* CRS banner */
+.pm-crs-banner { background:var(--blue); padding:20px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:16px; }
+.pm-crs-pill { background:rgba(255,255,255,0.15); padding:14px 24px; border-radius:10px; border:1px solid rgba(255,255,255,0.25); display:flex; align-items:center; gap:16px; }
+
+@media (max-width:768px) {
+  .pm-section-cards { grid-template-columns:1fr; }
+  .pm-dual { grid-template-columns:1fr; }
+  .pm-summary-row { grid-template-columns:1fr; }
+}
+
+/* Admin forms */
+.pm-admin-form { background:white; border-radius:12px; border:1px solid var(--border); padding:20px; margin-bottom:16px; }
+.pm-admin-form h3 { font-size:0.88rem; font-weight:700; color:var(--navy); margin-bottom:16px; display:flex; align-items:center; gap:8px; }
+.pm-admin-form h3 .pm-edit-icon { font-size:0.75rem; }
+.pm-form-grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:14px; margin-bottom:16px; }
+.pm-form-group { display:flex; flex-direction:column; gap:4px; }
+.pm-form-group label { font-size:0.68rem; text-transform:uppercase; letter-spacing:0.3px; color:var(--muted); font-weight:600; }
+.pm-form-group .pm-calc { font-size:0.72rem; color:var(--light); margin-top:2px; }
+.pm-form-input { padding:8px 12px; border:1px solid var(--border); border-radius:8px; font-size:0.85rem; font-family:inherit; background:white; width:100%; }
+.pm-form-input:focus { outline:none; border-color:var(--blue); box-shadow:0 0 0 3px rgba(67,97,238,0.1); }
+.pm-btn-save { padding:8px 20px; border-radius:8px; font-size:0.82rem; font-weight:600; cursor:pointer; border:none; font-family:inherit; transition:all 0.15s; }
+.pm-btn-save.primary { background:var(--blue); color:white; }
+.pm-btn-save.primary:hover { background:#3651d4; }
+.pm-btn-save.secondary { background:#f3f4f6; color:var(--text); border:1px solid var(--border); }
+.pm-btn-save.secondary:hover { background:#e5e7eb; }
+.pm-btn-row { display:flex; gap:10px; align-items:center; }
+.pm-paste-area { width:100%; min-height:120px; padding:12px; border:2px dashed var(--border); border-radius:8px; font-family:'Courier New', monospace; font-size:0.78rem; resize:vertical; background:#fafbfc; }
+.pm-paste-area:focus { outline:none; border-color:var(--blue); background:white; }
+.pm-paste-help { font-size:0.72rem; color:var(--light); margin-top:6px; line-height:1.4; }
+.pm-admin-badge { display:inline-block; padding:3px 10px; border-radius:6px; font-size:0.68rem; font-weight:700; background:#dbeafe; color:#1e40af; margin-left:8px; }
+.pm-decl-grid { display:grid; grid-template-columns:repeat(5, 1fr); gap:10px; margin-bottom:16px; }
+.pm-decl-card { background:#fafbfc; border:1px solid var(--border); border-radius:8px; padding:12px; }
+.pm-decl-card h4 { font-size:0.78rem; font-weight:700; color:var(--navy); margin-bottom:8px; }
+.pm-decl-card .pm-form-group { margin-bottom:8px; }
+.pm-decl-card select { padding:6px 8px; border:1px solid var(--border); border-radius:6px; font-size:0.78rem; font-family:inherit; background:white; width:100%; }
+@media (max-width:768px) {
+  .pm-decl-grid { grid-template-columns:1fr 1fr; }
+}
 </style>
 </head>
 <body>
@@ -174,7 +317,8 @@ body.embed .content { padding-top:12px; }
     </div>
   </div>
 
-  <div class="main-tabs" id="mainTabs"></div>
+  <div class="pm-main-tabs" id="mainTabs"></div>
+  <div class="pm-sub-tabs" id="subTabs" style="display:none"></div>
   <div id="navArea"></div>
   <div class="content" id="content"></div>
   <div class="footer">Conectado de forma segura — Account One</div>
@@ -255,11 +399,20 @@ var allTokens = []; // admin mode: list of all client tokens
 var allClientes = []; // admin mode: full client list from maestra
 var allPortalData = []; // admin mode: all portal_clientes_data rows
 var selectedContadora = 'Todas'; // admin index filter
+var selectedMainTab = 'checklist'; // 'checklist' or 'presentacion'
 var selectedTab = 'dashboard';
 var selectedMes = '';
 var portalData = {};   // { 'TSS||abril': { item_id: value, ... }, ... }
 var portalFiles = {};  // { 'TSS||abril||nomina': [{id, nombre_archivo, storage_path}], ... }
 var saving = false;
+
+// Presentación Mensual state
+var pmDetail = null; // null, 'presupuesto', 'proyeccion', 'declaraciones'
+var pmPresupuesto = null;  // { ventas_anual, costos_anual, gastos_anual }
+var pmEjecucion = [];      // [{ mes, ventas, costos, gastos, salarios }]
+var pmImpConfig = null;    // { anticipo_tramo1, anticipo_tramo2, ... }
+var pmDeclaraciones = [];  // [{ mes, obligacion, fecha_limite, ... }]
+var pmYear = 2026;
 
 // ==================== UTILS ====================
 function esc(s) { return (s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/'/g,'&#39;'); }
@@ -454,6 +607,91 @@ async function removeFile(fileId, storagePath) {
   render();
 }
 
+// ==================== PRESENTACIÓN DATA ====================
+async function loadPresentacionData() {
+  var nombre = clienteNombre;
+  var anio = pmYear;
+
+  var [presRes, ejRes, confRes, declRes] = await Promise.all([
+    sb.from('portal_presupuesto').select('*').eq('cliente', nombre).eq('anio', anio).single(),
+    sb.from('portal_ejecucion').select('*').eq('cliente', nombre).eq('anio', anio).order('mes'),
+    sb.from('portal_impuestos_config').select('*').eq('cliente', nombre).eq('anio', anio).single(),
+    sb.from('portal_declaraciones').select('*').eq('cliente', nombre).eq('anio', anio).order('mes')
+  ]);
+
+  pmPresupuesto = presRes.data || null;
+  pmEjecucion = ejRes.data || [];
+  pmImpConfig = confRes.data || null;
+  pmDeclaraciones = declRes.data || [];
+}
+
+// Helpers de cálculo
+function pmGetMesIdx(mesKey) { return MESES_KEY.indexOf(mesKey) + 1; }
+
+function pmGetEjecucionMes(mesNum) {
+  return pmEjecucion.find(function(e) { return e.mes === mesNum; }) || null;
+}
+
+function pmGetMetaMensual(campo) {
+  if (!pmPresupuesto) return 0;
+  return (pmPresupuesto[campo + '_anual'] || 0) / 12;
+}
+
+function pmPctMeta(ejecutado, metaMensual) {
+  if (!metaMensual || metaMensual === 0) return 0;
+  return (ejecutado / metaMensual) * 100;
+}
+
+function pmFormatMoney(n) {
+  if (n === null || n === undefined || n === 0) return '0.00';
+  return parseFloat(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+function pmFormatMoneyShort(n) {
+  if (n === null || n === undefined || n === 0) return '0';
+  return Math.round(parseFloat(n)).toLocaleString('en-US');
+}
+
+function pmPctColor(pct, invert) {
+  // For costs/expenses, lower is better (invert=true)
+  if (invert) {
+    if (pct <= 100) return 'var(--green)';
+    return 'var(--red)';
+  }
+  if (pct >= 90) return 'var(--green)';
+  if (pct >= 70) return 'var(--amber)';
+  return 'var(--red)';
+}
+
+function pmBadgeStatus(pct, tipo) {
+  // tipo: 'ventas' (higher=better), 'costo'/'gasto' (lower=better), 'beneficio'
+  if (tipo === 'ventas' || tipo === 'beneficio') {
+    if (pct >= 100) return { cls: 'pm-badge-verde', label: tipo === 'beneficio' ? 'Excelente' : 'En meta' };
+    if (pct >= 80) return { cls: 'pm-badge-amarillo', label: 'Cerca' };
+    return { cls: 'pm-badge-rojo', label: 'Por debajo' };
+  }
+  // Costos/gastos: lower is better
+  if (pct <= 100) return { cls: 'pm-badge-verde', label: 'Controlado' };
+  if (pct <= 120) return { cls: 'pm-badge-amarillo', label: 'Atención' };
+  return { cls: 'pm-badge-rojo', label: 'Excedido' };
+}
+
+function pmGetQuarterForMonth(mesNum) {
+  if (mesNum <= 3) return 1;
+  if (mesNum <= 6) return 2;
+  if (mesNum <= 9) return 3;
+  return 4;
+}
+
+function pmGetQuarterRange(q) {
+  var start = (q - 1) * 3 + 1;
+  return [start, start + 1, start + 2];
+}
+
+function pmGetDeclForMes(mesNum, obligacion) {
+  return pmDeclaraciones.find(function(d) { return d.mes === mesNum && d.obligacion === obligacion; }) || null;
+}
+
 // ==================== INIT ====================
 async function init() {
   var params = new URLSearchParams(location.search);
@@ -478,8 +716,9 @@ async function init() {
     document.getElementById('app').style.display = '';
 
     selectedMes = getCurrentMonth();
-    await Promise.all([loadData(), loadFiles()]);
-    renderTabs();
+    await Promise.all([loadData(), loadFiles(), loadPresentacionData()]);
+    renderMainTabs();
+    renderSubTabs();
     renderNav();
     render();
     return;
@@ -762,12 +1001,15 @@ async function idxOpenCliente(nombre) {
   clienteNombre = nombre;
   adminShowingIndex = false;
   selectedTab = 'dashboard';
+  selectedMainTab = 'checklist';
+  pmDetail = null;
 
-  await Promise.all([loadData(), loadFiles()]);
+  await Promise.all([loadData(), loadFiles(), loadPresentacionData()]);
 
   document.getElementById('mainTabs').style.display = '';
   document.getElementById('clientName').textContent = nombre;
-  renderTabs();
+  renderMainTabs();
+  renderSubTabs();
   renderNav();
   render();
 }
@@ -778,26 +1020,54 @@ function idxBackToIndex() {
   portalData = {};
   portalFiles = {};
   selectedTab = 'dashboard';
+  selectedMainTab = 'checklist';
+  pmDetail = null;
+  pmPresupuesto = null;
+  pmEjecucion = [];
+  pmImpConfig = null;
+  pmDeclaraciones = [];
 
   document.getElementById('mainTabs').style.display = 'none';
+  document.getElementById('subTabs').style.display = 'none';
   document.getElementById('clientName').textContent = 'Admin';
   renderAdminNav();
   renderAdminIndex();
 }
 
 // ==================== RENDER ====================
-function renderTabs() {
+function renderMainTabs() {
   var el = document.getElementById('mainTabs');
   var h = '';
+  h += '<button class="pm-main-tab' + (selectedMainTab === 'checklist' ? ' active' : '') + '" onclick="switchMainTab(\'checklist\')">Checklist</button>';
+  h += '<button class="pm-main-tab' + (selectedMainTab === 'presentacion' ? ' active' : '') + '" onclick="switchMainTab(\'presentacion\')">Presentación Mensual</button>';
+  el.innerHTML = h;
+}
+
+function renderSubTabs() {
+  var el = document.getElementById('subTabs');
+  if (selectedMainTab !== 'checklist') {
+    el.style.display = 'none';
+    return;
+  }
+  el.style.display = 'flex';
+  var h = '';
   TABS.forEach(function(tab) {
-    h += '<button class="main-tab' + (selectedTab === tab.id ? ' active' : '') + '" onclick="switchTab(\'' + tab.id + '\')">' + esc(tab.label) + '</button>';
+    h += '<button class="pm-sub-tab' + (selectedTab === tab.id ? ' active' : '') + '" onclick="switchTab(\'' + tab.id + '\')">' + esc(tab.label) + '</button>';
   });
   el.innerHTML = h;
 }
 
+function switchMainTab(tabId) {
+  selectedMainTab = tabId;
+  pmDetail = null;
+  renderMainTabs();
+  renderSubTabs();
+  render();
+}
+
 function switchTab(tabId) {
   selectedTab = tabId;
-  renderTabs();
+  renderSubTabs();
   render();
 }
 
@@ -832,6 +1102,12 @@ function render() {
   if (isAdminMode && !adminShowingIndex) {
     backHtml = '<button class="pc-back-btn" onclick="idxBackToIndex()">← Volver al listado</button>';
   }
+
+  if (selectedMainTab === 'presentacion') {
+    renderPresentacion(el, backHtml);
+    return;
+  }
+
   if (selectedTab === 'dashboard') {
     renderDashboard(el, backHtml);
   } else {
@@ -993,6 +1269,869 @@ function handleUpload(impuesto, mes, fileType, input) {
     uploadFile(impuesto, mes, fileType, files[i]);
   }
   input.value = '';
+}
+
+// ==================== PRESENTACIÓN MENSUAL RENDER ====================
+function pmOpenDetail(section) {
+  pmDetail = section;
+  render();
+}
+
+function pmCloseDetail() {
+  pmDetail = null;
+  render();
+}
+
+function renderPresentacion(el, backHtml) {
+  var h = backHtml || '';
+
+  if (!pmDetail) {
+    // Section cards
+    h += '<div style="margin-bottom:20px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">';
+    h += '<div><span style="font-size:1.1rem;font-weight:700">' + MESES_FULL[MESES_KEY.indexOf(selectedMes)] + ' ' + pmYear + '</span>';
+    h += '<span style="font-size:0.85rem;color:var(--muted);margin-left:12px">Presentación Mensual</span></div>';
+    if (isAdminMode) {
+      h += '<button class="pm-btn-save primary" onclick="pmOpenDetail(\'admin-datos\')">Cargar Datos</button>';
+    }
+    h += '</div>';
+
+    h += '<div class="pm-section-cards">';
+    h += '<div class="pm-section-card" onclick="pmOpenDetail(\'presupuesto\')">';
+    h += '<div class="pm-icon">📊</div>';
+    h += '<h3>Presupuesto vs Ejecución</h3>';
+    h += '<p>Comparativa de metas financieras y realidad operativa.</p></div>';
+
+    h += '<div class="pm-section-card" onclick="pmOpenDetail(\'proyeccion\')">';
+    h += '<div class="pm-icon">📋</div>';
+    h += '<h3>Proyección de Impuestos</h3>';
+    h += '<p>Estimación de ISR y anticipos basada en el año fiscal.</p></div>';
+
+    h += '<div class="pm-section-card" onclick="pmOpenDetail(\'declaraciones\')">';
+    h += '<div class="pm-icon">📄</div>';
+    h += '<h3>Resumen de la Declaración</h3>';
+    h += '<p>Hitos, fechas límite y estado de formularios.</p></div>';
+    h += '</div>';
+
+    // Check if there's any data
+    if (pmEjecucion.length === 0 && !pmPresupuesto) {
+      h += '<div class="pm-no-data" style="margin-top:24px"><p>Aún no hay datos cargados para este período.</p></div>';
+    }
+  } else if (pmDetail === 'admin-datos') {
+    h += renderAdminDatos();
+  } else if (pmDetail === 'presupuesto') {
+    h += renderPresupuestoDetail();
+  } else if (pmDetail === 'proyeccion') {
+    h += renderProyeccionDetail();
+  } else if (pmDetail === 'declaraciones') {
+    h += renderDeclaracionesDetail();
+  }
+
+  el.innerHTML = h;
+}
+
+// ── PRESUPUESTO VS EJECUCIÓN ──
+function renderPresupuestoDetail() {
+  var h = '<button class="pc-back-btn" onclick="pmCloseDetail()">← Volver</button>';
+  var mesNum = pmGetMesIdx(selectedMes);
+  var quarter = pmGetQuarterForMonth(mesNum);
+  var qRange = pmGetQuarterRange(quarter);
+  var qLabels = ['Q1', 'Q2', 'Q3', 'Q4'];
+  var qMonthNames = qRange.map(function(m) { return MESES_FULL[m - 1]; });
+
+  // ── Quarter summary table ──
+  h += '<div class="pm-panel" style="margin-bottom:16px">';
+  h += '<div class="pm-panel-hdr" style="background:var(--navy);color:white;border-bottom:none">';
+  h += '<h3 style="color:white;text-transform:uppercase;font-size:0.78rem;letter-spacing:0.3px">' + qLabels[quarter - 1] + ' — ' + qMonthNames[0] + ' a ' + qMonthNames[2] + ' ' + pmYear + '</h3></div>';
+  h += '<div class="pm-panel-body" style="overflow-x:auto"><table>';
+
+  // Header rows
+  h += '<thead><tr><th style="min-width:90px"></th>';
+  qRange.forEach(function(m) {
+    h += '<th colspan="2" class="pm-text-center" style="border-right:' + (m < qRange[2] ? '2px solid var(--border)' : 'none') + '">' + MESES_FULL[m - 1] + '</th>';
+  });
+  h += '</tr><tr><th>Concepto</th>';
+  qRange.forEach(function(m) {
+    h += '<th class="pm-text-right">Ejecutado</th><th class="pm-text-right" style="border-right:' + (m < qRange[2] ? '2px solid var(--border)' : 'none') + '">% Meta</th>';
+  });
+  h += '</tr></thead><tbody>';
+
+  // Rows: Ventas, Costos, Gastos, Beneficios
+  var conceptos = [
+    { key: 'ventas', label: 'Ventas', tipo: 'ventas' },
+    { key: 'costos', label: 'Costos', tipo: 'costo' },
+    { key: 'gastos', label: 'Gastos', tipo: 'gasto' }
+  ];
+
+  conceptos.forEach(function(c) {
+    h += '<tr><td class="pm-font-bold">' + c.label + '</td>';
+    qRange.forEach(function(m) {
+      var ej = pmGetEjecucionMes(m);
+      var val = ej ? (ej[c.key] || 0) : 0;
+      var meta = pmGetMetaMensual(c.key);
+      var pct = pmPctMeta(val, meta);
+      var color = pmPctColor(pct, c.tipo !== 'ventas');
+      h += '<td class="pm-text-right">' + pmFormatMoney(val) + '</td>';
+      h += '<td class="pm-text-right" style="border-right:' + (m < qRange[2] ? '2px solid var(--border)' : 'none') + '"><span style="color:' + color + ';font-weight:600">' + pct.toFixed(2) + '%</span></td>';
+    });
+    h += '</tr>';
+  });
+
+  // Beneficios row
+  h += '<tr class="pm-row-total"><td class="pm-font-bold">Beneficios</td>';
+  qRange.forEach(function(m) {
+    var ej = pmGetEjecucionMes(m);
+    var v = ej ? (ej.ventas || 0) : 0;
+    var c = ej ? (ej.costos || 0) : 0;
+    var g = ej ? (ej.gastos || 0) : 0;
+    var benef = v - c - g;
+    var metaBenef = pmGetMetaMensual('ventas') - pmGetMetaMensual('costos') - pmGetMetaMensual('gastos');
+    var pct = metaBenef ? (benef / metaBenef * 100) : 0;
+    var color = benef >= 0 ? 'var(--green)' : 'var(--red)';
+    h += '<td class="pm-text-right" style="color:' + color + '">' + pmFormatMoney(benef) + '</td>';
+    h += '<td class="pm-text-right" style="border-right:' + (m < qRange[2] ? '2px solid var(--border)' : 'none') + '"><span style="color:' + color + ';font-weight:600">' + pct.toFixed(2) + '%</span></td>';
+  });
+  h += '</tr></tbody></table></div></div>';
+
+  // ── Detalle del mes seleccionado: two panels ──
+  h += '<div class="pm-section-label">Detalle — ' + MESES_FULL[mesNum - 1] + ' ' + pmYear + '</div>';
+  h += '<div class="pm-dual">';
+
+  // Left: Presupuesto
+  h += '<div class="pm-panel"><div class="pm-panel-hdr">';
+  h += '<h3><span class="pm-hdot" style="background:var(--blue)"></span> Presupuesto (Planificado)</h3></div>';
+  h += '<div class="pm-panel-body"><table><thead><tr>';
+  h += '<th>Concepto</th><th class="pm-text-right">Anual</th><th class="pm-text-right">Mensual (Meta)</th>';
+  h += '</tr></thead><tbody>';
+
+  var presRows = [
+    { label: 'Ventas', key: 'ventas' },
+    { label: 'Costos', key: 'costos' },
+    { label: 'Gastos', key: 'gastos' }
+  ];
+  presRows.forEach(function(r) {
+    var anual = pmPresupuesto ? (pmPresupuesto[r.key + '_anual'] || 0) : 0;
+    h += '<tr><td class="pm-font-bold">' + r.label + '</td>';
+    h += '<td class="pm-text-right">$' + pmFormatMoney(anual) + '</td>';
+    h += '<td class="pm-text-right">$' + pmFormatMoney(anual / 12) + '</td></tr>';
+  });
+  var benefAnual = pmPresupuesto ? ((pmPresupuesto.ventas_anual || 0) - (pmPresupuesto.costos_anual || 0) - (pmPresupuesto.gastos_anual || 0)) : 0;
+  h += '<tr><td class="pm-font-bold">Beneficios</td>';
+  h += '<td class="pm-text-right">$' + pmFormatMoney(benefAnual) + '</td>';
+  h += '<td class="pm-text-right">$' + pmFormatMoney(benefAnual / 12) + '</td></tr>';
+  h += '</tbody></table></div></div>';
+
+  // Right: Ejecución
+  var ejMes = pmGetEjecucionMes(mesNum);
+  h += '<div class="pm-panel"><div class="pm-panel-hdr">';
+  h += '<h3><span class="pm-hdot" style="background:var(--green)"></span> Ejecución (Realidad)</h3>';
+  h += '<span class="pm-period">' + pmYear + '-' + String(mesNum).padStart(2, '0') + '</span></div>';
+  h += '<div class="pm-panel-body"><table><thead><tr>';
+  h += '<th class="pm-text-right">Ejecutado</th><th class="pm-text-center">% Logro</th><th class="pm-text-center">Estado</th>';
+  h += '</tr></thead><tbody>';
+
+  var ejRows = [
+    { key: 'ventas', tipo: 'ventas' },
+    { key: 'costos', tipo: 'costo' },
+    { key: 'gastos', tipo: 'gasto' }
+  ];
+  ejRows.forEach(function(r) {
+    var val = ejMes ? (ejMes[r.key] || 0) : 0;
+    var meta = pmGetMetaMensual(r.key);
+    var pct = pmPctMeta(val, meta);
+    var badge = pmBadgeStatus(pct, r.tipo);
+    h += '<tr><td class="pm-text-right pm-font-bold">$' + pmFormatMoney(val) + '</td>';
+    h += '<td class="pm-text-center">' + pct.toFixed(2) + '%</td>';
+    h += '<td class="pm-text-center"><span class="pm-badge ' + badge.cls + '">' + badge.label + '</span></td></tr>';
+  });
+
+  // Beneficio ejecución
+  var ejBenef = ejMes ? ((ejMes.ventas || 0) - (ejMes.costos || 0) - (ejMes.gastos || 0)) : 0;
+  var metaBenefMes = pmGetMetaMensual('ventas') - pmGetMetaMensual('costos') - pmGetMetaMensual('gastos');
+  var pctBenef = metaBenefMes ? (ejBenef / metaBenefMes * 100) : 0;
+  var badgeBenef = pmBadgeStatus(pctBenef, 'beneficio');
+  h += '<tr><td class="pm-text-right pm-font-bold">$' + pmFormatMoney(ejBenef) + '</td>';
+  h += '<td class="pm-text-center">' + pctBenef.toFixed(2) + '%</td>';
+  h += '<td class="pm-text-center"><span class="pm-badge ' + badgeBenef.cls + '">' + badgeBenef.label + '</span></td></tr>';
+  h += '</tbody></table></div></div></div>';
+
+  // ── Quarter consolidated ──
+  var qTotalV = 0, qTotalC = 0, qTotalG = 0;
+  qRange.forEach(function(m) {
+    var e = pmGetEjecucionMes(m);
+    if (e) { qTotalV += (e.ventas || 0); qTotalC += (e.costos || 0); qTotalG += (e.gastos || 0); }
+  });
+  var qBenef = qTotalV - qTotalC - qTotalG;
+  var qMetaV = pmGetMetaMensual('ventas') * 3;
+  var qMetaC = pmGetMetaMensual('costos') * 3;
+  var qMetaG = pmGetMetaMensual('gastos') * 3;
+  var qMetaB = qMetaV - qMetaC - qMetaG;
+
+  h += '<div class="pm-section-label" style="margin-top:20px">Resultado ' + qLabels[quarter - 1] + ' — ' + qMonthNames[0] + ' a ' + qMonthNames[2] + ' ' + pmYear + '</div>';
+  h += '<div class="pm-panel" style="margin-bottom:16px">';
+  h += '<div class="pm-panel-hdr" style="background:var(--navy);color:white;border-bottom:none">';
+  h += '<h3 style="color:white;text-transform:uppercase;font-size:0.78rem;letter-spacing:0.3px">¿Se cumplió la meta del trimestre?</h3></div>';
+  h += '<div class="pm-panel-body"><table><thead><tr>';
+  h += '<th>Concepto</th><th class="pm-text-right">Meta ' + qLabels[quarter - 1] + '</th><th class="pm-text-right">Ejecutado ' + qLabels[quarter - 1] + '</th><th class="pm-text-right">Diferencia</th><th class="pm-text-center">% Logrado</th><th class="pm-text-center">Estado</th>';
+  h += '</tr></thead><tbody>';
+
+  var qRows = [
+    { label: 'Ventas', meta: qMetaV, ej: qTotalV, tipo: 'ventas' },
+    { label: 'Costos', meta: qMetaC, ej: qTotalC, tipo: 'costo' },
+    { label: 'Gastos', meta: qMetaG, ej: qTotalG, tipo: 'gasto' }
+  ];
+  qRows.forEach(function(r) {
+    var diff = r.ej - r.meta;
+    var pct = r.meta ? (r.ej / r.meta * 100) : 0;
+    var badge = pmBadgeStatus(pct, r.tipo);
+    var diffColor = (r.tipo === 'ventas') ? (diff >= 0 ? 'var(--green)' : 'var(--red)') : (diff <= 0 ? 'var(--green)' : 'var(--red)');
+    var diffSign = diff >= 0 ? '+' : '';
+    h += '<tr><td class="pm-font-bold">' + r.label + '</td>';
+    h += '<td class="pm-text-right">' + pmFormatMoneyShort(r.meta) + '</td>';
+    h += '<td class="pm-text-right">' + pmFormatMoneyShort(r.ej) + '</td>';
+    h += '<td class="pm-text-right" style="color:' + diffColor + '">' + diffSign + pmFormatMoneyShort(diff) + '</td>';
+    h += '<td class="pm-text-center"><span style="color:' + (pct >= 80 ? 'var(--green)' : 'var(--amber)') + ';font-weight:600">' + pct.toFixed(2) + '%</span></td>';
+    h += '<td class="pm-text-center"><span class="pm-badge ' + badge.cls + '">' + badge.label + '</span></td></tr>';
+  });
+
+  // Beneficio Q
+  var diffB = qBenef - qMetaB;
+  var pctB = qMetaB ? (qBenef / qMetaB * 100) : 0;
+  var badgeB = pmBadgeStatus(pctB, 'beneficio');
+  h += '<tr class="pm-row-total"><td class="pm-font-bold">Beneficios</td>';
+  h += '<td class="pm-text-right">' + pmFormatMoneyShort(qMetaB) + '</td>';
+  h += '<td class="pm-text-right">' + pmFormatMoneyShort(qBenef) + '</td>';
+  h += '<td class="pm-text-right" style="color:' + (diffB >= 0 ? 'var(--green)' : 'var(--red)') + '">' + (diffB >= 0 ? '+' : '') + pmFormatMoneyShort(diffB) + '</td>';
+  h += '<td class="pm-text-center"><span style="color:var(--green);font-weight:600">' + pctB.toFixed(2) + '%</span></td>';
+  h += '<td class="pm-text-center"><span class="pm-badge ' + badgeB.cls + '">' + badgeB.label + '</span></td></tr>';
+  h += '</tbody></table>';
+
+  h += '<div class="pm-ganancia"><span>Ganancia Neta ' + qLabels[quarter - 1] + '</span><span class="pm-amount">$' + pmFormatMoney(qBenef) + '</span></div>';
+  h += '</div></div>';
+
+  return h;
+}
+
+// ��─ PROYECCIÓN DE IMPUESTOS ──
+function renderProyeccionDetail() {
+  var h = '<button class="pc-back-btn" onclick="pmCloseDetail()">← Volver</button>';
+
+  // Calculate totals from ejecucion data
+  var totalV = 0, totalC = 0, totalG = 0, totalS = 0;
+  var mesesConData = 0;
+  pmEjecucion.forEach(function(e) {
+    totalV += (e.ventas || 0);
+    totalC += (e.costos || 0);
+    totalG += (e.gastos || 0);
+    totalS += (e.salarios || 0);
+    mesesConData++;
+  });
+  var gananciaNeta = totalV - totalC - totalG;
+
+  // Projection: extrapolate to 12 months using average
+  var avgV = mesesConData ? totalV / mesesConData : 0;
+  var avgC = mesesConData ? totalC / mesesConData : 0;
+  var avgG = mesesConData ? totalG / mesesConData : 0;
+  var avgS = mesesConData ? totalS / mesesConData : 0;
+  var mesesFaltantes = 12 - mesesConData;
+  var projV = totalV + avgV * mesesFaltantes;
+  var projC = totalC + avgC * mesesFaltantes;
+  var projG = totalG + avgG * mesesFaltantes;
+  var projGanancia = projV - projC - projG;
+
+  // ISR
+  var perdidas = pmImpConfig ? (pmImpConfig.perdidas_compensables || 0) : 0;
+  var baseISR = Math.max(gananciaNeta - perdidas, 0);
+  var isrProyectado = baseISR * 0.27;
+
+  // Anticipos
+  var antTramo1 = pmImpConfig ? (pmImpConfig.anticipo_tramo1 || 0) : 0;
+  var antTramo2 = pmImpConfig ? (pmImpConfig.anticipo_tramo2 || 0) : 0;
+  var totalAnticipos = antTramo1 * 4 + antTramo2 * 8;
+
+  // ISR a pagar
+  var isrAPagar = Math.max(isrProyectado - totalAnticipos, 0);
+
+  // TET
+  var tet = totalV > 0 ? (isrProyectado / totalV * 100) : 0;
+
+  // Anticipo próximo año
+  var totalAntCalc = isrProyectado;
+  var antMensualProx = totalAntCalc / 12;
+  var antActual = antTramo2 > 0 ? antTramo2 : antTramo1;
+  var varAntPct = antActual > 0 ? ((antMensualProx - antActual) / antActual * 100) : 0;
+
+  // Impuesto al activo
+  var activos = pmImpConfig ? (pmImpConfig.activos_totales || 0) : 0;
+  var activosExentos = pmImpConfig ? (pmImpConfig.activos_exentos || 0) : 0;
+  var baseActivos = Math.max(activos - activosExentos, 0);
+  var impActivo = baseActivos * 0.01;
+
+  // CRS
+  var crsMonto = pmImpConfig ? (pmImpConfig.crs_monto || 0) : 0;
+
+  // ── 3 Summary cards ──
+  h += '<div class="pm-summary-row" style="grid-template-columns:repeat(3, 1fr)">';
+  h += '<div class="pm-summary-card"><div class="pm-sc-label">Ganancia proyectada <span>📈</span></div>';
+  h += '<div class="pm-sc-value">$' + pmFormatMoney(projGanancia) + '</div>';
+  h += '<div class="pm-sc-sub">Proyección anual basada en ' + mesesConData + ' mes' + (mesesConData !== 1 ? 'es' : '') + '</div></div>';
+
+  h += '<div class="pm-summary-card"><div class="pm-sc-label">ISR a pagar (27%) <span>💲</span></div>';
+  h += '<div class="pm-sc-value navy">$' + pmFormatMoney(isrProyectado) + '</div>';
+  h += '<div class="pm-sc-sub">Sobre base imponible estimada</div></div>';
+
+  h += '<div class="pm-summary-card"><div class="pm-sc-label">Anticipo mensual (próx. año) <span>📋</span></div>';
+  h += '<div class="pm-sc-value navy">$' + pmFormatMoney(antMensualProx) + '</div>';
+  h += '<div class="pm-sc-sub">Nuevo tramo desde mayo ' + pmYear + '</div></div>';
+  h += '</div>';
+
+  // ── Two panels: Realidad + Proyección ──
+  h += '<div class="pm-dual">';
+
+  // Left: Realidad
+  h += '<div class="pm-panel"><div class="pm-panel-hdr" style="background:white">';
+  h += '<h3 style="text-transform:uppercase;font-size:0.78rem;letter-spacing:0.3px">Realidad hasta hoy</h3></div>';
+  h += '<div class="pm-panel-body"><table><thead><tr>';
+  h += '<th>Mes</th><th class="pm-text-right">Ventas</th><th class="pm-text-right">Costos</th><th class="pm-text-right">Gastos</th><th class="pm-text-right">Salarios</th>';
+  h += '</tr></thead><tbody>';
+  pmEjecucion.forEach(function(e) {
+    h += '<tr><td class="pm-font-bold">' + MESES_FULL[e.mes - 1] + '</td>';
+    h += '<td class="pm-text-right">' + pmFormatMoneyShort(e.ventas) + '</td>';
+    h += '<td class="pm-text-right">' + pmFormatMoneyShort(e.costos) + '</td>';
+    h += '<td class="pm-text-right">' + pmFormatMoneyShort(e.gastos) + '</td>';
+    h += '<td class="pm-text-right">' + pmFormatMoneyShort(e.salarios) + '</td></tr>';
+  });
+  h += '<tr class="pm-row-total"><td class="pm-font-bold">Totales</td>';
+  h += '<td class="pm-text-right">' + pmFormatMoneyShort(totalV) + '</td>';
+  h += '<td class="pm-text-right">' + pmFormatMoneyShort(totalC) + '</td>';
+  h += '<td class="pm-text-right">' + pmFormatMoneyShort(totalG) + '</td>';
+  h += '<td class="pm-text-right">' + pmFormatMoneyShort(totalS) + '</td></tr>';
+  h += '</tbody></table>';
+  h += '<div class="pm-ganancia"><span>Ganancia Neta (Realidad)</span><span class="pm-amount">$' + pmFormatMoney(gananciaNeta) + '</span></div>';
+  h += '</div></div>';
+
+  // Right: Proyección
+  h += '<div class="pm-panel pm-panel-dark"><div class="pm-panel-hdr">';
+  h += '<h3 style="text-transform:uppercase;font-size:0.78rem;letter-spacing:0.3px">Proyección a fin de año (promedios)</h3></div>';
+  h += '<div class="pm-panel-body"><table><thead><tr>';
+  h += '<th>Mes</th><th class="pm-text-right">Ventas</th><th class="pm-text-right">Costos</th><th class="pm-text-right">Gastos</th><th class="pm-text-right">Salarios</th>';
+  h += '</tr></thead><tbody>';
+  for (var m = 1; m <= 12; m++) {
+    var isActual = pmEjecucion.some(function(e) { return e.mes === m; });
+    if (isActual) {
+      h += '<tr class="pm-actual"><td>' + MESES_FULL[m - 1] + '</td><td class="pm-text-right">&ndash;</td><td class="pm-text-right">&ndash;</td><td class="pm-text-right">&ndash;</td><td class="pm-text-right">&ndash;</td></tr>';
+    } else {
+      h += '<tr class="pm-projected"><td>' + MESES_FULL[m - 1] + '</td>';
+      h += '<td class="pm-text-right">' + pmFormatMoneyShort(avgV) + '</td>';
+      h += '<td class="pm-text-right">' + pmFormatMoneyShort(avgC) + '</td>';
+      h += '<td class="pm-text-right">' + pmFormatMoneyShort(avgG) + '</td>';
+      h += '<td class="pm-text-right">' + pmFormatMoneyShort(avgS) + '</td></tr>';
+    }
+  }
+  h += '<tr class="pm-row-total"><td class="pm-font-bold">Globales</td>';
+  h += '<td class="pm-text-right">' + pmFormatMoneyShort(projV) + '</td>';
+  h += '<td class="pm-text-right">' + pmFormatMoneyShort(projC) + '</td>';
+  h += '<td class="pm-text-right">' + pmFormatMoneyShort(projG) + '</td>';
+  h += '<td class="pm-text-right">0</td></tr>';
+  h += '</tbody></table>';
+  h += '<div class="pm-ganancia"><span>Ganancia Neta (Proyectada Anual)</span><span class="pm-amount">$' + pmFormatMoney(projGanancia) + '</span></div>';
+  h += '</div></div></div>';
+
+  // ── ISR + Impuesto al Activo ──
+  h += '<div class="pm-dual">';
+
+  // ISR panel
+  h += '<div class="pm-panel pm-panel-blue"><div class="pm-panel-hdr">';
+  h += '<h3 style="text-transform:uppercase;font-size:0.78rem;letter-spacing:0.3px">Proyección Impuestos</h3></div>';
+  h += '<div style="background:var(--blue);color:white;text-align:center;padding:6px;font-size:0.72rem;font-weight:600;border-bottom:1px solid rgba(255,255,255,0.2)">Impuesto Sobre la Renta*</div>';
+  h += '<div class="pm-panel-body" style="padding:0"><table style="font-size:0.82rem"><tbody>';
+  h += '<tr><td style="padding:10px 20px;font-weight:600">Base Imponible ISR</td><td class="pm-text-right" style="padding:10px 20px;font-weight:700">' + pmFormatMoney(gananciaNeta) + '</td></tr>';
+  h += '<tr><td style="padding:10px 20px;color:var(--muted)">Pérdidas compensables</td><td class="pm-text-right" style="padding:10px 20px">' + (perdidas > 0 ? pmFormatMoney(perdidas) : '—') + '</td></tr>';
+  h += '<tr style="border-top:2px solid var(--text);background:#f8fafc;font-weight:700"><td style="padding:10px 20px">Renta Neta Imponible</td><td class="pm-text-right" style="padding:10px 20px">' + pmFormatMoney(baseISR) + '</td></tr>';
+  h += '<tr><td style="padding:10px 20px;font-weight:700">ISR (27%) Proyectado</td><td class="pm-text-right" style="padding:10px 20px;font-weight:700">' + pmFormatMoney(isrProyectado) + '</td></tr>';
+  h += '<tr style="background:#fef2f2"><td colspan="2" style="padding:6px 20px;color:var(--red);font-weight:700;font-size:0.7rem;text-transform:uppercase">Menos:</td></tr>';
+  h += '<tr><td style="padding:10px 20px;color:var(--muted)">Anticipos Pagados (Año Actual)</td><td class="pm-text-right" style="padding:10px 20px;font-weight:700">' + pmFormatMoney(totalAnticipos) + '</td></tr>';
+  h += '<tr><td style="padding:10px 20px;color:var(--muted)">Retenciones ISR</td><td class="pm-text-right" style="padding:10px 20px;font-weight:700">—</td></tr>';
+  h += '<tr style="border-top:3px solid var(--red)"><td style="padding:14px 20px"><span style="color:var(--red);font-weight:700;text-transform:uppercase">Total a Pagar</span><br><span style="color:var(--red);font-size:0.7rem">(estimado)</span></td>';
+  h += '<td class="pm-text-right" style="padding:14px 20px;font-size:1.1rem;font-weight:800;color:' + (isrAPagar > 0 ? 'var(--red)' : 'var(--green)') + '">' + pmFormatMoney(isrAPagar) + '</td></tr>';
+  h += '</tbody></table></div></div>';
+
+  // Impuesto al Activo panel
+  h += '<div class="pm-panel pm-panel-blue"><div class="pm-panel-hdr">';
+  h += '<h3 style="text-transform:uppercase;font-size:0.78rem;letter-spacing:0.3px">Impuesto al Activo</h3></div>';
+  h += '<div class="pm-panel-body" style="padding:0"><table style="font-size:0.82rem"><tbody>';
+  h += '<tr><td style="padding:10px 20px;font-weight:600">Total de Activos</td><td class="pm-text-right" style="padding:10px 20px;font-weight:700">' + pmFormatMoney(activos) + '</td></tr>';
+  h += '<tr style="background:#fef2f2"><td colspan="2" style="padding:6px 20px;color:var(--red);font-weight:700;font-size:0.7rem;text-transform:uppercase">Menos:</td></tr>';
+  h += '<tr style="background:#f0fdf4"><td style="padding:10px 20px;color:var(--muted)">Activos exentos</td><td class="pm-text-right" style="padding:10px 20px">' + pmFormatMoney(activosExentos) + '</td></tr>';
+  h += '<tr style="border-top:1px solid var(--border);font-weight:700"><td style="padding:10px 20px">Base Imponible Activos</td><td class="pm-text-right" style="padding:10px 20px">' + pmFormatMoney(baseActivos) + '</td></tr>';
+  h += '<tr><td style="padding:10px 20px;color:var(--muted)">Impuesto Calculado (1%)</td><td class="pm-text-right" style="padding:10px 20px;font-weight:600">' + pmFormatMoney(impActivo) + '</td></tr>';
+  h += '<tr style="background:#f8fafc"><td style="padding:10px 20px;color:var(--muted)">Comparativo ISR Liq.</td><td class="pm-text-right" style="padding:10px 20px;font-weight:700">' + pmFormatMoney(isrProyectado) + '</td></tr>';
+  var mayorPagar = Math.max(impActivo, isrAPagar);
+  h += '<tr style="border-top:3px solid var(--red)"><td style="padding:14px 20px"><span style="color:var(--red);font-weight:700;text-transform:uppercase">Total a Pagar</span><br><span style="color:var(--red);font-size:0.65rem">(Se paga el mayor entre 1% Activos e ISR)</span></td>';
+  h += '<td class="pm-text-right" style="padding:14px 20px;font-size:1.1rem;font-weight:800;color:' + (mayorPagar > 0 ? 'var(--red)' : 'var(--green)') + '">' + pmFormatMoney(mayorPagar) + '</td></tr>';
+  h += '</tbody></table></div></div></div>';
+
+  // ── Anticipos + Proyección Próximo Año ──
+  h += '<div class="pm-dual">';
+
+  // Anticipos año corriente
+  h += '<div class="pm-panel pm-panel-dark"><div class="pm-panel-hdr">';
+  h += '<h3 style="text-transform:uppercase;font-size:0.78rem;letter-spacing:0.3px">Anticipos Año Corriente</h3></div>';
+  h += '<div class="pm-panel-body" style="padding:20px">';
+  h += '<div style="display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--border);padding-bottom:14px;margin-bottom:14px">';
+  h += '<div><div style="font-weight:700">Enero — Abril</div><div style="font-size:0.7rem;color:var(--light)">Cuota Mensual</div></div>';
+  h += '<div style="font-weight:700;font-size:1.1rem">$' + pmFormatMoney(antTramo1) + '</div></div>';
+  h += '<div style="display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--border);padding-bottom:14px;margin-bottom:14px">';
+  h += '<div><div style="font-weight:700">Mayo — Diciembre</div><div style="font-size:0.7rem;color:var(--light)">Cuota Mensual</div></div>';
+  h += '<div style="font-weight:700;font-size:1.1rem">$' + pmFormatMoney(antTramo2) + '</div></div>';
+  var ultimoPagado = antTramo1; // Simplificación: último pagado es tramo actual
+  h += '<div style="background:#f8fafc;padding:14px;border-radius:8px;display:flex;justify-content:space-between;align-items:center">';
+  h += '<div><div style="font-weight:700;font-size:0.75rem;text-transform:uppercase">Último Anticipo Pagado</div>';
+  h += '<div style="font-size:0.7rem;color:var(--light)">Monto del último mes</div></div>';
+  h += '<div style="font-weight:800;font-size:1.4rem;color:var(--blue)">$' + pmFormatMoney(ultimoPagado) + '</div></div>';
+  h += '</div></div>';
+
+  // Proyección anticipo próximo año
+  h += '<div class="pm-panel pm-panel-amber"><div class="pm-panel-hdr">';
+  h += '<h3 style="text-transform:uppercase;font-size:0.78rem;letter-spacing:0.3px">Proyección Anticipo Próx. Año</h3></div>';
+  h += '<div class="pm-panel-body" style="padding:0"><table style="font-size:0.82rem"><tbody>';
+  h += '<tr><td style="padding:10px 20px;color:var(--muted)">Ingresos Totales</td><td class="pm-text-right" style="padding:10px 20px;font-weight:700">$' + pmFormatMoney(totalV) + '</td></tr>';
+  h += '<tr><td style="padding:10px 20px;color:var(--muted)">ISR Liquidado (Base)</td><td class="pm-text-right" style="padding:10px 20px;font-weight:700">$' + pmFormatMoney(isrProyectado) + '</td></tr>';
+  h += '<tr><td style="padding:10px 20px;color:var(--muted)">T.E.T. (Tasa Efectiva)</td><td class="pm-text-right" style="padding:10px 20px;font-weight:600;color:var(--blue)">' + tet.toFixed(2) + '%</td></tr>';
+  h += '<tr style="background:#fffbeb"><td style="padding:10px 20px;font-weight:600">Total Anticipo Calculado</td><td class="pm-text-right" style="padding:10px 20px;font-weight:700;color:var(--amber)">$' + pmFormatMoney(totalAntCalc) + '</td></tr>';
+  h += '<tr style="border-top:1px solid var(--border)"><td style="padding:14px 20px;font-weight:700">Anticipo Mensual Estimado</td>';
+  h += '<td class="pm-text-right" style="padding:14px 20px"><div style="font-weight:800;font-size:1.3rem;color:var(--amber)">$' + pmFormatMoney(antMensualProx) + '</div>';
+  if (antActual > 0) {
+    var arrow = varAntPct < 0 ? '↓' : '↑';
+    var varColor = varAntPct < 0 ? 'var(--green)' : 'var(--red)';
+    h += '<div style="font-size:0.7rem;font-weight:700;color:' + varColor + ';margin-top:2px">' + arrow + ' ' + Math.abs(varAntPct).toFixed(1) + '% vs Anticipo Actual</div>';
+  }
+  h += '</td></tr></tbody></table></div></div></div>';
+
+  // ── CRS ──
+  h += '<div class="pm-panel" style="margin-bottom:16px;overflow:hidden">';
+  h += '<div class="pm-panel-hdr" style="background:var(--blue);border-bottom:none">';
+  h += '<h3 style="color:white;text-transform:uppercase;font-size:0.78rem;letter-spacing:0.3px">Contribución de Residuos Sólidos (CRS)</h3></div>';
+  h += '<div class="pm-crs-banner">';
+  h += '<div><div style="color:rgba(255,255,255,0.7);font-size:0.78rem">Base de Cálculo (Ingresos Totales)</div>';
+  h += '<div style="color:white;font-size:1.4rem;font-weight:800;font-family:monospace">$' + pmFormatMoney(totalV) + '</div></div>';
+  h += '<div class="pm-crs-pill"><span style="color:white;font-weight:700;font-size:0.95rem">Total a Pagar</span>';
+  h += '<span style="color:#fbbf24;font-weight:800;font-size:1.6rem">$' + pmFormatMoney(crsMonto) + '</span></div></div></div>';
+
+  // ── Anticipos mensuales tabla ──
+  h += '<div class="pm-card"><div class="pm-card-title">Anticipos Mensuales — Comparativo de Tramos</div>';
+  h += '<table><thead><tr><th>Mes</th><th class="pm-text-right">Anticipo (RD$)</th><th class="pm-text-center">Tramo</th><th>Nota</th></tr></thead><tbody>';
+  var totalAntAnual = 0;
+  for (var am = 1; am <= 12; am++) {
+    var antMonto = am <= 4 ? antTramo1 : antTramo2;
+    totalAntAnual += antMonto;
+    var tramo = am <= 4 ? 'Anterior' : 'Nuevo';
+    var tramoCls = am <= 4 ? 'na' : 'verde';
+    var nota = '';
+    if (am === 4) nota = 'Último mes tramo anterior';
+    if (am === 5) {
+      var diff5 = antTramo2 - antTramo1;
+      var pct5 = antTramo1 ? (diff5 / antTramo1 * 100) : 0;
+      nota = (diff5 < 0 ? '↓' : '↑') + ' Cambio de tramo — ' + (diff5 < 0 ? 'baja' : 'sube') + ' RD$' + pmFormatMoney(Math.abs(diff5)) + ' (' + Math.abs(pct5).toFixed(1) + '%)';
+    }
+    var rowStyle = am === 5 ? ' style="background:#fffbeb"' : '';
+    h += '<tr' + rowStyle + '><td' + (am === 5 ? ' class="pm-font-bold"' : '') + '>' + MESES_FULL[am - 1] + '</td>';
+    h += '<td class="pm-text-right pm-font-bold">' + pmFormatMoney(antMonto) + '</td>';
+    h += '<td class="pm-text-center"><span class="pm-sem ' + tramoCls + '"><span class="pm-dot"></span>' + tramo + '</span></td>';
+    h += '<td style="color:' + (am === 5 ? 'var(--amber);font-weight:600' : 'var(--muted)') + '">' + nota + '</td></tr>';
+  }
+  h += '<tr class="pm-row-total"><td class="pm-font-bold">Total Anual</td><td class="pm-text-right pm-font-bold">' + pmFormatMoney(totalAntAnual) + '</td><td></td><td></td></tr>';
+  h += '</tbody></table></div>';
+
+  return h;
+}
+
+// ── DECLARACIONES ──
+function renderDeclaracionesDetail() {
+  var h = '<button class="pc-back-btn" onclick="pmCloseDetail()">← Volver</button>';
+  var mesNum = pmGetMesIdx(selectedMes);
+  var obligaciones = ['TSS', 'IR-3', 'IR-17', 'Anticipo', 'ITBIS'];
+
+  // Stats
+  var declMes = pmDeclaraciones.filter(function(d) { return d.mes === mesNum; });
+  var presentadas = declMes.filter(function(d) { return d.estado === 'a_tiempo' || d.estado === 'tarde'; }).length;
+  var noAplico = declMes.filter(function(d) { return d.estado === 'no_aplico'; }).length;
+  var aTiempo = declMes.filter(function(d) { return d.estado === 'a_tiempo'; }).length;
+  var totalMonto = 0;
+  declMes.forEach(function(d) { totalMonto += (d.monto || 0); });
+
+  // Previous month for comparison
+  var prevMes = mesNum > 1 ? mesNum - 1 : 12;
+  var declPrev = pmDeclaraciones.filter(function(d) { return d.mes === prevMes; });
+  var totalPrev = 0;
+  declPrev.forEach(function(d) { totalPrev += (d.monto || 0); });
+
+  // Summary cards
+  h += '<div class="pm-summary-row">';
+  h += '<div class="pm-summary-card pm-green-accent"><div class="pm-sc-label">Obligaciones presentadas</div>';
+  h += '<div class="pm-sc-value navy">' + presentadas + ' / ' + obligaciones.length + '</div>';
+  if (noAplico > 0) h += '<div class="pm-sc-sub">' + noAplico + ' no aplicaron este mes</div>';
+  h += '</div>';
+
+  h += '<div class="pm-summary-card pm-green-accent"><div class="pm-sc-label">A tiempo</div>';
+  h += '<div class="pm-sc-value navy">' + aTiempo + '</div>';
+  h += '<div class="pm-sc-sub">' + (aTiempo === presentadas ? 'Todas antes de fecha límite' : (presentadas - aTiempo) + ' fuera de plazo') + '</div></div>';
+
+  h += '<div class="pm-summary-card pm-blue-accent"><div class="pm-sc-label">Total pagado en el mes</div>';
+  h += '<div class="pm-sc-value navy">RD$' + pmFormatMoneyShort(totalMonto) + '</div>';
+  h += '<div class="pm-sc-sub">vs RD$' + pmFormatMoneyShort(totalPrev) + ' mes anterior</div></div>';
+  h += '</div>';
+
+  // ── Detail table ──
+  h += '<div class="pm-card"><div class="pm-card-title">Detalle de Declaraciones — ' + MESES_FULL[mesNum - 1] + ' ' + pmYear + '</div>';
+  h += '<table><thead><tr>';
+  h += '<th>Obligación</th><th class="pm-text-center">Fecha Límite</th><th class="pm-text-center">Presentado</th>';
+  h += '<th class="pm-text-right">Monto (RD$)</th><th class="pm-text-right">Mes Anterior</th>';
+  h += '<th class="pm-text-center">Variación</th><th class="pm-text-center">Puntualidad</th>';
+  h += '</tr></thead><tbody>';
+
+  var totalMontoDecl = 0, totalPrevDecl = 0;
+  obligaciones.forEach(function(ob) {
+    var d = pmGetDeclForMes(mesNum, ob);
+    var prev = pmGetDeclForMes(prevMes, ob);
+    var monto = d ? (d.monto || 0) : 0;
+    var montoPrev = prev ? (prev.monto || 0) : 0;
+    totalMontoDecl += monto;
+    totalPrevDecl += montoPrev;
+
+    h += '<tr><td class="pm-font-bold">' + ob + '</td>';
+
+    if (!d || d.estado === 'pendiente') {
+      h += '<td class="pm-text-center" style="color:var(--muted)">—</td>';
+      h += '<td class="pm-text-center" style="color:var(--muted)">—</td>';
+      h += '<td class="pm-text-right" style="color:var(--muted)">—</td>';
+      h += '<td class="pm-text-right" style="color:var(--muted)">' + (montoPrev > 0 ? pmFormatMoney(montoPrev) : '—') + '</td>';
+      h += '<td class="pm-text-center"><span class="pm-var-neutral">—</span></td>';
+      h += '<td class="pm-text-center"><span class="pm-sem na"><span class="pm-dot"></span>Pendiente</span></td>';
+    } else if (d.estado === 'no_aplico') {
+      h += '<td class="pm-text-center">' + (d.fecha_limite ? pmFormatDate(d.fecha_limite) : '—') + '</td>';
+      h += '<td class="pm-text-center">—</td>';
+      h += '<td class="pm-text-right">—</td>';
+      h += '<td class="pm-text-right">' + (montoPrev > 0 ? pmFormatMoney(montoPrev) : '—') + '</td>';
+      h += '<td class="pm-text-center"><span class="pm-var-neutral">—</span></td>';
+      h += '<td class="pm-text-center"><span class="pm-sem na"><span class="pm-dot"></span>No aplicó</span></td>';
+    } else {
+      h += '<td class="pm-text-center">' + (d.fecha_limite ? pmFormatDate(d.fecha_limite) : '—') + '</td>';
+      h += '<td class="pm-text-center">' + (d.fecha_presentado ? pmFormatDate(d.fecha_presentado) : '—') + '</td>';
+      h += '<td class="pm-text-right">' + pmFormatMoney(monto) + '</td>';
+      h += '<td class="pm-text-right">' + (montoPrev > 0 ? pmFormatMoney(montoPrev) : '—') + '</td>';
+
+      // Variación
+      if (montoPrev > 0 && monto > 0) {
+        var varPct = ((monto - montoPrev) / montoPrev * 100);
+        if (Math.abs(varPct) < 0.5) {
+          h += '<td class="pm-text-center"><span class="pm-var-neutral">— 0%</span></td>';
+        } else if (varPct > 0) {
+          h += '<td class="pm-text-center"><span class="pm-var-up">↑ +' + varPct.toFixed(1) + '%</span></td>';
+        } else {
+          h += '<td class="pm-text-center"><span class="pm-var-down">↓ ' + varPct.toFixed(1) + '%</span></td>';
+        }
+      } else {
+        h += '<td class="pm-text-center"><span class="pm-var-neutral">—</span></td>';
+      }
+
+      // Puntualidad
+      var puntCls = d.estado === 'a_tiempo' ? 'verde' : 'rojo';
+      var puntLabel = d.estado === 'a_tiempo' ? 'A tiempo' : 'Tarde';
+      h += '<td class="pm-text-center"><span class="pm-badge pm-badge-' + puntCls + '">' + puntLabel + '</span></td>';
+    }
+    h += '</tr>';
+  });
+
+  // Total row
+  h += '<tr class="pm-row-total"><td class="pm-font-bold">Total</td><td></td><td></td>';
+  h += '<td class="pm-text-right pm-font-bold">' + pmFormatMoney(totalMontoDecl) + '</td>';
+  h += '<td class="pm-text-right pm-font-bold">' + pmFormatMoney(totalPrevDecl) + '</td>';
+  if (totalPrevDecl > 0) {
+    var totalVar = ((totalMontoDecl - totalPrevDecl) / totalPrevDecl * 100);
+    h += '<td class="pm-text-center"><span class="' + (totalVar > 0 ? 'pm-var-up' : 'pm-var-down') + '">' + (totalVar > 0 ? '↑ +' : '↓ ') + totalVar.toFixed(1) + '%</span></td>';
+  } else {
+    h += '<td class="pm-text-center"><span class="pm-var-neutral">—</span></td>';
+  }
+  h += '<td></td></tr></tbody></table></div>';
+
+  // ── Historial de puntualidad (últimos 3 meses) ──
+  var histMeses = [];
+  for (var hm = mesNum; hm >= 1 && histMeses.length < 3; hm--) {
+    histMeses.unshift(hm);
+  }
+
+  if (histMeses.length > 0) {
+    h += '<div class="pm-card"><div class="pm-card-title">Historial de Puntualidad — Últimos ' + histMeses.length + ' Meses</div>';
+    h += '<table><thead><tr><th>Obligación</th>';
+    histMeses.forEach(function(hm) { h += '<th class="pm-text-center">' + MESES_FULL[hm - 1] + '</th>'; });
+    h += '</tr></thead><tbody>';
+
+    obligaciones.forEach(function(ob) {
+      h += '<tr><td class="pm-font-bold">' + ob + '</td>';
+      histMeses.forEach(function(hm) {
+        var d = pmGetDeclForMes(hm, ob);
+        if (!d || d.estado === 'pendiente') {
+          h += '<td class="pm-text-center"><span class="pm-sem na"><span class="pm-dot"></span></span></td>';
+        } else if (d.estado === 'no_aplico') {
+          h += '<td class="pm-text-center"><span class="pm-sem na"><span class="pm-dot"></span></span></td>';
+        } else if (d.estado === 'a_tiempo') {
+          h += '<td class="pm-text-center"><span class="pm-sem verde"><span class="pm-dot"></span></span></td>';
+        } else {
+          h += '<td class="pm-text-center"><span class="pm-sem rojo"><span class="pm-dot"></span></span></td>';
+        }
+      });
+      h += '</tr>';
+    });
+    h += '</tbody></table></div>';
+  }
+
+  return h;
+}
+
+// ==================== ADMIN: CARGAR DATOS ====================
+function renderAdminDatos() {
+  var h = '<button class="pc-back-btn" onclick="pmCloseDetail()">← Volver</button>';
+  h += '<div style="margin-bottom:20px"><span style="font-size:1.1rem;font-weight:700">Cargar Datos</span>';
+  h += '<span style="font-size:0.85rem;color:var(--muted);margin-left:12px">' + esc(clienteNombre) + ' — ' + pmYear + '</span></div>';
+
+  // ── 1. PRESUPUESTO ANUAL ──
+  var pv = pmPresupuesto ? (pmPresupuesto.ventas_anual || '') : '';
+  var pc = pmPresupuesto ? (pmPresupuesto.costos_anual || '') : '';
+  var pg = pmPresupuesto ? (pmPresupuesto.gastos_anual || '') : '';
+
+  h += '<div class="pm-admin-form"><h3>Presupuesto Anual <span class="pm-admin-badge">Año ' + pmYear + '</span></h3>';
+  h += '<div class="pm-form-grid">';
+  h += '<div class="pm-form-group"><label>Ventas (anual)</label>';
+  h += '<input type="number" class="pm-form-input" id="pmPresVentas" value="' + pv + '" placeholder="0.00" step="0.01">';
+  h += '<div class="pm-calc">Mensual: $' + pmFormatMoney(pv ? pv / 12 : 0) + '</div></div>';
+  h += '<div class="pm-form-group"><label>Costos (anual)</label>';
+  h += '<input type="number" class="pm-form-input" id="pmPresCostos" value="' + pc + '" placeholder="0.00" step="0.01">';
+  h += '<div class="pm-calc">Mensual: $' + pmFormatMoney(pc ? pc / 12 : 0) + '</div></div>';
+  h += '<div class="pm-form-group"><label>Gastos (anual)</label>';
+  h += '<input type="number" class="pm-form-input" id="pmPresGastos" value="' + pg + '" placeholder="0.00" step="0.01">';
+  h += '<div class="pm-calc">Mensual: $' + pmFormatMoney(pg ? pg / 12 : 0) + '</div></div>';
+  h += '</div>';
+  h += '<div class="pm-btn-row"><button class="pm-btn-save primary" onclick="pmSavePresupuesto()">Guardar Presupuesto</button></div>';
+  h += '</div>';
+
+  // ── 2. EJECUCIÓN MENSUAL (paste from ADM) ──
+  h += '<div class="pm-admin-form"><h3>Estado de Resultados (ADM) <span class="pm-admin-badge">Pegar desde Excel</span></h3>';
+  h += '<div class="pm-form-grid" style="grid-template-columns:1fr auto">';
+  h += '<div class="pm-form-group"><label>Mes a cargar</label>';
+  h += '<select class="pm-form-input" id="pmEjMes" style="width:200px" onchange="pmUpdateEjFields()">';
+  for (var em = 1; em <= 12; em++) {
+    var hasMes = pmEjecucion.some(function(e) { return e.mes === em; });
+    h += '<option value="' + em + '"' + (em === pmGetMesIdx(selectedMes) ? ' selected' : '') + '>' + MESES_FULL[em - 1] + (hasMes ? ' (cargado)' : '') + '</option>';
+  }
+  h += '</select></div><div></div></div>';
+
+  // Show current data for selected month if exists
+  h += '<div style="margin-bottom:12px">';
+  h += '<textarea class="pm-paste-area" id="pmPasteArea" placeholder="Pega aquí los datos desde Excel o CSV.\nFormato esperado (una fila):\nVentas\tCostos\tGastos\tSalarios\n\nEjemplo:\n1500000\t800000\t350000\t200000"></textarea>';
+  h += '<div class="pm-paste-help">Pega una fila con 4 valores separados por tab o coma: Ventas, Costos, Gastos, Salarios. También puedes escribir los valores manualmente abajo.</div>';
+  h += '</div>';
+
+  // Manual entry fields
+  var ej = pmGetEjecucionMes(pmGetMesIdx(selectedMes));
+  h += '<div class="pm-form-grid">';
+  h += '<div class="pm-form-group"><label>Ventas</label><input type="number" class="pm-form-input" id="pmEjVentas" value="' + (ej ? ej.ventas : '') + '" placeholder="0.00" step="0.01"></div>';
+  h += '<div class="pm-form-group"><label>Costos</label><input type="number" class="pm-form-input" id="pmEjCostos" value="' + (ej ? ej.costos : '') + '" placeholder="0.00" step="0.01"></div>';
+  h += '<div class="pm-form-group"><label>Gastos</label><input type="number" class="pm-form-input" id="pmEjGastos" value="' + (ej ? ej.gastos : '') + '" placeholder="0.00" step="0.01"></div>';
+  h += '<div class="pm-form-group"><label>Salarios</label><input type="number" class="pm-form-input" id="pmEjSalarios" value="' + (ej ? ej.salarios : '') + '" placeholder="0.00" step="0.01"></div>';
+  h += '</div>';
+  h += '<div class="pm-btn-row"><button class="pm-btn-save primary" onclick="pmSaveEjecucion()">Guardar Ejecución</button>';
+  h += '<button class="pm-btn-save secondary" onclick="pmParsePaste()">Leer del pegado</button></div>';
+
+  // Months loaded summary
+  if (pmEjecucion.length > 0) {
+    h += '<div style="margin-top:14px;padding:10px 14px;background:#f8fafc;border-radius:8px;font-size:0.78rem;color:var(--muted)">';
+    h += '<strong>Meses cargados:</strong> ';
+    pmEjecucion.forEach(function(e, i) {
+      if (i > 0) h += ', ';
+      h += MESES_FULL[e.mes - 1];
+    });
+    h += '</div>';
+  }
+  h += '</div>';
+
+  // ── 3. CONFIGURACIÓN DE IMPUESTOS ──
+  var ic = pmImpConfig || {};
+  h += '<div class="pm-admin-form"><h3>Configuración de Impuestos <span class="pm-admin-badge">Año ' + pmYear + '</span></h3>';
+  h += '<div class="pm-form-grid">';
+  h += '<div class="pm-form-group"><label>Anticipo Tramo 1 (Ene-Abr)</label><input type="number" class="pm-form-input" id="pmIcAnt1" value="' + (ic.anticipo_tramo1 || '') + '" placeholder="Cuota mensual" step="0.01"></div>';
+  h += '<div class="pm-form-group"><label>Anticipo Tramo 2 (May-Dic)</label><input type="number" class="pm-form-input" id="pmIcAnt2" value="' + (ic.anticipo_tramo2 || '') + '" placeholder="Cuota mensual" step="0.01"></div>';
+  h += '<div class="pm-form-group"><label>Pérdidas Compensables</label><input type="number" class="pm-form-input" id="pmIcPerdidas" value="' + (ic.perdidas_compensables || '') + '" placeholder="0.00" step="0.01"></div>';
+  h += '<div class="pm-form-group"><label>Activos Totales</label><input type="number" class="pm-form-input" id="pmIcActivos" value="' + (ic.activos_totales || '') + '" placeholder="0.00" step="0.01"></div>';
+  h += '<div class="pm-form-group"><label>Activos Exentos</label><input type="number" class="pm-form-input" id="pmIcExentos" value="' + (ic.activos_exentos || '') + '" placeholder="0.00" step="0.01"></div>';
+  h += '<div class="pm-form-group"><label>CRS (Monto)</label><input type="number" class="pm-form-input" id="pmIcCrs" value="' + (ic.crs_monto || '') + '" placeholder="0.00" step="0.01"></div>';
+  h += '</div>';
+  h += '<div class="pm-btn-row"><button class="pm-btn-save primary" onclick="pmSaveImpConfig()">Guardar Config. Impuestos</button></div>';
+  h += '</div>';
+
+  // ── 4. DECLARACIONES DEL MES ──
+  var mesNum = pmGetMesIdx(selectedMes);
+  var obligaciones = ['TSS', 'IR-3', 'IR-17', 'Anticipo', 'ITBIS'];
+
+  h += '<div class="pm-admin-form"><h3>Declaraciones <span class="pm-admin-badge">' + MESES_FULL[mesNum - 1] + ' ' + pmYear + '</span></h3>';
+  h += '<div class="pm-decl-grid">';
+  obligaciones.forEach(function(ob) {
+    var d = pmGetDeclForMes(mesNum, ob);
+    h += '<div class="pm-decl-card"><h4>' + ob + '</h4>';
+    h += '<div class="pm-form-group"><label>Estado</label>';
+    h += '<select id="pmDecl_' + ob.replace(/-/g,'') + '_estado">';
+    ['pendiente', 'a_tiempo', 'tarde', 'no_aplico'].forEach(function(st) {
+      var labels = { pendiente: 'Pendiente', a_tiempo: 'A tiempo', tarde: 'Tarde', no_aplico: 'No aplicó' };
+      h += '<option value="' + st + '"' + (d && d.estado === st ? ' selected' : '') + '>' + labels[st] + '</option>';
+    });
+    h += '</select></div>';
+    h += '<div class="pm-form-group"><label>Fecha Límite</label>';
+    h += '<input type="date" class="pm-form-input" id="pmDecl_' + ob.replace(/-/g,'') + '_limite" value="' + (d && d.fecha_limite ? d.fecha_limite : '') + '"></div>';
+    h += '<div class="pm-form-group"><label>Fecha Presentado</label>';
+    h += '<input type="date" class="pm-form-input" id="pmDecl_' + ob.replace(/-/g,'') + '_presentado" value="' + (d && d.fecha_presentado ? d.fecha_presentado : '') + '"></div>';
+    h += '<div class="pm-form-group"><label>Monto (RD$)</label>';
+    h += '<input type="number" class="pm-form-input" id="pmDecl_' + ob.replace(/-/g,'') + '_monto" value="' + (d ? (d.monto || '') : '') + '" placeholder="0.00" step="0.01"></div>';
+    h += '</div>';
+  });
+  h += '</div>';
+  h += '<div class="pm-btn-row"><button class="pm-btn-save primary" onclick="pmSaveDeclaraciones()">Guardar Declaraciones</button></div>';
+  h += '</div>';
+
+  return h;
+}
+
+// Update ejecucion fields when month selector changes
+function pmUpdateEjFields() {
+  var mes = parseInt(document.getElementById('pmEjMes').value);
+  var ej = pmGetEjecucionMes(mes);
+  document.getElementById('pmEjVentas').value = ej ? ej.ventas : '';
+  document.getElementById('pmEjCostos').value = ej ? ej.costos : '';
+  document.getElementById('pmEjGastos').value = ej ? ej.gastos : '';
+  document.getElementById('pmEjSalarios').value = ej ? ej.salarios : '';
+}
+
+// Parse pasted data from textarea
+function pmParsePaste() {
+  var raw = document.getElementById('pmPasteArea').value.trim();
+  if (!raw) { showToast('Pega los datos primero'); return; }
+
+  // Try tab-separated, then comma, then semicolon
+  var sep = raw.indexOf('\t') >= 0 ? '\t' : (raw.indexOf(';') >= 0 ? ';' : ',');
+  var parts = raw.split('\n').pop().split(sep).map(function(v) {
+    return parseFloat(v.replace(/[^0-9.\-]/g, '')) || 0;
+  });
+
+  if (parts.length >= 4) {
+    document.getElementById('pmEjVentas').value = parts[0];
+    document.getElementById('pmEjCostos').value = parts[1];
+    document.getElementById('pmEjGastos').value = parts[2];
+    document.getElementById('pmEjSalarios').value = parts[3];
+    showToast('Datos leídos: Ventas=' + pmFormatMoneyShort(parts[0]) + ', Costos=' + pmFormatMoneyShort(parts[1]) + ', Gastos=' + pmFormatMoneyShort(parts[2]) + ', Salarios=' + pmFormatMoneyShort(parts[3]));
+  } else {
+    showToast('Formato no reconocido. Se esperan 4 valores: Ventas, Costos, Gastos, Salarios');
+  }
+}
+
+// Save presupuesto
+async function pmSavePresupuesto() {
+  var v = parseFloat(document.getElementById('pmPresVentas').value) || 0;
+  var c = parseFloat(document.getElementById('pmPresCostos').value) || 0;
+  var g = parseFloat(document.getElementById('pmPresGastos').value) || 0;
+
+  var { error } = await sb.from('portal_presupuesto').upsert({
+    cliente: clienteNombre,
+    anio: pmYear,
+    ventas_anual: v,
+    costos_anual: c,
+    gastos_anual: g
+  }, { onConflict: 'cliente,anio' });
+
+  if (error) { showToast('Error al guardar: ' + error.message); return; }
+  showToast('Presupuesto guardado');
+  await loadPresentacionData();
+  render();
+}
+
+// Save ejecucion
+async function pmSaveEjecucion() {
+  var mes = parseInt(document.getElementById('pmEjMes').value);
+  var v = parseFloat(document.getElementById('pmEjVentas').value) || 0;
+  var c = parseFloat(document.getElementById('pmEjCostos').value) || 0;
+  var g = parseFloat(document.getElementById('pmEjGastos').value) || 0;
+  var s = parseFloat(document.getElementById('pmEjSalarios').value) || 0;
+
+  var { error } = await sb.from('portal_ejecucion').upsert({
+    cliente: clienteNombre,
+    anio: pmYear,
+    mes: mes,
+    ventas: v,
+    costos: c,
+    gastos: g,
+    salarios: s
+  }, { onConflict: 'cliente,anio,mes' });
+
+  if (error) { showToast('Error al guardar: ' + error.message); return; }
+  showToast('Ejecución de ' + MESES_FULL[mes - 1] + ' guardada');
+  await loadPresentacionData();
+  render();
+}
+
+// Save impuestos config
+async function pmSaveImpConfig() {
+  var { error } = await sb.from('portal_impuestos_config').upsert({
+    cliente: clienteNombre,
+    anio: pmYear,
+    anticipo_tramo1: parseFloat(document.getElementById('pmIcAnt1').value) || 0,
+    anticipo_tramo2: parseFloat(document.getElementById('pmIcAnt2').value) || 0,
+    perdidas_compensables: parseFloat(document.getElementById('pmIcPerdidas').value) || 0,
+    activos_totales: parseFloat(document.getElementById('pmIcActivos').value) || 0,
+    activos_exentos: parseFloat(document.getElementById('pmIcExentos').value) || 0,
+    crs_monto: parseFloat(document.getElementById('pmIcCrs').value) || 0
+  }, { onConflict: 'cliente,anio' });
+
+  if (error) { showToast('Error al guardar: ' + error.message); return; }
+  showToast('Configuración de impuestos guardada');
+  await loadPresentacionData();
+  render();
+}
+
+// Save declaraciones
+async function pmSaveDeclaraciones() {
+  var mesNum = pmGetMesIdx(selectedMes);
+  var obligaciones = ['TSS', 'IR-3', 'IR-17', 'Anticipo', 'ITBIS'];
+  var rows = [];
+
+  obligaciones.forEach(function(ob) {
+    var prefix = 'pmDecl_' + ob.replace(/-/g,'') + '_';
+    var estado = document.getElementById(prefix + 'estado').value;
+    var limite = document.getElementById(prefix + 'limite').value || null;
+    var presentado = document.getElementById(prefix + 'presentado').value || null;
+    var monto = parseFloat(document.getElementById(prefix + 'monto').value) || 0;
+
+    rows.push({
+      cliente: clienteNombre,
+      anio: pmYear,
+      mes: mesNum,
+      obligacion: ob,
+      estado: estado,
+      fecha_limite: limite,
+      fecha_presentado: presentado,
+      monto: monto
+    });
+  });
+
+  var { error } = await sb.from('portal_declaraciones').upsert(rows, { onConflict: 'cliente,anio,mes,obligacion' });
+
+  if (error) { showToast('Error al guardar: ' + error.message); return; }
+  showToast('Declaraciones de ' + MESES_FULL[mesNum - 1] + ' guardadas');
+  await loadPresentacionData();
+  render();
+}
+
+function pmFormatDate(dateStr) {
+  if (!dateStr) return '—';
+  var d = new Date(dateStr + 'T00:00:00');
+  var months = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+  return d.getDate() + ' ' + months[d.getMonth()];
 }
 
 // ==================== START ====================
