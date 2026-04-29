@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Portal de Clientes — Account One</title>
+<title>Portal Admin — Account One</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 :root {
@@ -93,9 +93,55 @@ body { font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-se
 
 .footer { text-align:center; padding:20px; font-size:0.75rem; color:var(--light); }
 
-body.embed .header { display:none !important; }
+/* Admin index */
+.summary-stats { display:grid; grid-template-columns:repeat(auto-fit, minmax(130px,1fr)); gap:12px; margin-bottom:20px; }
+.summary-stat { background:white; border-radius:12px; padding:16px; border:1px solid var(--border); text-align:center; }
+.summary-stat-label { font-size:0.65rem; text-transform:uppercase; letter-spacing:0.5px; color:var(--light); font-weight:600; }
+.summary-stat-value { font-size:1.6rem; font-weight:800; margin-top:4px; }
+
+.check-table { width:100%; border-collapse:collapse; font-size:0.82rem; background:white; border-radius:12px; overflow:hidden; border:1px solid var(--border); }
+.check-table th { text-align:left; padding:10px 12px; font-size:0.65rem; text-transform:uppercase; letter-spacing:0.3px; color:var(--muted); border-bottom:2px solid var(--border); background:#f8fafc; }
+.check-table th.center { text-align:center; }
+.check-table td { padding:8px 12px; border-bottom:1px solid #f1f5f9; vertical-align:middle; }
+.check-table td.center { text-align:center; }
+.check-table tr:hover td { background:#fafbfc; }
+.check-table tr { cursor:pointer; }
+.check-table tr.group-row td { background:#f0f2f5; font-weight:700; font-size:0.72rem; color:var(--navy); text-transform:uppercase; letter-spacing:0.4px; border-bottom:2px solid var(--border); padding:6px 12px; }
+
+.pc-status-badge { display:inline-block; padding:3px 10px; border-radius:12px; font-size:0.72rem; font-weight:600; }
+.pc-status-completo { background:#d1fae5; color:#065f46; }
+.pc-status-progreso { background:#dbeafe; color:#1e40af; }
+.pc-status-pendiente { background:#f3f4f6; color:#6b7280; }
+.pc-status-urgente { background:#fee2e2; color:#991b1b; }
+.pc-status-sinasignar { background:#fef3c7; color:#92400e; }
+
+.pc-progress { display:flex; align-items:center; gap:8px; }
+.pc-progress-bar { width:80px; height:6px; background:#eef0f4; border-radius:3px; overflow:hidden; }
+.pc-progress-fill { height:100%; border-radius:3px; }
+.pc-progress-text { font-size:0.75rem; font-weight:700; min-width:32px; }
+
+.contadora-pills { display:flex; gap:4px; flex-wrap:wrap; margin-top:10px; }
+.contadora-pill { padding:5px 14px; border-radius:8px; font-size:0.78rem; font-weight:600; cursor:pointer; border:1px solid var(--border); background:white; color:var(--muted); transition:all 0.12s; font-family:inherit; }
+.contadora-pill:hover { background:#eef0f4; }
+.contadora-pill.active { background:var(--navy); color:white; border-color:var(--navy); }
+
+.pc-back-btn { display:inline-flex; align-items:center; gap:6px; padding:8px 16px; border-radius:8px; font-size:0.82rem; font-weight:600; cursor:pointer; border:1px solid var(--border); background:white; color:var(--muted); font-family:inherit; margin-bottom:16px; }
+.pc-back-btn:hover { background:#eef0f4; }
+
+body.embed .header, body.embed .login-overlay { display:none !important; }
 body.embed .main-tabs { margin-left:0; }
 body.embed .content { padding-top:12px; }
+
+.login-overlay { position:fixed; inset:0; background:var(--navy); display:flex; align-items:center; justify-content:center; z-index:9999; }
+.login-box { background:white; padding:40px 36px; border-radius:16px; width:100%; max-width:380px; box-shadow:0 20px 60px rgba(0,0,0,0.3); }
+.login-box h2 { font-size:1.2rem; margin-bottom:4px; color:var(--navy); }
+.login-box p { font-size:0.82rem; color:var(--muted); margin-bottom:24px; }
+.login-box label { font-size:0.78rem; font-weight:600; color:var(--muted); display:block; margin-bottom:6px; text-transform:uppercase; letter-spacing:0.3px; }
+.login-box input { width:100%; padding:10px 14px; border:1px solid var(--border); border-radius:8px; font-size:0.9rem; font-family:inherit; margin-bottom:16px; }
+.login-box input:focus { outline:none; border-color:var(--blue); box-shadow:0 0 0 3px rgba(67,97,238,0.1); }
+.login-box button { width:100%; padding:12px; border:none; border-radius:8px; background:var(--blue); color:white; font-size:0.9rem; font-weight:600; cursor:pointer; font-family:inherit; }
+.login-box button:hover { opacity:0.9; }
+.login-error { color:var(--red); font-size:0.8rem; margin-bottom:12px; display:none; }
 
 /* ==================== PRESENTACIÓN MENSUAL ==================== */
 .pm-main-tabs { display:flex; gap:0; background:var(--card); border-bottom:2px solid var(--border); }
@@ -205,34 +251,73 @@ body.embed .content { padding-top:12px; }
 .pm-crs-banner { background:var(--blue); padding:20px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:16px; }
 .pm-crs-pill { background:rgba(255,255,255,0.15); padding:14px 24px; border-radius:10px; border:1px solid rgba(255,255,255,0.25); display:flex; align-items:center; gap:16px; }
 
-.pc-back-btn { display:inline-flex; align-items:center; gap:6px; padding:8px 16px; border-radius:8px; font-size:0.82rem; font-weight:600; cursor:pointer; border:1px solid var(--border); background:white; color:var(--muted); font-family:inherit; margin-bottom:16px; }
-.pc-back-btn:hover { background:#eef0f4; }
-
 @media (max-width:768px) {
   .pm-section-cards { grid-template-columns:1fr; }
   .pm-dual { grid-template-columns:1fr; }
   .pm-summary-row { grid-template-columns:1fr; }
 }
+
+/* Admin forms */
+.pm-admin-form { background:white; border-radius:12px; border:1px solid var(--border); padding:20px; margin-bottom:16px; }
+.pm-admin-form h3 { font-size:0.88rem; font-weight:700; color:var(--navy); margin-bottom:16px; display:flex; align-items:center; gap:8px; }
+.pm-admin-form h3 .pm-edit-icon { font-size:0.75rem; }
+.pm-form-grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:14px; margin-bottom:16px; }
+.pm-form-group { display:flex; flex-direction:column; gap:4px; }
+.pm-form-group label { font-size:0.68rem; text-transform:uppercase; letter-spacing:0.3px; color:var(--muted); font-weight:600; }
+.pm-form-group .pm-calc { font-size:0.72rem; color:var(--light); margin-top:2px; }
+.pm-form-input { padding:8px 12px; border:1px solid var(--border); border-radius:8px; font-size:0.85rem; font-family:inherit; background:white; width:100%; }
+.pm-form-input:focus { outline:none; border-color:var(--blue); box-shadow:0 0 0 3px rgba(67,97,238,0.1); }
+.pm-btn-save { padding:8px 20px; border-radius:8px; font-size:0.82rem; font-weight:600; cursor:pointer; border:none; font-family:inherit; transition:all 0.15s; }
+.pm-btn-save.primary { background:var(--blue); color:white; }
+.pm-btn-save.primary:hover { background:#3651d4; }
+.pm-btn-save.secondary { background:#f3f4f6; color:var(--text); border:1px solid var(--border); }
+.pm-btn-save.secondary:hover { background:#e5e7eb; }
+.pm-btn-row { display:flex; gap:10px; align-items:center; }
+.pm-paste-area { width:100%; min-height:120px; padding:12px; border:2px dashed var(--border); border-radius:8px; font-family:'Courier New', monospace; font-size:0.78rem; resize:vertical; background:#fafbfc; }
+.pm-paste-area:focus { outline:none; border-color:var(--blue); background:white; }
+.pm-paste-help { font-size:0.72rem; color:var(--light); margin-top:6px; line-height:1.4; }
+.pm-admin-badge { display:inline-block; padding:3px 10px; border-radius:6px; font-size:0.68rem; font-weight:700; background:#dbeafe; color:#1e40af; margin-left:8px; }
+.pm-decl-grid { display:grid; grid-template-columns:repeat(5, 1fr); gap:10px; margin-bottom:16px; }
+.pm-decl-card { background:#fafbfc; border:1px solid var(--border); border-radius:8px; padding:12px; }
+.pm-decl-card h4 { font-size:0.78rem; font-weight:700; color:var(--navy); margin-bottom:8px; }
+.pm-decl-card .pm-form-group { margin-bottom:8px; }
+.pm-decl-card select { padding:6px 8px; border:1px solid var(--border); border-radius:6px; font-size:0.78rem; font-family:inherit; background:white; width:100%; }
+@media (max-width:768px) {
+  .pm-decl-grid { grid-template-columns:1fr 1fr; }
+}
 </style>
 </head>
 <body>
 
+<div id="loginOverlay" class="login-overlay" style="display:none">
+  <div class="login-box">
+    <h2>Portal Admin</h2>
+    <p>Acceso de administrador — Account One</p>
+    <div id="loginError" class="login-error"></div>
+    <label>Correo</label>
+    <input type="email" id="loginEmail" placeholder="correo@accountone.do">
+    <label>Contraseña</label>
+    <input type="password" id="loginPass" placeholder="••••••••" onkeydown="if(event.key==='Enter')doLogin()">
+    <button onclick="doLogin()">Iniciar sesión</button>
+  </div>
+</div>
+
 <div id="errorScreen" class="error-screen" style="display:none">
   <div>
-    <h2>Enlace no válido</h2>
-    <p>Este enlace de acceso no es válido o ha expirado.<br>Contacta a Account One para obtener uno nuevo.</p>
+    <h2>Acceso denegado</h2>
+    <p>No tienes permisos de administrador para acceder a esta página.</p>
   </div>
 </div>
 
 <div id="app" style="display:none">
   <div class="header">
     <div class="header-inner">
-      <div><h1>Portal de Clientes</h1><p>Account One — Impuestos</p></div>
+      <div><h1>Portal Admin</h1><p>Account One — Impuestos</p></div>
       <span class="client-badge" id="clientName"></span>
     </div>
   </div>
 
-  <div class="pm-main-tabs" id="mainTabs"></div>
+  <div class="pm-main-tabs" id="mainTabs" style="display:none"></div>
   <div class="pm-sub-tabs" id="subTabs" style="display:none"></div>
   <div id="navArea"></div>
   <div class="content" id="content"></div>
@@ -305,7 +390,12 @@ var CHECKLIST = {
 
 // ==================== STATE ====================
 var clienteNombre = '';
-var clienteToken = '';
+var isAdminMode = true;
+var adminShowingIndex = true;
+var allTokens = [];
+var allClientes = [];
+var allPortalData = [];
+var selectedContadora = 'Todas';
 var selectedMainTab = 'checklist';
 var selectedTab = 'dashboard';
 var selectedMes = '';
@@ -599,37 +689,304 @@ function pmGetDeclForMes(mesNum, obligacion) {
 // ==================== INIT ====================
 async function init() {
   var params = new URLSearchParams(location.search);
-  clienteToken = params.get('token');
   var isEmbed = params.get('embed') === '1';
 
+  var { data: { session } } = await sb.auth.getSession();
+  if (!session) {
+    if (isEmbed) {
+      document.body.innerHTML = '<div style="text-align:center;padding:60px;color:#7c8495;">Sesion no encontrada. Recarga la pagina principal.</div>';
+    } else {
+      document.getElementById('loginOverlay').style.display = 'flex';
+    }
+    return;
+  }
+
+  await initAdmin(isEmbed);
+}
+
+async function initAdmin(isEmbed) {
+  var { data: { session } } = await sb.auth.getSession();
+  if (!session) return;
+
+  var { data: profile } = await sb.from('profiles').select('rol').eq('id', session.user.id).single();
+  if (!profile || profile.rol !== 'admin') {
+    document.getElementById('loginOverlay').style.display = 'none';
+    document.getElementById('errorScreen').style.display = 'flex';
+    return;
+  }
+
+  isAdminMode = true;
+  adminShowingIndex = true;
   if (isEmbed) document.body.classList.add('embed');
 
-  if (!clienteToken) {
-    document.getElementById('errorScreen').style.display = 'flex';
-    return;
-  }
-
-  var { data, error } = await sb.from('portal_clientes_tokens')
-    .select('cliente')
-    .eq('token', clienteToken)
-    .eq('activo', true)
-    .single();
-
-  if (error || !data) {
-    document.getElementById('errorScreen').style.display = 'flex';
-    return;
-  }
-
-  clienteNombre = data.cliente;
-  document.getElementById('clientName').textContent = clienteNombre;
-  document.getElementById('app').style.display = '';
-
   selectedMes = getCurrentMonth();
+
+  var [tokensRes, clientesRes, portalDataRes] = await Promise.all([
+    sb.from('portal_clientes_tokens').select('cliente, token').eq('activo', true).order('cliente'),
+    sb.from('clientes').select('nombre, contadora_impuestos, responsabilidad_impuestos, activo').eq('activo', true).order('nombre'),
+    sb.from('portal_clientes_data').select('*')
+  ]);
+
+  allTokens = tokensRes.data || [];
+  allClientes = clientesRes.data || [];
+  allPortalData = portalDataRes.data || [];
+
+  document.getElementById('loginOverlay').style.display = 'none';
+  document.getElementById('clientName').textContent = 'Admin';
+  document.getElementById('app').style.display = '';
+  document.getElementById('mainTabs').style.display = 'none';
+
+  renderNav();
+  renderAdminIndex();
+}
+
+async function doLogin() {
+  var email = document.getElementById('loginEmail').value.trim();
+  var pass = document.getElementById('loginPass').value;
+  var errEl = document.getElementById('loginError');
+  errEl.style.display = 'none';
+
+  if (!email || !pass) { errEl.textContent = 'Ingresa correo y contraseña'; errEl.style.display = 'block'; return; }
+
+  var { error } = await sb.auth.signInWithPassword({ email: email, password: pass });
+  if (error) { errEl.textContent = 'Credenciales incorrectas'; errEl.style.display = 'block'; return; }
+
+  await initAdmin(false);
+}
+
+// ==================== ADMIN INDEX ====================
+function getClienteData(nombre, mes) {
+  var result = {};
+  allPortalData.forEach(function(r) {
+    if (r.cliente === nombre && r.mes === mes) {
+      result[r.impuesto] = r.datos || {};
+    }
+  });
+  return result;
+}
+
+function getClienteTaxProgress(nombre, mes, impuestoId) {
+  var items = CHECKLIST[impuestoId];
+  if (!items) return { done: 0, total: 0, pct: 0 };
+  var clientData = getClienteData(nombre, mes);
+  var countable = items.filter(function(it) { return !it.subOf; });
+  var total = countable.length;
+  var done = 0;
+
+  countable.forEach(function(it) {
+    if (it.type === 'auto') {
+      var srcData = clientData[it.sourceTab];
+      var srcItem = CHECKLIST[it.sourceTab] ? CHECKLIST[it.sourceTab].find(function(si) { return si.id === it.sourceId; }) : null;
+      if (srcItem && srcItem.type === 'yesno' && srcData && srcData[it.sourceId] === true) done++;
+      else if (srcItem && srcItem.type === 'upload') {
+        // For uploads we can't easily check from allPortalData, count as not done
+      }
+    } else if (it.type === 'yesno') {
+      var d = clientData[impuestoId];
+      if (d && d[it.id] === true) done++;
+    } else if (it.type === 'monto') {
+      var d2 = clientData[impuestoId];
+      if (d2 && d2[it.id] !== null && d2[it.id] !== '' && d2[it.id] !== 0) done++;
+    }
+  });
+
+  return { done: done, total: total, pct: total > 0 ? Math.round(done / total * 100) : 0 };
+}
+
+function getClienteOverallProgress(nombre, mes) {
+  var totalDone = 0, totalItems = 0;
+  IMPUESTOS.forEach(function(imp) {
+    var p = getClienteTaxProgress(nombre, mes, imp.id);
+    totalDone += p.done;
+    totalItems += p.total;
+  });
+  return { done: totalDone, total: totalItems, pct: totalItems > 0 ? Math.round(totalDone / totalItems * 100) : 0 };
+}
+
+function getClienteTaxStatus(nombre, mes, impuestoId) {
+  var prog = getClienteTaxProgress(nombre, mes, impuestoId);
+  if (prog.pct === 100) return 'verde';
+  var dl = getDeadlineDate(impuestoId, mes);
+  if (dl) {
+    var days = getDaysUntil(new Date(dl.getTime()));
+    if (days < 0) return 'rojo';
+    if (days <= 2 && prog.pct < 100) return 'rojo';
+  }
+  if (prog.done > 0) return 'amarillo';
+  return 'gris';
+}
+
+function getContadorasFromClientes() {
+  var map = {};
+  allClientes.forEach(function(c) {
+    var ct = c.contadora_impuestos || 'Sin asignar';
+    if (!map[ct]) map[ct] = [];
+    map[ct].push(c);
+  });
+  return map;
+}
+
+function renderAdminNav() {
+  var el = document.getElementById('navArea');
+  var contMap = getContadorasFromClientes();
+  var contNames = Object.keys(contMap).sort(function(a, b) {
+    if (a === 'Sin asignar') return 1;
+    if (b === 'Sin asignar') return -1;
+    return a.localeCompare(b);
+  });
+
+  var h = '<div class="nav-area"><div class="month-tabs">';
+  MESES_KEY.forEach(function(m, i) {
+    h += '<button class="month-tab' + (m === selectedMes ? ' active' : '') + '" onclick="idxSwitchMonth(\'' + m + '\')">' + MESES_LABEL[i] + '</button>';
+  });
+  h += '</div>';
+
+  if (contNames.length > 1) {
+    h += '<div class="contadora-pills">';
+    h += '<button class="contadora-pill' + (selectedContadora === 'Todas' ? ' active' : '') + '" onclick="idxSwitchContadora(\'Todas\')">Todas</button>';
+    contNames.forEach(function(name) {
+      h += '<button class="contadora-pill' + (selectedContadora === name ? ' active' : '') + '" onclick="idxSwitchContadora(\'' + esc(name).replace(/'/g, "\\'") + '\')">' + esc(name) + ' (' + contMap[name].length + ')</button>';
+    });
+    h += '</div>';
+  }
+
+  h += '</div>';
+  el.innerHTML = h;
+}
+
+function idxSwitchMonth(mes) {
+  selectedMes = mes;
+  renderAdminNav();
+  renderAdminIndex();
+}
+
+function idxSwitchContadora(name) {
+  selectedContadora = name;
+  renderAdminNav();
+  renderAdminIndex();
+}
+
+function renderAdminIndex() {
+  var el = document.getElementById('content');
+
+  var clientes = allClientes.slice();
+  if (selectedContadora !== 'Todas') {
+    clientes = clientes.filter(function(c) {
+      var ct = c.contadora_impuestos || 'Sin asignar';
+      return ct === selectedContadora;
+    });
+  }
+
+  clientes.sort(function(a, b) {
+    var ca = a.contadora_impuestos || 'Sin asignar';
+    var cb = b.contadora_impuestos || 'Sin asignar';
+    if (ca === 'Sin asignar' && cb !== 'Sin asignar') return 1;
+    if (cb === 'Sin asignar' && ca !== 'Sin asignar') return -1;
+    return a.nombre.localeCompare(b.nombre);
+  });
+
+  var completados = 0, enProgreso = 0, sinIniciar = 0;
+  clientes.forEach(function(c) {
+    var p = getClienteOverallProgress(c.nombre, selectedMes);
+    if (p.pct === 100) completados++;
+    else if (p.done > 0) enProgreso++;
+    else sinIniciar++;
+  });
+
+  var totalPct = 0;
+  clientes.forEach(function(c) { totalPct += getClienteOverallProgress(c.nombre, selectedMes).pct; });
+  var avgPct = clientes.length > 0 ? Math.round(totalPct / clientes.length) : 0;
+
+  var h = '';
+
+  h += '<div class="summary-stats">';
+  h += '<div class="summary-stat"><div class="summary-stat-label">Total clientes</div><div class="summary-stat-value">' + clientes.length + '</div></div>';
+  h += '<div class="summary-stat"><div class="summary-stat-label">Completados</div><div class="summary-stat-value" style="color:var(--green)">' + completados + '</div></div>';
+  h += '<div class="summary-stat"><div class="summary-stat-label">En progreso</div><div class="summary-stat-value" style="color:var(--amber)">' + enProgreso + '</div></div>';
+  h += '<div class="summary-stat"><div class="summary-stat-label">Sin iniciar</div><div class="summary-stat-value" style="color:var(--muted)">' + sinIniciar + '</div></div>';
+  h += '<div class="summary-stat"><div class="summary-stat-label">Avance promedio</div><div class="summary-stat-value" style="color:' + progressColor(avgPct) + '">' + avgPct + '%</div></div>';
+  h += '</div>';
+
+  h += '<div style="overflow-x:auto"><table class="check-table">';
+  h += '<thead><tr>';
+  h += '<th style="width:30px">#</th>';
+  h += '<th>Cliente</th>';
+  h += '<th>Contadora</th>';
+  IMPUESTOS.forEach(function(imp) {
+    h += '<th class="center">' + imp.label + '</th>';
+  });
+  h += '<th class="center">Avance</th>';
+  h += '<th class="center">Estado</th>';
+  h += '</tr></thead><tbody>';
+
+  clientes.forEach(function(c, i) {
+    var overall = getClienteOverallProgress(c.nombre, selectedMes);
+    var ct = c.contadora_impuestos || 'Sin asignar';
+
+    h += '<tr onclick="idxOpenCliente(\'' + esc(c.nombre).replace(/'/g, "\\'") + '\')">';
+    h += '<td style="color:var(--light);font-size:0.75rem">' + (i + 1) + '</td>';
+    h += '<td style="font-weight:600">' + esc(c.nombre) + '</td>';
+    h += '<td style="font-size:0.78rem;color:var(--muted)">' + esc(ct) + '</td>';
+
+    IMPUESTOS.forEach(function(imp) {
+      var status = getClienteTaxStatus(c.nombre, selectedMes, imp.id);
+      var prog = getClienteTaxProgress(c.nombre, selectedMes, imp.id);
+      h += '<td class="center"><span class="pc-status-badge ' + (status === 'verde' ? 'pc-status-completo' : status === 'rojo' ? 'pc-status-urgente' : status === 'amarillo' ? 'pc-status-progreso' : 'pc-status-pendiente') + '">' + prog.done + '/' + prog.total + '</span></td>';
+    });
+
+    h += '<td class="center">';
+    h += '<div class="pc-progress">';
+    h += '<div class="pc-progress-bar"><div class="pc-progress-fill" style="width:' + overall.pct + '%;background:' + progressColor(overall.pct) + '"></div></div>';
+    h += '<div class="pc-progress-text" style="color:' + progressColor(overall.pct) + '">' + overall.pct + '%</div>';
+    h += '</div></td>';
+
+    var overallStatus = overall.pct === 100 ? 'Completado' : overall.pct > 0 ? 'En progreso' : 'Pendiente';
+    var overallClass = overall.pct === 100 ? 'pc-status-completo' : overall.pct > 0 ? 'pc-status-progreso' : 'pc-status-pendiente';
+    if (ct === 'Sin asignar') { overallStatus = 'Sin asignar'; overallClass = 'pc-status-sinasignar'; }
+    h += '<td class="center"><span class="pc-status-badge ' + overallClass + '">' + overallStatus + '</span></td>';
+
+    h += '</tr>';
+  });
+
+  h += '</tbody></table></div>';
+  el.innerHTML = h;
+}
+
+async function idxOpenCliente(nombre) {
+  clienteNombre = nombre;
+  adminShowingIndex = false;
+  selectedTab = 'dashboard';
+  selectedMainTab = 'checklist';
+  pmDetail = null;
+
   await Promise.all([loadData(), loadFiles(), loadPresentacionData()]);
+
+  document.getElementById('mainTabs').style.display = '';
+  document.getElementById('clientName').textContent = nombre;
   renderMainTabs();
   renderSubTabs();
   renderNav();
   render();
+}
+
+function idxBackToIndex() {
+  adminShowingIndex = true;
+  clienteNombre = '';
+  portalData = {};
+  portalFiles = {};
+  selectedTab = 'dashboard';
+  selectedMainTab = 'checklist';
+  pmDetail = null;
+  pmPresupuesto = null;
+  pmEjecucion = [];
+  pmImpConfig = null;
+  pmDeclaraciones = [];
+
+  document.getElementById('mainTabs').style.display = 'none';
+  document.getElementById('subTabs').style.display = 'none';
+  document.getElementById('clientName').textContent = 'Admin';
+  renderAdminNav();
+  renderAdminIndex();
 }
 
 // ==================== RENDER ====================
@@ -670,6 +1027,10 @@ function switchTab(tabId) {
 }
 
 function renderNav() {
+  if (adminShowingIndex) {
+    renderAdminNav();
+    return;
+  }
   var el = document.getElementById('navArea');
   var h = '<div class="nav-area"><div class="month-tabs">';
   MESES_KEY.forEach(function(m, i) {
@@ -681,28 +1042,37 @@ function renderNav() {
 
 function switchMonth(mes) {
   selectedMes = mes;
-  renderNav();
-  render();
+  if (adminShowingIndex) {
+    renderAdminNav();
+    renderAdminIndex();
+  } else {
+    renderNav();
+    render();
+  }
 }
 
 function render() {
   var el = document.getElementById('content');
+  var backHtml = '';
+  if (!adminShowingIndex) {
+    backHtml = '<button class="pc-back-btn" onclick="idxBackToIndex()">← Volver al listado</button>';
+  }
 
   if (selectedMainTab === 'presentacion') {
-    renderPresentacion(el);
+    renderPresentacion(el, backHtml);
     return;
   }
 
   if (selectedTab === 'dashboard') {
-    renderDashboard(el);
+    renderDashboard(el, backHtml);
   } else {
-    renderChecklist(el, selectedTab);
+    renderChecklist(el, selectedTab, backHtml);
   }
 }
 
 // ==================== DASHBOARD ====================
-function renderDashboard(el) {
-  var h = '';
+function renderDashboard(el, backHtml) {
+  var h = backHtml || '';
 
   h += '<div style="margin-bottom:20px"><span style="font-size:1.1rem;font-weight:700">' + MESES_FULL[MESES_KEY.indexOf(selectedMes)] + ' 2026</span>';
   h += '<span style="font-size:0.85rem;color:var(--muted);margin-left:12px">Resumen de impuestos</span></div>';
@@ -736,12 +1106,12 @@ function renderDashboard(el) {
 }
 
 // ==================== CHECKLIST TABS ====================
-function renderChecklist(el, impuesto) {
+function renderChecklist(el, impuesto, backHtml) {
   var items = CHECKLIST[impuesto];
   if (!items) { el.innerHTML = ''; return; }
 
   var prog = getTaxProgress(impuesto, selectedMes);
-  var h = '';
+  var h = backHtml || '';
 
   h += '<div style="margin-bottom:16px"><span style="font-size:1.1rem;font-weight:700">' + esc(impuesto) + '</span>';
   h += '<span style="font-size:0.85rem;color:var(--muted);margin-left:12px">' + MESES_FULL[MESES_KEY.indexOf(selectedMes)] + ' 2026</span></div>';
@@ -863,13 +1233,14 @@ function pmCloseDetail() {
   render();
 }
 
-function renderPresentacion(el) {
-  var h = '';
+function renderPresentacion(el, backHtml) {
+  var h = backHtml || '';
 
   if (!pmDetail) {
     h += '<div style="margin-bottom:20px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">';
     h += '<div><span style="font-size:1.1rem;font-weight:700">' + MESES_FULL[MESES_KEY.indexOf(selectedMes)] + ' ' + pmYear + '</span>';
     h += '<span style="font-size:0.85rem;color:var(--muted);margin-left:12px">Presentación Mensual</span></div>';
+    h += '<button class="pm-btn-save primary" onclick="pmOpenDetail(\'admin-datos\')">Cargar Datos</button>';
     h += '</div>';
 
     h += '<div class="pm-section-cards">';
@@ -892,6 +1263,8 @@ function renderPresentacion(el) {
     if (pmEjecucion.length === 0 && !pmPresupuesto) {
       h += '<div class="pm-no-data" style="margin-top:24px"><p>Aún no hay datos cargados para este período.</p></div>';
     }
+  } else if (pmDetail === 'admin-datos') {
+    h += renderAdminDatos();
   } else if (pmDetail === 'presupuesto') {
     h += renderPresupuestoDetail();
   } else if (pmDetail === 'proyeccion') {
@@ -1421,6 +1794,231 @@ function renderDeclaracionesDetail() {
   }
 
   return h;
+}
+
+// ==================== ADMIN: CARGAR DATOS ====================
+function renderAdminDatos() {
+  var h = '<button class="pc-back-btn" onclick="pmCloseDetail()">← Volver</button>';
+  h += '<div style="margin-bottom:20px"><span style="font-size:1.1rem;font-weight:700">Cargar Datos</span>';
+  h += '<span style="font-size:0.85rem;color:var(--muted);margin-left:12px">' + esc(clienteNombre) + ' — ' + pmYear + '</span></div>';
+
+  var pv = pmPresupuesto ? (pmPresupuesto.ventas_anual || '') : '';
+  var pc = pmPresupuesto ? (pmPresupuesto.costos_anual || '') : '';
+  var pg = pmPresupuesto ? (pmPresupuesto.gastos_anual || '') : '';
+
+  h += '<div class="pm-admin-form"><h3>Presupuesto Anual <span class="pm-admin-badge">Año ' + pmYear + '</span></h3>';
+  h += '<div class="pm-form-grid">';
+  h += '<div class="pm-form-group"><label>Ventas (anual)</label>';
+  h += '<input type="number" class="pm-form-input" id="pmPresVentas" value="' + pv + '" placeholder="0.00" step="0.01">';
+  h += '<div class="pm-calc">Mensual: $' + pmFormatMoney(pv ? pv / 12 : 0) + '</div></div>';
+  h += '<div class="pm-form-group"><label>Costos (anual)</label>';
+  h += '<input type="number" class="pm-form-input" id="pmPresCostos" value="' + pc + '" placeholder="0.00" step="0.01">';
+  h += '<div class="pm-calc">Mensual: $' + pmFormatMoney(pc ? pc / 12 : 0) + '</div></div>';
+  h += '<div class="pm-form-group"><label>Gastos (anual)</label>';
+  h += '<input type="number" class="pm-form-input" id="pmPresGastos" value="' + pg + '" placeholder="0.00" step="0.01">';
+  h += '<div class="pm-calc">Mensual: $' + pmFormatMoney(pg ? pg / 12 : 0) + '</div></div>';
+  h += '</div>';
+  h += '<div class="pm-btn-row"><button class="pm-btn-save primary" onclick="pmSavePresupuesto()">Guardar Presupuesto</button></div>';
+  h += '</div>';
+
+  h += '<div class="pm-admin-form"><h3>Estado de Resultados (ADM) <span class="pm-admin-badge">Pegar desde Excel</span></h3>';
+  h += '<div class="pm-form-grid" style="grid-template-columns:1fr auto">';
+  h += '<div class="pm-form-group"><label>Mes a cargar</label>';
+  h += '<select class="pm-form-input" id="pmEjMes" style="width:200px" onchange="pmUpdateEjFields()">';
+  for (var em = 1; em <= 12; em++) {
+    var hasMes = pmEjecucion.some(function(e) { return e.mes === em; });
+    h += '<option value="' + em + '"' + (em === pmGetMesIdx(selectedMes) ? ' selected' : '') + '>' + MESES_FULL[em - 1] + (hasMes ? ' (cargado)' : '') + '</option>';
+  }
+  h += '</select></div><div></div></div>';
+
+  h += '<div style="margin-bottom:12px">';
+  h += '<textarea class="pm-paste-area" id="pmPasteArea" placeholder="Pega aquí los datos desde Excel o CSV.\nFormato esperado (una fila):\nVentas\tCostos\tGastos\tSalarios\n\nEjemplo:\n1500000\t800000\t350000\t200000"></textarea>';
+  h += '<div class="pm-paste-help">Pega una fila con 4 valores separados por tab o coma: Ventas, Costos, Gastos, Salarios. También puedes escribir los valores manualmente abajo.</div>';
+  h += '</div>';
+
+  var ej = pmGetEjecucionMes(pmGetMesIdx(selectedMes));
+  h += '<div class="pm-form-grid">';
+  h += '<div class="pm-form-group"><label>Ventas</label><input type="number" class="pm-form-input" id="pmEjVentas" value="' + (ej ? ej.ventas : '') + '" placeholder="0.00" step="0.01"></div>';
+  h += '<div class="pm-form-group"><label>Costos</label><input type="number" class="pm-form-input" id="pmEjCostos" value="' + (ej ? ej.costos : '') + '" placeholder="0.00" step="0.01"></div>';
+  h += '<div class="pm-form-group"><label>Gastos</label><input type="number" class="pm-form-input" id="pmEjGastos" value="' + (ej ? ej.gastos : '') + '" placeholder="0.00" step="0.01"></div>';
+  h += '<div class="pm-form-group"><label>Salarios</label><input type="number" class="pm-form-input" id="pmEjSalarios" value="' + (ej ? ej.salarios : '') + '" placeholder="0.00" step="0.01"></div>';
+  h += '</div>';
+  h += '<div class="pm-btn-row"><button class="pm-btn-save primary" onclick="pmSaveEjecucion()">Guardar Ejecución</button>';
+  h += '<button class="pm-btn-save secondary" onclick="pmParsePaste()">Leer del pegado</button></div>';
+
+  if (pmEjecucion.length > 0) {
+    h += '<div style="margin-top:14px;padding:10px 14px;background:#f8fafc;border-radius:8px;font-size:0.78rem;color:var(--muted)">';
+    h += '<strong>Meses cargados:</strong> ';
+    pmEjecucion.forEach(function(e, i) {
+      if (i > 0) h += ', ';
+      h += MESES_FULL[e.mes - 1];
+    });
+    h += '</div>';
+  }
+  h += '</div>';
+
+  var ic = pmImpConfig || {};
+  h += '<div class="pm-admin-form"><h3>Configuración de Impuestos <span class="pm-admin-badge">Año ' + pmYear + '</span></h3>';
+  h += '<div class="pm-form-grid">';
+  h += '<div class="pm-form-group"><label>Anticipo Tramo 1 (Ene-Abr)</label><input type="number" class="pm-form-input" id="pmIcAnt1" value="' + (ic.anticipo_tramo1 || '') + '" placeholder="Cuota mensual" step="0.01"></div>';
+  h += '<div class="pm-form-group"><label>Anticipo Tramo 2 (May-Dic)</label><input type="number" class="pm-form-input" id="pmIcAnt2" value="' + (ic.anticipo_tramo2 || '') + '" placeholder="Cuota mensual" step="0.01"></div>';
+  h += '<div class="pm-form-group"><label>Pérdidas Compensables</label><input type="number" class="pm-form-input" id="pmIcPerdidas" value="' + (ic.perdidas_compensables || '') + '" placeholder="0.00" step="0.01"></div>';
+  h += '<div class="pm-form-group"><label>Activos Totales</label><input type="number" class="pm-form-input" id="pmIcActivos" value="' + (ic.activos_totales || '') + '" placeholder="0.00" step="0.01"></div>';
+  h += '<div class="pm-form-group"><label>Activos Exentos</label><input type="number" class="pm-form-input" id="pmIcExentos" value="' + (ic.activos_exentos || '') + '" placeholder="0.00" step="0.01"></div>';
+  h += '<div class="pm-form-group"><label>CRS (Monto)</label><input type="number" class="pm-form-input" id="pmIcCrs" value="' + (ic.crs_monto || '') + '" placeholder="0.00" step="0.01"></div>';
+  h += '</div>';
+  h += '<div class="pm-btn-row"><button class="pm-btn-save primary" onclick="pmSaveImpConfig()">Guardar Config. Impuestos</button></div>';
+  h += '</div>';
+
+  var mesNum = pmGetMesIdx(selectedMes);
+  var obligaciones = ['TSS', 'IR-3', 'IR-17', 'Anticipo', 'ITBIS'];
+
+  h += '<div class="pm-admin-form"><h3>Declaraciones <span class="pm-admin-badge">' + MESES_FULL[mesNum - 1] + ' ' + pmYear + '</span></h3>';
+  h += '<div class="pm-decl-grid">';
+  obligaciones.forEach(function(ob) {
+    var d = pmGetDeclForMes(mesNum, ob);
+    h += '<div class="pm-decl-card"><h4>' + ob + '</h4>';
+    h += '<div class="pm-form-group"><label>Estado</label>';
+    h += '<select id="pmDecl_' + ob.replace(/-/g,'') + '_estado">';
+    ['pendiente', 'a_tiempo', 'tarde', 'no_aplico'].forEach(function(st) {
+      var labels = { pendiente: 'Pendiente', a_tiempo: 'A tiempo', tarde: 'Tarde', no_aplico: 'No aplicó' };
+      h += '<option value="' + st + '"' + (d && d.estado === st ? ' selected' : '') + '>' + labels[st] + '</option>';
+    });
+    h += '</select></div>';
+    h += '<div class="pm-form-group"><label>Fecha Límite</label>';
+    h += '<input type="date" class="pm-form-input" id="pmDecl_' + ob.replace(/-/g,'') + '_limite" value="' + (d && d.fecha_limite ? d.fecha_limite : '') + '"></div>';
+    h += '<div class="pm-form-group"><label>Fecha Presentado</label>';
+    h += '<input type="date" class="pm-form-input" id="pmDecl_' + ob.replace(/-/g,'') + '_presentado" value="' + (d && d.fecha_presentado ? d.fecha_presentado : '') + '"></div>';
+    h += '<div class="pm-form-group"><label>Monto (RD$)</label>';
+    h += '<input type="number" class="pm-form-input" id="pmDecl_' + ob.replace(/-/g,'') + '_monto" value="' + (d ? (d.monto || '') : '') + '" placeholder="0.00" step="0.01"></div>';
+    h += '</div>';
+  });
+  h += '</div>';
+  h += '<div class="pm-btn-row"><button class="pm-btn-save primary" onclick="pmSaveDeclaraciones()">Guardar Declaraciones</button></div>';
+  h += '</div>';
+
+  return h;
+}
+
+function pmUpdateEjFields() {
+  var mes = parseInt(document.getElementById('pmEjMes').value);
+  var ej = pmGetEjecucionMes(mes);
+  document.getElementById('pmEjVentas').value = ej ? ej.ventas : '';
+  document.getElementById('pmEjCostos').value = ej ? ej.costos : '';
+  document.getElementById('pmEjGastos').value = ej ? ej.gastos : '';
+  document.getElementById('pmEjSalarios').value = ej ? ej.salarios : '';
+}
+
+function pmParsePaste() {
+  var raw = document.getElementById('pmPasteArea').value.trim();
+  if (!raw) { showToast('Pega los datos primero'); return; }
+
+  var sep = raw.indexOf('\t') >= 0 ? '\t' : (raw.indexOf(';') >= 0 ? ';' : ',');
+  var parts = raw.split('\n').pop().split(sep).map(function(v) {
+    return parseFloat(v.replace(/[^0-9.\-]/g, '')) || 0;
+  });
+
+  if (parts.length >= 4) {
+    document.getElementById('pmEjVentas').value = parts[0];
+    document.getElementById('pmEjCostos').value = parts[1];
+    document.getElementById('pmEjGastos').value = parts[2];
+    document.getElementById('pmEjSalarios').value = parts[3];
+    showToast('Datos leídos: Ventas=' + pmFormatMoneyShort(parts[0]) + ', Costos=' + pmFormatMoneyShort(parts[1]) + ', Gastos=' + pmFormatMoneyShort(parts[2]) + ', Salarios=' + pmFormatMoneyShort(parts[3]));
+  } else {
+    showToast('Formato no reconocido. Se esperan 4 valores: Ventas, Costos, Gastos, Salarios');
+  }
+}
+
+async function pmSavePresupuesto() {
+  var v = parseFloat(document.getElementById('pmPresVentas').value) || 0;
+  var c = parseFloat(document.getElementById('pmPresCostos').value) || 0;
+  var g = parseFloat(document.getElementById('pmPresGastos').value) || 0;
+
+  var { error } = await sb.from('portal_presupuesto').upsert({
+    cliente: clienteNombre,
+    anio: pmYear,
+    ventas_anual: v,
+    costos_anual: c,
+    gastos_anual: g
+  }, { onConflict: 'cliente,anio' });
+
+  if (error) { showToast('Error al guardar: ' + error.message); return; }
+  showToast('Presupuesto guardado');
+  await loadPresentacionData();
+  render();
+}
+
+async function pmSaveEjecucion() {
+  var mes = parseInt(document.getElementById('pmEjMes').value);
+  var v = parseFloat(document.getElementById('pmEjVentas').value) || 0;
+  var c = parseFloat(document.getElementById('pmEjCostos').value) || 0;
+  var g = parseFloat(document.getElementById('pmEjGastos').value) || 0;
+  var s = parseFloat(document.getElementById('pmEjSalarios').value) || 0;
+
+  var { error } = await sb.from('portal_ejecucion').upsert({
+    cliente: clienteNombre,
+    anio: pmYear,
+    mes: mes,
+    ventas: v,
+    costos: c,
+    gastos: g,
+    salarios: s
+  }, { onConflict: 'cliente,anio,mes' });
+
+  if (error) { showToast('Error al guardar: ' + error.message); return; }
+  showToast('Ejecución de ' + MESES_FULL[mes - 1] + ' guardada');
+  await loadPresentacionData();
+  render();
+}
+
+async function pmSaveImpConfig() {
+  var { error } = await sb.from('portal_impuestos_config').upsert({
+    cliente: clienteNombre,
+    anio: pmYear,
+    anticipo_tramo1: parseFloat(document.getElementById('pmIcAnt1').value) || 0,
+    anticipo_tramo2: parseFloat(document.getElementById('pmIcAnt2').value) || 0,
+    perdidas_compensables: parseFloat(document.getElementById('pmIcPerdidas').value) || 0,
+    activos_totales: parseFloat(document.getElementById('pmIcActivos').value) || 0,
+    activos_exentos: parseFloat(document.getElementById('pmIcExentos').value) || 0,
+    crs_monto: parseFloat(document.getElementById('pmIcCrs').value) || 0
+  }, { onConflict: 'cliente,anio' });
+
+  if (error) { showToast('Error al guardar: ' + error.message); return; }
+  showToast('Configuración de impuestos guardada');
+  await loadPresentacionData();
+  render();
+}
+
+async function pmSaveDeclaraciones() {
+  var mesNum = pmGetMesIdx(selectedMes);
+  var obligaciones = ['TSS', 'IR-3', 'IR-17', 'Anticipo', 'ITBIS'];
+  var rows = [];
+
+  obligaciones.forEach(function(ob) {
+    var prefix = 'pmDecl_' + ob.replace(/-/g,'') + '_';
+    var estado = document.getElementById(prefix + 'estado').value;
+    var limite = document.getElementById(prefix + 'limite').value || null;
+    var presentado = document.getElementById(prefix + 'presentado').value || null;
+    var monto = parseFloat(document.getElementById(prefix + 'monto').value) || 0;
+
+    rows.push({
+      cliente: clienteNombre,
+      anio: pmYear,
+      mes: mesNum,
+      obligacion: ob,
+      estado: estado,
+      fecha_limite: limite,
+      fecha_presentado: presentado,
+      monto: monto
+    });
+  });
+
+  var { error } = await sb.from('portal_declaraciones').upsert(rows, { onConflict: 'cliente,anio,mes,obligacion' });
+
+  if (error) { showToast('Error al guardar: ' + error.message); return; }
+  showToast('Declaraciones de ' + MESES_FULL[mesNum - 1] + ' guardadas');
+  await loadPresentacionData();
+  render();
 }
 
 function pmFormatDate(dateStr) {

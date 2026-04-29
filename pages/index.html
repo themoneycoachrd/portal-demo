@@ -616,14 +616,24 @@ const MENU = [
     desc: 'Control de implementaciones completas y facturación electrónica.'
   },
   {
+    id: 'portal-admin',
+    title: 'Portal Admin (A)',
+    icon: '\ud83d\udee0\ufe0f',
+    iconBg: '#fef2f2',
+    roles: ['admin'],
+    href: 'portal-admin.html',
+    active: true,
+    desc: 'Administrar datos del portal de clientes: checklist, presupuesto, impuestos.'
+  },
+  {
     id: 'portal-clientes',
-    title: 'Portal de Clientes',
+    title: 'Portal Clientes (C)',
     icon: '\ud83c\udf10',
     iconBg: '#fef2f2',
     roles: ['admin'],
     href: 'portal-clientes.html',
     active: true,
-    desc: 'Portal externo para clientes de la firma.'
+    desc: 'Vista del cliente: lo que ve cuando entra con su token.'
   },
   {
     id: 'configuracion',
