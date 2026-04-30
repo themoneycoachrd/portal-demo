@@ -1527,6 +1527,20 @@ function renderPresupuestoDetail() {
   h += '<tr class="pm-row-total"><td class="pm-font-bold">Resultado Op.</td>';
   h += '<td class="pm-text-right" style="color:' + (resOpAnual >= 0 ? 'var(--green)' : 'var(--red)') + '">$' + pmFormatMoney(resOpAnual) + '</td>';
   h += '<td class="pm-text-right" style="color:' + (resOpAnual >= 0 ? 'var(--green)' : 'var(--red)') + '">$' + pmFormatMoney(resOpAnual / 12) + '</td></tr>';
+
+  var pIF = pmPresupuesto ? (pmPresupuesto.ingreso_financiero_anual || 0) : 0;
+  var pGNA = pmPresupuesto ? (pmPresupuesto.gastos_no_admitidos_anual || 0) : 0;
+  h += '<tr><td class="pm-font-bold" style="color:var(--muted)">Ing./Gasto Fin.</td>';
+  h += '<td class="pm-text-right" style="color:#666">$' + pmFormatMoney(pIF) + '</td>';
+  h += '<td class="pm-text-right" style="color:#666">$' + pmFormatMoney(pIF / 12) + '</td></tr>';
+  h += '<tr><td class="pm-font-bold" style="color:var(--muted)">Gtos. No Admitidos</td>';
+  h += '<td class="pm-text-right" style="color:#666">$' + pmFormatMoney(pGNA) + '</td>';
+  h += '<td class="pm-text-right" style="color:#666">$' + pmFormatMoney(pGNA / 12) + '</td></tr>';
+
+  var ganAnual = resOpAnual + pIF - pGNA;
+  h += '<tr class="pm-row-total"><td class="pm-font-bold">Ganancia/Pérdida</td>';
+  h += '<td class="pm-text-right" style="color:' + (ganAnual >= 0 ? 'var(--green)' : 'var(--red)') + '">$' + pmFormatMoney(ganAnual) + '</td>';
+  h += '<td class="pm-text-right" style="color:' + (ganAnual >= 0 ? 'var(--green)' : 'var(--red)') + '">$' + pmFormatMoney(ganAnual / 12) + '</td></tr>';
   h += '</tbody></table></div></div>';
 
   var ejMes = pmGetEjecucionMes(mesNum);
@@ -1561,16 +1575,27 @@ function renderPresupuestoDetail() {
   h += '<td class="pm-text-center"><span class="pm-badge ' + badgeResOp.cls + '">' + badgeResOp.label + '</span></td></tr>';
 
   var ejIF = ejMes ? (ejMes.ingreso_financiero || 0) : 0;
+  var metaIF = pmGetMetaMensual('ingreso_financiero');
+  var pctIF = metaIF ? (ejIF / metaIF * 100) : 0;
+  h += '<tr><td class="pm-text-right pm-font-bold" style="color:#666">$' + pmFormatMoney(ejIF) + '</td>';
+  h += '<td class="pm-text-center" style="color:#666">' + (metaIF ? pctIF.toFixed(2) + '%' : '—') + '</td>';
+  h += '<td class="pm-text-center"></td></tr>';
+
   var ejGNA = ejMes ? (ejMes.gastos_no_admitidos || 0) : 0;
-  h += '<tr><td class="pm-text-right" style="color:#666">$' + pmFormatMoney(ejIF) + '</td>';
-  h += '<td colspan="2" style="color:var(--muted);font-size:0.75rem;padding-left:8px">Ing./Gasto Fin.</td></tr>';
-  h += '<tr><td class="pm-text-right" style="color:#666">$' + pmFormatMoney(ejGNA) + '</td>';
-  h += '<td colspan="2" style="color:var(--muted);font-size:0.75rem;padding-left:8px">Gtos. No Admitidos</td></tr>';
+  var metaGNA = pmGetMetaMensual('gastos_no_admitidos');
+  var pctGNA = metaGNA ? (ejGNA / metaGNA * 100) : 0;
+  h += '<tr><td class="pm-text-right pm-font-bold" style="color:#666">$' + pmFormatMoney(ejGNA) + '</td>';
+  h += '<td class="pm-text-center" style="color:#666">' + (metaGNA ? pctGNA.toFixed(2) + '%' : '—') + '</td>';
+  h += '<td class="pm-text-center"></td></tr>';
 
   var ejGanancia = ejResOp + ejIF - ejGNA;
+  var metaGanMes = metaResOpMes + metaIF - metaGNA;
+  var pctGan = metaGanMes ? (ejGanancia / metaGanMes * 100) : 0;
+  var badgeGan = pmBadgeStatus(pctGan, 'beneficio');
   var ganColor = ejGanancia >= 0 ? 'var(--green)' : 'var(--red)';
   h += '<tr class="pm-row-total"><td class="pm-text-right pm-font-bold" style="color:' + ganColor + '">$' + pmFormatMoney(ejGanancia) + '</td>';
-  h += '<td colspan="2" style="padding-left:8px;font-weight:600">Ganancia/Pérdida</td></tr>';
+  h += '<td class="pm-text-center">' + pctGan.toFixed(2) + '%</td>';
+  h += '<td class="pm-text-center"><span class="pm-badge ' + badgeGan.cls + '">' + badgeGan.label + '</span></td></tr>';
 
   h += '</tbody></table></div></div></div>';
 
@@ -1640,17 +1665,10 @@ function renderPresupuestoDetail() {
   h += '<td class="pm-text-right" style="color:#666">' + (qTotalGNA >= 0 ? '+' : '') + pmFormatMoneyShort(qTotalGNA) + '</td>';
   h += '<td></td><td></td></tr>';
 
-  // Ganancia/Pérdida
-  var qGanancia = qResOp + qTotalIF - qTotalGNA;
-  var qGanColor = qGanancia >= 0 ? 'var(--green)' : 'var(--red)';
-  h += '<tr class="pm-row-total"><td class="pm-font-bold">Ganancia/Pérdida</td>';
-  h += '<td class="pm-text-right">—</td>';
-  h += '<td class="pm-text-right" style="color:' + qGanColor + '">' + pmFormatMoneyShort(qGanancia) + '</td>';
-  h += '<td class="pm-text-right" style="color:' + qGanColor + '">' + (qGanancia >= 0 ? '+' : '') + pmFormatMoneyShort(qGanancia) + '</td>';
-  h += '<td></td><td></td></tr>';
-
   h += '</tbody></table>';
 
+  var qGanancia = qResOp + qTotalIF - qTotalGNA;
+  var qGanColor = qGanancia >= 0 ? 'var(--green)' : 'var(--red)';
   h += '<div class="pm-ganancia"><span>Ganancia/Pérdida ' + qLabels[quarter - 1] + '</span><span class="pm-amount" style="color:' + qGanColor + '">$' + pmFormatMoney(qGanancia) + '</span></div>';
   h += '</div></div>';
 
