@@ -1468,7 +1468,7 @@ function renderPresupuestoDetail() {
     var ej = pmGetEjecucionMes(m);
     var val = ej ? (ej.ingreso_financiero || 0) : 0;
     h += '<td class="pm-text-right" style="color:#666">' + pmFormatMoney(val) + '</td>';
-    h += '<td class="pm-text-right" style="border-right:' + (m < qRange[2] ? '2px solid var(--border)' : 'none') + '"></td>';
+    h += '<td class="pm-text-right" style="color:#999;border-right:' + (m < qRange[2] ? '2px solid var(--border)' : 'none') + '">—</td>';
   });
   h += '</tr>';
 
@@ -1478,6 +1478,22 @@ function renderPresupuestoDetail() {
     var ej = pmGetEjecucionMes(m);
     var val = ej ? (ej.gastos_no_admitidos || 0) : 0;
     h += '<td class="pm-text-right" style="color:#666">' + pmFormatMoney(val) + '</td>';
+    h += '<td class="pm-text-right" style="color:#999;border-right:' + (m < qRange[2] ? '2px solid var(--border)' : 'none') + '">—</td>';
+  });
+  h += '</tr>';
+
+  // Ganancia/Pérdida
+  h += '<tr class="pm-row-total"><td class="pm-font-bold">Ganancia/Pérdida</td>';
+  qRange.forEach(function(m) {
+    var ej = pmGetEjecucionMes(m);
+    var v = ej ? (ej.ventas_it1 || 0) : 0;
+    var c = ej ? (ej.costos_operativos || 0) : 0;
+    var g = ej ? (ej.gastos || 0) : 0;
+    var iF = ej ? (ej.ingreso_financiero || 0) : 0;
+    var gna = ej ? (ej.gastos_no_admitidos || 0) : 0;
+    var gan = v - c - g + iF - gna;
+    var color = gan >= 0 ? 'var(--green)' : 'var(--red)';
+    h += '<td class="pm-text-right" style="color:' + color + '">' + pmFormatMoney(gan) + '</td>';
     h += '<td class="pm-text-right" style="border-right:' + (m < qRange[2] ? '2px solid var(--border)' : 'none') + '"></td>';
   });
   h += '</tr>';
@@ -1550,6 +1566,12 @@ function renderPresupuestoDetail() {
   h += '<td colspan="2" style="color:var(--muted);font-size:0.75rem;padding-left:8px">Ing./Gasto Fin.</td></tr>';
   h += '<tr><td class="pm-text-right" style="color:#666">$' + pmFormatMoney(ejGNA) + '</td>';
   h += '<td colspan="2" style="color:var(--muted);font-size:0.75rem;padding-left:8px">Gtos. No Admitidos</td></tr>';
+
+  var ejGanancia = ejResOp + ejIF - ejGNA;
+  var ganColor = ejGanancia >= 0 ? 'var(--green)' : 'var(--red)';
+  h += '<tr class="pm-row-total"><td class="pm-text-right pm-font-bold" style="color:' + ganColor + '">$' + pmFormatMoney(ejGanancia) + '</td>';
+  h += '<td colspan="2" style="padding-left:8px;font-weight:600">Ganancia/Pérdida</td></tr>';
+
   h += '</tbody></table></div></div></div>';
 
   var qTotalV = 0, qTotalC = 0, qTotalG = 0, qTotalIF = 0, qTotalGNA = 0;
@@ -1618,9 +1640,18 @@ function renderPresupuestoDetail() {
   h += '<td class="pm-text-right" style="color:#666">' + (qTotalGNA >= 0 ? '+' : '') + pmFormatMoneyShort(qTotalGNA) + '</td>';
   h += '<td></td><td></td></tr>';
 
+  // Ganancia/Pérdida
+  var qGanancia = qResOp + qTotalIF - qTotalGNA;
+  var qGanColor = qGanancia >= 0 ? 'var(--green)' : 'var(--red)';
+  h += '<tr class="pm-row-total"><td class="pm-font-bold">Ganancia/Pérdida</td>';
+  h += '<td class="pm-text-right">—</td>';
+  h += '<td class="pm-text-right" style="color:' + qGanColor + '">' + pmFormatMoneyShort(qGanancia) + '</td>';
+  h += '<td class="pm-text-right" style="color:' + qGanColor + '">' + (qGanancia >= 0 ? '+' : '') + pmFormatMoneyShort(qGanancia) + '</td>';
+  h += '<td></td><td></td></tr>';
+
   h += '</tbody></table>';
 
-  h += '<div class="pm-ganancia"><span>Resultado Op. ' + qLabels[quarter - 1] + '</span><span class="pm-amount" style="color:' + (qResOp >= 0 ? 'var(--green)' : 'var(--red)') + '">$' + pmFormatMoney(qResOp) + '</span></div>';
+  h += '<div class="pm-ganancia"><span>Ganancia/Pérdida ' + qLabels[quarter - 1] + '</span><span class="pm-amount" style="color:' + qGanColor + '">$' + pmFormatMoney(qGanancia) + '</span></div>';
   h += '</div></div>';
 
   return h;
