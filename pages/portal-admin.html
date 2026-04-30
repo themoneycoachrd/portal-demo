@@ -164,7 +164,12 @@ body.embed .content { padding-top:12px; }
 .pm-section-card p { font-size:13px; color:var(--muted); line-height:1.4; }
 
 /* Panels (dual layout) */
-.pm-dual { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:16px; }
+.pm-dual { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:16px; align-items:stretch; }
+.pm-dual > .pm-panel, .pm-dual > .pm-card { display:flex; flex-direction:column; }
+.pm-dual > .pm-panel > .pm-panel-body { flex:1; }
+.pm-dual > .pm-panel > .pm-panel-body > table { height:100%; }
+.pm-dual > .pm-card { justify-content:space-between; }
+.pm-dual > .pm-card > table { flex:1; }
 .pm-panel { background:var(--card); border-radius:12px; border:1px solid var(--border); overflow:hidden; }
 .pm-panel-hdr { display:flex; align-items:center; justify-content:space-between; padding:16px 20px; border-bottom:1px solid var(--border); }
 .pm-panel-hdr h3 { font-size:0.88rem; font-weight:700; display:flex; align-items:center; gap:8px; }
@@ -1716,7 +1721,7 @@ function renderProyeccionDetail() {
 
   h += '<div class="pm-panel"><div class="pm-panel-hdr" style="background:white">';
   h += '<h3 style="text-transform:uppercase;font-size:0.78rem;letter-spacing:0.3px">Realidad hasta hoy</h3></div>';
-  h += '<div class="pm-panel-body" style="overflow-x:auto"><table class="pm-table-compact"><thead><tr>';
+  h += '<div class="pm-panel-body" style="overflow-x:auto"><div style="display:inline-block;min-width:100%"><table class="pm-table-compact"><thead><tr>';
   h += '<th>Mes</th><th class="pm-text-right">Ventas IT1</th><th class="pm-text-right">Costos Op.</th><th class="pm-text-right">Gastos</th><th class="pm-text-right">Salarios</th><th class="pm-text-right">Ing./Gto.Fin.</th><th class="pm-text-right">Gtos. N/A</th>';
   h += '</tr></thead><tbody>';
   pmEjecucion.forEach(function(e) {
@@ -1740,11 +1745,11 @@ function renderProyeccionDetail() {
   if (totalIF || totalGNA) {
     h += '<div class="pm-ganancia"><span>Ganancia / Pérdida</span><span class="pm-amount" style="color:' + (gananciaNeta >= 0 ? 'var(--green)' : 'var(--red)') + '">$' + pmFormatMoney(gananciaNeta) + '</span></div>';
   }
-  h += '</div></div>';
+  h += '</div></div></div>';
 
   h += '<div class="pm-panel pm-panel-dark"><div class="pm-panel-hdr">';
   h += '<h3 style="text-transform:uppercase;font-size:0.78rem;letter-spacing:0.3px">Proyección a fin de año (promedios)</h3></div>';
-  h += '<div class="pm-panel-body" style="overflow-x:auto"><table class="pm-table-compact"><thead><tr>';
+  h += '<div class="pm-panel-body" style="overflow-x:auto"><div style="display:inline-block;min-width:100%"><table class="pm-table-compact"><thead><tr>';
   h += '<th>Mes</th><th class="pm-text-right">Ventas IT1</th><th class="pm-text-right">Costos Op.</th><th class="pm-text-right">Gastos</th><th class="pm-text-right">Salarios</th><th class="pm-text-right">Ing./Gto.Fin.</th><th class="pm-text-right">Gtos. N/A</th>';
   h += '</tr></thead><tbody>';
   for (var m = 1; m <= 12; m++) {
@@ -1771,7 +1776,7 @@ function renderProyeccionDetail() {
   h += '</tbody></table>';
   h += '<div class="pm-ganancia" style="margin-bottom:4px"><span>Resultado Operacional (Proyectado)</span><span class="pm-amount" style="color:' + (projResOp >= 0 ? 'var(--green)' : 'var(--red)') + '">$' + pmFormatMoney(projResOp) + '</span></div>';
   h += '<div class="pm-ganancia"><span>Ganancia / Pérdida (Proyectada)</span><span class="pm-amount" style="color:' + (projGanancia >= 0 ? 'var(--green)' : 'var(--red)') + '">$' + pmFormatMoney(projGanancia) + '</span></div>';
-  h += '</div></div></div>';
+  h += '</div></div></div></div>';
 
   h += '<div class="pm-dual">';
 
