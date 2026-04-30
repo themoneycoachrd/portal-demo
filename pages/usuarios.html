@@ -570,6 +570,17 @@ function renderUsuariosTab() {
       html += 'Acceso efectivo: <strong>' + access.count + ' de ' + access.total + '</strong> pantallas con consulta';
       html += '</div>';
 
+      // Password section
+      html += '<div style="margin-top:16px">';
+      html += '<div class="section-label">Contraseña</div>';
+      html += '<div style="display:flex;gap:8px;align-items:flex-end">';
+      html += '<div style="flex:1"><label style="display:block;font-size:0.72rem;font-weight:600;color:var(--muted);margin-bottom:4px">Nueva contraseña</label>';
+      html += '<input type="text" id="pwd-' + user.id + '" placeholder="Mínimo 6 caracteres" style="width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:10px;font-size:0.85rem;font-family:inherit;background:#fafbfc"></div>';
+      html += '<button class="btn btn-primary" style="height:38px;white-space:nowrap" onclick="handleSetPassword(\'' + user.id + '\')">Asignar</button>';
+      html += '</div>';
+      html += '<div class="invite-msg" id="pwd-msg-' + user.id + '"></div>';
+      html += '</div>';
+
       // Save bar
       html += '<div class="save-bar">';
       html += '<button class="btn btn-primary" onclick="handleSaveUser(\'' + user.id + '\')">Guardar</button>';
@@ -822,6 +833,50 @@ async function handleInviteUser() {
   allUsers = await loadUsers();
   allAssignments = await loadAssignments();
   renderApp();
+}
+
+// ==================== SET PASSWORD ====================
+async function handleSetPassword(userId) {
+  var input = document.getElementById('pwd-' + userId);
+  var msgEl = document.getElementById('pwd-msg-' + userId);
+  var pwd = input ? input.value.trim() : '';
+
+  if (!pwd) {
+    msgEl.textContent = 'Ingresa una contraseña.';
+    msgEl.style.color = 'var(--red)';
+    return;
+  }
+  if (pwd.length < 6) {
+    msgEl.textContent = 'Mínimo 6 caracteres.';
+    msgEl.style.color = 'var(--red)';
+    return;
+  }
+
+  msgEl.textContent = 'Asignando...';
+  msgEl.style.color = 'var(--muted)';
+
+  var { data, error } = await sb.rpc('set_user_password', {
+    p_user_id: userId,
+    p_password: pwd
+  });
+
+  if (error) {
+    msgEl.textContent = 'Error: ' + error.message;
+    msgEl.style.color = 'var(--red)';
+    return;
+  }
+
+  if (data && data.error) {
+    msgEl.textContent = data.error;
+    msgEl.style.color = 'var(--red)';
+    return;
+  }
+
+  input.value = '';
+  msgEl.textContent = 'Contraseña asignada correctamente.';
+  msgEl.style.color = 'var(--green)';
+  usrShowToast('Contraseña asignada');
+  setTimeout(function() { msgEl.textContent = ''; }, 4000);
 }
 
 // ==================== AUTH ====================
