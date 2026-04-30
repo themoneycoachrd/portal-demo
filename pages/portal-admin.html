@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Portal Clientes — Account One</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
 <style>
 :root {
   --navy: #1a2332; --navy-mid: #2a3a4e; --blue: #4361ee; --green: #10b981;
@@ -275,6 +276,11 @@ body.embed .content { padding-top:12px; }
 .pm-btn-row { display:flex; gap:10px; align-items:center; }
 .pm-paste-area { width:100%; min-height:120px; padding:12px; border:2px dashed var(--border); border-radius:8px; font-family:'Courier New', monospace; font-size:0.78rem; resize:vertical; background:#fafbfc; }
 .pm-paste-area:focus { outline:none; border-color:var(--blue); background:white; }
+.pm-excel-mes-btn { padding:6px 14px; border-radius:20px; font-size:0.78rem; font-weight:600; cursor:pointer; border:1px solid var(--border); background:white; color:var(--navy); transition:all 0.15s; font-family:inherit; }
+.pm-excel-mes-btn:hover { background:#f3f4f6; }
+.pm-excel-mes-btn.active { background:var(--blue); color:white; border-color:var(--blue); }
+.pm-excel-mes-btn.loaded { border-color:var(--green); color:var(--green); }
+.pm-excel-mes-btn.loaded.active { background:var(--green); color:white; }
 .pm-paste-help { font-size:0.72rem; color:var(--light); margin-top:6px; line-height:1.4; }
 .pm-admin-badge { display:inline-block; padding:3px 10px; border-radius:6px; font-size:0.68rem; font-weight:700; background:#dbeafe; color:#1e40af; margin-left:8px; }
 .pm-decl-grid { display:grid; grid-template-columns:repeat(5, 1fr); gap:10px; margin-bottom:16px; }
@@ -1969,19 +1975,30 @@ function renderAdminDatos() {
   h += '<div class="pm-btn-row"><button class="pm-btn-save primary" onclick="pmSavePresupuesto()">Guardar Presupuesto</button></div>';
   h += '</div>';
 
-  h += '<div class="pm-admin-form"><h3>Estado de Resultados (ADM) <span class="pm-admin-badge">Pegar desde Excel</span></h3>';
-  h += '<div class="pm-form-grid" style="grid-template-columns:1fr auto">';
-  h += '<div class="pm-form-group"><label>Mes a cargar</label>';
-  h += '<select class="pm-form-input" id="pmEjMes" style="width:200px" onchange="pmUpdateEjFields()">';
+  h += '<div class="pm-admin-form"><h3>Estado de Resultados (ADM) <span class="pm-admin-badge">Subir Excel</span></h3>';
+
+  // Upload area
+  h += '<div id="pmExcelUploadArea" style="border:2px dashed var(--border);border-radius:10px;padding:24px;text-align:center;margin-bottom:16px;cursor:pointer;transition:all 0.2s" onclick="document.getElementById(\'pmExcelFile\').click()">';
+  h += '<input type="file" id="pmExcelFile" accept=".xlsx,.xls" style="display:none" onchange="pmParseExcel(this)">';
+  h += '<div style="font-size:1.6rem;margin-bottom:6px">📊</div>';
+  h += '<div style="font-weight:600;color:var(--navy);margin-bottom:4px">Subir Estado de Resultados</div>';
+  h += '<div style="font-size:0.8rem;color:var(--muted)">Exporta el Estado de Resultados por Mes desde Adm Cloud y súbelo aquí (.xlsx)</div>';
+  h += '</div>';
+
+  // Preview area (hidden until Excel parsed)
+  h += '<div id="pmExcelPreview" style="display:none"></div>';
+
+  // Month selector + manual fields
+  h += '<div id="pmManualSection">';
+  h += '<div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;flex-wrap:wrap">';
+  h += '<div class="pm-form-group" style="margin:0"><label style="margin-bottom:4px">Mes a cargar</label>';
+  h += '<select class="pm-form-input" id="pmEjMes" style="width:180px" onchange="pmUpdateEjFields()">';
   for (var em = 1; em <= 12; em++) {
     var hasMes = pmEjecucion.some(function(e) { return e.mes === em; });
-    h += '<option value="' + em + '"' + (em === pmGetMesIdx(selectedMes) ? ' selected' : '') + '>' + MESES_FULL[em - 1] + (hasMes ? ' (cargado)' : '') + '</option>';
+    h += '<option value="' + em + '"' + (em === pmGetMesIdx(selectedMes) ? ' selected' : '') + '>' + MESES_FULL[em - 1] + (hasMes ? ' ✓' : '') + '</option>';
   }
-  h += '</select></div><div></div></div>';
-
-  h += '<div style="margin-bottom:12px">';
-  h += '<textarea class="pm-paste-area" id="pmPasteArea" placeholder="Pega aquí los datos desde Excel o CSV.\nFormato esperado (una fila):\nVentas IT1\tCostos Op.\tGastos\tSalarios\tIng. Fin.\tGtos. N/A\n\nEjemplo:\n1500000\t800000\t350000\t200000\t15000\t5000"></textarea>';
-  h += '<div class="pm-paste-help">Pega una fila con 6 valores separados por tab o coma: Ventas IT1, Costos Op., Gastos, Salarios, Ing. Financiero, Gtos. No Admitidos. También puedes escribir los valores manualmente abajo.</div>';
+  h += '</select></div>';
+  h += '<div style="font-size:0.78rem;color:var(--muted);margin-top:16px">Puedes llenar manual o subir el Excel arriba</div>';
   h += '</div>';
 
   var ej = pmGetEjecucionMes(pmGetMesIdx(selectedMes));
@@ -1993,8 +2010,7 @@ function renderAdminDatos() {
   h += '<div class="pm-form-group"><label>Ingreso Financiero</label><input type="number" class="pm-form-input" id="pmEjIngFin" value="' + (ej ? ej.ingreso_financiero : '') + '" placeholder="0.00" step="0.01"></div>';
   h += '<div class="pm-form-group"><label>Gastos No Admitidos</label><input type="number" class="pm-form-input" id="pmEjGNA" value="' + (ej ? ej.gastos_no_admitidos : '') + '" placeholder="0.00" step="0.01"></div>';
   h += '</div>';
-  h += '<div class="pm-btn-row"><button class="pm-btn-save primary" onclick="pmSaveEjecucion()">Guardar Ejecución</button>';
-  h += '<button class="pm-btn-save secondary" onclick="pmParsePaste()">Leer del pegado</button></div>';
+  h += '<div class="pm-btn-row"><button class="pm-btn-save primary" onclick="pmSaveEjecucion()">Guardar Ejecución</button></div>';
 
   if (pmEjecucion.length > 0) {
     h += '<div style="margin-top:14px;padding:10px 14px;background:#f8fafc;border-radius:8px;font-size:0.78rem;color:var(--muted)">';
@@ -2005,6 +2021,7 @@ function renderAdminDatos() {
     });
     h += '</div>';
   }
+  h += '</div>';
   h += '</div>';
 
   var ic = pmImpConfig || {};
@@ -2061,26 +2078,335 @@ function pmUpdateEjFields() {
   document.getElementById('pmEjGNA').value = ej ? ej.gastos_no_admitidos : '';
 }
 
-function pmParsePaste() {
-  var raw = document.getElementById('pmPasteArea').value.trim();
-  if (!raw) { showToast('Pega los datos primero'); return; }
+// ==================== EXCEL PARSER ====================
+// Keywords para identificar cuentas de salarios (dentro de Gastos de Personal)
+var PM_SALARY_KEYWORDS = ['sueldo', 'incentivo', 'aporte sfs', 'aporte afp', 'riesgo laboral', 'infotep',
+  'seguro familiar', 'fondo de pensión', 'fondo de pension', 'pensiones'];
 
-  var sep = raw.indexOf('\t') >= 0 ? '\t' : (raw.indexOf(';') >= 0 ? ';' : ',');
-  var parts = raw.split('\n').pop().split(sep).map(function(v) {
-    return parseFloat(v.replace(/[^0-9.\-]/g, '')) || 0;
+// Mes labels que Adm Cloud usa en los headers
+var PM_MES_LABELS = {
+  'ene': 1, 'feb': 2, 'mar': 3, 'abr': 4, 'may': 5, 'jun': 6,
+  'jul': 7, 'ago': 8, 'sep': 9, 'oct': 10, 'nov': 11, 'dic': 12,
+  'enero': 1, 'febrero': 2, 'marzo': 3, 'abril': 4, 'mayo': 5, 'junio': 6,
+  'julio': 7, 'agosto': 8, 'septiembre': 9, 'octubre': 10, 'noviembre': 11, 'diciembre': 12
+};
+
+function pmParseExcel(input) {
+  var file = input.files[0];
+  if (!file) return;
+
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      var data = new Uint8Array(e.target.result);
+      var wb = XLSX.read(data, { type: 'array' });
+      var ws = wb.Sheets[wb.SheetNames[0]];
+      var rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
+
+      if (rows.length < 10) { showToast('El archivo no parece ser un Estado de Resultados'); return; }
+
+      // Detect month columns from header row (row index 1)
+      var headerRow = rows[1] || [];
+      var mesesDisponibles = [];
+      for (var ci = 1; ci < headerRow.length; ci++) {
+        var hdr = String(headerRow[ci]).trim().toLowerCase();
+        if (PM_MES_LABELS[hdr]) {
+          mesesDisponibles.push({ col: ci, mes: PM_MES_LABELS[hdr], label: String(headerRow[ci]).trim() });
+        }
+      }
+
+      if (mesesDisponibles.length === 0) {
+        showToast('No se detectaron meses en el Excel. Verifica el formato.');
+        return;
+      }
+
+      // Parse all data rows to identify sections and values
+      var parsed = pmParseEdoResultados(rows, mesesDisponibles);
+
+      // Store parsed data globally for later use
+      window._pmExcelData = parsed;
+      window._pmExcelMeses = mesesDisponibles;
+
+      // Show preview
+      pmShowExcelPreview(parsed, mesesDisponibles, file.name);
+
+    } catch (err) {
+      showToast('Error al leer el archivo: ' + err.message);
+      console.error(err);
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function pmParseEdoResultados(rows, meses) {
+  // For each mes, we need: ventas_it1, costos_operativos, salarios, gastos, ingreso_financiero, gastos_no_admitidos
+  var result = {};
+  meses.forEach(function(m) { result[m.mes] = { ventas_it1: 0, costos_operativos: 0, salarios: 0, gastos: 0, ingreso_financiero: 0, gastos_no_admitidos: 0 }; });
+
+  var section = '';      // current top-level section
+  var subSection = '';   // current sub-section within Gastos
+  var inGastosPersonal = false;
+
+  for (var ri = 2; ri < rows.length; ri++) {
+    var cellA = String(rows[ri][0] || '').trim();
+    if (!cellA || cellA === ' ') continue;
+
+    var cleanA = cellA.replace(/ /g, ' ').trim();
+    var lowerA = cleanA.toLowerCase();
+
+    // Detect top-level sections
+    if (lowerA === 'ingresos') { section = 'ingresos'; inGastosPersonal = false; continue; }
+    if (lowerA === 'costos') { section = 'costos'; inGastosPersonal = false; continue; }
+    if (lowerA === 'gastos') { section = 'gastos'; inGastosPersonal = false; continue; }
+    if (lowerA === 'otros ingresos' || lowerA === 'ingresos no operacionales') { section = 'otros_ingresos'; inGastosPersonal = false; continue; }
+    if (lowerA === 'otros gastos') { section = 'otros_gastos'; inGastosPersonal = false; continue; }
+    if (lowerA === 'ingresos financieros') { section = 'ingresos_financieros'; inGastosPersonal = false; continue; }
+
+    // Detect sub-sections within Gastos
+    if (section === 'gastos') {
+      if (lowerA === 'gastos de personal') { inGastosPersonal = true; subSection = 'personal'; continue; }
+      if (lowerA.indexOf('total gastos de personal') === 0) { inGastosPersonal = false; subSection = ''; continue; }
+      if (lowerA.indexOf('gastos generales') === 0 || lowerA.indexOf('honorarios') === 0 ||
+          lowerA.indexOf('gastos de mercadeo') === 0 || lowerA.indexOf('gastos financieros') === 0 ||
+          lowerA.indexOf('gastos activos') === 0 || lowerA.indexOf('gastos de impuestos') === 0) {
+        inGastosPersonal = false; subSection = 'otros_gastos'; continue;
+      }
+    }
+
+    // Detect "Gastos no admitidos" sub-section
+    if (section === 'otros_gastos' && lowerA === 'gastos no admitidos') { subSection = 'gna'; continue; }
+
+    // Total rows — extract values (exact match to avoid subtotals like "Total Gastos Generales")
+    if (lowerA === 'total ingresos' && section === 'ingresos') {
+      meses.forEach(function(m) {
+        var val = parseFloat(rows[ri][m.col]) || 0;
+        result[m.mes].ventas_it1 = val;
+      });
+      continue;
+    }
+
+    // Fallback: if no "Total Ingresos" row, use "Total Ingresos Operativos"
+    if (lowerA === 'total ingresos operativos' && section === 'ingresos') {
+      meses.forEach(function(m) {
+        if (!result[m.mes].ventas_it1) {
+          result[m.mes].ventas_it1 = parseFloat(rows[ri][m.col]) || 0;
+        }
+      });
+      continue;
+    }
+
+    if (lowerA === 'total costos' && section === 'costos') {
+      meses.forEach(function(m) {
+        var val = parseFloat(rows[ri][m.col]) || 0;
+        result[m.mes].costos_operativos = val;
+      });
+      continue;
+    }
+
+    if (lowerA === 'total costos operativos' && section === 'costos') {
+      meses.forEach(function(m) {
+        if (!result[m.mes].costos_operativos) {
+          result[m.mes].costos_operativos = parseFloat(rows[ri][m.col]) || 0;
+        }
+      });
+      continue;
+    }
+
+    if (lowerA === 'total gastos' && section === 'gastos') {
+      // Total Gastos includes everything. Subtract salarios to get gastos puros.
+      meses.forEach(function(m) {
+        var val = parseFloat(rows[ri][m.col]) || 0;
+        result[m.mes].gastos = val - result[m.mes].salarios;
+      });
+      continue;
+    }
+
+    if (lowerA === 'total gastos no admitidos') {
+      meses.forEach(function(m) {
+        var val = parseFloat(rows[ri][m.col]) || 0;
+        result[m.mes].gastos_no_admitidos = val;
+      });
+      continue;
+    }
+
+    // Ingresos financieros total
+    if (section === 'ingresos_financieros' && lowerA.indexOf('total') === 0) {
+      meses.forEach(function(m) {
+        var val = parseFloat(rows[ri][m.col]) || 0;
+        result[m.mes].ingreso_financiero = val;
+      });
+      continue;
+    }
+
+    // Detail account lines — check if in Gastos de Personal and is salary account
+    if (inGastosPersonal && cleanA.match(/\d{3}\.\d{2}/)) {
+      var isSalary = PM_SALARY_KEYWORDS.some(function(kw) { return lowerA.indexOf(kw) >= 0; });
+      if (isSalary) {
+        meses.forEach(function(m) {
+          var val = parseFloat(rows[ri][m.col]) || 0;
+          result[m.mes].salarios += val;
+        });
+      }
+    }
+
+    // Check for "Ingresos Financieros" as single-line entry (some clients)
+    if (lowerA.indexOf('ingreso financiero') >= 0 || lowerA.indexOf('ingresos financieros') >= 0) {
+      if (cleanA.match(/\d{3}\.\d{2}/)) {
+        meses.forEach(function(m) {
+          var val = parseFloat(rows[ri][m.col]) || 0;
+          result[m.mes].ingreso_financiero += val;
+        });
+      }
+    }
+  }
+
+  return result;
+}
+
+function pmShowExcelPreview(parsed, meses, fileName) {
+  var pv = document.getElementById('pmExcelPreview');
+  var h = '<div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:16px;margin-bottom:16px">';
+  h += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">';
+  h += '<div><span style="font-weight:700;color:var(--navy)">✓ Excel leído</span>';
+  h += '<span style="font-size:0.8rem;color:var(--muted);margin-left:8px">' + esc(fileName) + '</span></div>';
+  h += '<button class="pm-btn-save secondary" style="font-size:0.75rem;padding:4px 12px" onclick="pmClearExcel()">Limpiar</button></div>';
+
+  // Month selection for bulk load
+  h += '<div style="margin-bottom:12px"><span style="font-size:0.85rem;font-weight:600">Meses detectados:</span>';
+  h += '<div style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap">';
+  meses.forEach(function(m) {
+    var hasMes = pmEjecucion.some(function(e) { return e.mes === m.mes; });
+    h += '<button class="pm-excel-mes-btn' + (hasMes ? ' loaded' : '') + '" data-mes="' + m.mes + '" onclick="pmSelectExcelMes(' + m.mes + ')">';
+    h += m.label + (hasMes ? ' ✓' : '') + '</button>';
+  });
+  h += '</div></div>';
+
+  // Preview table for selected month
+  h += '<div id="pmExcelMesPreview"></div>';
+
+  // Bulk actions
+  if (meses.length > 1) {
+    h += '<div style="margin-top:12px;padding-top:12px;border-top:1px solid #bbf7d0">';
+    h += '<button class="pm-btn-save primary" onclick="pmSaveAllExcelMeses()" style="font-size:0.82rem">Guardar todos los meses (' + meses.length + ')</button>';
+    h += '<span style="font-size:0.75rem;color:var(--muted);margin-left:10px">Carga todos los meses detectados de una vez</span>';
+    h += '</div>';
+  }
+
+  h += '</div>';
+  pv.innerHTML = h;
+  pv.style.display = 'block';
+
+  // Auto-select first available month
+  if (meses.length > 0) pmSelectExcelMes(meses[0].mes);
+}
+
+function pmSelectExcelMes(mes) {
+  var parsed = window._pmExcelData;
+  if (!parsed || !parsed[mes]) return;
+
+  var d = parsed[mes];
+  var container = document.getElementById('pmExcelMesPreview');
+  if (!container) return;
+
+  // Highlight active button
+  document.querySelectorAll('.pm-excel-mes-btn').forEach(function(btn) {
+    btn.classList.toggle('active', parseInt(btn.dataset.mes) === mes);
   });
 
-  if (parts.length >= 4) {
-    document.getElementById('pmEjVentas').value = parts[0];
-    document.getElementById('pmEjCostos').value = parts[1];
-    document.getElementById('pmEjGastos').value = parts[2];
-    document.getElementById('pmEjSalarios').value = parts[3];
-    if (parts.length >= 5) document.getElementById('pmEjIngFin').value = parts[4];
-    if (parts.length >= 6) document.getElementById('pmEjGNA').value = parts[5];
-    showToast('Datos leídos: ' + parts.length + ' campos detectados');
-  } else {
-    showToast('Formato no reconocido. Se esperan al menos 4 valores.');
+  var h = '<table style="width:100%;font-size:0.82rem;border-collapse:collapse;margin-top:8px">';
+  h += '<tr style="background:#f8fafc"><th style="text-align:left;padding:6px 10px;font-weight:600">Partida</th>';
+  h += '<th style="text-align:right;padding:6px 10px;font-weight:600">Monto (RD$)</th></tr>';
+
+  var items = [
+    { label: 'Ventas IT1', val: d.ventas_it1 },
+    { label: 'Costos Operativos', val: d.costos_operativos },
+    { label: 'Gastos', val: d.gastos },
+    { label: 'Salarios', val: d.salarios },
+    { label: 'Ingreso Financiero', val: d.ingreso_financiero },
+    { label: 'Gastos No Admitidos', val: d.gastos_no_admitidos }
+  ];
+  items.forEach(function(it, i) {
+    var bg = i % 2 === 0 ? '' : ' style="background:#f8fafc"';
+    h += '<tr' + bg + '><td style="padding:6px 10px">' + it.label + '</td>';
+    h += '<td style="text-align:right;padding:6px 10px;font-weight:600;font-variant-numeric:tabular-nums">' + pmFormatMoney(it.val) + '</td></tr>';
+  });
+  h += '</table>';
+
+  h += '<div style="margin-top:10px;display:flex;gap:8px">';
+  h += '<button class="pm-btn-save primary" style="font-size:0.82rem" onclick="pmApplyExcelMes(' + mes + ')">Cargar ' + MESES_FULL[mes - 1] + ' en los campos</button>';
+  h += '</div>';
+
+  container.innerHTML = h;
+
+  // Also set the manual month selector
+  var selEl = document.getElementById('pmEjMes');
+  if (selEl) selEl.value = mes;
+}
+
+function pmApplyExcelMes(mes) {
+  var parsed = window._pmExcelData;
+  if (!parsed || !parsed[mes]) return;
+  var d = parsed[mes];
+
+  document.getElementById('pmEjMes').value = mes;
+  document.getElementById('pmEjVentas').value = d.ventas_it1 ? d.ventas_it1.toFixed(2) : '';
+  document.getElementById('pmEjCostos').value = d.costos_operativos ? d.costos_operativos.toFixed(2) : '';
+  document.getElementById('pmEjGastos').value = d.gastos ? d.gastos.toFixed(2) : '';
+  document.getElementById('pmEjSalarios').value = d.salarios ? d.salarios.toFixed(2) : '';
+  document.getElementById('pmEjIngFin').value = d.ingreso_financiero ? d.ingreso_financiero.toFixed(2) : '';
+  document.getElementById('pmEjGNA').value = d.gastos_no_admitidos ? d.gastos_no_admitidos.toFixed(2) : '';
+
+  showToast(MESES_FULL[mes - 1] + ' cargado. Revisa y guarda.');
+
+  // Scroll to manual fields
+  document.getElementById('pmManualSection').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+async function pmSaveAllExcelMeses() {
+  var parsed = window._pmExcelData;
+  var meses = window._pmExcelMeses;
+  if (!parsed || !meses) { showToast('No hay datos del Excel'); return; }
+
+  var saved = 0;
+  var errors = 0;
+
+  for (var i = 0; i < meses.length; i++) {
+    var m = meses[i].mes;
+    var d = parsed[m];
+    if (!d) continue;
+
+    var { error } = await sb.from('portal_ejecucion').upsert({
+      cliente: clienteNombre,
+      anio: pmYear,
+      mes: m,
+      ventas_it1: d.ventas_it1 || 0,
+      costos_operativos: d.costos_operativos || 0,
+      gastos: d.gastos || 0,
+      salarios: d.salarios || 0,
+      ingreso_financiero: d.ingreso_financiero || 0,
+      gastos_no_admitidos: d.gastos_no_admitidos || 0
+    }, { onConflict: 'cliente,anio,mes' });
+
+    if (error) { errors++; } else { saved++; }
   }
+
+  if (errors > 0) {
+    showToast(saved + ' meses guardados, ' + errors + ' errores');
+  } else {
+    showToast(saved + ' meses guardados exitosamente');
+  }
+
+  await loadPresentacionData();
+  render();
+}
+
+function pmClearExcel() {
+  window._pmExcelData = null;
+  window._pmExcelMeses = null;
+  var pv = document.getElementById('pmExcelPreview');
+  if (pv) { pv.style.display = 'none'; pv.innerHTML = ''; }
+  var fileInput = document.getElementById('pmExcelFile');
+  if (fileInput) fileInput.value = '';
 }
 
 async function pmSavePresupuesto() {
