@@ -93,7 +93,7 @@ body { font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-se
 
 .footer { text-align:center; padding:20px; font-size:0.75rem; color:var(--light); }
 
-body.embed .header { display:none !important; }
+body.embed .header, body.embed .login-overlay { display:none !important; }
 body.embed .main-tabs { margin-left:0; }
 body.embed .content { padding-top:12px; }
 
@@ -213,9 +213,51 @@ body.embed .content { padding-top:12px; }
   .pm-dual { grid-template-columns:1fr; }
   .pm-summary-row { grid-template-columns:1fr; }
 }
+
+.login-overlay { position:fixed; inset:0; background:var(--navy); display:flex; align-items:center; justify-content:center; z-index:9999; }
+.login-box { background:white; padding:40px 36px; border-radius:16px; width:100%; max-width:380px; box-shadow:0 20px 60px rgba(0,0,0,0.3); }
+.login-box h2 { font-size:1.2rem; margin-bottom:4px; color:var(--navy); }
+.login-box p { font-size:0.82rem; color:var(--muted); margin-bottom:24px; }
+.login-box label { font-size:0.78rem; font-weight:600; color:var(--muted); display:block; margin-bottom:6px; text-transform:uppercase; letter-spacing:0.3px; }
+.login-box input { width:100%; padding:10px 14px; border:1px solid var(--border); border-radius:8px; font-size:0.9rem; font-family:inherit; margin-bottom:16px; }
+.login-box input:focus { outline:none; border-color:var(--blue); box-shadow:0 0 0 3px rgba(67,97,238,0.1); }
+.login-box button { width:100%; padding:12px; border:none; border-radius:8px; background:var(--blue); color:white; font-size:0.9rem; font-weight:600; cursor:pointer; font-family:inherit; }
+.login-box button:hover { opacity:0.9; }
+.login-error { color:var(--red); font-size:0.8rem; margin-bottom:12px; display:none; }
+
+/* Admin index */
+.pc-admin-index { padding:24px; max-width:1200px; margin:0 auto; }
+.pc-admin-table { width:100%; border-collapse:collapse; font-size:0.82rem; }
+.pc-admin-table th { text-align:left; padding:10px 16px; font-size:0.68rem; text-transform:uppercase; letter-spacing:0.3px; color:var(--muted); border-bottom:1px solid var(--border); background:#f8fafc; font-weight:700; }
+.pc-admin-table td { padding:12px 16px; border-bottom:1px solid #f1f5f9; }
+.pc-admin-table tr:hover { background:#fafbfc; }
+.pc-admin-table .pc-link { font-size:0.75rem; color:var(--blue); word-break:break-all; }
+.pc-copy-btn { padding:4px 10px; border:1px solid var(--border); border-radius:6px; background:white; cursor:pointer; font-size:0.72rem; font-weight:600; color:var(--muted); font-family:inherit; }
+.pc-copy-btn:hover { background:#eef0f4; }
+.pc-ver-btn { padding:5px 14px; border:none; border-radius:6px; background:var(--blue); color:white; cursor:pointer; font-size:0.75rem; font-weight:600; font-family:inherit; }
+.pc-ver-btn:hover { opacity:0.9; }
+.pc-admin-back { display:inline-flex; align-items:center; gap:6px; padding:8px 16px; border-radius:8px; font-size:0.82rem; font-weight:600; cursor:pointer; border:1px solid var(--border); background:white; color:var(--muted); font-family:inherit; margin-bottom:16px; }
+.pc-admin-back:hover { background:#eef0f4; }
+.pc-admin-stats { display:flex; gap:12px; margin-bottom:16px; flex-wrap:wrap; }
+.pc-admin-stat { background:white; border-radius:10px; border:1px solid var(--border); padding:14px 20px; }
+.pc-admin-stat .pc-stat-val { font-size:1.4rem; font-weight:800; color:var(--navy); }
+.pc-admin-stat .pc-stat-label { font-size:0.7rem; color:var(--muted); text-transform:uppercase; letter-spacing:0.3px; font-weight:600; }
 </style>
 </head>
 <body>
+
+<div id="loginOverlay" class="login-overlay" style="display:none">
+  <div class="login-box">
+    <h2>Portal de Clientes</h2>
+    <p>Acceso de administrador — Account One</p>
+    <div id="loginError" class="login-error"></div>
+    <label>Correo</label>
+    <input type="email" id="loginEmail" placeholder="correo@accountone.do">
+    <label>Contraseña</label>
+    <input type="password" id="loginPass" placeholder="••••••••" onkeydown="if(event.key==='Enter')pcDoLogin()">
+    <button onclick="pcDoLogin()">Iniciar sesión</button>
+  </div>
+</div>
 
 <div id="errorScreen" class="error-screen" style="display:none">
   <div>
@@ -320,6 +362,12 @@ var pmEjecucion = [];
 var pmImpConfig = null;
 var pmDeclaraciones = [];
 var pmYear = 2026;
+
+// Admin mode state
+var isAdminMode = false;
+var adminShowingIndex = true;
+var allTokens = [];
+var allClientes = [];
 
 // ==================== UTILS ====================
 function esc(s) { return (s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/'/g,'&#39;'); }
@@ -604,38 +652,191 @@ async function init() {
 
   if (isEmbed) document.body.classList.add('embed');
 
-  if (!clienteToken) {
+  if (clienteToken) {
+    // Client mode: validate token
+    var { data, error } = await sb.from('portal_clientes_tokens')
+      .select('cliente')
+      .eq('token', clienteToken)
+      .eq('activo', true)
+      .single();
+
+    if (error || !data) {
+      document.getElementById('errorScreen').style.display = 'flex';
+      return;
+    }
+
+    clienteNombre = data.cliente;
+    document.getElementById('clientName').textContent = clienteNombre;
+    document.getElementById('app').style.display = '';
+
+    selectedMes = getCurrentMonth();
+    await Promise.all([loadData(), loadFiles(), loadPresentacionData()]);
+    renderMainTabs();
+    renderSubTabs();
+    renderNav();
+    render();
+    return;
+  }
+
+  // No token: try admin login
+  if (isEmbed) {
+    var { data: { session } } = await sb.auth.getSession();
+    if (session) {
+      await pcInitAdmin(true);
+    } else {
+      document.getElementById('errorScreen').innerHTML = '<div><h2>Sesión no encontrada</h2><p>Abre el portal desde el menú principal para iniciar sesión.</p></div>';
+      document.getElementById('errorScreen').style.display = 'flex';
+    }
+    return;
+  }
+
+  // Standalone: check session, show login if needed
+  var { data: { session } } = await sb.auth.getSession();
+  if (session) {
+    await pcInitAdmin(false);
+  } else {
+    document.getElementById('loginOverlay').style.display = 'flex';
+  }
+}
+
+async function pcDoLogin() {
+  var email = document.getElementById('loginEmail').value.trim();
+  var pass = document.getElementById('loginPass').value;
+  var errEl = document.getElementById('loginError');
+  errEl.style.display = 'none';
+
+  if (!email || !pass) { errEl.textContent = 'Ingresa correo y contraseña'; errEl.style.display = 'block'; return; }
+
+  var { error } = await sb.auth.signInWithPassword({ email: email, password: pass });
+  if (error) { errEl.textContent = 'Credenciales incorrectas'; errEl.style.display = 'block'; return; }
+
+  await pcInitAdmin(false);
+}
+
+async function pcInitAdmin(isEmbed) {
+  var { data: { session } } = await sb.auth.getSession();
+  if (!session) return;
+
+  var { data: profile } = await sb.from('profiles').select('rol').eq('id', session.user.id).single();
+  if (!profile || profile.rol !== 'admin') {
+    document.getElementById('loginOverlay').style.display = 'none';
+    document.getElementById('errorScreen').innerHTML = '<div><h2>Acceso denegado</h2><p>Solo administradores pueden acceder a esta vista.</p></div>';
     document.getElementById('errorScreen').style.display = 'flex';
     return;
   }
 
-  var { data, error } = await sb.from('portal_clientes_tokens')
-    .select('cliente')
-    .eq('token', clienteToken)
-    .eq('activo', true)
-    .single();
+  isAdminMode = true;
+  adminShowingIndex = true;
+  if (isEmbed) document.body.classList.add('embed');
 
-  if (error || !data) {
-    document.getElementById('errorScreen').style.display = 'flex';
-    return;
-  }
+  selectedMes = getCurrentMonth();
 
-  clienteNombre = data.cliente;
-  document.getElementById('clientName').textContent = clienteNombre;
+  var [tokensRes, clientesRes] = await Promise.all([
+    sb.from('portal_clientes_tokens').select('cliente, token').eq('activo', true).order('cliente'),
+    sb.from('clientes').select('nombre, contadora_impuestos, activo').eq('activo', true).order('nombre')
+  ]);
+
+  allTokens = tokensRes.data || [];
+  allClientes = clientesRes.data || [];
+
+  document.getElementById('loginOverlay').style.display = 'none';
   document.getElementById('app').style.display = '';
+  document.getElementById('clientName').textContent = 'Administrador';
+
+  pcRenderAdminIndex();
+}
+
+function pcGetBaseUrl() {
+  var loc = window.location;
+  return loc.protocol + '//' + loc.host + loc.pathname;
+}
+
+function pcRenderAdminIndex() {
+  adminShowingIndex = true;
+  var el = document.getElementById('content');
+  document.getElementById('mainTabs').innerHTML = '';
+  document.getElementById('subTabs').style.display = 'none';
+  document.getElementById('navArea').innerHTML = '';
+
+  var totalClientes = allClientes.length;
+  var conToken = allTokens.length;
+  var sinToken = totalClientes - conToken;
+  var baseUrl = pcGetBaseUrl();
+
+  var h = '<div class="pc-admin-stats">';
+  h += '<div class="pc-admin-stat"><div class="pc-stat-val">' + totalClientes + '</div><div class="pc-stat-label">Clientes activos</div></div>';
+  h += '<div class="pc-admin-stat"><div class="pc-stat-val">' + conToken + '</div><div class="pc-stat-label">Con token</div></div>';
+  if (sinToken > 0) h += '<div class="pc-admin-stat"><div class="pc-stat-val" style="color:var(--amber)">' + sinToken + '</div><div class="pc-stat-label">Sin token</div></div>';
+  h += '</div>';
+
+  h += '<div style="background:white; border-radius:12px; border:1px solid var(--border); overflow:hidden;">';
+  h += '<table class="pc-admin-table"><thead><tr>';
+  h += '<th style="width:40px">#</th><th>Cliente</th><th>Link del portal</th><th style="width:80px"></th><th style="width:80px"></th>';
+  h += '</tr></thead><tbody>';
+
+  allTokens.forEach(function(t, i) {
+    var link = baseUrl + '?token=' + t.token;
+    h += '<tr>';
+    h += '<td style="color:var(--muted); font-weight:600;">' + (i + 1) + '</td>';
+    h += '<td style="font-weight:600;">' + esc(t.cliente) + '</td>';
+    h += '<td><span class="pc-link">' + esc(link) + '</span></td>';
+    h += '<td><button class="pc-copy-btn" onclick="pcCopyLink(\'' + esc(t.token) + '\')">Copiar</button></td>';
+    h += '<td><button class="pc-ver-btn" onclick="pcOpenCliente(\'' + esc(t.cliente) + '\', \'' + esc(t.token) + '\')">Ver</button></td>';
+    h += '</tr>';
+  });
+
+  h += '</tbody></table></div>';
+  el.innerHTML = h;
+}
+
+function pcCopyLink(token) {
+  var link = pcGetBaseUrl() + '?token=' + token;
+  navigator.clipboard.writeText(link).then(function() { showToast('Link copiado'); });
+}
+
+async function pcOpenCliente(nombre, token) {
+  adminShowingIndex = false;
+  clienteNombre = nombre;
+  clienteToken = token;
+  selectedMainTab = 'checklist';
+  selectedTab = 'dashboard';
+
+  document.getElementById('clientName').textContent = nombre;
 
   selectedMes = getCurrentMonth();
   await Promise.all([loadData(), loadFiles(), loadPresentacionData()]);
+
   renderMainTabs();
   renderSubTabs();
   renderNav();
   render();
 }
 
+function pcBackToIndex() {
+  adminShowingIndex = true;
+  clienteNombre = '';
+  clienteToken = '';
+  portalData = {};
+  portalFiles = {};
+  selectedMainTab = 'checklist';
+  selectedTab = 'dashboard';
+  pmDetail = null;
+  pmPresupuesto = null;
+  pmEjecucion = [];
+  pmImpConfig = null;
+  pmDeclaraciones = [];
+
+  document.getElementById('clientName').textContent = 'Administrador';
+  pcRenderAdminIndex();
+}
+
 // ==================== RENDER ====================
 function renderMainTabs() {
   var el = document.getElementById('mainTabs');
   var h = '';
+  if (isAdminMode && !adminShowingIndex) {
+    h += '<button class="pm-main-tab" onclick="pcBackToIndex()" style="color:var(--muted); font-size:0.82rem;">← Volver al listado</button>';
+  }
   h += '<button class="pm-main-tab' + (selectedMainTab === 'checklist' ? ' active' : '') + '" onclick="switchMainTab(\'checklist\')">Checklist</button>';
   h += '<button class="pm-main-tab' + (selectedMainTab === 'presentacion' ? ' active' : '') + '" onclick="switchMainTab(\'presentacion\')">Presentación Mensual</button>';
   el.innerHTML = h;
