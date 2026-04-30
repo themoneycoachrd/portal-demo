@@ -176,6 +176,9 @@ body.embed .content { padding-top:12px; }
 .pm-panel-body td { padding:14px 20px; border-bottom:1px solid #f1f5f9; vertical-align:middle; }
 .pm-dual .pm-panel-body tbody td { height:54px; box-sizing:border-box; }
 .pm-panel-body tr:last-child td { border-bottom:none; }
+.pm-table-compact { font-size:0.75rem; }
+.pm-table-compact th { font-size:0.62rem; white-space:nowrap; }
+.pm-table-compact td { padding:10px 12px !important; white-space:nowrap; }
 
 /* Dark panel header */
 .pm-panel-dark .pm-panel-hdr { background:var(--navy); color:white; border-bottom:none; }
@@ -1701,7 +1704,7 @@ function renderProyeccionDetail() {
 
   h += '<div class="pm-panel"><div class="pm-panel-hdr" style="background:white">';
   h += '<h3 style="text-transform:uppercase;font-size:0.78rem;letter-spacing:0.3px">Realidad hasta hoy</h3></div>';
-  h += '<div class="pm-panel-body"><table><thead><tr>';
+  h += '<div class="pm-panel-body" style="overflow-x:auto"><table class="pm-table-compact"><thead><tr>';
   h += '<th>Mes</th><th class="pm-text-right">Ventas IT1</th><th class="pm-text-right">Costos Op.</th><th class="pm-text-right">Gastos</th><th class="pm-text-right">Salarios</th><th class="pm-text-right">Ing./Gto.Fin.</th><th class="pm-text-right">Gtos. N/A</th>';
   h += '</tr></thead><tbody>';
   pmEjecucion.forEach(function(e) {
@@ -1729,7 +1732,7 @@ function renderProyeccionDetail() {
 
   h += '<div class="pm-panel pm-panel-dark"><div class="pm-panel-hdr">';
   h += '<h3 style="text-transform:uppercase;font-size:0.78rem;letter-spacing:0.3px">Proyección a fin de año (promedios)</h3></div>';
-  h += '<div class="pm-panel-body"><table><thead><tr>';
+  h += '<div class="pm-panel-body" style="overflow-x:auto"><table class="pm-table-compact"><thead><tr>';
   h += '<th>Mes</th><th class="pm-text-right">Ventas IT1</th><th class="pm-text-right">Costos Op.</th><th class="pm-text-right">Gastos</th><th class="pm-text-right">Salarios</th><th class="pm-text-right">Ing./Gto.Fin.</th><th class="pm-text-right">Gtos. N/A</th>';
   h += '</tr></thead><tbody>';
   for (var m = 1; m <= 12; m++) {
@@ -1843,7 +1846,7 @@ function renderProyeccionDetail() {
     var half = antHalves[hi];
     var subtotal = 0;
     h += '<div class="pm-card" style="margin-bottom:0"><div class="pm-card-title" style="font-size:0.82rem;padding:10px 14px">' + half.titulo + '</div>';
-    h += '<table><thead><tr><th>Mes</th><th class="pm-text-right">Anticipo (RD$)</th><th class="pm-text-center">Tramo</th><th>Nota</th></tr></thead><tbody>';
+    h += '<table style="width:100%;table-layout:auto"><thead><tr><th style="white-space:nowrap">Mes</th><th class="pm-text-right" style="white-space:nowrap">Anticipo RD$</th><th class="pm-text-center" style="white-space:nowrap">Tramo</th><th style="width:40%">Nota</th></tr></thead><tbody>';
     for (var am = half.desde; am <= half.hasta; am++) {
       var antMonto = am <= 4 ? antTramo1 : antTramo2;
       subtotal += antMonto;
