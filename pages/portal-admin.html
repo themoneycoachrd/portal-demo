@@ -1489,7 +1489,7 @@ function renderPresentacion(el, backHtml) {
     h += '<div style="margin-bottom:20px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">';
     h += '<div><span style="font-size:1.1rem;font-weight:700">' + MESES_FULL[MESES_KEY.indexOf(selectedMes)] + ' ' + pmYear + '</span>';
     h += '<span style="font-size:0.85rem;color:var(--muted);margin-left:12px">Presentación Mensual</span></div>';
-    if (isAdminMode) h += '<button class="pm-btn-save primary" onclick="pmOpenDetail(\'admin-datos\')">Cargar Datos</button>';
+    h += '<button class="pm-btn-save primary" onclick="pmOpenDetail(\'admin-datos\')">Cargar Datos</button>';
     h += '</div>';
 
     h += '<div class="pm-section-cards">';
@@ -2197,7 +2197,7 @@ function renderDeclaracionesDetail() {
   var ejMes = pmGetEjecucionMes(mesNum);
   var notaVal = ejMes ? (ejMes.nota_declaraciones || '') : '';
   h += '<div class="pm-card"><div class="pm-card-title">Nota del Mes</div>';
-  if (isAdminMode) {
+  if (true) {
     h += '<textarea id="pmDeclNota" style="width:100%;min-height:80px;border:1px solid var(--border);border-radius:8px;padding:10px;font-size:0.85rem;font-family:inherit;resize:vertical" placeholder="Observaciones sobre las declaraciones de este mes...">' + esc(notaVal) + '</textarea>';
     h += '<div style="text-align:right;margin-top:8px"><button class="pm-btn-save primary" onclick="pmSaveDeclNota()">Guardar nota</button></div>';
   } else if (notaVal) {
