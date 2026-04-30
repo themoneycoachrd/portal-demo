@@ -1616,6 +1616,8 @@ function renderProyeccionDetail() {
 
 // ── DECLARACIONES ──
 // Calcula color semáforo: verde (antes de firma), amarillo (entre firma y deadline), rojo (después de deadline), na (sin datos)
+var PM_DIA_LIMITE = { 'TSS': 3, 'IR-3': 10, 'IR-17': 10, 'Anticipo': 15, 'ITBIS': 20 };
+
 function pmDeclColor(d) {
   if (!d || !d.fecha_presentado || !d.fecha_limite) return 'na';
   if (d.estado === 'no_aplico' || d.estado === 'pendiente') return 'na';
@@ -1695,8 +1697,10 @@ function renderDeclaracionesDetail() {
 
     h += '<tr><td class="pm-font-bold">' + ob + '</td>';
 
-    // Fecha límite
-    h += '<td class="pm-text-center">' + (d && d.fecha_limite ? pmFormatDate(d.fecha_limite) : '<span style="color:var(--muted)">—</span>') + '</td>';
+    // Fecha límite (fija por tipo de obligación)
+    var diaLim = PM_DIA_LIMITE[ob];
+    var fechaLimTxt = diaLim ? (diaLim + ' de ' + MESES_FULL[mesNum - 1].toLowerCase()) : '';
+    h += '<td class="pm-text-center">' + (fechaLimTxt || '<span style="color:var(--muted)">—</span>') + '</td>';
 
     // Presentado
     h += '<td class="pm-text-center">' + (d && d.fecha_presentado ? pmFormatDate(d.fecha_presentado) : '<span style="color:var(--muted)">—</span>') + '</td>';
