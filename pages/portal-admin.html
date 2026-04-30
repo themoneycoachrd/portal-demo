@@ -1483,7 +1483,7 @@ function renderPresupuestoDetail() {
   h += '</tr>';
 
   // Ganancia/Pérdida
-  h += '<tr class="pm-row-total"><td class="pm-font-bold">Ganancia/Pérdida</td>';
+  h += '<tr class="pm-row-total" style="background:var(--navy)"><td class="pm-font-bold" style="color:white">Ganancia/Pérdida</td>';
   qRange.forEach(function(m) {
     var ej = pmGetEjecucionMes(m);
     var v = ej ? (ej.ventas_it1 || 0) : 0;
@@ -1492,7 +1492,7 @@ function renderPresupuestoDetail() {
     var iF = ej ? (ej.ingreso_financiero || 0) : 0;
     var gna = ej ? (ej.gastos_no_admitidos || 0) : 0;
     var gan = v - c - g + iF - gna;
-    var color = gan >= 0 ? 'var(--green)' : 'var(--red)';
+    var color = gan >= 0 ? '#4ade80' : '#f87171';
     h += '<td class="pm-text-right" style="color:' + color + '">' + pmFormatMoney(gan) + '</td>';
     h += '<td class="pm-text-right" style="border-right:' + (m < qRange[2] ? '2px solid var(--border)' : 'none') + '"></td>';
   });
@@ -1538,9 +1538,10 @@ function renderPresupuestoDetail() {
   h += '<td class="pm-text-right" style="color:#666">$' + pmFormatMoney(pGNA / 12) + '</td></tr>';
 
   var ganAnual = resOpAnual + pIF - pGNA;
-  h += '<tr class="pm-row-total"><td class="pm-font-bold">Ganancia/Pérdida</td>';
-  h += '<td class="pm-text-right" style="color:' + (ganAnual >= 0 ? 'var(--green)' : 'var(--red)') + '">$' + pmFormatMoney(ganAnual) + '</td>';
-  h += '<td class="pm-text-right" style="color:' + (ganAnual >= 0 ? 'var(--green)' : 'var(--red)') + '">$' + pmFormatMoney(ganAnual / 12) + '</td></tr>';
+  var ganPresColor = ganAnual >= 0 ? '#4ade80' : '#f87171';
+  h += '<tr class="pm-row-total" style="background:var(--navy)"><td class="pm-font-bold" style="color:white">Ganancia/Pérdida</td>';
+  h += '<td class="pm-text-right" style="color:' + ganPresColor + '">$' + pmFormatMoney(ganAnual) + '</td>';
+  h += '<td class="pm-text-right" style="color:' + ganPresColor + '">$' + pmFormatMoney(ganAnual / 12) + '</td></tr>';
   h += '</tbody></table></div></div>';
 
   var ejMes = pmGetEjecucionMes(mesNum);
@@ -1589,13 +1590,9 @@ function renderPresupuestoDetail() {
   h += '<td class="pm-text-center"></td></tr>';
 
   var ejGanancia = ejResOp + ejIF - ejGNA;
-  var metaGanMes = metaResOpMes + metaIF - metaGNA;
-  var pctGan = metaGanMes ? (ejGanancia / metaGanMes * 100) : 0;
-  var badgeGan = pmBadgeStatus(pctGan, 'beneficio');
   var ganColor = ejGanancia >= 0 ? 'var(--green)' : 'var(--red)';
-  h += '<tr class="pm-row-total"><td class="pm-text-right pm-font-bold" style="color:' + ganColor + '">$' + pmFormatMoney(ejGanancia) + '</td>';
-  h += '<td class="pm-text-center">' + pctGan.toFixed(2) + '%</td>';
-  h += '<td class="pm-text-center"><span class="pm-badge ' + badgeGan.cls + '">' + badgeGan.label + '</span></td></tr>';
+  h += '<tr class="pm-row-total" style="background:var(--navy)"><td class="pm-text-right pm-font-bold" style="color:white">$' + pmFormatMoney(ejGanancia) + '</td>';
+  h += '<td colspan="2" style="color:white;font-weight:600;padding-left:8px">Ganancia/Pérdida</td></tr>';
 
   h += '</tbody></table></div></div></div>';
 
@@ -2066,6 +2063,8 @@ function renderAdminDatos() {
   var pv = pmPresupuesto ? (pmPresupuesto.ventas_it1_anual || '') : '';
   var pco = pmPresupuesto ? (pmPresupuesto.costos_operativos_anual || '') : '';
   var pg = pmPresupuesto ? (pmPresupuesto.gastos_anual || '') : '';
+  var pif = pmPresupuesto ? (pmPresupuesto.ingreso_financiero_anual || '') : '';
+  var pgna = pmPresupuesto ? (pmPresupuesto.gastos_no_admitidos_anual || '') : '';
 
   h += '<div class="pm-admin-form"><h3>Presupuesto Anual <span class="pm-admin-badge">Año ' + pmYear + '</span></h3>';
   h += '<div class="pm-form-grid">';
@@ -2078,6 +2077,12 @@ function renderAdminDatos() {
   h += '<div class="pm-form-group"><label>Gastos (anual)</label>';
   h += '<input type="number" class="pm-form-input" id="pmPresGastos" value="' + pg + '" placeholder="0.00" step="0.01">';
   h += '<div class="pm-calc">Mensual: $' + pmFormatMoney(pg ? pg / 12 : 0) + '</div></div>';
+  h += '<div class="pm-form-group"><label>Ing./Gasto Fin. (anual)</label>';
+  h += '<input type="number" class="pm-form-input" id="pmPresIF" value="' + pif + '" placeholder="0.00" step="0.01">';
+  h += '<div class="pm-calc">Mensual: $' + pmFormatMoney(pif ? pif / 12 : 0) + '</div></div>';
+  h += '<div class="pm-form-group"><label>Gtos. No Admitidos (anual)</label>';
+  h += '<input type="number" class="pm-form-input" id="pmPresGNA" value="' + pgna + '" placeholder="0.00" step="0.01">';
+  h += '<div class="pm-calc">Mensual: $' + pmFormatMoney(pgna ? pgna / 12 : 0) + '</div></div>';
   h += '</div>';
   h += '<div class="pm-btn-row"><button class="pm-btn-save primary" onclick="pmSavePresupuesto()">Guardar Presupuesto</button></div>';
   h += '</div>';
@@ -2524,13 +2529,17 @@ async function pmSavePresupuesto() {
   var v = parseFloat(document.getElementById('pmPresVentas').value) || 0;
   var c = parseFloat(document.getElementById('pmPresCostos').value) || 0;
   var g = parseFloat(document.getElementById('pmPresGastos').value) || 0;
+  var iF = parseFloat(document.getElementById('pmPresIF').value) || 0;
+  var gna = parseFloat(document.getElementById('pmPresGNA').value) || 0;
 
   var { error } = await sb.from('portal_presupuesto').upsert({
     cliente: clienteNombre,
     anio: pmYear,
     ventas_it1_anual: v,
     costos_operativos_anual: c,
-    gastos_anual: g
+    gastos_anual: g,
+    ingreso_financiero_anual: iF,
+    gastos_no_admitidos_anual: gna
   }, { onConflict: 'cliente,anio' });
 
   if (error) { showToast('Error al guardar: ' + error.message); return; }
