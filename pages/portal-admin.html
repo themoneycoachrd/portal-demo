@@ -268,6 +268,27 @@ body.embed .content { padding-top:12px; }
   .pm-summary-row { grid-template-columns:1fr; }
 }
 
+/* View toggle */
+.view-toggle-row { display:flex; justify-content:flex-start; margin-bottom:12px; }
+.view-toggle { display:inline-flex; border:1px solid var(--border); border-radius:8px; overflow:hidden; background:white; }
+.view-toggle-btn { padding:5px 12px; font-size:0.75rem; font-weight:600; cursor:pointer; border:none; background:white; color:var(--muted); font-family:inherit; transition:all 0.12s; display:flex; align-items:center; gap:5px; }
+.view-toggle-btn:not(:last-child) { border-right:1px solid var(--border); }
+.view-toggle-btn:hover { background:#f3f4f6; color:var(--text); }
+.view-toggle-btn.active { background:var(--navy); color:white; }
+.view-toggle-btn svg { width:14px; height:14px; }
+
+/* Client cards grid */
+.pc-client-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(280px,1fr)); gap:12px; }
+.pc-client-card { background:white; border:2px solid var(--border); border-radius:12px; padding:18px; cursor:pointer; transition:all 0.2s; }
+.pc-client-card:hover { border-color:var(--blue); transform:translateY(-2px); box-shadow:0 4px 12px rgba(0,0,0,0.08); }
+.pc-client-card-name { font-size:15px; font-weight:700; margin-bottom:4px; }
+.pc-client-card-contadora { font-size:11px; color:var(--light); margin-bottom:10px; }
+.pc-client-card-progress { display:flex; align-items:center; gap:8px; }
+.pc-client-card-bar { flex:1; height:8px; background:#f1f5f9; border-radius:4px; overflow:hidden; }
+.pc-client-card-fill { height:100%; border-radius:4px; transition:width 0.3s; }
+.pc-client-card-pct { font-size:12px; font-weight:700; min-width:36px; text-align:right; }
+.pc-client-card-status { margin-top:8px; }
+
 /* Admin forms */
 .pm-admin-form { background:white; border-radius:12px; border:1px solid var(--border); padding:20px; margin-bottom:16px; }
 .pm-admin-form h3 { font-size:0.88rem; font-weight:700; color:var(--navy); margin-bottom:16px; display:flex; align-items:center; gap:8px; }
@@ -412,6 +433,7 @@ var allTokens = [];
 var allClientes = [];
 var allPortalData = [];
 var selectedContadora = 'Todas';
+var portalViewMode = 'table';
 var selectedMainTab = 'checklist';
 var selectedTab = 'dashboard';
 var selectedMes = '';
@@ -703,6 +725,17 @@ function pmBadgeStatus(pct, tipo) {
   return { cls: 'pm-badge-rojo', label: 'Excedido' };
 }
 
+function pmSemColor(pct, tipo) {
+  if (tipo === 'ventas' || tipo === 'beneficio') {
+    if (pct >= 100) return 'verde';
+    if (pct >= 80) return 'amarillo';
+    return 'rojo';
+  }
+  if (pct <= 100) return 'verde';
+  if (pct <= 120) return 'amarillo';
+  return 'rojo';
+}
+
 function pmGetQuarterForMonth(mesNum) {
   if (mesNum <= 3) return 1;
   if (mesNum <= 6) return 2;
@@ -952,6 +985,10 @@ function renderAdminIndex() {
 
   var h = '';
 
+  // View toggle (tabla / cuadros)
+  var iconTable = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3" y2="18"/><line x1="9" y1="6" x2="9" y2="18"/></svg>';
+  var iconCards = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>';
+
   if (selectedMainTab === 'presentacion') {
     // Presentación index view
     var conPres = 0, conEjMes = 0, conConfig = 0, declCompletas = 0;
@@ -970,50 +1007,83 @@ function renderAdminIndex() {
     h += '<div class="summary-stat"><div class="summary-stat-label">Declaraciones 5/5</div><div class="summary-stat-value" style="color:var(--green)">' + declCompletas + '</div></div>';
     h += '</div>';
 
-    h += '<div style="overflow-x:auto"><table class="check-table">';
-    h += '<thead><tr>';
-    h += '<th style="width:30px">#</th>';
-    h += '<th>Cliente</th>';
-    h += '<th>Contadora</th>';
-    h += '<th class="center">Presupuesto</th>';
-    h += '<th class="center">Ejecución</th>';
-    h += '<th class="center">Config</th>';
-    h += '<th class="center">Declaraciones</th>';
-    h += '<th class="center">Estado</th>';
-    h += '</tr></thead><tbody>';
+    h += '<div class="view-toggle-row"><div class="view-toggle">';
+    h += '<button class="view-toggle-btn' + (portalViewMode === 'table' ? ' active' : '') + '" onclick="portalToggleView(\'table\')">' + iconTable + ' Tabla</button>';
+    h += '<button class="view-toggle-btn' + (portalViewMode === 'cards' ? ' active' : '') + '" onclick="portalToggleView(\'cards\')">' + iconCards + ' Cuadros</button>';
+    h += '</div></div>';
 
-    clientes.forEach(function(c, i) {
-      var ct = c.contadora_impuestos || 'Sin asignar';
-      var hasPres = hasPresupuesto(c.nombre);
-      var hasEj = hasEjecucionMes(c.nombre, selectedMes);
-      var hasConf = hasImpConfig(c.nombre);
-      var ejCount = getEjecucionCount(c.nombre);
-      var declCt = getDeclCount(c.nombre, selectedMes);
+    if (portalViewMode === 'table') {
+      h += '<div style="overflow-x:auto"><table class="check-table">';
+      h += '<thead><tr>';
+      h += '<th style="width:30px">#</th>';
+      h += '<th>Cliente</th>';
+      h += '<th>Contadora</th>';
+      h += '<th class="center">Presupuesto</th>';
+      h += '<th class="center">Ejecución</th>';
+      h += '<th class="center">Config</th>';
+      h += '<th class="center">Declaraciones</th>';
+      h += '<th class="center">Estado</th>';
+      h += '</tr></thead><tbody>';
 
-      var partsLoaded = (hasPres ? 1 : 0) + (hasEj ? 1 : 0) + (hasConf ? 1 : 0);
-      var estado, estadoClass;
-      if (partsLoaded === 3) { estado = 'Completo'; estadoClass = 'pc-status-completo'; }
-      else if (partsLoaded > 0) { estado = 'Parcial'; estadoClass = 'pc-status-progreso'; }
-      else { estado = 'Sin datos'; estadoClass = 'pc-status-pendiente'; }
+      clientes.forEach(function(c, i) {
+        var ct = c.contadora_impuestos || 'Sin asignar';
+        var hasPres = hasPresupuesto(c.nombre);
+        var hasEj = hasEjecucionMes(c.nombre, selectedMes);
+        var hasConf = hasImpConfig(c.nombre);
+        var ejCount = getEjecucionCount(c.nombre);
+        var declCt = getDeclCount(c.nombre, selectedMes);
 
-      h += '<tr onclick="idxOpenCliente(\'' + esc(c.nombre).replace(/'/g, "\\'") + '\')">';
-      h += '<td style="color:var(--light);font-size:0.75rem">' + (i + 1) + '</td>';
-      h += '<td style="font-weight:600">' + esc(c.nombre) + '</td>';
-      h += '<td style="font-size:0.78rem;color:var(--muted)">' + esc(ct) + '</td>';
+        var partsLoaded = (hasPres ? 1 : 0) + (hasEj ? 1 : 0) + (hasConf ? 1 : 0);
+        var estado, estadoClass;
+        if (partsLoaded === 3) { estado = 'Completo'; estadoClass = 'pc-status-completo'; }
+        else if (partsLoaded > 0) { estado = 'Parcial'; estadoClass = 'pc-status-progreso'; }
+        else { estado = 'Sin datos'; estadoClass = 'pc-status-pendiente'; }
 
-      h += '<td class="center"><span class="pc-status-badge ' + (hasPres ? 'pc-status-completo' : 'pc-status-pendiente') + '">' + (hasPres ? '&#10003;' : '&#10007;') + '</span></td>';
-      h += '<td class="center"><span class="pc-status-badge ' + (ejCount >= 6 ? 'pc-status-completo' : ejCount > 0 ? 'pc-status-progreso' : 'pc-status-pendiente') + '">' + ejCount + '/12</span></td>';
-      h += '<td class="center"><span class="pc-status-badge ' + (hasConf ? 'pc-status-completo' : 'pc-status-pendiente') + '">' + (hasConf ? '&#10003;' : '&#10007;') + '</span></td>';
-      h += '<td class="center"><span class="pc-status-badge ' + (declCt >= 5 ? 'pc-status-completo' : declCt > 0 ? 'pc-status-progreso' : 'pc-status-pendiente') + '">' + declCt + '/5</span></td>';
-      h += '<td class="center"><span class="pc-status-badge ' + estadoClass + '">' + estado + '</span></td>';
+        h += '<tr onclick="idxOpenCliente(\'' + esc(c.nombre).replace(/'/g, "\\'") + '\')">';
+        h += '<td style="color:var(--light);font-size:0.75rem">' + (i + 1) + '</td>';
+        h += '<td style="font-weight:600">' + esc(c.nombre) + '</td>';
+        h += '<td style="font-size:0.78rem;color:var(--muted)">' + esc(ct) + '</td>';
 
-      h += '</tr>';
-    });
+        h += '<td class="center"><span class="pc-status-badge ' + (hasPres ? 'pc-status-completo' : 'pc-status-pendiente') + '">' + (hasPres ? '&#10003;' : '&#10007;') + '</span></td>';
+        h += '<td class="center"><span class="pc-status-badge ' + (ejCount >= 6 ? 'pc-status-completo' : ejCount > 0 ? 'pc-status-progreso' : 'pc-status-pendiente') + '">' + ejCount + '/12</span></td>';
+        h += '<td class="center"><span class="pc-status-badge ' + (hasConf ? 'pc-status-completo' : 'pc-status-pendiente') + '">' + (hasConf ? '&#10003;' : '&#10007;') + '</span></td>';
+        h += '<td class="center"><span class="pc-status-badge ' + (declCt >= 5 ? 'pc-status-completo' : declCt > 0 ? 'pc-status-progreso' : 'pc-status-pendiente') + '">' + declCt + '/5</span></td>';
+        h += '<td class="center"><span class="pc-status-badge ' + estadoClass + '">' + estado + '</span></td>';
 
-    h += '</tbody></table></div>';
+        h += '</tr>';
+      });
+
+      h += '</tbody></table></div>';
+    } else {
+      // Cards view - Presentación
+      h += '<div class="pc-client-grid">';
+      clientes.forEach(function(c) {
+        var ct = c.contadora_impuestos || 'Sin asignar';
+        var hasPres = hasPresupuesto(c.nombre);
+        var hasEj = hasEjecucionMes(c.nombre, selectedMes);
+        var hasConf = hasImpConfig(c.nombre);
+        var partsLoaded = (hasPres ? 1 : 0) + (hasEj ? 1 : 0) + (hasConf ? 1 : 0);
+        var pct = Math.round(partsLoaded / 3 * 100);
+        var barColor = pct === 100 ? 'var(--green)' : pct > 0 ? 'var(--amber)' : '#e2e8f0';
+
+        h += '<div class="pc-client-card" onclick="idxOpenCliente(\'' + esc(c.nombre).replace(/'/g, "\\'") + '\')">';
+        h += '<div class="pc-client-card-name">' + esc(c.nombre) + '</div>';
+        h += '<div class="pc-client-card-contadora">' + esc(ct) + '</div>';
+        h += '<div class="pc-client-card-progress">';
+        h += '<div class="pc-client-card-bar"><div class="pc-client-card-fill" style="width:' + pct + '%;background:' + barColor + '"></div></div>';
+        h += '<div class="pc-client-card-pct" style="color:' + barColor + '">' + partsLoaded + '/3</div>';
+        h += '</div>';
+        h += '<div class="pc-client-card-status" style="margin-top:6px;display:flex;gap:6px;flex-wrap:wrap">';
+        h += '<span class="pc-status-badge ' + (hasPres ? 'pc-status-completo' : 'pc-status-pendiente') + '" style="font-size:0.65rem">Pres ' + (hasPres ? '✓' : '✗') + '</span>';
+        h += '<span class="pc-status-badge ' + (hasEj ? 'pc-status-completo' : 'pc-status-pendiente') + '" style="font-size:0.65rem">Ejec ' + (hasEj ? '✓' : '✗') + '</span>';
+        h += '<span class="pc-status-badge ' + (hasConf ? 'pc-status-completo' : 'pc-status-pendiente') + '" style="font-size:0.65rem">Config ' + (hasConf ? '✓' : '✗') + '</span>';
+        h += '</div></div>';
+      });
+      h += '</div>';
+    }
 
   } else {
-    // Checklist index view (original)
+    // Checklist index view
     var completados = 0, enProgreso = 0, sinIniciar = 0;
     clientes.forEach(function(c) {
       var p = getClienteOverallProgress(c.nombre, selectedMes);
@@ -1034,48 +1104,74 @@ function renderAdminIndex() {
     h += '<div class="summary-stat"><div class="summary-stat-label">Avance promedio</div><div class="summary-stat-value" style="color:' + progressColor(avgPct) + '">' + avgPct + '%</div></div>';
     h += '</div>';
 
-    h += '<div style="overflow-x:auto"><table class="check-table">';
-    h += '<thead><tr>';
-    h += '<th style="width:30px">#</th>';
-    h += '<th>Cliente</th>';
-    h += '<th>Contadora</th>';
-    IMPUESTOS.forEach(function(imp) {
-      h += '<th class="center">' + imp.label + '</th>';
-    });
-    h += '<th class="center">Avance</th>';
-    h += '<th class="center">Estado</th>';
-    h += '</tr></thead><tbody>';
+    h += '<div class="view-toggle-row"><div class="view-toggle">';
+    h += '<button class="view-toggle-btn' + (portalViewMode === 'table' ? ' active' : '') + '" onclick="portalToggleView(\'table\')">' + iconTable + ' Tabla</button>';
+    h += '<button class="view-toggle-btn' + (portalViewMode === 'cards' ? ' active' : '') + '" onclick="portalToggleView(\'cards\')">' + iconCards + ' Cuadros</button>';
+    h += '</div></div>';
 
-    clientes.forEach(function(c, i) {
-      var overall = getClienteOverallProgress(c.nombre, selectedMes);
-      var ct = c.contadora_impuestos || 'Sin asignar';
-
-      h += '<tr onclick="idxOpenCliente(\'' + esc(c.nombre).replace(/'/g, "\\'") + '\')">';
-      h += '<td style="color:var(--light);font-size:0.75rem">' + (i + 1) + '</td>';
-      h += '<td style="font-weight:600">' + esc(c.nombre) + '</td>';
-      h += '<td style="font-size:0.78rem;color:var(--muted)">' + esc(ct) + '</td>';
-
+    if (portalViewMode === 'table') {
+      h += '<div style="overflow-x:auto"><table class="check-table">';
+      h += '<thead><tr>';
+      h += '<th style="width:30px">#</th>';
+      h += '<th>Cliente</th>';
+      h += '<th>Contadora</th>';
       IMPUESTOS.forEach(function(imp) {
-        var status = getClienteTaxStatus(c.nombre, selectedMes, imp.id);
-        var prog = getClienteTaxProgress(c.nombre, selectedMes, imp.id);
-        h += '<td class="center"><span class="pc-status-badge ' + (status === 'verde' ? 'pc-status-completo' : status === 'rojo' ? 'pc-status-urgente' : status === 'amarillo' ? 'pc-status-progreso' : 'pc-status-pendiente') + '">' + prog.done + '/' + prog.total + '</span></td>';
+        h += '<th class="center">' + imp.label + '</th>';
+      });
+      h += '<th class="center">Avance</th>';
+      h += '<th class="center">Estado</th>';
+      h += '</tr></thead><tbody>';
+
+      clientes.forEach(function(c, i) {
+        var overall = getClienteOverallProgress(c.nombre, selectedMes);
+        var ct = c.contadora_impuestos || 'Sin asignar';
+
+        h += '<tr onclick="idxOpenCliente(\'' + esc(c.nombre).replace(/'/g, "\\'") + '\')">';
+        h += '<td style="color:var(--light);font-size:0.75rem">' + (i + 1) + '</td>';
+        h += '<td style="font-weight:600">' + esc(c.nombre) + '</td>';
+        h += '<td style="font-size:0.78rem;color:var(--muted)">' + esc(ct) + '</td>';
+
+        IMPUESTOS.forEach(function(imp) {
+          var status = getClienteTaxStatus(c.nombre, selectedMes, imp.id);
+          var prog = getClienteTaxProgress(c.nombre, selectedMes, imp.id);
+          h += '<td class="center"><span class="pc-status-badge ' + (status === 'verde' ? 'pc-status-completo' : status === 'rojo' ? 'pc-status-urgente' : status === 'amarillo' ? 'pc-status-progreso' : 'pc-status-pendiente') + '">' + prog.done + '/' + prog.total + '</span></td>';
+        });
+
+        h += '<td class="center">';
+        h += '<div class="pc-progress">';
+        h += '<div class="pc-progress-bar"><div class="pc-progress-fill" style="width:' + overall.pct + '%;background:' + progressColor(overall.pct) + '"></div></div>';
+        h += '<div class="pc-progress-text" style="color:' + progressColor(overall.pct) + '">' + overall.pct + '%</div>';
+        h += '</div></td>';
+
+        var overallStatus = overall.pct === 100 ? 'Completado' : overall.pct > 0 ? 'En progreso' : 'Pendiente';
+        var overallClass = overall.pct === 100 ? 'pc-status-completo' : overall.pct > 0 ? 'pc-status-progreso' : 'pc-status-pendiente';
+        if (ct === 'Sin asignar') { overallStatus = 'Sin asignar'; overallClass = 'pc-status-sinasignar'; }
+        h += '<td class="center"><span class="pc-status-badge ' + overallClass + '">' + overallStatus + '</span></td>';
+
+        h += '</tr>';
       });
 
-      h += '<td class="center">';
-      h += '<div class="pc-progress">';
-      h += '<div class="pc-progress-bar"><div class="pc-progress-fill" style="width:' + overall.pct + '%;background:' + progressColor(overall.pct) + '"></div></div>';
-      h += '<div class="pc-progress-text" style="color:' + progressColor(overall.pct) + '">' + overall.pct + '%</div>';
-      h += '</div></td>';
+      h += '</tbody></table></div>';
+    } else {
+      // Cards view - Checklist
+      h += '<div class="pc-client-grid">';
+      clientes.forEach(function(c) {
+        var overall = getClienteOverallProgress(c.nombre, selectedMes);
+        var ct = c.contadora_impuestos || 'Sin asignar';
+        var barColor = overall.pct === 100 ? 'var(--green)' : overall.pct > 0 ? 'var(--amber)' : '#e2e8f0';
 
-      var overallStatus = overall.pct === 100 ? 'Completado' : overall.pct > 0 ? 'En progreso' : 'Pendiente';
-      var overallClass = overall.pct === 100 ? 'pc-status-completo' : overall.pct > 0 ? 'pc-status-progreso' : 'pc-status-pendiente';
-      if (ct === 'Sin asignar') { overallStatus = 'Sin asignar'; overallClass = 'pc-status-sinasignar'; }
-      h += '<td class="center"><span class="pc-status-badge ' + overallClass + '">' + overallStatus + '</span></td>';
-
-      h += '</tr>';
-    });
-
-    h += '</tbody></table></div>';
+        h += '<div class="pc-client-card" onclick="idxOpenCliente(\'' + esc(c.nombre).replace(/'/g, "\\'") + '\')">';
+        h += '<div class="pc-client-card-name">' + esc(c.nombre) + '</div>';
+        h += '<div class="pc-client-card-contadora">' + esc(ct) + '</div>';
+        h += '<div class="pc-client-card-progress">';
+        h += '<div class="pc-client-card-bar"><div class="pc-client-card-fill" style="width:' + overall.pct + '%;background:' + barColor + '"></div></div>';
+        h += '<div class="pc-client-card-pct" style="color:' + progressColor(overall.pct) + '">' + overall.pct + '%</div>';
+        h += '</div>';
+        h += '<div style="font-size:0.72rem;color:var(--muted);margin-top:4px">' + overall.done + ' de ' + overall.total + ' tareas</div>';
+        h += '</div>';
+      });
+      h += '</div>';
+    }
   }
 
   el.innerHTML = h;
@@ -1112,6 +1208,11 @@ function idxBackToIndex() {
   document.getElementById('clientName').textContent = 'Admin';
   renderMainTabs();
   renderAdminNav();
+  renderAdminIndex();
+}
+
+function portalToggleView(mode) {
+  portalViewMode = mode;
   renderAdminIndex();
 }
 
@@ -1204,6 +1305,9 @@ function render() {
 function renderDashboard(el, backHtml) {
   var h = backHtml || '';
 
+  if (clienteNombre) {
+    h += '<div style="margin-bottom:12px;font-size:1.2rem;font-weight:800;color:var(--navy)">' + esc(clienteNombre) + '</div>';
+  }
   h += '<div style="margin-bottom:20px"><span style="font-size:1.1rem;font-weight:700">' + MESES_FULL[MESES_KEY.indexOf(selectedMes)] + ' 2026</span>';
   h += '<span style="font-size:0.85rem;color:var(--muted);margin-left:12px">Resumen de impuestos</span></div>';
 
@@ -1243,6 +1347,9 @@ function renderChecklist(el, impuesto, backHtml) {
   var prog = getTaxProgress(impuesto, selectedMes);
   var h = backHtml || '';
 
+  if (clienteNombre) {
+    h += '<div style="margin-bottom:12px;font-size:1.2rem;font-weight:800;color:var(--navy)">' + esc(clienteNombre) + '</div>';
+  }
   h += '<div style="margin-bottom:16px"><span style="font-size:1.1rem;font-weight:700">' + esc(impuesto) + '</span>';
   h += '<span style="font-size:0.85rem;color:var(--muted);margin-left:12px">' + MESES_FULL[MESES_KEY.indexOf(selectedMes)] + ' 2026</span></div>';
 
@@ -1366,6 +1473,10 @@ function pmCloseDetail() {
 function renderPresentacion(el, backHtml) {
   var h = backHtml || '';
 
+  if (clienteNombre) {
+    h += '<div style="margin-bottom:12px;font-size:1.2rem;font-weight:800;color:var(--navy)">' + esc(clienteNombre) + '</div>';
+  }
+
   if (!pmDetail) {
     h += '<div style="margin-bottom:20px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">';
     h += '<div><span style="font-size:1.1rem;font-weight:700">' + MESES_FULL[MESES_KEY.indexOf(selectedMes)] + ' ' + pmYear + '</span>';
@@ -1470,8 +1581,11 @@ function renderPresupuestoDetail() {
   qRange.forEach(function(m) {
     var ej = pmGetEjecucionMes(m);
     var val = ej ? (ej.ingreso_financiero || 0) : 0;
+    var metaIF = pmGetMetaMensual('ingreso_financiero');
+    var pctIF = metaIF ? (val / metaIF * 100) : 0;
+    var colorIF = metaIF ? pmPctColor(pctIF, false) : '#999';
     h += '<td class="pm-text-right" style="color:#666">' + pmFormatMoney(val) + '</td>';
-    h += '<td class="pm-text-right" style="color:#999;border-right:' + (m < qRange[2] ? '2px solid var(--border)' : 'none') + '">—</td>';
+    h += '<td class="pm-text-right" style="border-right:' + (m < qRange[2] ? '2px solid var(--border)' : 'none') + '"><span style="color:' + colorIF + ';font-weight:600">' + (metaIF ? pctIF.toFixed(2) + '%' : '—') + '</span></td>';
   });
   h += '</tr>';
 
@@ -1480,8 +1594,11 @@ function renderPresupuestoDetail() {
   qRange.forEach(function(m) {
     var ej = pmGetEjecucionMes(m);
     var val = ej ? (ej.gastos_no_admitidos || 0) : 0;
+    var metaGNA = pmGetMetaMensual('gastos_no_admitidos');
+    var pctGNA = metaGNA ? (val / metaGNA * 100) : 0;
+    var colorGNA = metaGNA ? pmPctColor(pctGNA, true) : '#999';
     h += '<td class="pm-text-right" style="color:#666">' + pmFormatMoney(val) + '</td>';
-    h += '<td class="pm-text-right" style="color:#999;border-right:' + (m < qRange[2] ? '2px solid var(--border)' : 'none') + '">—</td>';
+    h += '<td class="pm-text-right" style="border-right:' + (m < qRange[2] ? '2px solid var(--border)' : 'none') + '"><span style="color:' + colorGNA + ';font-weight:600">' + (metaGNA ? pctGNA.toFixed(2) + '%' : '—') + '</span></td>';
   });
   h += '</tr>';
 
@@ -1567,19 +1684,19 @@ function renderPresupuestoDetail() {
     var val = ejMes ? (ejMes[r.key] || 0) : 0;
     var meta = pmGetMetaMensual(r.key);
     var pct = pmPctMeta(val, meta);
-    var badge = pmBadgeStatus(pct, r.tipo);
+    var semCol = pmSemColor(pct, r.tipo);
     h += '<tr><td class="pm-text-right pm-font-bold">$' + pmFormatMoney(val) + '</td>';
     h += '<td class="pm-text-center">' + pct.toFixed(2) + '%</td>';
-    h += '<td class="pm-text-center"><span class="pm-badge ' + badge.cls + '">' + badge.label + '</span></td></tr>';
+    h += '<td class="pm-text-center"><span class="pm-sem ' + semCol + '" style="padding:2px 8px"><span class="pm-dot"></span></span></td></tr>';
   });
 
   var ejResOp = ejMes ? ((ejMes.ventas_it1 || 0) - (ejMes.costos_operativos || 0) - (ejMes.gastos || 0)) : 0;
   var metaResOpMes = pmGetMetaMensual('ventas_it1') - pmGetMetaMensual('costos_operativos') - pmGetMetaMensual('gastos');
   var pctResOp = metaResOpMes ? (ejResOp / metaResOpMes * 100) : 0;
-  var badgeResOp = pmBadgeStatus(pctResOp, 'beneficio');
+  var semResOp = pmSemColor(pctResOp, 'beneficio');
   h += '<tr class="pm-row-total"><td class="pm-text-right pm-font-bold">$' + pmFormatMoney(ejResOp) + '</td>';
   h += '<td class="pm-text-center">' + pctResOp.toFixed(2) + '%</td>';
-  h += '<td class="pm-text-center"><span class="pm-badge ' + badgeResOp.cls + '">' + badgeResOp.label + '</span></td></tr>';
+  h += '<td class="pm-text-center"><span class="pm-sem ' + semResOp + '" style="padding:2px 8px"><span class="pm-dot"></span></span></td></tr>';
 
   var ejIF = ejMes ? (ejMes.ingreso_financiero || 0) : 0;
   var metaIF = pmGetMetaMensual('ingreso_financiero');
@@ -1637,7 +1754,7 @@ function renderPresupuestoDetail() {
   qRows.forEach(function(r) {
     var diff = r.ej - r.meta;
     var pct = r.meta ? (r.ej / r.meta * 100) : 0;
-    var badge = pmBadgeStatus(pct, r.tipo);
+    var semCol = pmSemColor(pct, r.tipo);
     var diffColor = (r.tipo === 'ventas') ? (diff >= 0 ? 'var(--green)' : 'var(--red)') : (diff <= 0 ? 'var(--green)' : 'var(--red)');
     var diffSign = diff >= 0 ? '+' : '';
     h += '<tr><td class="pm-font-bold">' + r.label + '</td>';
@@ -1645,32 +1762,42 @@ function renderPresupuestoDetail() {
     h += '<td class="pm-text-right">' + pmFormatMoneyShort(r.ej) + '</td>';
     h += '<td class="pm-text-right" style="color:' + diffColor + '">' + diffSign + pmFormatMoneyShort(diff) + '</td>';
     h += '<td class="pm-text-center"><span style="color:' + (pct >= 80 ? 'var(--green)' : 'var(--amber)') + ';font-weight:600">' + pct.toFixed(2) + '%</span></td>';
-    h += '<td class="pm-text-center"><span class="pm-badge ' + badge.cls + '">' + badge.label + '</span></td></tr>';
+    h += '<td class="pm-text-center"><span class="pm-sem ' + semCol + '" style="padding:2px 8px"><span class="pm-dot"></span></span></td></tr>';
   });
 
   var diffResOp = qResOp - qMetaResOp;
   var pctResOp = qMetaResOp ? (qResOp / qMetaResOp * 100) : 0;
-  var badgeResOp = pmBadgeStatus(pctResOp, 'beneficio');
+  var semResOp = pmSemColor(pctResOp, 'beneficio');
   h += '<tr class="pm-row-total"><td class="pm-font-bold">Resultado Op.</td>';
   h += '<td class="pm-text-right">' + pmFormatMoneyShort(qMetaResOp) + '</td>';
   h += '<td class="pm-text-right">' + pmFormatMoneyShort(qResOp) + '</td>';
   h += '<td class="pm-text-right" style="color:' + (diffResOp >= 0 ? 'var(--green)' : 'var(--red)') + '">' + (diffResOp >= 0 ? '+' : '') + pmFormatMoneyShort(diffResOp) + '</td>';
   h += '<td class="pm-text-center"><span style="color:' + (pctResOp >= 80 ? 'var(--green)' : 'var(--amber)') + ';font-weight:600">' + pctResOp.toFixed(2) + '%</span></td>';
-  h += '<td class="pm-text-center"><span class="pm-badge ' + badgeResOp.cls + '">' + badgeResOp.label + '</span></td></tr>';
+  h += '<td class="pm-text-center"><span class="pm-sem ' + semResOp + '" style="padding:2px 8px"><span class="pm-dot"></span></span></td></tr>';
 
   // Ing./Gasto Fin.
+  var qMetaIF = pmGetMetaMensual('ingreso_financiero') * 3;
+  var qPctIF = qMetaIF ? (qTotalIF / qMetaIF * 100) : 0;
+  var qDiffIF = qTotalIF - qMetaIF;
+  var qSemIF = qMetaIF ? pmSemColor(qPctIF, 'ventas') : 'na';
   h += '<tr><td class="pm-font-bold" style="color:var(--muted)">Ing./Gasto Fin.</td>';
-  h += '<td class="pm-text-right" style="color:#666">—</td>';
+  h += '<td class="pm-text-right" style="color:#666">' + (qMetaIF ? pmFormatMoneyShort(qMetaIF) : '—') + '</td>';
   h += '<td class="pm-text-right" style="color:#666">' + pmFormatMoneyShort(qTotalIF) + '</td>';
-  h += '<td class="pm-text-right" style="color:#666">' + (qTotalIF >= 0 ? '+' : '') + pmFormatMoneyShort(qTotalIF) + '</td>';
-  h += '<td></td><td></td></tr>';
+  h += '<td class="pm-text-right" style="color:' + (qDiffIF >= 0 ? 'var(--green)' : 'var(--red)') + '">' + (qDiffIF >= 0 ? '+' : '') + pmFormatMoneyShort(qDiffIF) + '</td>';
+  h += '<td class="pm-text-center">' + (qMetaIF ? '<span style="color:' + (qPctIF >= 80 ? 'var(--green)' : 'var(--amber)') + ';font-weight:600">' + qPctIF.toFixed(2) + '%</span>' : '') + '</td>';
+  h += '<td class="pm-text-center">' + (qMetaIF ? '<span class="pm-sem ' + qSemIF + '" style="padding:2px 8px"><span class="pm-dot"></span></span>' : '') + '</td></tr>';
 
   // Gtos. No Admitidos
+  var qMetaGNA = pmGetMetaMensual('gastos_no_admitidos') * 3;
+  var qPctGNA = qMetaGNA ? (qTotalGNA / qMetaGNA * 100) : 0;
+  var qDiffGNA = qTotalGNA - qMetaGNA;
+  var qSemGNA = qMetaGNA ? pmSemColor(qPctGNA, 'gasto') : 'na';
   h += '<tr><td class="pm-font-bold" style="color:var(--muted)">Gtos. No Admitidos</td>';
-  h += '<td class="pm-text-right" style="color:#666">—</td>';
+  h += '<td class="pm-text-right" style="color:#666">' + (qMetaGNA ? pmFormatMoneyShort(qMetaGNA) : '—') + '</td>';
   h += '<td class="pm-text-right" style="color:#666">' + pmFormatMoneyShort(qTotalGNA) + '</td>';
-  h += '<td class="pm-text-right" style="color:#666">' + (qTotalGNA >= 0 ? '+' : '') + pmFormatMoneyShort(qTotalGNA) + '</td>';
-  h += '<td></td><td></td></tr>';
+  h += '<td class="pm-text-right" style="color:' + (qDiffGNA <= 0 ? 'var(--green)' : 'var(--red)') + '">' + (qDiffGNA >= 0 ? '+' : '') + pmFormatMoneyShort(qDiffGNA) + '</td>';
+  h += '<td class="pm-text-center">' + (qMetaGNA ? '<span style="color:' + (qPctGNA <= 100 ? 'var(--green)' : 'var(--red)') + ';font-weight:600">' + qPctGNA.toFixed(2) + '%</span>' : '') + '</td>';
+  h += '<td class="pm-text-center">' + (qMetaGNA ? '<span class="pm-sem ' + qSemGNA + '" style="padding:2px 8px"><span class="pm-dot"></span></span>' : '') + '</td></tr>';
 
   h += '</tbody></table>';
 
