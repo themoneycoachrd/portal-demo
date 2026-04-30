@@ -155,7 +155,7 @@ body.embed .content { padding-top:12px; }
 
 /* Total rows, ganancia bar */
 .pm-row-total td { border-top:2px solid var(--border); font-weight:700; background:#fffbeb !important; }
-.pm-ganancia { background:var(--navy); color:white; padding:12px 20px; display:flex; justify-content:space-between; align-items:center; font-size:0.85rem; font-weight:700; }
+.pm-ganancia { background:#000; color:white; padding:12px 20px; display:flex; justify-content:space-between; align-items:center; font-size:0.85rem; font-weight:700; }
 .pm-ganancia .pm-amount { color:var(--green); font-size:1.1rem; font-weight:800; }
 
 /* Summary cards */
@@ -1176,7 +1176,7 @@ function renderPresupuestoDetail() {
 
   h += '<div class="pm-panel" style="margin-bottom:16px">';
   h += '<div class="pm-panel-hdr" style="background:var(--navy);color:white;border-bottom:none">';
-  h += '<h3 style="color:white;text-transform:uppercase;font-size:0.78rem;letter-spacing:0.3px">' + qLabels[quarter - 1] + ' — ' + qMonthNames[0] + ' a ' + qMonthNames[2] + ' ' + pmYear + '</h3></div>';
+  h += '<h3 style="color:white;text-transform:uppercase;font-size:0.78rem;letter-spacing:0.3px">Trimestre por mes</h3></div>';
   h += '<div class="pm-panel-body" style="overflow-x:auto"><table>';
 
   h += '<thead><tr><th style="min-width:90px"></th>';
@@ -1245,7 +1245,7 @@ function renderPresupuestoDetail() {
   h += '</tr>';
 
   // Ganancia/Pérdida
-  h += '<tr class="pm-row-total" style="background:var(--navy)"><td class="pm-font-bold" style="color:white">Ganancia/Pérdida</td>';
+  h += '<tr class="pm-row-total" style="background:#000"><td class="pm-font-bold" style="color:white">Ganancia/Pérdida</td>';
   qRange.forEach(function(m) {
     var ej = pmGetEjecucionMes(m);
     var v = ej ? (ej.ventas_it1 || 0) : 0;
@@ -1262,7 +1262,7 @@ function renderPresupuestoDetail() {
 
   h += '</tbody></table></div></div>';
 
-  h += '<div class="pm-section-label">Detalle — ' + MESES_FULL[mesNum - 1] + ' ' + pmYear + '</div>';
+  h += '<div class="pm-section-label">Mes en curso</div>';
   h += '<div class="pm-dual">';
 
   h += '<div class="pm-panel"><div class="pm-panel-hdr">';
@@ -1301,7 +1301,7 @@ function renderPresupuestoDetail() {
 
   var ganAnual = resOpAnual + pIF - pGNA;
   var ganPresColor = ganAnual >= 0 ? '#4ade80' : '#f87171';
-  h += '<tr class="pm-row-total" style="background:var(--navy)"><td class="pm-font-bold" style="color:white">Ganancia/Pérdida</td>';
+  h += '<tr class="pm-row-total" style="background:#000"><td class="pm-font-bold" style="color:white">Ganancia/Pérdida</td>';
   h += '<td class="pm-text-right" style="color:' + ganPresColor + '">$' + pmFormatMoney(ganAnual) + '</td>';
   h += '<td class="pm-text-right" style="color:' + ganPresColor + '">$' + pmFormatMoney(ganAnual / 12) + '</td></tr>';
   h += '</tbody></table></div></div>';
@@ -1353,7 +1353,7 @@ function renderPresupuestoDetail() {
 
   var ejGanancia = ejResOp + ejIF - ejGNA;
   var ganColor = ejGanancia >= 0 ? 'var(--green)' : 'var(--red)';
-  h += '<tr class="pm-row-total" style="background:var(--navy)"><td class="pm-text-right pm-font-bold" style="color:white">$' + pmFormatMoney(ejGanancia) + '</td>';
+  h += '<tr class="pm-row-total" style="background:#000"><td class="pm-text-right pm-font-bold" style="color:white">$' + pmFormatMoney(ejGanancia) + '</td>';
   h += '<td colspan="2" style="color:white;font-weight:600;padding-left:8px">Ganancia/Pérdida</td></tr>';
 
   h += '</tbody></table></div></div></div>';
@@ -1373,10 +1373,10 @@ function renderPresupuestoDetail() {
   var qMetaG = pmGetMetaMensual('gastos') * 3;
   var qMetaResOp = qMetaV - qMetaC - qMetaG;
 
-  h += '<div class="pm-section-label" style="margin-top:20px">Resultado ' + qLabels[quarter - 1] + ' — ' + qMonthNames[0] + ' a ' + qMonthNames[2] + ' ' + pmYear + '</div>';
+  h += '<div class="pm-section-label" style="margin-top:20px">Trimestre completo</div>';
   h += '<div class="pm-panel" style="margin-bottom:16px">';
   h += '<div class="pm-panel-hdr" style="background:var(--navy);color:white;border-bottom:none">';
-  h += '<h3 style="color:white;text-transform:uppercase;font-size:0.78rem;letter-spacing:0.3px">¿Se cumplió la meta del trimestre?</h3></div>';
+  h += '<h3 style="color:white;text-transform:uppercase;font-size:0.78rem;letter-spacing:0.3px">Trimestre completo</h3></div>';
   h += '<div class="pm-panel-body"><table><thead><tr>';
   h += '<th>Concepto</th><th class="pm-text-right">Meta ' + qLabels[quarter - 1] + '</th><th class="pm-text-right">Ejecutado ' + qLabels[quarter - 1] + '</th><th class="pm-text-right">Diferencia</th><th class="pm-text-center">% Logrado</th><th class="pm-text-center">Estado</th>';
   h += '</tr></thead><tbody>';
