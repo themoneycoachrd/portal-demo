@@ -260,6 +260,18 @@ body {
 .sidebar-toggle svg { width: 14px; height: 14px; stroke: var(--muted); fill: none; stroke-width: 2; transition: transform 0.2s; }
 .sidebar.collapsed .sidebar-toggle svg { transform: rotate(180deg); }
 
+/* ─── Role switcher (admin only) ─── */
+.role-switcher { padding: 8px 18px 4px; }
+.role-switcher.hidden { display: none; }
+.role-switcher select {
+  width: 100%; padding: 6px 10px; font-size: 0.75rem; border: 1px solid var(--border);
+  border-radius: 8px; background: #fff; color: var(--navy); cursor: pointer;
+  font-weight: 500;
+}
+.role-switcher select:focus { outline: none; border-color: var(--blue); }
+.role-switcher-label { font-size: 0.62rem; color: var(--muted); margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.5px; }
+.sidebar.collapsed .role-switcher { display: none; }
+
 /* ─── Version tag ─── */
 .sidebar-version {
   padding: 8px 18px 12px;
@@ -507,6 +519,7 @@ body {
         </div>
         <button class="btn-logout-small" onclick="handleLogout()">Salir</button>
       </div>
+      <div id="role-switcher" class="role-switcher hidden"></div>
     </div>
 
     <div class="sidebar-version">
@@ -557,11 +570,13 @@ let activeSection = null;
 
 const ROLE_LABELS = {
   admin: 'Administrador',
-  ventas: 'Ventas',
-  contadora: 'Contadora',
-  implementadora: 'Implementadora',
-  analista: 'Analista'
+  comercial: 'Comercial',
+  contadores: 'Contadores',
+  impuestos: 'Impuestos',
+  implementaciones: 'Implementaciones'
 };
+
+let realRole = null; // el rol verdadero del usuario (no cambia)
 
 // Estructura del menu: secciones con hijos (expandibles) o modulos directos
 const MENU = [
@@ -1147,6 +1162,7 @@ async function handleLogin() {
 async function handleLogout() {
   await sb.auth.signOut();
   userRole = null;
+  realRole = null;
   userName = '';
   activeModule = null;
   activeSection = null;
@@ -1167,10 +1183,47 @@ async function loadUserProfile() {
 
   if (profile) {
     userRole = profile.rol;
+    realRole = profile.rol;
     userName = profile.nombre || user.email;
   } else {
     userRole = 'contadores';
+    realRole = 'contadores';
     userName = user.email;
+  }
+}
+
+function renderRoleSwitcher() {
+  var el = document.getElementById('role-switcher');
+  if (realRole !== 'admin') { el.classList.add('hidden'); return; }
+
+  var roles = ['admin', 'comercial', 'contadores', 'impuestos', 'implementaciones'];
+  var h = '<div class="role-switcher-label">Ver como</div>';
+  h += '<select onchange="switchRole(this.value)">';
+  roles.forEach(function(r) {
+    h += '<option value="' + r + '"' + (r === userRole ? ' selected' : '') + '>' + ROLE_LABELS[r] + '</option>';
+  });
+  h += '</select>';
+  el.innerHTML = h;
+  el.classList.remove('hidden');
+}
+
+function switchRole(newRole) {
+  userRole = newRole;
+  renderUserInfo();
+  renderSidebar();
+
+  // Si el módulo activo ya no es visible con este rol, volver al inicio
+  if (activeModule) {
+    var allMods = getAllModulesFlat();
+    var current = allMods.find(function(m) { return m.id === activeModule; });
+    if (!current || !current.roles.includes(userRole)) {
+      activeModule = null;
+      activeSection = null;
+      document.getElementById('module-iframe').src = '';
+      document.getElementById('module-iframe').classList.add('hidden');
+      document.getElementById('main-content').classList.remove('hidden');
+      renderSidebar();
+    }
   }
 }
 
@@ -1179,6 +1232,7 @@ async function showApp() {
   document.getElementById('app-wrapper').classList.remove('hidden');
 
   renderUserInfo();
+  renderRoleSwitcher();
   renderSidebar();
   renderWelcome();
 
