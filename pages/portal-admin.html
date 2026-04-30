@@ -1410,7 +1410,8 @@ function renderPresupuestoDetail() {
   var conceptos = [
     { key: 'ventas_it1', label: 'Ventas IT1', tipo: 'ventas' },
     { key: 'costos_operativos', label: 'Costos Op.', tipo: 'costo' },
-    { key: 'gastos', label: 'Gastos', tipo: 'gasto' }
+    { key: 'gastos', label: 'Gastos', tipo: 'gasto' },
+    { key: 'salarios', label: 'Salarios', tipo: 'gasto' }
   ];
 
   conceptos.forEach(function(c) {
@@ -1427,17 +1428,18 @@ function renderPresupuestoDetail() {
     h += '</tr>';
   });
 
-  h += '<tr class="pm-row-total"><td class="pm-font-bold">Beneficios</td>';
+  h += '<tr class="pm-row-total"><td class="pm-font-bold">Resultado Op.</td>';
   qRange.forEach(function(m) {
     var ej = pmGetEjecucionMes(m);
     var v = ej ? (ej.ventas_it1 || 0) : 0;
     var c = ej ? (ej.costos_operativos || 0) : 0;
     var g = ej ? (ej.gastos || 0) : 0;
-    var benef = v - c - g;
-    var metaBenef = pmGetMetaMensual('ventas_it1') - pmGetMetaMensual('costos_operativos') - pmGetMetaMensual('gastos');
-    var pct = metaBenef ? (benef / metaBenef * 100) : 0;
-    var color = benef >= 0 ? 'var(--green)' : 'var(--red)';
-    h += '<td class="pm-text-right" style="color:' + color + '">' + pmFormatMoney(benef) + '</td>';
+    var s = ej ? (ej.salarios || 0) : 0;
+    var resOp = v - c - g - s;
+    var metaResOp = pmGetMetaMensual('ventas_it1') - pmGetMetaMensual('costos_operativos') - pmGetMetaMensual('gastos') - pmGetMetaMensual('salarios');
+    var pct = metaResOp ? (resOp / metaResOp * 100) : 0;
+    var color = resOp >= 0 ? 'var(--green)' : 'var(--red)';
+    h += '<td class="pm-text-right" style="color:' + color + '">' + pmFormatMoney(resOp) + '</td>';
     h += '<td class="pm-text-right" style="border-right:' + (m < qRange[2] ? '2px solid var(--border)' : 'none') + '"><span style="color:' + color + ';font-weight:600">' + pct.toFixed(2) + '%</span></td>';
   });
   h += '</tr></tbody></table></div></div>';
@@ -1454,7 +1456,8 @@ function renderPresupuestoDetail() {
   var presRows = [
     { label: 'Ventas IT1', key: 'ventas_it1' },
     { label: 'Costos Op.', key: 'costos_operativos' },
-    { label: 'Gastos', key: 'gastos' }
+    { label: 'Gastos', key: 'gastos' },
+    { label: 'Salarios', key: 'salarios' }
   ];
   presRows.forEach(function(r) {
     var anual = pmPresupuesto ? (pmPresupuesto[r.key + '_anual'] || 0) : 0;
@@ -1462,10 +1465,24 @@ function renderPresupuestoDetail() {
     h += '<td class="pm-text-right">$' + pmFormatMoney(anual) + '</td>';
     h += '<td class="pm-text-right">$' + pmFormatMoney(anual / 12) + '</td></tr>';
   });
-  var benefAnual = pmPresupuesto ? ((pmPresupuesto.ventas_it1_anual || 0) - (pmPresupuesto.costos_operativos_anual || 0) - (pmPresupuesto.gastos_anual || 0)) : 0;
-  h += '<tr><td class="pm-font-bold">Beneficios</td>';
-  h += '<td class="pm-text-right">$' + pmFormatMoney(benefAnual) + '</td>';
-  h += '<td class="pm-text-right">$' + pmFormatMoney(benefAnual / 12) + '</td></tr>';
+  var pV = pmPresupuesto ? (pmPresupuesto.ventas_it1_anual || 0) : 0;
+  var pC = pmPresupuesto ? (pmPresupuesto.costos_operativos_anual || 0) : 0;
+  var pG = pmPresupuesto ? (pmPresupuesto.gastos_anual || 0) : 0;
+  var pS = pmPresupuesto ? (pmPresupuesto.salarios_anual || 0) : 0;
+  var pIF = pmPresupuesto ? (pmPresupuesto.ingreso_financiero_anual || 0) : 0;
+  var pGNA = pmPresupuesto ? (pmPresupuesto.gastos_no_admitidos_anual || 0) : 0;
+  var resOpAnual = pV - pC - pG - pS;
+  h += '<tr class="pm-row-total"><td class="pm-font-bold">Resultado Op.</td>';
+  h += '<td class="pm-text-right" style="color:' + (resOpAnual >= 0 ? 'var(--green)' : 'var(--red)') + '">$' + pmFormatMoney(resOpAnual) + '</td>';
+  h += '<td class="pm-text-right" style="color:' + (resOpAnual >= 0 ? 'var(--green)' : 'var(--red)') + '">$' + pmFormatMoney(resOpAnual / 12) + '</td></tr>';
+  if (pIF || pGNA) {
+    if (pIF) { h += '<tr><td class="pm-font-bold">Ing. Financiero</td><td class="pm-text-right">$' + pmFormatMoney(pIF) + '</td><td class="pm-text-right">$' + pmFormatMoney(pIF / 12) + '</td></tr>'; }
+    if (pGNA) { h += '<tr><td class="pm-font-bold">Gtos. No Admitidos</td><td class="pm-text-right">$' + pmFormatMoney(pGNA) + '</td><td class="pm-text-right">$' + pmFormatMoney(pGNA / 12) + '</td></tr>'; }
+    var gananciaAnual = resOpAnual + pIF - pGNA;
+    h += '<tr class="pm-row-total"><td class="pm-font-bold">Ganancia / Pérdida</td>';
+    h += '<td class="pm-text-right" style="color:' + (gananciaAnual >= 0 ? 'var(--green)' : 'var(--red)') + '">$' + pmFormatMoney(gananciaAnual) + '</td>';
+    h += '<td class="pm-text-right" style="color:' + (gananciaAnual >= 0 ? 'var(--green)' : 'var(--red)') + '">$' + pmFormatMoney(gananciaAnual / 12) + '</td></tr>';
+  }
   h += '</tbody></table></div></div>';
 
   var ejMes = pmGetEjecucionMes(mesNum);
@@ -1479,7 +1496,8 @@ function renderPresupuestoDetail() {
   var ejRows = [
     { key: 'ventas_it1', tipo: 'ventas' },
     { key: 'costos_operativos', tipo: 'costo' },
-    { key: 'gastos', tipo: 'gasto' }
+    { key: 'gastos', tipo: 'gasto' },
+    { key: 'salarios', tipo: 'gasto' }
   ];
   ejRows.forEach(function(r) {
     var val = ejMes ? (ejMes[r.key] || 0) : 0;
@@ -1491,25 +1509,41 @@ function renderPresupuestoDetail() {
     h += '<td class="pm-text-center"><span class="pm-badge ' + badge.cls + '">' + badge.label + '</span></td></tr>';
   });
 
-  var ejBenef = ejMes ? ((ejMes.ventas_it1 || 0) - (ejMes.costos_operativos || 0) - (ejMes.gastos || 0)) : 0;
-  var metaBenefMes = pmGetMetaMensual('ventas_it1') - pmGetMetaMensual('costos_operativos') - pmGetMetaMensual('gastos');
-  var pctBenef = metaBenefMes ? (ejBenef / metaBenefMes * 100) : 0;
-  var badgeBenef = pmBadgeStatus(pctBenef, 'beneficio');
-  h += '<tr><td class="pm-text-right pm-font-bold">$' + pmFormatMoney(ejBenef) + '</td>';
-  h += '<td class="pm-text-center">' + pctBenef.toFixed(2) + '%</td>';
-  h += '<td class="pm-text-center"><span class="pm-badge ' + badgeBenef.cls + '">' + badgeBenef.label + '</span></td></tr>';
+  var ejResOp = ejMes ? ((ejMes.ventas_it1 || 0) - (ejMes.costos_operativos || 0) - (ejMes.gastos || 0) - (ejMes.salarios || 0)) : 0;
+  var metaResOpMes = pmGetMetaMensual('ventas_it1') - pmGetMetaMensual('costos_operativos') - pmGetMetaMensual('gastos') - pmGetMetaMensual('salarios');
+  var pctResOp = metaResOpMes ? (ejResOp / metaResOpMes * 100) : 0;
+  var badgeResOp = pmBadgeStatus(pctResOp, 'beneficio');
+  h += '<tr class="pm-row-total"><td class="pm-text-right pm-font-bold">$' + pmFormatMoney(ejResOp) + '</td>';
+  h += '<td class="pm-text-center">' + pctResOp.toFixed(2) + '%</td>';
+  h += '<td class="pm-text-center"><span class="pm-badge ' + badgeResOp.cls + '">' + badgeResOp.label + '</span></td></tr>';
+
+  var ejIF = ejMes ? (ejMes.ingreso_financiero || 0) : 0;
+  var ejGNA = ejMes ? (ejMes.gastos_no_admitidos || 0) : 0;
+  if (ejIF || ejGNA) {
+    if (ejIF) { h += '<tr><td class="pm-text-right pm-font-bold">$' + pmFormatMoney(ejIF) + '</td><td colspan="2" class="pm-text-center" style="font-size:0.75rem;color:#666">Ing. Financiero</td></tr>'; }
+    if (ejGNA) { h += '<tr><td class="pm-text-right pm-font-bold">$' + pmFormatMoney(ejGNA) + '</td><td colspan="2" class="pm-text-center" style="font-size:0.75rem;color:#666">Gtos. No Admitidos</td></tr>'; }
+    var ejGanancia = ejResOp + ejIF - ejGNA;
+    var colorGan = ejGanancia >= 0 ? 'var(--green)' : 'var(--red)';
+    h += '<tr class="pm-row-total"><td class="pm-text-right pm-font-bold" style="color:' + colorGan + '">$' + pmFormatMoney(ejGanancia) + '</td>';
+    h += '<td colspan="2" class="pm-text-center" style="font-size:0.75rem;font-weight:600;color:' + colorGan + '">Ganancia / Pérdida</td></tr>';
+  }
   h += '</tbody></table></div></div></div>';
 
-  var qTotalV = 0, qTotalC = 0, qTotalG = 0;
+  var qTotalV = 0, qTotalC = 0, qTotalG = 0, qTotalS = 0, qTotalIF = 0, qTotalGNA = 0;
   qRange.forEach(function(m) {
     var e = pmGetEjecucionMes(m);
-    if (e) { qTotalV += (e.ventas_it1 || 0); qTotalC += (e.costos_operativos || 0); qTotalG += (e.gastos || 0); }
+    if (e) {
+      qTotalV += (e.ventas_it1 || 0); qTotalC += (e.costos_operativos || 0);
+      qTotalG += (e.gastos || 0); qTotalS += (e.salarios || 0);
+      qTotalIF += (e.ingreso_financiero || 0); qTotalGNA += (e.gastos_no_admitidos || 0);
+    }
   });
-  var qBenef = qTotalV - qTotalC - qTotalG;
+  var qResOp = qTotalV - qTotalC - qTotalG - qTotalS;
   var qMetaV = pmGetMetaMensual('ventas_it1') * 3;
   var qMetaC = pmGetMetaMensual('costos_operativos') * 3;
   var qMetaG = pmGetMetaMensual('gastos') * 3;
-  var qMetaB = qMetaV - qMetaC - qMetaG;
+  var qMetaS = pmGetMetaMensual('salarios') * 3;
+  var qMetaResOp = qMetaV - qMetaC - qMetaG - qMetaS;
 
   h += '<div class="pm-section-label" style="margin-top:20px">Resultado ' + qLabels[quarter - 1] + ' — ' + qMonthNames[0] + ' a ' + qMonthNames[2] + ' ' + pmYear + '</div>';
   h += '<div class="pm-panel" style="margin-bottom:16px">';
@@ -1522,7 +1556,8 @@ function renderPresupuestoDetail() {
   var qRows = [
     { label: 'Ventas', meta: qMetaV, ej: qTotalV, tipo: 'ventas' },
     { label: 'Costos', meta: qMetaC, ej: qTotalC, tipo: 'costo' },
-    { label: 'Gastos', meta: qMetaG, ej: qTotalG, tipo: 'gasto' }
+    { label: 'Gastos', meta: qMetaG, ej: qTotalG, tipo: 'gasto' },
+    { label: 'Salarios', meta: qMetaS, ej: qTotalS, tipo: 'gasto' }
   ];
   qRows.forEach(function(r) {
     var diff = r.ej - r.meta;
@@ -1538,18 +1573,36 @@ function renderPresupuestoDetail() {
     h += '<td class="pm-text-center"><span class="pm-badge ' + badge.cls + '">' + badge.label + '</span></td></tr>';
   });
 
-  var diffB = qBenef - qMetaB;
-  var pctB = qMetaB ? (qBenef / qMetaB * 100) : 0;
-  var badgeB = pmBadgeStatus(pctB, 'beneficio');
-  h += '<tr class="pm-row-total"><td class="pm-font-bold">Beneficios</td>';
-  h += '<td class="pm-text-right">' + pmFormatMoneyShort(qMetaB) + '</td>';
-  h += '<td class="pm-text-right">' + pmFormatMoneyShort(qBenef) + '</td>';
-  h += '<td class="pm-text-right" style="color:' + (diffB >= 0 ? 'var(--green)' : 'var(--red)') + '">' + (diffB >= 0 ? '+' : '') + pmFormatMoneyShort(diffB) + '</td>';
-  h += '<td class="pm-text-center"><span style="color:var(--green);font-weight:600">' + pctB.toFixed(2) + '%</span></td>';
-  h += '<td class="pm-text-center"><span class="pm-badge ' + badgeB.cls + '">' + badgeB.label + '</span></td></tr>';
+  var diffResOp = qResOp - qMetaResOp;
+  var pctResOp = qMetaResOp ? (qResOp / qMetaResOp * 100) : 0;
+  var badgeResOp = pmBadgeStatus(pctResOp, 'beneficio');
+  h += '<tr class="pm-row-total"><td class="pm-font-bold">Resultado Op.</td>';
+  h += '<td class="pm-text-right">' + pmFormatMoneyShort(qMetaResOp) + '</td>';
+  h += '<td class="pm-text-right">' + pmFormatMoneyShort(qResOp) + '</td>';
+  h += '<td class="pm-text-right" style="color:' + (diffResOp >= 0 ? 'var(--green)' : 'var(--red)') + '">' + (diffResOp >= 0 ? '+' : '') + pmFormatMoneyShort(diffResOp) + '</td>';
+  h += '<td class="pm-text-center"><span style="color:' + (pctResOp >= 80 ? 'var(--green)' : 'var(--amber)') + ';font-weight:600">' + pctResOp.toFixed(2) + '%</span></td>';
+  h += '<td class="pm-text-center"><span class="pm-badge ' + badgeResOp.cls + '">' + badgeResOp.label + '</span></td></tr>';
+
+  if (qTotalIF || qTotalGNA) {
+    if (qTotalIF) {
+      h += '<tr><td class="pm-font-bold">Ing. Financiero</td>';
+      h += '<td class="pm-text-right">&ndash;</td><td class="pm-text-right">' + pmFormatMoneyShort(qTotalIF) + '</td>';
+      h += '<td colspan="3"></td></tr>';
+    }
+    if (qTotalGNA) {
+      h += '<tr><td class="pm-font-bold">Gtos. No Admitidos</td>';
+      h += '<td class="pm-text-right">&ndash;</td><td class="pm-text-right">' + pmFormatMoneyShort(qTotalGNA) + '</td>';
+      h += '<td colspan="3"></td></tr>';
+    }
+    var qGanancia = qResOp + qTotalIF - qTotalGNA;
+    h += '<tr class="pm-row-total"><td class="pm-font-bold">Ganancia / Pérdida</td>';
+    h += '<td class="pm-text-right">&ndash;</td><td class="pm-text-right" style="color:' + (qGanancia >= 0 ? 'var(--green)' : 'var(--red)') + '">' + pmFormatMoneyShort(qGanancia) + '</td>';
+    h += '<td colspan="3"></td></tr>';
+  }
   h += '</tbody></table>';
 
-  h += '<div class="pm-ganancia"><span>Ganancia Neta ' + qLabels[quarter - 1] + '</span><span class="pm-amount">$' + pmFormatMoney(qBenef) + '</span></div>';
+  var qResultadoFinal = (qTotalIF || qTotalGNA) ? (qResOp + qTotalIF - qTotalGNA) : qResOp;
+  h += '<div class="pm-ganancia"><span>Resultado ' + qLabels[quarter - 1] + '</span><span class="pm-amount" style="color:' + (qResultadoFinal >= 0 ? 'var(--green)' : 'var(--red)') + '">$' + pmFormatMoney(qResultadoFinal) + '</span></div>';
   h += '</div></div>';
 
   return h;
@@ -1570,7 +1623,8 @@ function renderProyeccionDetail() {
     totalGNA += (e.gastos_no_admitidos || 0);
     mesesConData++;
   });
-  var gananciaNeta = totalV - totalCO - totalG + totalIF - totalGNA;
+  var resOpReal = totalV - totalCO - totalG - totalS;
+  var gananciaNeta = resOpReal + totalIF - totalGNA;
 
   var avgV = mesesConData ? totalV / mesesConData : 0;
   var avgCO = mesesConData ? totalCO / mesesConData : 0;
@@ -1582,9 +1636,11 @@ function renderProyeccionDetail() {
   var projV = totalV + avgV * mesesFaltantes;
   var projCO = totalCO + avgCO * mesesFaltantes;
   var projG = totalG + avgG * mesesFaltantes;
+  var projS = totalS + avgS * mesesFaltantes;
   var projIF = totalIF + avgIF * mesesFaltantes;
   var projGNA = totalGNA + avgGNA * mesesFaltantes;
-  var projGanancia = projV - projCO - projG + projIF - projGNA;
+  var projResOp = projV - projCO - projG - projS;
+  var projGanancia = projResOp + projIF - projGNA;
 
   var perdidas = pmImpConfig ? (pmImpConfig.perdidas_compensables || 0) : 0;
   var baseISR = Math.max(gananciaNeta - perdidas, 0);
@@ -1648,7 +1704,10 @@ function renderProyeccionDetail() {
   h += '<td class="pm-text-right">' + pmFormatMoneyShort(totalIF) + '</td>';
   h += '<td class="pm-text-right">' + pmFormatMoneyShort(totalGNA) + '</td></tr>';
   h += '</tbody></table>';
-  h += '<div class="pm-ganancia"><span>Ganancia Neta (Realidad)</span><span class="pm-amount">$' + pmFormatMoney(gananciaNeta) + '</span></div>';
+  h += '<div class="pm-ganancia" style="margin-bottom:4px"><span>Resultado Operacional</span><span class="pm-amount" style="color:' + (resOpReal >= 0 ? 'var(--green)' : 'var(--red)') + '">$' + pmFormatMoney(resOpReal) + '</span></div>';
+  if (totalIF || totalGNA) {
+    h += '<div class="pm-ganancia"><span>Ganancia / Pérdida</span><span class="pm-amount" style="color:' + (gananciaNeta >= 0 ? 'var(--green)' : 'var(--red)') + '">$' + pmFormatMoney(gananciaNeta) + '</span></div>';
+  }
   h += '</div></div>';
 
   h += '<div class="pm-panel pm-panel-dark"><div class="pm-panel-hdr">';
@@ -1674,11 +1733,12 @@ function renderProyeccionDetail() {
   h += '<td class="pm-text-right">' + pmFormatMoneyShort(projV) + '</td>';
   h += '<td class="pm-text-right">' + pmFormatMoneyShort(projCO) + '</td>';
   h += '<td class="pm-text-right">' + pmFormatMoneyShort(projG) + '</td>';
-  h += '<td class="pm-text-right">' + pmFormatMoneyShort(totalS) + '</td>';
+  h += '<td class="pm-text-right">' + pmFormatMoneyShort(projS) + '</td>';
   h += '<td class="pm-text-right">' + pmFormatMoneyShort(projIF) + '</td>';
   h += '<td class="pm-text-right">' + pmFormatMoneyShort(projGNA) + '</td></tr>';
   h += '</tbody></table>';
-  h += '<div class="pm-ganancia"><span>Ganancia Neta (Proyectada Anual)</span><span class="pm-amount">$' + pmFormatMoney(projGanancia) + '</span></div>';
+  h += '<div class="pm-ganancia" style="margin-bottom:4px"><span>Resultado Operacional (Proyectado)</span><span class="pm-amount" style="color:' + (projResOp >= 0 ? 'var(--green)' : 'var(--red)') + '">$' + pmFormatMoney(projResOp) + '</span></div>';
+  h += '<div class="pm-ganancia"><span>Ganancia / Pérdida (Proyectada)</span><span class="pm-amount" style="color:' + (projGanancia >= 0 ? 'var(--green)' : 'var(--red)') + '">$' + pmFormatMoney(projGanancia) + '</span></div>';
   h += '</div></div></div>';
 
   h += '<div class="pm-dual">';
