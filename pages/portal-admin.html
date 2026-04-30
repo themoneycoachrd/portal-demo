@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Portal Admin — Account One</title>
+<title>Portal Clientes — Account One</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 :root {
@@ -291,7 +291,7 @@ body.embed .content { padding-top:12px; }
 
 <div id="loginOverlay" class="login-overlay" style="display:none">
   <div class="login-box">
-    <h2>Portal Admin</h2>
+    <h2>Portal Clientes</h2>
     <p>Acceso de administrador — Account One</p>
     <div id="loginError" class="login-error"></div>
     <label>Correo</label>
@@ -312,7 +312,7 @@ body.embed .content { padding-top:12px; }
 <div id="app" style="display:none">
   <div class="header">
     <div class="header-inner">
-      <div><h1>Portal Admin</h1><p>Account One — Impuestos</p></div>
+      <div><h1>Portal Clientes</h1><p>Account One</p></div>
       <span class="client-badge" id="clientName"></span>
     </div>
   </div>
@@ -410,6 +410,12 @@ var pmEjecucion = [];
 var pmImpConfig = null;
 var pmDeclaraciones = [];
 var pmYear = 2026;
+
+// Bulk presentación data for index view
+var allPresupuesto = [];
+var allEjecucionBulk = [];
+var allImpConfigBulk = [];
+var allDeclaracionesBulk = [];
 
 // ==================== UTILS ====================
 function esc(s) { return (s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/'/g,'&#39;'); }
@@ -721,21 +727,30 @@ async function initAdmin(isEmbed) {
 
   selectedMes = getCurrentMonth();
 
-  var [tokensRes, clientesRes, portalDataRes] = await Promise.all([
+  var [tokensRes, clientesRes, portalDataRes, presBulkRes, ejBulkRes, icBulkRes, declBulkRes] = await Promise.all([
     sb.from('portal_clientes_tokens').select('cliente, token').eq('activo', true).order('cliente'),
     sb.from('clientes').select('nombre, contadora_impuestos, responsabilidad_impuestos, activo').eq('activo', true).order('nombre'),
-    sb.from('portal_clientes_data').select('*')
+    sb.from('portal_clientes_data').select('*'),
+    sb.from('portal_presupuesto').select('*').eq('anio', pmYear),
+    sb.from('portal_ejecucion').select('*').eq('anio', pmYear),
+    sb.from('portal_impuestos_config').select('*').eq('anio', pmYear),
+    sb.from('portal_declaraciones').select('*').eq('anio', pmYear)
   ]);
 
   allTokens = tokensRes.data || [];
   allClientes = clientesRes.data || [];
   allPortalData = portalDataRes.data || [];
+  allPresupuesto = presBulkRes.data || [];
+  allEjecucionBulk = ejBulkRes.data || [];
+  allImpConfigBulk = icBulkRes.data || [];
+  allDeclaracionesBulk = declBulkRes.data || [];
 
   document.getElementById('loginOverlay').style.display = 'none';
   document.getElementById('clientName').textContent = 'Admin';
   document.getElementById('app').style.display = '';
-  document.getElementById('mainTabs').style.display = 'none';
+  document.getElementById('mainTabs').style.display = '';
 
+  renderMainTabs();
   renderNav();
   renderAdminIndex();
 }
@@ -866,6 +881,27 @@ function idxSwitchContadora(name) {
   renderAdminIndex();
 }
 
+// Helper functions for presentación index
+function hasPresupuesto(nombre) {
+  return allPresupuesto.some(function(p) { return p.cliente === nombre; });
+}
+function hasEjecucionMes(nombre, mesKey) {
+  var mesNum = MESES_KEY.indexOf(mesKey) + 1;
+  return allEjecucionBulk.some(function(e) { return e.cliente === nombre && e.mes === mesNum; });
+}
+function hasImpConfig(nombre) {
+  return allImpConfigBulk.some(function(c) { return c.cliente === nombre; });
+}
+function getDeclCount(nombre, mesKey) {
+  var mesNum = MESES_KEY.indexOf(mesKey) + 1;
+  return allDeclaracionesBulk.filter(function(d) {
+    return d.cliente === nombre && d.mes === mesNum && (d.estado === 'a_tiempo' || d.estado === 'tarde' || d.estado === 'no_aplico');
+  }).length;
+}
+function getEjecucionCount(nombre) {
+  return allEjecucionBulk.filter(function(e) { return e.cliente === nombre; }).length;
+}
+
 function renderAdminIndex() {
   var el = document.getElementById('content');
 
@@ -885,70 +921,134 @@ function renderAdminIndex() {
     return a.nombre.localeCompare(b.nombre);
   });
 
-  var completados = 0, enProgreso = 0, sinIniciar = 0;
-  clientes.forEach(function(c) {
-    var p = getClienteOverallProgress(c.nombre, selectedMes);
-    if (p.pct === 100) completados++;
-    else if (p.done > 0) enProgreso++;
-    else sinIniciar++;
-  });
-
-  var totalPct = 0;
-  clientes.forEach(function(c) { totalPct += getClienteOverallProgress(c.nombre, selectedMes).pct; });
-  var avgPct = clientes.length > 0 ? Math.round(totalPct / clientes.length) : 0;
-
   var h = '';
 
-  h += '<div class="summary-stats">';
-  h += '<div class="summary-stat"><div class="summary-stat-label">Total clientes</div><div class="summary-stat-value">' + clientes.length + '</div></div>';
-  h += '<div class="summary-stat"><div class="summary-stat-label">Completados</div><div class="summary-stat-value" style="color:var(--green)">' + completados + '</div></div>';
-  h += '<div class="summary-stat"><div class="summary-stat-label">En progreso</div><div class="summary-stat-value" style="color:var(--amber)">' + enProgreso + '</div></div>';
-  h += '<div class="summary-stat"><div class="summary-stat-label">Sin iniciar</div><div class="summary-stat-value" style="color:var(--muted)">' + sinIniciar + '</div></div>';
-  h += '<div class="summary-stat"><div class="summary-stat-label">Avance promedio</div><div class="summary-stat-value" style="color:' + progressColor(avgPct) + '">' + avgPct + '%</div></div>';
-  h += '</div>';
-
-  h += '<div style="overflow-x:auto"><table class="check-table">';
-  h += '<thead><tr>';
-  h += '<th style="width:30px">#</th>';
-  h += '<th>Cliente</th>';
-  h += '<th>Contadora</th>';
-  IMPUESTOS.forEach(function(imp) {
-    h += '<th class="center">' + imp.label + '</th>';
-  });
-  h += '<th class="center">Avance</th>';
-  h += '<th class="center">Estado</th>';
-  h += '</tr></thead><tbody>';
-
-  clientes.forEach(function(c, i) {
-    var overall = getClienteOverallProgress(c.nombre, selectedMes);
-    var ct = c.contadora_impuestos || 'Sin asignar';
-
-    h += '<tr onclick="idxOpenCliente(\'' + esc(c.nombre).replace(/'/g, "\\'") + '\')">';
-    h += '<td style="color:var(--light);font-size:0.75rem">' + (i + 1) + '</td>';
-    h += '<td style="font-weight:600">' + esc(c.nombre) + '</td>';
-    h += '<td style="font-size:0.78rem;color:var(--muted)">' + esc(ct) + '</td>';
-
-    IMPUESTOS.forEach(function(imp) {
-      var status = getClienteTaxStatus(c.nombre, selectedMes, imp.id);
-      var prog = getClienteTaxProgress(c.nombre, selectedMes, imp.id);
-      h += '<td class="center"><span class="pc-status-badge ' + (status === 'verde' ? 'pc-status-completo' : status === 'rojo' ? 'pc-status-urgente' : status === 'amarillo' ? 'pc-status-progreso' : 'pc-status-pendiente') + '">' + prog.done + '/' + prog.total + '</span></td>';
+  if (selectedMainTab === 'presentacion') {
+    // Presentación index view
+    var conPres = 0, conEjMes = 0, conConfig = 0, declCompletas = 0;
+    clientes.forEach(function(c) {
+      if (hasPresupuesto(c.nombre)) conPres++;
+      if (hasEjecucionMes(c.nombre, selectedMes)) conEjMes++;
+      if (hasImpConfig(c.nombre)) conConfig++;
+      if (getDeclCount(c.nombre, selectedMes) >= 5) declCompletas++;
     });
 
-    h += '<td class="center">';
-    h += '<div class="pc-progress">';
-    h += '<div class="pc-progress-bar"><div class="pc-progress-fill" style="width:' + overall.pct + '%;background:' + progressColor(overall.pct) + '"></div></div>';
-    h += '<div class="pc-progress-text" style="color:' + progressColor(overall.pct) + '">' + overall.pct + '%</div>';
-    h += '</div></td>';
+    h += '<div class="summary-stats">';
+    h += '<div class="summary-stat"><div class="summary-stat-label">Total clientes</div><div class="summary-stat-value">' + clientes.length + '</div></div>';
+    h += '<div class="summary-stat"><div class="summary-stat-label">Con presupuesto</div><div class="summary-stat-value" style="color:var(--green)">' + conPres + '</div></div>';
+    h += '<div class="summary-stat"><div class="summary-stat-label">Ejecución del mes</div><div class="summary-stat-value" style="color:var(--amber)">' + conEjMes + '</div></div>';
+    h += '<div class="summary-stat"><div class="summary-stat-label">Config impuestos</div><div class="summary-stat-value" style="color:var(--blue)">' + conConfig + '</div></div>';
+    h += '<div class="summary-stat"><div class="summary-stat-label">Declaraciones 5/5</div><div class="summary-stat-value" style="color:var(--green)">' + declCompletas + '</div></div>';
+    h += '</div>';
 
-    var overallStatus = overall.pct === 100 ? 'Completado' : overall.pct > 0 ? 'En progreso' : 'Pendiente';
-    var overallClass = overall.pct === 100 ? 'pc-status-completo' : overall.pct > 0 ? 'pc-status-progreso' : 'pc-status-pendiente';
-    if (ct === 'Sin asignar') { overallStatus = 'Sin asignar'; overallClass = 'pc-status-sinasignar'; }
-    h += '<td class="center"><span class="pc-status-badge ' + overallClass + '">' + overallStatus + '</span></td>';
+    h += '<div style="overflow-x:auto"><table class="check-table">';
+    h += '<thead><tr>';
+    h += '<th style="width:30px">#</th>';
+    h += '<th>Cliente</th>';
+    h += '<th>Contadora</th>';
+    h += '<th class="center">Presupuesto</th>';
+    h += '<th class="center">Ejecución</th>';
+    h += '<th class="center">Config</th>';
+    h += '<th class="center">Declaraciones</th>';
+    h += '<th class="center">Estado</th>';
+    h += '</tr></thead><tbody>';
 
-    h += '</tr>';
-  });
+    clientes.forEach(function(c, i) {
+      var ct = c.contadora_impuestos || 'Sin asignar';
+      var hasPres = hasPresupuesto(c.nombre);
+      var hasEj = hasEjecucionMes(c.nombre, selectedMes);
+      var hasConf = hasImpConfig(c.nombre);
+      var ejCount = getEjecucionCount(c.nombre);
+      var declCt = getDeclCount(c.nombre, selectedMes);
 
-  h += '</tbody></table></div>';
+      var partsLoaded = (hasPres ? 1 : 0) + (hasEj ? 1 : 0) + (hasConf ? 1 : 0);
+      var estado, estadoClass;
+      if (partsLoaded === 3) { estado = 'Completo'; estadoClass = 'pc-status-completo'; }
+      else if (partsLoaded > 0) { estado = 'Parcial'; estadoClass = 'pc-status-progreso'; }
+      else { estado = 'Sin datos'; estadoClass = 'pc-status-pendiente'; }
+
+      h += '<tr onclick="idxOpenCliente(\'' + esc(c.nombre).replace(/'/g, "\\'") + '\')">';
+      h += '<td style="color:var(--light);font-size:0.75rem">' + (i + 1) + '</td>';
+      h += '<td style="font-weight:600">' + esc(c.nombre) + '</td>';
+      h += '<td style="font-size:0.78rem;color:var(--muted)">' + esc(ct) + '</td>';
+
+      h += '<td class="center"><span class="pc-status-badge ' + (hasPres ? 'pc-status-completo' : 'pc-status-pendiente') + '">' + (hasPres ? '&#10003;' : '&#10007;') + '</span></td>';
+      h += '<td class="center"><span class="pc-status-badge ' + (ejCount >= 6 ? 'pc-status-completo' : ejCount > 0 ? 'pc-status-progreso' : 'pc-status-pendiente') + '">' + ejCount + '/12</span></td>';
+      h += '<td class="center"><span class="pc-status-badge ' + (hasConf ? 'pc-status-completo' : 'pc-status-pendiente') + '">' + (hasConf ? '&#10003;' : '&#10007;') + '</span></td>';
+      h += '<td class="center"><span class="pc-status-badge ' + (declCt >= 5 ? 'pc-status-completo' : declCt > 0 ? 'pc-status-progreso' : 'pc-status-pendiente') + '">' + declCt + '/5</span></td>';
+      h += '<td class="center"><span class="pc-status-badge ' + estadoClass + '">' + estado + '</span></td>';
+
+      h += '</tr>';
+    });
+
+    h += '</tbody></table></div>';
+
+  } else {
+    // Checklist index view (original)
+    var completados = 0, enProgreso = 0, sinIniciar = 0;
+    clientes.forEach(function(c) {
+      var p = getClienteOverallProgress(c.nombre, selectedMes);
+      if (p.pct === 100) completados++;
+      else if (p.done > 0) enProgreso++;
+      else sinIniciar++;
+    });
+
+    var totalPct = 0;
+    clientes.forEach(function(c) { totalPct += getClienteOverallProgress(c.nombre, selectedMes).pct; });
+    var avgPct = clientes.length > 0 ? Math.round(totalPct / clientes.length) : 0;
+
+    h += '<div class="summary-stats">';
+    h += '<div class="summary-stat"><div class="summary-stat-label">Total clientes</div><div class="summary-stat-value">' + clientes.length + '</div></div>';
+    h += '<div class="summary-stat"><div class="summary-stat-label">Completados</div><div class="summary-stat-value" style="color:var(--green)">' + completados + '</div></div>';
+    h += '<div class="summary-stat"><div class="summary-stat-label">En progreso</div><div class="summary-stat-value" style="color:var(--amber)">' + enProgreso + '</div></div>';
+    h += '<div class="summary-stat"><div class="summary-stat-label">Sin iniciar</div><div class="summary-stat-value" style="color:var(--muted)">' + sinIniciar + '</div></div>';
+    h += '<div class="summary-stat"><div class="summary-stat-label">Avance promedio</div><div class="summary-stat-value" style="color:' + progressColor(avgPct) + '">' + avgPct + '%</div></div>';
+    h += '</div>';
+
+    h += '<div style="overflow-x:auto"><table class="check-table">';
+    h += '<thead><tr>';
+    h += '<th style="width:30px">#</th>';
+    h += '<th>Cliente</th>';
+    h += '<th>Contadora</th>';
+    IMPUESTOS.forEach(function(imp) {
+      h += '<th class="center">' + imp.label + '</th>';
+    });
+    h += '<th class="center">Avance</th>';
+    h += '<th class="center">Estado</th>';
+    h += '</tr></thead><tbody>';
+
+    clientes.forEach(function(c, i) {
+      var overall = getClienteOverallProgress(c.nombre, selectedMes);
+      var ct = c.contadora_impuestos || 'Sin asignar';
+
+      h += '<tr onclick="idxOpenCliente(\'' + esc(c.nombre).replace(/'/g, "\\'") + '\')">';
+      h += '<td style="color:var(--light);font-size:0.75rem">' + (i + 1) + '</td>';
+      h += '<td style="font-weight:600">' + esc(c.nombre) + '</td>';
+      h += '<td style="font-size:0.78rem;color:var(--muted)">' + esc(ct) + '</td>';
+
+      IMPUESTOS.forEach(function(imp) {
+        var status = getClienteTaxStatus(c.nombre, selectedMes, imp.id);
+        var prog = getClienteTaxProgress(c.nombre, selectedMes, imp.id);
+        h += '<td class="center"><span class="pc-status-badge ' + (status === 'verde' ? 'pc-status-completo' : status === 'rojo' ? 'pc-status-urgente' : status === 'amarillo' ? 'pc-status-progreso' : 'pc-status-pendiente') + '">' + prog.done + '/' + prog.total + '</span></td>';
+      });
+
+      h += '<td class="center">';
+      h += '<div class="pc-progress">';
+      h += '<div class="pc-progress-bar"><div class="pc-progress-fill" style="width:' + overall.pct + '%;background:' + progressColor(overall.pct) + '"></div></div>';
+      h += '<div class="pc-progress-text" style="color:' + progressColor(overall.pct) + '">' + overall.pct + '%</div>';
+      h += '</div></td>';
+
+      var overallStatus = overall.pct === 100 ? 'Completado' : overall.pct > 0 ? 'En progreso' : 'Pendiente';
+      var overallClass = overall.pct === 100 ? 'pc-status-completo' : overall.pct > 0 ? 'pc-status-progreso' : 'pc-status-pendiente';
+      if (ct === 'Sin asignar') { overallStatus = 'Sin asignar'; overallClass = 'pc-status-sinasignar'; }
+      h += '<td class="center"><span class="pc-status-badge ' + overallClass + '">' + overallStatus + '</span></td>';
+
+      h += '</tr>';
+    });
+
+    h += '</tbody></table></div>';
+  }
+
   el.innerHTML = h;
 }
 
@@ -956,12 +1056,10 @@ async function idxOpenCliente(nombre) {
   clienteNombre = nombre;
   adminShowingIndex = false;
   selectedTab = 'dashboard';
-  selectedMainTab = 'checklist';
   pmDetail = null;
 
   await Promise.all([loadData(), loadFiles(), loadPresentacionData()]);
 
-  document.getElementById('mainTabs').style.display = '';
   document.getElementById('clientName').textContent = nombre;
   renderMainTabs();
   renderSubTabs();
@@ -975,16 +1073,15 @@ function idxBackToIndex() {
   portalData = {};
   portalFiles = {};
   selectedTab = 'dashboard';
-  selectedMainTab = 'checklist';
   pmDetail = null;
   pmPresupuesto = null;
   pmEjecucion = [];
   pmImpConfig = null;
   pmDeclaraciones = [];
 
-  document.getElementById('mainTabs').style.display = 'none';
   document.getElementById('subTabs').style.display = 'none';
   document.getElementById('clientName').textContent = 'Admin';
+  renderMainTabs();
   renderAdminNav();
   renderAdminIndex();
 }
@@ -1016,8 +1113,12 @@ function switchMainTab(tabId) {
   selectedMainTab = tabId;
   pmDetail = null;
   renderMainTabs();
-  renderSubTabs();
-  render();
+  if (adminShowingIndex) {
+    renderAdminIndex();
+  } else {
+    renderSubTabs();
+    render();
+  }
 }
 
 function switchTab(tabId) {
