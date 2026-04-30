@@ -260,17 +260,36 @@ body {
 .sidebar-toggle svg { width: 14px; height: 14px; stroke: var(--muted); fill: none; stroke-width: 2; transition: transform 0.2s; }
 .sidebar.collapsed .sidebar-toggle svg { transform: rotate(180deg); }
 
-/* ─── Role switcher (admin only) ─── */
-.role-switcher { padding: 8px 18px 4px; }
-.role-switcher.hidden { display: none; }
-.role-switcher select {
-  width: 100%; padding: 6px 10px; font-size: 0.75rem; border: 1px solid var(--border);
-  border-radius: 8px; background: #fff; color: var(--navy); cursor: pointer;
-  font-weight: 500;
+/* ─── Role picker (pantalla intermedia, admin only) ─── */
+.role-picker-overlay {
+  position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+  background: var(--bg); display: flex; align-items: center; justify-content: center; z-index: 999;
 }
-.role-switcher select:focus { outline: none; border-color: var(--blue); }
-.role-switcher-label { font-size: 0.62rem; color: var(--muted); margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.5px; }
-.sidebar.collapsed .role-switcher { display: none; }
+.role-picker-overlay.hidden { display: none; }
+.role-picker-box {
+  background: white; border-radius: 16px; padding: 40px; width: 100%; max-width: 420px;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.08); border: 1px solid var(--border); text-align: center;
+}
+.role-picker-box h2 { font-size: 1.1rem; font-weight: 700; color: var(--text); margin-bottom: 6px; }
+.role-picker-box p { font-size: 0.82rem; color: var(--muted); margin-bottom: 24px; }
+.role-pills { display: flex; flex-direction: column; gap: 10px; }
+.role-pill {
+  display: flex; align-items: center; gap: 14px; padding: 14px 18px;
+  border: 2px solid var(--border); border-radius: 12px; cursor: pointer;
+  transition: all 0.15s; background: white; text-align: left;
+}
+.role-pill:hover { border-color: var(--blue); background: #f0f4ff; }
+.role-pill-icon { width: 38px; height: 38px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; flex-shrink: 0; }
+.role-pill-info h3 { font-size: 0.9rem; font-weight: 600; color: var(--text); margin: 0; }
+.role-pill-info span { font-size: 0.72rem; color: var(--muted); }
+
+/* ─── Botón cambiar rol en sidebar ─── */
+.btn-switch-role {
+  font-size: 0.68rem; color: var(--muted); background: none; border: 1px solid var(--border);
+  border-radius: 6px; padding: 3px 10px; cursor: pointer; margin-top: 4px; transition: all 0.15s;
+}
+.btn-switch-role:hover { background: #f0f4ff; border-color: var(--blue); color: var(--blue); }
+.sidebar.collapsed .btn-switch-role { display: none; }
 
 /* ─── Version tag ─── */
 .sidebar-version {
@@ -487,6 +506,15 @@ body {
   </div>
 </div>
 
+<!-- ROLE PICKER (admin only, aparece después del login) -->
+<div class="role-picker-overlay hidden" id="role-picker">
+  <div class="role-picker-box">
+    <h2>¿Con qué perfil quieres entrar?</h2>
+    <p>Puedes cambiar de perfil en cualquier momento.</p>
+    <div class="role-pills" id="role-pills"></div>
+  </div>
+</div>
+
 <!-- APP -->
 <div id="app-wrapper" class="hidden">
 <div class="app-layout">
@@ -516,10 +544,10 @@ body {
         <div class="user-meta">
           <div class="user-meta-name" id="user-display-name"></div>
           <div class="user-meta-role" id="user-display-role"></div>
+          <button class="btn-switch-role hidden" id="btn-switch-role" onclick="showRolePicker()">Cambiar rol</button>
         </div>
         <button class="btn-logout-small" onclick="handleLogout()">Salir</button>
       </div>
-      <div id="role-switcher" class="role-switcher hidden"></div>
     </div>
 
     <div class="sidebar-version">
@@ -1156,7 +1184,12 @@ async function handleLogin() {
   }
 
   await loadUserProfile();
-  showApp();
+  if (realRole === 'admin') {
+    document.getElementById('login-screen').style.display = 'none';
+    showRolePicker();
+  } else {
+    showApp();
+  }
 }
 
 async function handleLogout() {
@@ -1167,6 +1200,7 @@ async function handleLogout() {
   activeModule = null;
   activeSection = null;
   document.getElementById('app-wrapper').classList.add('hidden');
+  document.getElementById('role-picker').classList.add('hidden');
   document.getElementById('login-screen').style.display = 'flex';
   document.getElementById('login-password').value = '';
   document.getElementById('module-iframe').src = '';
@@ -1192,39 +1226,37 @@ async function loadUserProfile() {
   }
 }
 
-function renderRoleSwitcher() {
-  var el = document.getElementById('role-switcher');
-  if (realRole !== 'admin') { el.classList.add('hidden'); return; }
+var ROLE_PICKER_DATA = [
+  { id: 'admin', label: 'Administrador', desc: 'Acceso completo a todos los módulos', icon: '🔑', bg: '#ecfdf5' },
+  { id: 'contadores', label: 'Contadores', desc: 'Checklist, KPI e impuestos', icon: '🎯', bg: '#f5f3ff' },
+  { id: 'impuestos', label: 'Impuestos', desc: 'Control de declaraciones fiscales', icon: '📋', bg: '#fffbeb' },
+  { id: 'comercial', label: 'Comercial', desc: 'Pipeline de ventas y leads', icon: '📈', bg: '#eef2ff' },
+  { id: 'implementaciones', label: 'Implementaciones', desc: 'FE e implementaciones completas', icon: '🚀', bg: '#fff7ed' }
+];
 
-  var roles = ['admin', 'comercial', 'contadores', 'impuestos', 'implementaciones'];
-  var h = '<div class="role-switcher-label">Ver como</div>';
-  h += '<select onchange="switchRole(this.value)">';
-  roles.forEach(function(r) {
-    h += '<option value="' + r + '"' + (r === userRole ? ' selected' : '') + '>' + ROLE_LABELS[r] + '</option>';
+function showRolePicker() {
+  // Ocultar app, mostrar picker
+  document.getElementById('app-wrapper').classList.add('hidden');
+  document.getElementById('module-iframe').src = '';
+  activeModule = null;
+  activeSection = null;
+
+  var el = document.getElementById('role-pills');
+  var h = '';
+  ROLE_PICKER_DATA.forEach(function(r) {
+    h += '<div class="role-pill" onclick="pickRole(\'' + r.id + '\')">';
+    h += '<div class="role-pill-icon" style="background:' + r.bg + '">' + r.icon + '</div>';
+    h += '<div class="role-pill-info"><h3>' + r.label + '</h3><span>' + r.desc + '</span></div>';
+    h += '</div>';
   });
-  h += '</select>';
   el.innerHTML = h;
-  el.classList.remove('hidden');
+  document.getElementById('role-picker').classList.remove('hidden');
 }
 
-function switchRole(newRole) {
-  userRole = newRole;
-  renderUserInfo();
-  renderSidebar();
-
-  // Si el módulo activo ya no es visible con este rol, volver al inicio
-  if (activeModule) {
-    var allMods = getAllModulesFlat();
-    var current = allMods.find(function(m) { return m.id === activeModule; });
-    if (!current || !current.roles.includes(userRole)) {
-      activeModule = null;
-      activeSection = null;
-      document.getElementById('module-iframe').src = '';
-      document.getElementById('module-iframe').classList.add('hidden');
-      document.getElementById('main-content').classList.remove('hidden');
-      renderSidebar();
-    }
-  }
+function pickRole(role) {
+  userRole = role;
+  document.getElementById('role-picker').classList.add('hidden');
+  showApp();
 }
 
 async function showApp() {
@@ -1232,7 +1264,11 @@ async function showApp() {
   document.getElementById('app-wrapper').classList.remove('hidden');
 
   renderUserInfo();
-  renderRoleSwitcher();
+  if (realRole === 'admin') {
+    document.getElementById('btn-switch-role').classList.remove('hidden');
+  } else {
+    document.getElementById('btn-switch-role').classList.add('hidden');
+  }
   renderSidebar();
   renderWelcome();
 
@@ -1257,7 +1293,12 @@ async function init() {
   const { data: { session } } = await sb.auth.getSession();
   if (session) {
     await loadUserProfile();
-    showApp();
+    if (realRole === 'admin') {
+      document.getElementById('login-screen').style.display = 'none';
+      showRolePicker();
+    } else {
+      showApp();
+    }
   }
 }
 
