@@ -1252,7 +1252,7 @@ function renderPresupuestoDetail() {
     var val = ej ? (ej.ingreso_financiero || 0) : 0;
     var metaIF = pmGetMetaMensual('ingreso_financiero');
     var pctIF = metaIF ? (val / metaIF * 100) : 0;
-    var colorIF = metaIF ? pmPctColor(pctIF, false) : '#999';
+    var colorIF = metaIF ? pmPctColor(pctIF, true) : '#999';
     h += '<td class="pm-text-right" style="color:#666">' + pmFormatMoney(val) + '</td>';
     h += '<td class="pm-text-right" style="border-right:' + (m < qRange[2] ? '2px solid var(--border)' : 'none') + '"><span style="color:' + colorIF + ';font-weight:600">' + (metaIF ? pctIF.toFixed(2) + '%' : '—') + '</span></td>';
   });
@@ -1370,16 +1370,18 @@ function renderPresupuestoDetail() {
   var ejIF = ejMes ? (ejMes.ingreso_financiero || 0) : 0;
   var metaIF = pmGetMetaMensual('ingreso_financiero');
   var pctIF = metaIF ? (ejIF / metaIF * 100) : 0;
+  var semIF = metaIF ? pmSemColor(pctIF, 'gasto') : 'na';
   h += '<tr><td class="pm-text-right pm-font-bold" style="color:#666">$' + pmFormatMoney(ejIF) + '</td>';
   h += '<td class="pm-text-center" style="color:#666">' + (metaIF ? pctIF.toFixed(2) + '%' : '—') + '</td>';
-  h += '<td class="pm-text-center"></td></tr>';
+  h += '<td class="pm-text-center">' + (metaIF ? '<span class="pm-sem-dot ' + semIF + '"><span class="pm-dot"></span></span>' : '') + '</td></tr>';
 
   var ejGNA = ejMes ? (ejMes.gastos_no_admitidos || 0) : 0;
   var metaGNA = pmGetMetaMensual('gastos_no_admitidos');
   var pctGNA = metaGNA ? (ejGNA / metaGNA * 100) : 0;
+  var semGNA = metaGNA ? pmSemColor(pctGNA, 'gasto') : 'na';
   h += '<tr><td class="pm-text-right pm-font-bold" style="color:#666">$' + pmFormatMoney(ejGNA) + '</td>';
   h += '<td class="pm-text-center" style="color:#666">' + (metaGNA ? pctGNA.toFixed(2) + '%' : '—') + '</td>';
-  h += '<td class="pm-text-center"></td></tr>';
+  h += '<td class="pm-text-center">' + (metaGNA ? '<span class="pm-sem-dot ' + semGNA + '"><span class="pm-dot"></span></span>' : '') + '</td></tr>';
 
   var ejGanancia = ejResOp + ejIF - ejGNA;
   var ejGanColor = ejGanancia >= 0 ? '#4ade80' : '#f87171';
@@ -1424,13 +1426,13 @@ function renderPresupuestoDetail() {
     var diff = r.ej - r.meta;
     var pct = r.meta ? (r.ej / r.meta * 100) : 0;
     var semCol = pmSemColor(pct, r.tipo);
-    var diffColor = (r.tipo === 'ventas') ? (diff >= 0 ? 'var(--green)' : 'var(--red)') : (diff <= 0 ? 'var(--green)' : 'var(--red)');
+    var invert = (r.tipo !== 'ventas');
     var diffSign = diff >= 0 ? '+' : '';
     h += '<tr><td class="pm-font-bold">' + r.label + '</td>';
     h += '<td class="pm-text-right">' + pmFormatMoneyShort(r.meta) + '</td>';
     h += '<td class="pm-text-right">' + pmFormatMoneyShort(r.ej) + '</td>';
-    h += '<td class="pm-text-right" style="color:' + diffColor + '">' + diffSign + pmFormatMoneyShort(diff) + '</td>';
-    h += '<td class="pm-text-center"><span style="color:' + (pct >= 80 ? 'var(--green)' : 'var(--amber)') + ';font-weight:600">' + pct.toFixed(2) + '%</span></td>';
+    h += '<td class="pm-text-right">' + diffSign + pmFormatMoneyShort(diff) + '</td>';
+    h += '<td class="pm-text-center"><span style="color:' + pmPctColor(pct, invert) + ';font-weight:600">' + pct.toFixed(2) + '%</span></td>';
     h += '<td class="pm-text-center"><span class="pm-sem-dot ' + semCol + '"><span class="pm-dot"></span></span></td></tr>';
   });
 
@@ -1440,20 +1442,20 @@ function renderPresupuestoDetail() {
   h += '<tr class="pm-row-total"><td class="pm-font-bold">Resultado Op.</td>';
   h += '<td class="pm-text-right">' + pmFormatMoneyShort(qMetaResOp) + '</td>';
   h += '<td class="pm-text-right">' + pmFormatMoneyShort(qResOp) + '</td>';
-  h += '<td class="pm-text-right" style="color:' + (diffResOp >= 0 ? 'var(--green)' : 'var(--red)') + '">' + (diffResOp >= 0 ? '+' : '') + pmFormatMoneyShort(diffResOp) + '</td>';
-  h += '<td class="pm-text-center"><span style="color:' + (pctResOp >= 80 ? 'var(--green)' : 'var(--amber)') + ';font-weight:600">' + pctResOp.toFixed(2) + '%</span></td>';
+  h += '<td class="pm-text-right">' + (diffResOp >= 0 ? '+' : '') + pmFormatMoneyShort(diffResOp) + '</td>';
+  h += '<td class="pm-text-center"><span style="color:' + pmPctColor(pctResOp, false) + ';font-weight:600">' + pctResOp.toFixed(2) + '%</span></td>';
   h += '<td class="pm-text-center"><span class="pm-sem-dot ' + semResOp + '"><span class="pm-dot"></span></span></td></tr>';
 
   // Ing./Gasto Fin.
   var qMetaIF = pmGetMetaMensual('ingreso_financiero') * 3;
   var qPctIF = qMetaIF ? (qTotalIF / qMetaIF * 100) : 0;
   var qDiffIF = qTotalIF - qMetaIF;
-  var qSemIF = qMetaIF ? pmSemColor(qPctIF, 'ventas') : 'na';
+  var qSemIF = qMetaIF ? pmSemColor(qPctIF, 'gasto') : 'na';
   h += '<tr><td class="pm-font-bold" style="color:var(--muted)">Ing./Gasto Fin.</td>';
   h += '<td class="pm-text-right" style="color:#666">' + (qMetaIF ? pmFormatMoneyShort(qMetaIF) : '—') + '</td>';
   h += '<td class="pm-text-right" style="color:#666">' + pmFormatMoneyShort(qTotalIF) + '</td>';
-  h += '<td class="pm-text-right" style="color:' + (qDiffIF >= 0 ? 'var(--green)' : 'var(--red)') + '">' + (qDiffIF >= 0 ? '+' : '') + pmFormatMoneyShort(qDiffIF) + '</td>';
-  h += '<td class="pm-text-center">' + (qMetaIF ? '<span style="color:' + (qPctIF >= 80 ? 'var(--green)' : 'var(--amber)') + ';font-weight:600">' + qPctIF.toFixed(2) + '%</span>' : '') + '</td>';
+  h += '<td class="pm-text-right">' + (qDiffIF >= 0 ? '+' : '') + pmFormatMoneyShort(qDiffIF) + '</td>';
+  h += '<td class="pm-text-center">' + (qMetaIF ? '<span style="color:' + pmPctColor(qPctIF, true) + ';font-weight:600">' + qPctIF.toFixed(2) + '%</span>' : '') + '</td>';
   h += '<td class="pm-text-center">' + (qMetaIF ? '<span class="pm-sem-dot ' + qSemIF + '"><span class="pm-dot"></span></span>' : '') + '</td></tr>';
 
   // Gtos. No Admitidos
@@ -1464,8 +1466,8 @@ function renderPresupuestoDetail() {
   h += '<tr><td class="pm-font-bold" style="color:var(--muted)">Gtos. No Admitidos</td>';
   h += '<td class="pm-text-right" style="color:#666">' + (qMetaGNA ? pmFormatMoneyShort(qMetaGNA) : '—') + '</td>';
   h += '<td class="pm-text-right" style="color:#666">' + pmFormatMoneyShort(qTotalGNA) + '</td>';
-  h += '<td class="pm-text-right" style="color:' + (qDiffGNA <= 0 ? 'var(--green)' : 'var(--red)') + '">' + (qDiffGNA >= 0 ? '+' : '') + pmFormatMoneyShort(qDiffGNA) + '</td>';
-  h += '<td class="pm-text-center">' + (qMetaGNA ? '<span style="color:' + (qPctGNA <= 100 ? 'var(--green)' : 'var(--red)') + ';font-weight:600">' + qPctGNA.toFixed(2) + '%</span>' : '') + '</td>';
+  h += '<td class="pm-text-right">' + (qDiffGNA >= 0 ? '+' : '') + pmFormatMoneyShort(qDiffGNA) + '</td>';
+  h += '<td class="pm-text-center">' + (qMetaGNA ? '<span style="color:' + pmPctColor(qPctGNA, true) + ';font-weight:600">' + qPctGNA.toFixed(2) + '%</span>' : '') + '</td>';
   h += '<td class="pm-text-center">' + (qMetaGNA ? '<span class="pm-sem-dot ' + qSemGNA + '"><span class="pm-dot"></span></span>' : '') + '</td></tr>';
 
   h += '</tbody></table>';
