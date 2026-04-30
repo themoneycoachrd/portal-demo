@@ -255,6 +255,7 @@ body.embed .content { padding-top:12px; }
 </head>
 <body>
 
+<!-- Login admin (correo + contraseña Supabase) -->
 <div id="loginOverlay" class="login-overlay" style="display:none">
   <div class="login-box">
     <h2>Portal de Clientes</h2>
@@ -265,6 +266,18 @@ body.embed .content { padding-top:12px; }
     <label>Contraseña</label>
     <input type="password" id="loginPass" placeholder="••••••••" onkeydown="if(event.key==='Enter')pcDoLogin()">
     <button onclick="pcDoLogin()">Iniciar sesión</button>
+  </div>
+</div>
+
+<!-- Login cliente (solo contraseña = RNC) -->
+<div id="clientLoginOverlay" class="login-overlay" style="display:none">
+  <div class="login-box">
+    <h2>Portal de Clientes</h2>
+    <p>Account One</p>
+    <div id="clientLoginError" class="login-error"></div>
+    <label>Contraseña</label>
+    <input type="password" id="clientLoginPass" placeholder="••••••••" onkeydown="if(event.key==='Enter')pcClientLogin()">
+    <button onclick="pcClientLogin()">Acceder</button>
   </div>
 </div>
 
@@ -500,24 +513,30 @@ function showToast(msg) {
 
 // ==================== DATA ====================
 async function loadData() {
-  var { data, error } = await sb.from('portal_clientes_data')
-    .select('*')
-    .eq('cliente', clienteNombre);
-  if (error) { console.error('Error cargando datos:', error); return; }
+  var result;
+  if (clienteToken && !isAdminMode) {
+    result = await sb.rpc('portal_load_data', { p_token: clienteToken });
+  } else {
+    result = await sb.from('portal_clientes_data').select('*').eq('cliente', clienteNombre);
+  }
+  if (result.error) { console.error('Error cargando datos:', result.error); return; }
   portalData = {};
-  (data || []).forEach(function(r) {
+  (result.data || []).forEach(function(r) {
     var dk = dataKey(r.impuesto, r.mes);
     portalData[dk] = r.datos || {};
   });
 }
 
 async function loadFiles() {
-  var { data, error } = await sb.from('portal_clientes_archivos')
-    .select('*')
-    .eq('cliente', clienteNombre);
-  if (error) { console.error('Error cargando archivos:', error); return; }
+  var result;
+  if (clienteToken && !isAdminMode) {
+    result = await sb.rpc('portal_load_files', { p_token: clienteToken });
+  } else {
+    result = await sb.from('portal_clientes_archivos').select('*').eq('cliente', clienteNombre);
+  }
+  if (result.error) { console.error('Error cargando archivos:', result.error); return; }
   portalFiles = {};
-  (data || []).forEach(function(r) {
+  (result.data || []).forEach(function(r) {
     var fk = fileKey(r.impuesto, r.mes, r.tipo);
     if (!portalFiles[fk]) portalFiles[fk] = [];
     portalFiles[fk].push({ id: r.id, nombre_archivo: r.nombre_archivo, storage_path: r.storage_path });
@@ -576,17 +595,31 @@ async function loadPresentacionData() {
   var nombre = clienteNombre;
   var anio = pmYear;
 
-  var [presRes, ejRes, confRes, declRes] = await Promise.all([
-    sb.from('portal_presupuesto').select('*').eq('cliente', nombre).eq('anio', anio).single(),
-    sb.from('portal_ejecucion').select('*').eq('cliente', nombre).eq('anio', anio).order('mes'),
-    sb.from('portal_impuestos_config').select('*').eq('cliente', nombre).eq('anio', anio).single(),
-    sb.from('portal_declaraciones').select('*').eq('cliente', nombre).eq('anio', anio).order('mes')
-  ]);
-
-  pmPresupuesto = presRes.data || null;
-  pmEjecucion = ejRes.data || [];
-  pmImpConfig = confRes.data || null;
-  pmDeclaraciones = declRes.data || [];
+  if (clienteToken && !isAdminMode) {
+    // Modo cliente: usar RPCs (sin sesión Supabase)
+    var [presRes, ejRes, confRes, declRes] = await Promise.all([
+      sb.rpc('portal_load_presupuesto', { p_token: clienteToken, p_anio: anio }),
+      sb.rpc('portal_load_ejecucion', { p_token: clienteToken, p_anio: anio }),
+      sb.rpc('portal_load_imp_config', { p_token: clienteToken, p_anio: anio }),
+      sb.rpc('portal_load_declaraciones', { p_token: clienteToken, p_anio: anio })
+    ]);
+    pmPresupuesto = (presRes.data && presRes.data.length > 0) ? presRes.data[0] : null;
+    pmEjecucion = ejRes.data || [];
+    pmImpConfig = (confRes.data && confRes.data.length > 0) ? confRes.data[0] : null;
+    pmDeclaraciones = declRes.data || [];
+  } else {
+    // Modo admin: queries directas (tiene sesión)
+    var [presRes, ejRes, confRes, declRes] = await Promise.all([
+      sb.from('portal_presupuesto').select('*').eq('cliente', nombre).eq('anio', anio).single(),
+      sb.from('portal_ejecucion').select('*').eq('cliente', nombre).eq('anio', anio).order('mes'),
+      sb.from('portal_impuestos_config').select('*').eq('cliente', nombre).eq('anio', anio).single(),
+      sb.from('portal_declaraciones').select('*').eq('cliente', nombre).eq('anio', anio).order('mes')
+    ]);
+    pmPresupuesto = presRes.data || null;
+    pmEjecucion = ejRes.data || [];
+    pmImpConfig = confRes.data || null;
+    pmDeclaraciones = declRes.data || [];
+  }
 }
 
 // Helpers de cálculo
@@ -673,28 +706,8 @@ async function init() {
   if (isEmbed) document.body.classList.add('embed');
 
   if (clienteToken) {
-    // Client mode: validate token
-    var { data, error } = await sb.from('portal_clientes_tokens')
-      .select('cliente')
-      .eq('token', clienteToken)
-      .eq('activo', true)
-      .single();
-
-    if (error || !data) {
-      document.getElementById('errorScreen').style.display = 'flex';
-      return;
-    }
-
-    clienteNombre = data.cliente;
-    document.getElementById('clientName').textContent = clienteNombre;
-    document.getElementById('app').style.display = '';
-
-    selectedMes = getCurrentMonth();
-    await Promise.all([loadData(), loadFiles(), loadPresentacionData()]);
-    renderMainTabs();
-    renderSubTabs();
-    renderNav();
-    render();
+    // Client mode: mostrar pantalla de contraseña (RNC)
+    document.getElementById('clientLoginOverlay').style.display = 'flex';
     return;
   }
 
@@ -731,6 +744,34 @@ async function pcDoLogin() {
   if (error) { errEl.textContent = 'Credenciales incorrectas'; errEl.style.display = 'block'; return; }
 
   await pcInitAdmin(false);
+}
+
+async function pcClientLogin() {
+  var pass = document.getElementById('clientLoginPass').value.trim();
+  var errEl = document.getElementById('clientLoginError');
+  errEl.style.display = 'none';
+
+  if (!pass) { errEl.textContent = 'Ingresa tu contraseña'; errEl.style.display = 'block'; return; }
+
+  var { data, error } = await sb.rpc('verify_portal_access', { p_token: clienteToken, p_rnc: pass });
+
+  if (error || !data) {
+    errEl.textContent = 'Contraseña incorrecta';
+    errEl.style.display = 'block';
+    return;
+  }
+
+  clienteNombre = data;
+  document.getElementById('clientLoginOverlay').style.display = 'none';
+  document.getElementById('clientName').textContent = clienteNombre;
+  document.getElementById('app').style.display = '';
+
+  selectedMes = getCurrentMonth();
+  await Promise.all([loadData(), loadFiles(), loadPresentacionData()]);
+  renderMainTabs();
+  renderSubTabs();
+  renderNav();
+  render();
 }
 
 async function pcInitAdmin(isEmbed) {
