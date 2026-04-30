@@ -1213,6 +1213,8 @@ async function handleLogout() {
   document.getElementById('module-iframe').src = '';
 }
 
+var userPermisos = {}; // permisos efectivos del usuario (jerárquicos)
+
 async function loadUserProfile() {
   const { data: { user } } = await sb.auth.getUser();
   if (!user) return;
@@ -1231,6 +1233,51 @@ async function loadUserProfile() {
     realRole = 'contadores';
     userName = user.email;
   }
+
+  // Cargar permisos efectivos desde grupos
+  await loadUserPermisos(user.id);
+}
+
+async function loadUserPermisos(userId) {
+  // Obtener grupos del usuario
+  var { data: assignments } = await sb.from('usuario_grupos').select('grupo_id').eq('user_id', userId);
+  if (!assignments || assignments.length === 0) { userPermisos = {}; return; }
+
+  var grupoIds = assignments.map(function(a) { return a.grupo_id; });
+  var { data: grupos } = await sb.from('grupos').select('permisos').in('id', grupoIds);
+  if (!grupos) { userPermisos = {}; return; }
+
+  // Merge aditivo (OR de booleans)
+  userPermisos = {};
+  function mergeInto(target, source) {
+    if (!source || typeof source !== 'object') return;
+    Object.keys(source).forEach(function(k) {
+      if (typeof source[k] === 'boolean') {
+        if (source[k] === true) target[k] = true;
+        else if (target[k] === undefined) target[k] = false;
+      } else if (typeof source[k] === 'object') {
+        if (!target[k]) target[k] = {};
+        mergeInto(target[k], source[k]);
+      }
+    });
+  }
+  grupos.forEach(function(g) { mergeInto(userPermisos, g.permisos || {}); });
+}
+
+// Helper: verificar permiso específico
+// Uso: hasPermiso('gerencia', 'control-clientes', 'dashboard', 'consulta')
+//   o: hasPermiso('comercial', 'pipeline', null, 'edicion')
+function hasPermiso(modId, scrId, subtabId, habId) {
+  if (userRole === 'admin' || realRole === 'admin') return true;
+  var mod = userPermisos[modId];
+  if (!mod) return false;
+  var scr = mod[scrId];
+  if (!scr) return false;
+  if (subtabId) {
+    var st = scr[subtabId];
+    return st && st[habId] === true;
+  }
+  return scr[habId] === true;
 }
 
 var ROLE_PICKER_DATA = [

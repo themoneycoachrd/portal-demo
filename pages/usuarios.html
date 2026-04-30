@@ -75,12 +75,21 @@ body { font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-se
 /* ─── Permission matrix table ─── */
 .perm-matrix { width:100%; border-collapse:collapse; font-size:0.82rem; }
 .perm-matrix thead th { text-align:center; padding:10px 8px; font-size:0.68rem; text-transform:uppercase; letter-spacing:0.5px; color:var(--muted); font-weight:700; border-bottom:2px solid var(--border); }
-.perm-matrix thead th:first-child { text-align:left; width:200px; }
+.perm-matrix thead th:first-child { text-align:left; width:240px; }
 .perm-matrix tbody td { padding:10px 8px; text-align:center; border-bottom:1px solid #f1f3f7; }
 .perm-matrix tbody td:first-child { text-align:left; font-weight:600; font-size:0.84rem; }
 .perm-matrix tbody td .screen-section { font-size:0.68rem; color:var(--light); font-weight:400; display:block; }
 .perm-matrix tbody tr:hover td { background:#fafbfc; }
 .perm-matrix tbody tr:last-child td { border-bottom:none; }
+
+/* ─── Módulo accordion ─── */
+.mod-row { cursor:pointer; }
+.mod-row td:first-child { font-weight:700; color:var(--navy); font-size:0.88rem; }
+.mod-row td { background:#f5f7fa; border-bottom:2px solid var(--border); }
+.mod-arrow { font-size:10px; color:var(--light); margin-right:6px; display:inline-block; transition:transform 0.15s; }
+.mod-arrow.open { transform:rotate(90deg); }
+.screen-row td:first-child { padding-left:28px; font-weight:600; font-size:0.82rem; }
+.subtab-row td:first-child { padding-left:48px; font-weight:400; font-size:0.8rem; color:var(--muted); }
 
 /* ─── Toggle switch ─── */
 .toggle { position:relative; display:inline-block; width:38px; height:20px; }
@@ -195,24 +204,59 @@ var SUPABASE_URL = 'https://ouetusstqvpyjeycfdio.supabase.co';
 var SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im91ZXR1c3N0cXZweWpleWNmZGlvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY2NDcwNzksImV4cCI6MjA5MjIyMzA3OX0.Bsys947JLGEuf3zdBF2GPFdbJVJtaZdC4YEmyBU5Bow';
 var sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-// ─── Pantallas del portal ───
-var PANTALLAS = [
-  { id:'control-clientes',   label:'Control de Clientes',   section:'Gerencia' },
-  { id:'control-contadoras', label:'Control de Contadoras',  section:'Gerencia' },
-  { id:'comercial',          label:'Comercial',              section:'Comercial' },
-  { id:'checklist',          label:'Checklist Mensual',      section:'Contadoras' },
-  { id:'kpi',                label:'KPI',                    section:'Contadoras' },
-  { id:'impuestos',          label:'Impuestos',              section:'Impuestos' },
-  { id:'implementaciones',   label:'Implementaciones',       section:'Implementaciones' },
-  { id:'portal-clientes',    label:'Portal de Clientes',     section:'Portal' },
-  { id:'usuarios',           label:'Usuarios y Permisos',    section:'Configuracion' }
+// ─── Estructura jerárquica de módulos ───
+var MODULOS = [
+  { id:'gerencia', label:'Gerencia', screens:[
+    { id:'control-clientes', label:'Control de clientes', subtabs:[
+      { id:'dashboard', label:'Dashboard' },
+      { id:'servicios', label:'Servicios' },
+      { id:'implementacion', label:'Implementación' },
+      { id:'perfiles', label:'Perfiles' },
+      { id:'software', label:'Software' }
+    ]},
+    { id:'control-contadoras', label:'Control de contadoras' },
+    { id:'basedatos', label:'Base de datos', subtabs:[
+      { id:'clientes', label:'Clientes' },
+      { id:'contadoras', label:'Contadoras' },
+      { id:'asignaciones', label:'Asignaciones' },
+      { id:'links-portal', label:'Links portal' }
+    ]}
+  ]},
+  { id:'comercial', label:'Comercial', screens:[
+    { id:'roas', label:'ROAS' },
+    { id:'pipeline', label:'Pipeline' }
+  ]},
+  { id:'contabilidad', label:'Contabilidad', screens:[
+    { id:'checklist', label:'Checklist' },
+    { id:'kpi', label:'KPI' }
+  ]},
+  { id:'impuestos', label:'Impuestos', screens:[
+    { id:'control', label:'Control' },
+    { id:'checklist', label:'Checklist' }
+  ]},
+  { id:'implementaciones', label:'Implementaciones', screens:[
+    { id:'impl-completa', label:'Implementación completa' },
+    { id:'fact-electronica', label:'Facturación electrónica' }
+  ]},
+  { id:'portal-admin', label:'Portal admin', screens:[
+    { id:'checklist', label:'Checklist' },
+    { id:'presentacion-mensual', label:'Presentación mensual' }
+  ]},
+  { id:'portal-clientes', label:'Portal clientes', screens:[
+    { id:'checklist', label:'Checklist' },
+    { id:'presentacion-mensual', label:'Presentación mensual' }
+  ]},
+  { id:'usuarios', label:'Usuarios', screens:[
+    { id:'grupos', label:'Grupos' },
+    { id:'usuarios', label:'Usuarios' }
+  ]}
 ];
 
 var HABILIDADES = [
   { id:'consulta',  label:'Consulta' },
-  { id:'adicion',   label:'Adicion' },
-  { id:'edicion',   label:'Edicion' },
-  { id:'anulacion', label:'Anulacion' },
+  { id:'adicion',   label:'Adición' },
+  { id:'edicion',   label:'Edición' },
+  { id:'anulacion', label:'Anulación' },
   { id:'eliminar',  label:'Eliminar' }
 ];
 
@@ -253,9 +297,20 @@ async function saveGrupoPermisos(grupoId, permisos) {
 
 async function createGrupo(nombre) {
   var defaultPermisos = {};
-  PANTALLAS.forEach(function(p) {
-    defaultPermisos[p.id] = {};
-    HABILIDADES.forEach(function(h) { defaultPermisos[p.id][h.id] = false; });
+  MODULOS.forEach(function(mod) {
+    defaultPermisos[mod.id] = {};
+    mod.screens.forEach(function(scr) {
+      if (scr.subtabs) {
+        defaultPermisos[mod.id][scr.id] = {};
+        scr.subtabs.forEach(function(st) {
+          defaultPermisos[mod.id][scr.id][st.id] = {};
+          HABILIDADES.forEach(function(h) { defaultPermisos[mod.id][scr.id][st.id][h.id] = false; });
+        });
+      } else {
+        defaultPermisos[mod.id][scr.id] = {};
+        HABILIDADES.forEach(function(h) { defaultPermisos[mod.id][scr.id][h.id] = false; });
+      }
+    });
   });
   var r = await sb.from('grupos').insert({ nombre: nombre, permisos: defaultPermisos }).select().single();
   return r.data;
@@ -311,6 +366,8 @@ async function renderApp() {
 }
 
 // ─── TAB: GRUPOS ───
+var openModules = {}; // track which modules are expanded per grupo
+
 function renderGruposTab() {
   var html = '';
 
@@ -348,23 +405,57 @@ function renderGruposTab() {
 
       html += '<div class="card-detail-inner">';
 
-      // Matrix table
+      // Matrix table with hierarchical structure
       html += '<table class="perm-matrix"><thead><tr>';
-      html += '<th>Pantalla</th>';
+      html += '<th>Módulo / Pantalla</th>';
       HABILIDADES.forEach(function(h) {
         html += '<th>' + h.label + '</th>';
       });
       html += '</tr></thead><tbody>';
 
-      PANTALLAS.forEach(function(p) {
-        var perms = buf[p.id] || {};
-        html += '<tr>';
-        html += '<td>' + p.label + '<span class="screen-section">' + p.section + '</span></td>';
-        HABILIDADES.forEach(function(h) {
-          var checked = perms[h.id] === true;
-          html += '<td><label class="toggle"><input type="checkbox"' + (checked ? ' checked' : '') + ' onchange="updateGrupoPerm(' + grupo.id + ',\'' + p.id + '\',\'' + h.id + '\',this.checked)"><span class="toggle-slider"></span></label></td>';
-        });
+      MODULOS.forEach(function(mod) {
+        var modKey = grupo.id + '_' + mod.id;
+        var modOpen = openModules[modKey] !== false; // default open
+
+        // Module header row
+        html += '<tr class="mod-row" onclick="toggleModule(\'' + modKey + '\')">';
+        html += '<td colspan="6"><span class="mod-arrow' + (modOpen ? ' open' : '') + '">&#9654;</span>' + mod.label + '</td>';
         html += '</tr>';
+
+        if (modOpen) {
+          var modBuf = buf[mod.id] || {};
+
+          mod.screens.forEach(function(scr) {
+            if (scr.subtabs) {
+              // Screen with sub-tabs: show screen as label, then each sub-tab with toggles
+              html += '<tr class="screen-row">';
+              html += '<td colspan="6" style="font-weight:600;color:var(--navy);padding-top:10px;">' + scr.label + '</td>';
+              html += '</tr>';
+
+              var scrBuf = modBuf[scr.id] || {};
+              scr.subtabs.forEach(function(st) {
+                var stPerms = scrBuf[st.id] || {};
+                html += '<tr class="subtab-row">';
+                html += '<td>' + st.label + '</td>';
+                HABILIDADES.forEach(function(h) {
+                  var checked = stPerms[h.id] === true;
+                  html += '<td><label class="toggle"><input type="checkbox"' + (checked ? ' checked' : '') + ' onchange="updateGrupoPerm(' + grupo.id + ',\'' + mod.id + '\',\'' + scr.id + '\',\'' + st.id + '\',\'' + h.id + '\',this.checked)"><span class="toggle-slider"></span></label></td>';
+                });
+                html += '</tr>';
+              });
+            } else {
+              // Screen without sub-tabs: show directly with toggles
+              var scrPerms = modBuf[scr.id] || {};
+              html += '<tr class="screen-row">';
+              html += '<td>' + scr.label + '</td>';
+              HABILIDADES.forEach(function(h) {
+                var checked = scrPerms[h.id] === true;
+                html += '<td><label class="toggle"><input type="checkbox"' + (checked ? ' checked' : '') + ' onchange="updateGrupoPerm(' + grupo.id + ',\'' + mod.id + '\',\'' + scr.id + '\',null,\'' + h.id + '\',this.checked)"><span class="toggle-slider"></span></label></td>';
+              });
+              html += '</tr>';
+            }
+          });
+        }
       });
 
       html += '</tbody></table>';
@@ -389,6 +480,11 @@ function renderGruposTab() {
   }
 
   return html;
+}
+
+function toggleModule(key) {
+  openModules[key] = openModules[key] === false ? true : false;
+  renderApp();
 }
 
 // ─── TAB: USUARIOS ───
@@ -468,13 +564,10 @@ function renderUsuariosTab() {
 
       // Show effective permissions summary
       var effective = computeEffectivePerms(buf);
-      var accessCount = 0;
-      PANTALLAS.forEach(function(p) {
-        if (effective[p.id] && effective[p.id].consulta) accessCount++;
-      });
+      var access = countAccess(effective);
 
       html += '<div style="margin-top:16px;padding:14px;background:#f0fdf4;border-radius:10px;font-size:0.8rem;color:#059669;">';
-      html += 'Acceso efectivo: <strong>' + accessCount + ' de ' + PANTALLAS.length + '</strong> pantallas con consulta';
+      html += 'Acceso efectivo: <strong>' + access.count + ' de ' + access.total + '</strong> pantallas con consulta';
       html += '</div>';
 
       // Save bar
@@ -496,27 +589,54 @@ function renderUsuariosTab() {
   return html;
 }
 
-// Compute effective permissions (union of all assigned groups)
+// Compute effective permissions (union of all assigned groups) — hierarchical
 function computeEffectivePerms(grupoIds) {
   var result = {};
-  PANTALLAS.forEach(function(p) {
-    result[p.id] = {};
-    HABILIDADES.forEach(function(h) { result[p.id][h.id] = false; });
-  });
+
+  // Deep merge: walk the tree and OR all booleans
+  function mergeInto(target, source) {
+    if (!source || typeof source !== 'object') return;
+    Object.keys(source).forEach(function(k) {
+      if (typeof source[k] === 'boolean') {
+        if (source[k] === true) target[k] = true;
+        else if (target[k] === undefined) target[k] = false;
+      } else if (typeof source[k] === 'object') {
+        if (!target[k]) target[k] = {};
+        mergeInto(target[k], source[k]);
+      }
+    });
+  }
 
   grupoIds.forEach(function(gid) {
     var grupo = allGrupos.find(function(g) { return g.id === gid; });
     if (!grupo || !grupo.permisos) return;
-    PANTALLAS.forEach(function(p) {
-      var gp = grupo.permisos[p.id];
-      if (!gp) return;
-      HABILIDADES.forEach(function(h) {
-        if (gp[h.id] === true) result[p.id][h.id] = true;
-      });
-    });
+    mergeInto(result, grupo.permisos);
   });
 
   return result;
+}
+
+// Count how many screens have consulta access
+function countAccess(effective) {
+  var count = 0;
+  var total = 0;
+  MODULOS.forEach(function(mod) {
+    var modPerms = effective[mod.id] || {};
+    mod.screens.forEach(function(scr) {
+      if (scr.subtabs) {
+        scr.subtabs.forEach(function(st) {
+          total++;
+          var p = (modPerms[scr.id] || {})[st.id] || {};
+          if (p.consulta === true) count++;
+        });
+      } else {
+        total++;
+        var p = modPerms[scr.id] || {};
+        if (p.consulta === true) count++;
+      }
+    });
+  });
+  return { count: count, total: total };
 }
 
 // ==================== ACTIONS ====================
@@ -538,13 +658,27 @@ function toggleCard(key) {
   renderApp();
 }
 
-function updateGrupoPerm(grupoId, pantallaId, habId, value) {
+function updateGrupoPerm(grupoId, modId, scrId, subtabId, habId, value) {
   if (!editGrupoBuffer[grupoId]) return;
-  if (!editGrupoBuffer[grupoId][pantallaId]) {
-    editGrupoBuffer[grupoId][pantallaId] = {};
-    HABILIDADES.forEach(function(h) { editGrupoBuffer[grupoId][pantallaId][h.id] = false; });
+  var buf = editGrupoBuffer[grupoId];
+  if (!buf[modId]) buf[modId] = {};
+
+  if (subtabId && subtabId !== 'null') {
+    // Has sub-tab: módulo → pantalla → subtab → habilidad
+    if (!buf[modId][scrId]) buf[modId][scrId] = {};
+    if (!buf[modId][scrId][subtabId]) {
+      buf[modId][scrId][subtabId] = {};
+      HABILIDADES.forEach(function(h) { buf[modId][scrId][subtabId][h.id] = false; });
+    }
+    buf[modId][scrId][subtabId][habId] = value;
+  } else {
+    // No sub-tab: módulo → pantalla → habilidad
+    if (!buf[modId][scrId]) {
+      buf[modId][scrId] = {};
+      HABILIDADES.forEach(function(h) { buf[modId][scrId][h.id] = false; });
+    }
+    buf[modId][scrId][habId] = value;
   }
-  editGrupoBuffer[grupoId][pantallaId][habId] = value;
 }
 
 function updateUserGroup(userId, grupoId, checked) {
@@ -724,7 +858,7 @@ async function loadUserProfile() {
   if (!user) return;
   var pr = await sb.from('profiles').select('nombre, rol').eq('id', user.id).single();
   if (pr.data) { userRole = pr.data.rol; userName = pr.data.nombre || user.email; }
-  else { userRole = 'contadora'; userName = user.email; }
+  else { userRole = 'contadores'; userName = user.email; }
 }
 
 async function showApp() {
