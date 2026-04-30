@@ -1009,6 +1009,13 @@ function toggleSidebar() {
 })();
 
 async function goHome() {
+  // Si el rol tiene módulo de inicio, ir a ese módulo
+  var homeModule = ROLE_HOME_MODULE[userRole];
+  if (homeModule) {
+    openModule(homeModule);
+    return;
+  }
+
   activeModule = null;
   activeSection = null;
   hideAllViews();
@@ -1259,6 +1266,14 @@ function pickRole(role) {
   showApp();
 }
 
+// Mapa de rol → módulo de inicio
+var ROLE_HOME_MODULE = {
+  contadores: 'contabilidad',
+  impuestos: 'impuestos',
+  implementaciones: 'implementaciones',
+  comercial: 'comercial'
+};
+
 async function showApp() {
   document.getElementById('login-screen').style.display = 'none';
   document.getElementById('app-wrapper').classList.remove('hidden');
@@ -1270,15 +1285,21 @@ async function showApp() {
     document.getElementById('btn-switch-role').classList.add('hidden');
   }
   renderSidebar();
-  renderWelcome();
 
-  // Cargar dashboard
-  try {
-    var dashData = await loadDashboardData();
-    renderDashboard(dashData);
-  } catch(e) {
-    console.error('Error cargando dashboard:', e);
-    document.getElementById('dashboard-kpis').innerHTML = '<div class="dash-loading">Error cargando datos.</div>';
+  // Si el rol tiene un módulo de inicio, cargarlo directo
+  var homeModule = ROLE_HOME_MODULE[userRole];
+  if (homeModule) {
+    openModule(homeModule);
+  } else {
+    // Admin: mostrar dashboard
+    renderWelcome();
+    try {
+      var dashData = await loadDashboardData();
+      renderDashboard(dashData);
+    } catch(e) {
+      console.error('Error cargando dashboard:', e);
+      document.getElementById('dashboard-kpis').innerHTML = '<div class="dash-loading">Error cargando datos.</div>';
+    }
   }
 }
 
