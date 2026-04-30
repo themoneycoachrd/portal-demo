@@ -780,14 +780,15 @@ async function pcInitAdmin(isEmbed) {
   if (!session) return;
 
   var { data: profile } = await sb.from('profiles').select('rol').eq('id', session.user.id).single();
-  if (!profile || profile.rol !== 'admin') {
+  var allowedRoles = ['admin', 'contadores', 'impuestos'];
+  if (!profile || allowedRoles.indexOf(profile.rol) < 0) {
     document.getElementById('loginOverlay').style.display = 'none';
-    document.getElementById('errorScreen').innerHTML = '<div><h2>Acceso denegado</h2><p>Solo administradores pueden acceder a esta vista.</p></div>';
+    document.getElementById('errorScreen').innerHTML = '<div><h2>Acceso denegado</h2><p>No tienes permisos para acceder a esta vista.</p></div>';
     document.getElementById('errorScreen').style.display = 'flex';
     return;
   }
 
-  isAdminMode = true;
+  isAdminMode = (profile.rol === 'admin');
   adminShowingIndex = true;
   if (isEmbed) document.body.classList.add('embed');
 
