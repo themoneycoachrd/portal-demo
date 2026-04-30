@@ -1791,6 +1791,18 @@ function renderProyeccionDetail() {
 }
 
 // ── DECLARACIONES ──
+// Calcula color semáforo: verde (antes de firma), amarillo (entre firma y deadline), rojo (después de deadline), na (sin datos)
+function pmDeclColor(d) {
+  if (!d || !d.fecha_presentado || !d.fecha_limite) return 'na';
+  if (d.estado === 'no_aplico' || d.estado === 'pendiente') return 'na';
+  var pres = new Date(d.fecha_presentado + 'T00:00:00');
+  var limite = new Date(d.fecha_limite + 'T00:00:00');
+  var firma = new Date(limite); firma.setDate(firma.getDate() - 5);
+  if (pres <= firma) return 'verde';
+  if (pres <= limite) return 'amarillo';
+  return 'rojo';
+}
+
 function renderDeclaracionesDetail() {
   var h = '<button class="pc-back-btn" onclick="pmCloseDetail()">← Volver</button>';
   var mesNum = pmGetMesIdx(selectedMes);
@@ -1799,7 +1811,6 @@ function renderDeclaracionesDetail() {
   var declMes = pmDeclaraciones.filter(function(d) { return d.mes === mesNum; });
   var presentadas = declMes.filter(function(d) { return d.estado === 'a_tiempo' || d.estado === 'tarde'; }).length;
   var noAplico = declMes.filter(function(d) { return d.estado === 'no_aplico'; }).length;
-  var aTiempo = declMes.filter(function(d) { return d.estado === 'a_tiempo'; }).length;
   var totalMonto = 0;
   declMes.forEach(function(d) { totalMonto += (d.monto || 0); });
 
@@ -1808,26 +1819,46 @@ function renderDeclaracionesDetail() {
   var totalPrev = 0;
   declPrev.forEach(function(d) { totalPrev += (d.monto || 0); });
 
+  // Summary cards
+  var greenCount = 0, yellowCount = 0, redCount = 0;
+  declMes.forEach(function(d) {
+    var c = pmDeclColor(d);
+    if (c === 'verde') greenCount++;
+    else if (c === 'amarillo') yellowCount++;
+    else if (c === 'rojo') redCount++;
+  });
+
   h += '<div class="pm-summary-row">';
-  h += '<div class="pm-summary-card pm-green-accent"><div class="pm-sc-label">Obligaciones presentadas</div>';
+  h += '<div class="pm-summary-card pm-green-accent"><div class="pm-sc-label">Presentadas</div>';
   h += '<div class="pm-sc-value navy">' + presentadas + ' / ' + obligaciones.length + '</div>';
-  if (noAplico > 0) h += '<div class="pm-sc-sub">' + noAplico + ' no aplicaron este mes</div>';
+  if (noAplico > 0) h += '<div class="pm-sc-sub">' + noAplico + ' no aplicaron</div>';
   h += '</div>';
 
-  h += '<div class="pm-summary-card pm-green-accent"><div class="pm-sc-label">A tiempo</div>';
-  h += '<div class="pm-sc-value navy">' + aTiempo + '</div>';
-  h += '<div class="pm-sc-sub">' + (aTiempo === presentadas ? 'Todas antes de fecha límite' : (presentadas - aTiempo) + ' fuera de plazo') + '</div></div>';
-
-  h += '<div class="pm-summary-card pm-blue-accent"><div class="pm-sc-label">Total pagado en el mes</div>';
+  h += '<div class="pm-summary-card pm-blue-accent"><div class="pm-sc-label">Pagado este mes</div>';
   h += '<div class="pm-sc-value navy">RD$' + pmFormatMoneyShort(totalMonto) + '</div>';
-  h += '<div class="pm-sc-sub">vs RD$' + pmFormatMoneyShort(totalPrev) + ' mes anterior</div></div>';
+  h += '<div class="pm-sc-sub">Mes anterior: RD$' + pmFormatMoneyShort(totalPrev) + '</div></div>';
+
+  h += '<div class="pm-summary-card" style="border-left:4px solid var(--navy)"><div class="pm-sc-label">Puntualidad</div>';
+  h += '<div style="display:flex;gap:10px;margin-top:6px">';
+  if (greenCount) h += '<span class="pm-sem verde"><span class="pm-dot"></span>' + greenCount + '</span>';
+  if (yellowCount) h += '<span class="pm-sem amarillo"><span class="pm-dot"></span>' + yellowCount + '</span>';
+  if (redCount) h += '<span class="pm-sem rojo"><span class="pm-dot"></span>' + redCount + '</span>';
+  if (!greenCount && !yellowCount && !redCount) h += '<span class="pm-sem na"><span class="pm-dot"></span>—</span>';
+  h += '</div></div>';
   h += '</div>';
 
+  // Últimos 3 meses para puntualidad inline
+  var histMeses = [];
+  for (var hm = mesNum; hm >= 1 && histMeses.length < 3; hm--) { histMeses.unshift(hm); }
+
+  // Tabla principal
   h += '<div class="pm-card"><div class="pm-card-title">Detalle de Declaraciones — ' + MESES_FULL[mesNum - 1] + ' ' + pmYear + '</div>';
   h += '<table><thead><tr>';
   h += '<th>Obligación</th><th class="pm-text-center">Fecha Límite</th><th class="pm-text-center">Presentado</th>';
-  h += '<th class="pm-text-right">Monto (RD$)</th><th class="pm-text-right">Mes Anterior</th>';
-  h += '<th class="pm-text-center">Variación</th><th class="pm-text-center">Puntualidad</th>';
+  h += '<th class="pm-text-right">Pagado Mes Ant.</th><th class="pm-text-right">Pagado Este Mes</th>';
+  h += '<th class="pm-text-center">Variación</th>';
+  // Headers de puntualidad: dot por cada mes del historial
+  histMeses.forEach(function(hm) { h += '<th class="pm-text-center" style="font-size:0.65rem">' + MESES_FULL[hm - 1].substring(0, 3) + '</th>'; });
   h += '</tr></thead><tbody>';
 
   var totalMontoDecl = 0, totalPrevDecl = 0;
@@ -1841,86 +1872,62 @@ function renderDeclaracionesDetail() {
 
     h += '<tr><td class="pm-font-bold">' + ob + '</td>';
 
-    if (!d || d.estado === 'pendiente') {
-      h += '<td class="pm-text-center" style="color:var(--muted)">—</td>';
-      h += '<td class="pm-text-center" style="color:var(--muted)">—</td>';
-      h += '<td class="pm-text-right" style="color:var(--muted)">—</td>';
-      h += '<td class="pm-text-right" style="color:var(--muted)">' + (montoPrev > 0 ? pmFormatMoney(montoPrev) : '—') + '</td>';
-      h += '<td class="pm-text-center"><span class="pm-var-neutral">—</span></td>';
-      h += '<td class="pm-text-center"><span class="pm-sem na"><span class="pm-dot"></span>Pendiente</span></td>';
-    } else if (d.estado === 'no_aplico') {
-      h += '<td class="pm-text-center">' + (d.fecha_limite ? pmFormatDate(d.fecha_limite) : '—') + '</td>';
-      h += '<td class="pm-text-center">—</td>';
-      h += '<td class="pm-text-right">—</td>';
-      h += '<td class="pm-text-right">' + (montoPrev > 0 ? pmFormatMoney(montoPrev) : '—') + '</td>';
-      h += '<td class="pm-text-center"><span class="pm-var-neutral">—</span></td>';
-      h += '<td class="pm-text-center"><span class="pm-sem na"><span class="pm-dot"></span>No aplicó</span></td>';
-    } else {
-      h += '<td class="pm-text-center">' + (d.fecha_limite ? pmFormatDate(d.fecha_limite) : '—') + '</td>';
-      h += '<td class="pm-text-center">' + (d.fecha_presentado ? pmFormatDate(d.fecha_presentado) : '—') + '</td>';
-      h += '<td class="pm-text-right">' + pmFormatMoney(monto) + '</td>';
-      h += '<td class="pm-text-right">' + (montoPrev > 0 ? pmFormatMoney(montoPrev) : '—') + '</td>';
+    // Fecha límite
+    h += '<td class="pm-text-center">' + (d && d.fecha_limite ? pmFormatDate(d.fecha_limite) : '<span style="color:var(--muted)">—</span>') + '</td>';
 
-      if (montoPrev > 0 && monto > 0) {
-        var varPct = ((monto - montoPrev) / montoPrev * 100);
-        if (Math.abs(varPct) < 0.5) {
-          h += '<td class="pm-text-center"><span class="pm-var-neutral">— 0%</span></td>';
-        } else if (varPct > 0) {
-          h += '<td class="pm-text-center"><span class="pm-var-up">↑ +' + varPct.toFixed(1) + '%</span></td>';
-        } else {
-          h += '<td class="pm-text-center"><span class="pm-var-down">↓ ' + varPct.toFixed(1) + '%</span></td>';
-        }
+    // Presentado
+    h += '<td class="pm-text-center">' + (d && d.fecha_presentado ? pmFormatDate(d.fecha_presentado) : '<span style="color:var(--muted)">—</span>') + '</td>';
+
+    // Pagado mes anterior
+    h += '<td class="pm-text-right">' + (montoPrev > 0 ? pmFormatMoney(montoPrev) : '<span style="color:var(--muted)">—</span>') + '</td>';
+
+    // Pagado este mes
+    h += '<td class="pm-text-right">' + (monto > 0 ? pmFormatMoney(monto) : '<span style="color:var(--muted)">—</span>') + '</td>';
+
+    // Variación
+    if (montoPrev > 0 && monto > 0) {
+      var varPct = ((monto - montoPrev) / montoPrev * 100);
+      if (Math.abs(varPct) < 0.5) {
+        h += '<td class="pm-text-center"><span class="pm-var-neutral">— 0%</span></td>';
+      } else if (varPct > 0) {
+        h += '<td class="pm-text-center"><span class="pm-var-up">↑ +' + varPct.toFixed(1) + '%</span></td>';
       } else {
-        h += '<td class="pm-text-center"><span class="pm-var-neutral">—</span></td>';
+        h += '<td class="pm-text-center"><span class="pm-var-down">↓ ' + varPct.toFixed(1) + '%</span></td>';
       }
-
-      var puntCls = d.estado === 'a_tiempo' ? 'verde' : 'rojo';
-      var puntLabel = d.estado === 'a_tiempo' ? 'A tiempo' : 'Tarde';
-      h += '<td class="pm-text-center"><span class="pm-badge pm-badge-' + puntCls + '">' + puntLabel + '</span></td>';
+    } else {
+      h += '<td class="pm-text-center"><span class="pm-var-neutral">—</span></td>';
     }
+
+    // Puntualidad: dot por cada mes del historial
+    histMeses.forEach(function(hm) {
+      var dh = pmGetDeclForMes(hm, ob);
+      var col = pmDeclColor(dh);
+      h += '<td class="pm-text-center"><span class="pm-sem ' + col + '" style="padding:2px 6px"><span class="pm-dot"></span></span></td>';
+    });
+
     h += '</tr>';
   });
 
+  // Fila total
   h += '<tr class="pm-row-total"><td class="pm-font-bold">Total</td><td></td><td></td>';
-  h += '<td class="pm-text-right pm-font-bold">' + pmFormatMoney(totalMontoDecl) + '</td>';
   h += '<td class="pm-text-right pm-font-bold">' + pmFormatMoney(totalPrevDecl) + '</td>';
-  if (totalPrevDecl > 0) {
+  h += '<td class="pm-text-right pm-font-bold">' + pmFormatMoney(totalMontoDecl) + '</td>';
+  if (totalPrevDecl > 0 && totalMontoDecl > 0) {
     var totalVar = ((totalMontoDecl - totalPrevDecl) / totalPrevDecl * 100);
-    h += '<td class="pm-text-center"><span class="' + (totalVar > 0 ? 'pm-var-up' : 'pm-var-down') + '">' + (totalVar > 0 ? '↑ +' : '↓ ') + totalVar.toFixed(1) + '%</span></td>';
+    h += '<td class="pm-text-center"><span class="' + (totalVar > 0 ? 'pm-var-up' : totalVar < 0 ? 'pm-var-down' : 'pm-var-neutral') + '">' + (totalVar > 0 ? '↑ +' : totalVar < 0 ? '↓ ' : '') + totalVar.toFixed(1) + '%</span></td>';
   } else {
     h += '<td class="pm-text-center"><span class="pm-var-neutral">—</span></td>';
   }
-  h += '<td></td></tr></tbody></table></div>';
+  for (var ti = 0; ti < histMeses.length; ti++) h += '<td></td>';
+  h += '</tr></tbody></table></div>';
 
-  var histMeses = [];
-  for (var hm = mesNum; hm >= 1 && histMeses.length < 3; hm--) {
-    histMeses.unshift(hm);
-  }
-
-  if (histMeses.length > 0) {
-    h += '<div class="pm-card"><div class="pm-card-title">Historial de Puntualidad — Últimos ' + histMeses.length + ' Meses</div>';
-    h += '<table><thead><tr><th>Obligación</th>';
-    histMeses.forEach(function(hm) { h += '<th class="pm-text-center">' + MESES_FULL[hm - 1] + '</th>'; });
-    h += '</tr></thead><tbody>';
-
-    obligaciones.forEach(function(ob) {
-      h += '<tr><td class="pm-font-bold">' + ob + '</td>';
-      histMeses.forEach(function(hm) {
-        var d = pmGetDeclForMes(hm, ob);
-        if (!d || d.estado === 'pendiente') {
-          h += '<td class="pm-text-center"><span class="pm-sem na"><span class="pm-dot"></span></span></td>';
-        } else if (d.estado === 'no_aplico') {
-          h += '<td class="pm-text-center"><span class="pm-sem na"><span class="pm-dot"></span></span></td>';
-        } else if (d.estado === 'a_tiempo') {
-          h += '<td class="pm-text-center"><span class="pm-sem verde"><span class="pm-dot"></span></span></td>';
-        } else {
-          h += '<td class="pm-text-center"><span class="pm-sem rojo"><span class="pm-dot"></span></span></td>';
-        }
-      });
-      h += '</tr>';
-    });
-    h += '</tbody></table></div>';
-  }
+  // Nota general del mes
+  var ejMes = pmGetEjecucionMes(mesNum);
+  var notaVal = ejMes ? (ejMes.nota_declaraciones || '') : '';
+  h += '<div class="pm-card"><div class="pm-card-title">Nota del Mes</div>';
+  h += '<textarea id="pmDeclNota" style="width:100%;min-height:80px;border:1px solid var(--border);border-radius:8px;padding:10px;font-size:0.85rem;font-family:inherit;resize:vertical" placeholder="Observaciones sobre las declaraciones de este mes...">' + esc(notaVal) + '</textarea>';
+  h += '<div style="text-align:right;margin-top:8px"><button class="pm-btn-save primary" onclick="pmSaveDeclNota()">Guardar nota</button></div>';
+  h += '</div>';
 
   return h;
 }
@@ -2176,6 +2183,23 @@ async function pmSaveDeclaraciones() {
   showToast('Declaraciones de ' + MESES_FULL[mesNum - 1] + ' guardadas');
   await loadPresentacionData();
   render();
+}
+
+async function pmSaveDeclNota() {
+  var mesNum = pmGetMesIdx(selectedMes);
+  var nota = document.getElementById('pmDeclNota').value || '';
+  var { error } = await sb.from('portal_ejecucion').upsert({
+    cliente: clienteNombre,
+    anio: pmYear,
+    mes: mesNum,
+    nota_declaraciones: nota
+  }, { onConflict: 'cliente,anio,mes' });
+  if (error) { showToast('Error: ' + error.message); return; }
+  showToast('Nota guardada');
+  // Actualizar el dato local
+  var ej = pmGetEjecucionMes(mesNum);
+  if (ej) { ej.nota_declaraciones = nota; }
+  else { pmEjecucion.push({ cliente: clienteNombre, anio: pmYear, mes: mesNum, nota_declaraciones: nota }); }
 }
 
 function pmFormatDate(dateStr) {
