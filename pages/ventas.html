@@ -680,7 +680,7 @@ let APP = {
   addingLead: false,
   editingRoas: null, // {month, field}
   charts: {},
-  userRole: null,  // 'admin', 'ventas', 'contadora', etc.
+  userRole: null,  // 'admin', 'comercial', 'contadores', etc.
   userName: ''
 };
 
@@ -757,7 +757,7 @@ function renderPipeline() {
   html += '</div>';
 
   // Summary stats
-  const isVentas = APP.userRole === 'ventas';
+  const isVentas = APP.userRole === 'comercial';
   html += '<div class="stats-grid stats-grid-pipeline">';
   html += `<div class="stat-card"><div class="label">Total Leads</div><div class="value navy">${totalLeads}</div></div>`;
   if (!isVentas) html += `<div class="stat-card"><div class="label">Costo x Lead</div><div class="value amber">${fmtCurrency(Math.round(cpl))}</div></div>`;
@@ -854,7 +854,7 @@ function renderPipeline() {
 
 function renderEditRow(lead, idx) {
   const descVal = lead.desc != null ? lead.desc : 25;
-  const colSpan = APP.userRole === 'ventas' ? 12 : 15;
+  const colSpan = APP.userRole === 'comercial' ? 12 : 15;
   return `<tr class="edit-row"><td colspan="${colSpan}">
     <div class="edit-form" style="grid-template-columns:repeat(5,1fr);">
       <div class="field"><label>Nombre</label><input type="text" data-field="n" value="${esc(lead.n)}"></div>
@@ -1078,7 +1078,7 @@ function renderROAS() {
 
   let html = '';
 
-  const isVentas = APP.userRole === 'ventas';
+  const isVentas = APP.userRole === 'comercial';
 
   // General summary cards
   if (activeMonths.length > 0) {
@@ -1381,7 +1381,7 @@ async function loadUserProfile() {
     APP.userName = profile.nombre || user.email;
   } else {
     // Si no tiene perfil, acceso básico
-    APP.userRole = 'contadora';
+    APP.userRole = 'comercial';
     APP.userName = user.email;
   }
 }

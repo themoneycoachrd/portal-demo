@@ -409,7 +409,7 @@ function renderUsuariosTab() {
     html += '<div class="invite-row">';
     html += '<div class="invite-field"><label>Correo *</label><input type="email" id="invite-email" placeholder="correo@accountone.do"></div>';
     html += '<div class="invite-field"><label>Nombre</label><input type="text" id="invite-nombre" placeholder="Nombre completo"></div>';
-    html += '<div class="invite-field"><label>Rol</label><select id="invite-role"><option value="contadora">Contadora</option><option value="admin">Admin</option></select></div>';
+    html += '<div class="invite-field"><label>Rol</label><select id="invite-role"><option value="admin">Admin</option><option value="comercial">Comercial</option><option value="contadores">Contadores</option><option value="impuestos">Impuestos</option><option value="implementaciones">Implementaciones</option></select></div>';
     html += '<button class="invite-btn" id="invite-btn" onclick="handleInviteUser()">Enviar invitación</button>';
     html += '</div>';
     html += '<div class="invite-msg" id="invite-msg"></div>';
@@ -669,7 +669,16 @@ async function handleInviteUser() {
     return;
   }
 
-  // Success
+  // Success — asignar al grupo correspondiente
+  var ROLE_GRUPO = { admin: 'Admin', comercial: 'Comercial', contadores: 'Contadores', impuestos: 'Impuestos', implementaciones: 'Implementaciones' };
+  var grupoNombre = ROLE_GRUPO[role];
+  if (data && data.user_id && grupoNombre) {
+    var grupo = allGrupos.find(function(g) { return g.nombre === grupoNombre; });
+    if (grupo) {
+      await sb.from('usuario_grupos').upsert({ user_id: data.user_id, grupo_id: grupo.id }, { onConflict: 'user_id,grupo_id' });
+    }
+  }
+
   document.getElementById('invite-email').value = '';
   document.getElementById('invite-nombre').value = '';
   usrShowToast('Invitación enviada a ' + email);

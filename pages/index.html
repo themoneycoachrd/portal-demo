@@ -580,7 +580,7 @@ const MENU = [
     title: 'Comercial',
     icon: '\ud83d\udcc8',
     iconBg: '#eef2ff',
-    roles: ['admin', 'ventas'],
+    roles: ['admin', 'comercial'],
     href: 'ventas.html',
     active: true,
     desc: 'Leads, funnel de ventas, ROAS y seguimiento del pipeline comercial.'
@@ -590,7 +590,7 @@ const MENU = [
     title: 'Contabilidad',
     icon: '\ud83c\udfaf',
     iconBg: '#f5f3ff',
-    roles: ['admin', 'contadora'],
+    roles: ['admin', 'contadores'],
     href: 'contabilidad.html',
     active: true,
     desc: 'Checklist mensual de tareas y evaluaci\u00f3n KPI por contadora.'
@@ -600,7 +600,7 @@ const MENU = [
     title: 'Impuestos',
     icon: '\ud83d\udccb',
     iconBg: '#fffbeb',
-    roles: ['admin', 'impuestos'],
+    roles: ['admin', 'impuestos', 'contadores'],
     href: 'impuestos.html',
     active: true,
     desc: 'Control y checklist de declaraciones fiscales por cliente.'
@@ -610,7 +610,7 @@ const MENU = [
     title: 'Implementaciones',
     icon: '\ud83d\ude80',
     iconBg: '#fff7ed',
-    roles: ['admin', 'implementaciones'],
+    roles: ['admin', 'implementaciones', 'contadores'],
     href: 'implementaciones.html',
     active: true,
     desc: 'Control de implementaciones completas y facturación electrónica.'
@@ -620,7 +620,7 @@ const MENU = [
     title: 'Portal Clientes (A)',
     icon: '\ud83c\udf10',
     iconBg: '#fef2f2',
-    roles: ['admin'],
+    roles: ['admin', 'contadores'],
     href: 'portal-admin.html',
     active: true,
     desc: 'Administrar datos del portal de clientes: checklist, presupuesto, impuestos.'
@@ -630,7 +630,7 @@ const MENU = [
     title: 'Portal Clientes (C)',
     icon: '\ud83c\udf10',
     iconBg: '#fef2f2',
-    roles: ['admin'],
+    roles: ['admin', 'contadores'],
     href: 'portal-clientes.html',
     active: true,
     desc: 'Vista del cliente: lo que ve cuando entra con su token.'
@@ -1169,7 +1169,7 @@ async function loadUserProfile() {
     userRole = profile.rol;
     userName = profile.nombre || user.email;
   } else {
-    userRole = 'contadora';
+    userRole = 'contadores';
     userName = user.email;
   }
 }
