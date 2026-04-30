@@ -126,7 +126,8 @@ body.embed .content { padding-top:12px; }
 .pm-panel-body { padding:0; }
 .pm-panel-body table { width:100%; border-collapse:collapse; font-size:0.82rem; }
 .pm-panel-body th { text-align:left; padding:10px 20px; font-size:0.65rem; text-transform:uppercase; letter-spacing:0.3px; color:var(--muted); border-bottom:1px solid var(--border); background:#f8fafc; font-weight:700; }
-.pm-panel-body td { padding:14px 20px; border-bottom:1px solid #f1f5f9; }
+.pm-panel-body td { padding:14px 20px; border-bottom:1px solid #f1f5f9; vertical-align:middle; }
+.pm-dual .pm-panel-body tbody td { height:54px; box-sizing:border-box; }
 .pm-panel-body tr:last-child td { border-bottom:none; }
 
 /* Dark panel header */
@@ -1300,22 +1301,42 @@ function renderPresupuestoDetail() {
   h += '<td class="pm-text-center"><span style="color:' + (pctResOp >= 80 ? 'var(--green)' : 'var(--amber)') + ';font-weight:600">' + pctResOp.toFixed(2) + '%</span></td>';
   h += '<td class="pm-text-center"><span class="pm-badge ' + badgeResOp.cls + '">' + badgeResOp.label + '</span></td></tr>';
 
-  if (qTotalIF || qTotalGNA) {
-    if (qTotalIF) {
-      h += '<tr><td class="pm-font-bold">Ing./Gasto Fin.</td>';
-      h += '<td class="pm-text-right">&ndash;</td><td class="pm-text-right">' + pmFormatMoneyShort(qTotalIF) + '</td>';
-      h += '<td colspan="3"></td></tr>';
-    }
-    if (qTotalGNA) {
-      h += '<tr><td class="pm-font-bold">Gtos. No Admitidos</td>';
-      h += '<td class="pm-text-right">&ndash;</td><td class="pm-text-right">' + pmFormatMoneyShort(qTotalGNA) + '</td>';
-      h += '<td colspan="3"></td></tr>';
-    }
-    var qGanancia = qResOp + qTotalIF - qTotalGNA;
-    h += '<tr class="pm-row-total"><td class="pm-font-bold">Ganancia / Pérdida</td>';
-    h += '<td class="pm-text-right">&ndash;</td><td class="pm-text-right" style="color:' + (qGanancia >= 0 ? 'var(--green)' : 'var(--red)') + '">' + pmFormatMoneyShort(qGanancia) + '</td>';
-    h += '<td colspan="3"></td></tr>';
-  }
+  var qMetaIF = pmGetMetaMensual('ingreso_financiero') * 3;
+  var qMetaGNA = pmGetMetaMensual('gastos_no_admitidos') * 3;
+
+  // Ing./Gasto Fin. — valor negativo = gasto, tratado como tipo 'gasto' (menos es mejor)
+  var diffIF = qTotalIF - qMetaIF;
+  var pctIF = qMetaIF ? Math.abs(qTotalIF / qMetaIF * 100) : (qTotalIF ? 0 : 100);
+  h += '<tr><td class="pm-font-bold">Ing./Gasto Fin.</td>';
+  h += '<td class="pm-text-right">' + pmFormatMoneyShort(qMetaIF) + '</td>';
+  h += '<td class="pm-text-right">' + pmFormatMoneyShort(qTotalIF) + '</td>';
+  h += '<td class="pm-text-right" style="color:#666">' + (diffIF >= 0 ? '+' : '') + pmFormatMoneyShort(diffIF) + '</td>';
+  h += '<td class="pm-text-center"><span style="color:#666;font-weight:600">' + (qMetaIF ? pctIF.toFixed(2) + '%' : '—') + '</span></td>';
+  h += '<td></td></tr>';
+
+  // Gtos. No Admitidos — tipo gasto (menos es mejor)
+  var diffGNA = qTotalGNA - qMetaGNA;
+  var pctGNA = qMetaGNA ? (qTotalGNA / qMetaGNA * 100) : (qTotalGNA ? 0 : 100);
+  var badgeGNA = pmBadgeStatus(pctGNA, 'gasto');
+  var diffGNAColor = diffGNA <= 0 ? 'var(--green)' : 'var(--red)';
+  h += '<tr><td class="pm-font-bold">Gtos. No Admitidos</td>';
+  h += '<td class="pm-text-right">' + pmFormatMoneyShort(qMetaGNA) + '</td>';
+  h += '<td class="pm-text-right">' + pmFormatMoneyShort(qTotalGNA) + '</td>';
+  h += '<td class="pm-text-right" style="color:' + diffGNAColor + '">' + (diffGNA >= 0 ? '+' : '') + pmFormatMoneyShort(diffGNA) + '</td>';
+  h += '<td class="pm-text-center"><span style="color:' + (pctGNA <= 120 ? 'var(--green)' : 'var(--amber)') + ';font-weight:600">' + pctGNA.toFixed(2) + '%</span></td>';
+  h += '<td class="pm-text-center"><span class="pm-badge ' + badgeGNA.cls + '">' + badgeGNA.label + '</span></td></tr>';
+
+  var qGanancia = qResOp + qTotalIF - qTotalGNA;
+  var qMetaGanancia = qMetaResOp + qMetaIF - qMetaGNA;
+  var diffGan = qGanancia - qMetaGanancia;
+  var pctGan = qMetaGanancia ? (qGanancia / qMetaGanancia * 100) : 0;
+  var badgeGan = pmBadgeStatus(pctGan, 'beneficio');
+  h += '<tr class="pm-row-total"><td class="pm-font-bold">Ganancia / Pérdida</td>';
+  h += '<td class="pm-text-right">' + pmFormatMoneyShort(qMetaGanancia) + '</td>';
+  h += '<td class="pm-text-right" style="color:' + (qGanancia >= 0 ? 'var(--green)' : 'var(--red)') + '">' + pmFormatMoneyShort(qGanancia) + '</td>';
+  h += '<td class="pm-text-right" style="color:' + (diffGan >= 0 ? 'var(--green)' : 'var(--red)') + '">' + (diffGan >= 0 ? '+' : '') + pmFormatMoneyShort(diffGan) + '</td>';
+  h += '<td class="pm-text-center"><span style="color:' + (pctGan >= 80 ? 'var(--green)' : 'var(--amber)') + ';font-weight:600">' + pctGan.toFixed(2) + '%</span></td>';
+  h += '<td class="pm-text-center"><span class="pm-badge ' + badgeGan.cls + '">' + badgeGan.label + '</span></td></tr>';
   h += '</tbody></table>';
 
   var qResultadoFinal = (qTotalIF || qTotalGNA) ? (qResOp + qTotalIF - qTotalGNA) : qResOp;
