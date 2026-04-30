@@ -611,6 +611,17 @@ function pmFormatMoneyShort(n) {
   return Math.round(parseFloat(n)).toLocaleString('en-US');
 }
 
+// Contribución Residuos Sólidos — Ley 98-25
+function pmCalcCRS(ingresosAnuales) {
+  var v = Math.abs(ingresosAnuales || 0);
+  if (v <= 1000000) return 3000;
+  if (v <= 10000000) return 6000;
+  if (v <= 25000000) return 20000;
+  if (v <= 50000000) return 155000;
+  if (v <= 100000000) return 260000;
+  return 675000;
+}
+
 function pmPctColor(pct, invert) {
   if (invert) {
     if (pct <= 100) return 'var(--green)';
@@ -1405,7 +1416,8 @@ function renderProyeccionDetail() {
   var baseActivos = Math.max(activos - activosExentos, 0);
   var impActivo = baseActivos * 0.01;
 
-  var crsMonto = pmImpConfig ? (pmImpConfig.crs_monto || 0) : 0;
+  // CRS — cálculo automático según Ley 98-25
+  var crsMonto = pmCalcCRS(projV);
 
   h += '<div class="pm-summary-row" style="grid-template-columns:repeat(3, 1fr)">';
   h += '<div class="pm-summary-card"><div class="pm-sc-label">Ganancia proyectada <span>📈</span></div>';
@@ -1550,9 +1562,9 @@ function renderProyeccionDetail() {
   h += '<div class="pm-panel-hdr" style="background:var(--blue);border-bottom:none">';
   h += '<h3 style="color:white;text-transform:uppercase;font-size:0.78rem;letter-spacing:0.3px">Contribución de Residuos Sólidos (CRS)</h3></div>';
   h += '<div class="pm-crs-banner">';
-  h += '<div><div style="color:rgba(255,255,255,0.7);font-size:0.78rem">Base de Cálculo (Ingresos Totales)</div>';
-  h += '<div style="color:white;font-size:1.4rem;font-weight:800;font-family:monospace">$' + pmFormatMoney(totalV) + '</div></div>';
-  h += '<div class="pm-crs-pill"><span style="color:white;font-weight:700;font-size:0.95rem">Total a Pagar</span>';
+  h += '<div><div style="color:rgba(255,255,255,0.7);font-size:0.78rem">Ingresos Brutos Proyectados (Anual)</div>';
+  h += '<div style="color:white;font-size:1.4rem;font-weight:800;font-family:monospace">$' + pmFormatMoney(projV) + '</div></div>';
+  h += '<div class="pm-crs-pill"><span style="color:white;font-weight:700;font-size:0.95rem">Contribución Anual (Ley 98-25)</span>';
   h += '<span style="color:#fbbf24;font-weight:800;font-size:1.6rem">$' + pmFormatMoney(crsMonto) + '</span></div></div></div>';
 
   // Anticipos Mensuales — dos tablas lado a lado
@@ -1641,9 +1653,9 @@ function renderDeclaracionesDetail() {
   if (noAplico > 0) h += '<div class="pm-sc-sub">' + noAplico + ' no aplicaron</div>';
   h += '</div>';
 
-  h += '<div class="pm-summary-card pm-blue-accent"><div class="pm-sc-label">Pagado este mes</div>';
+  h += '<div class="pm-summary-card pm-blue-accent"><div class="pm-sc-label">Pagado ' + MESES_FULL[mesNum - 1] + '</div>';
   h += '<div class="pm-sc-value navy">RD$' + pmFormatMoneyShort(totalMonto) + '</div>';
-  h += '<div class="pm-sc-sub">Mes anterior: RD$' + pmFormatMoneyShort(totalPrev) + '</div></div>';
+  h += '<div class="pm-sc-sub">' + MESES_FULL[prevMes - 1] + ': RD$' + pmFormatMoneyShort(totalPrev) + '</div></div>';
 
   h += '<div class="pm-summary-card" style="border-left:4px solid var(--navy)"><div class="pm-sc-label">Puntualidad</div>';
   h += '<div style="display:flex;gap:10px;margin-top:6px">';
@@ -1662,7 +1674,7 @@ function renderDeclaracionesDetail() {
   h += '<div class="pm-card"><div class="pm-card-title">Detalle de Declaraciones — ' + MESES_FULL[mesNum - 1] + ' ' + pmYear + '</div>';
   h += '<table><thead><tr>';
   h += '<th>Obligación</th><th class="pm-text-center">Fecha Límite</th><th class="pm-text-center">Presentado</th>';
-  h += '<th class="pm-text-right">Pagado Mes Ant.</th><th class="pm-text-right">Pagado Este Mes</th>';
+  h += '<th class="pm-text-right">Pagado ' + MESES_FULL[prevMes - 1].substring(0, 3) + '.</th><th class="pm-text-right">Pagado ' + MESES_FULL[mesNum - 1].substring(0, 3) + '.</th>';
   h += '<th class="pm-text-center">Variación</th>';
   histMeses.forEach(function(hm) { h += '<th class="pm-text-center" style="font-size:0.65rem">' + MESES_FULL[hm - 1].substring(0, 3) + '</th>'; });
   h += '</tr></thead><tbody>';
