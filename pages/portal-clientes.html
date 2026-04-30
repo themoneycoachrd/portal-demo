@@ -1129,8 +1129,8 @@ function renderPresupuestoDetail() {
   h += '</tr></thead><tbody>';
 
   var conceptos = [
-    { key: 'ventas', label: 'Ventas', tipo: 'ventas' },
-    { key: 'costos', label: 'Costos', tipo: 'costo' },
+    { key: 'ventas_it1', label: 'Ventas IT1', tipo: 'ventas' },
+    { key: 'costos_operativos', label: 'Costos Op.', tipo: 'costo' },
     { key: 'gastos', label: 'Gastos', tipo: 'gasto' }
   ];
 
@@ -1151,11 +1151,11 @@ function renderPresupuestoDetail() {
   h += '<tr class="pm-row-total"><td class="pm-font-bold">Beneficios</td>';
   qRange.forEach(function(m) {
     var ej = pmGetEjecucionMes(m);
-    var v = ej ? (ej.ventas || 0) : 0;
-    var c = ej ? (ej.costos || 0) : 0;
+    var v = ej ? (ej.ventas_it1 || 0) : 0;
+    var c = ej ? (ej.costos_operativos || 0) : 0;
     var g = ej ? (ej.gastos || 0) : 0;
     var benef = v - c - g;
-    var metaBenef = pmGetMetaMensual('ventas') - pmGetMetaMensual('costos') - pmGetMetaMensual('gastos');
+    var metaBenef = pmGetMetaMensual('ventas_it1') - pmGetMetaMensual('costos_operativos') - pmGetMetaMensual('gastos');
     var pct = metaBenef ? (benef / metaBenef * 100) : 0;
     var color = benef >= 0 ? 'var(--green)' : 'var(--red)';
     h += '<td class="pm-text-right" style="color:' + color + '">' + pmFormatMoney(benef) + '</td>';
@@ -1173,8 +1173,8 @@ function renderPresupuestoDetail() {
   h += '</tr></thead><tbody>';
 
   var presRows = [
-    { label: 'Ventas', key: 'ventas' },
-    { label: 'Costos', key: 'costos' },
+    { label: 'Ventas IT1', key: 'ventas_it1' },
+    { label: 'Costos Op.', key: 'costos_operativos' },
     { label: 'Gastos', key: 'gastos' }
   ];
   presRows.forEach(function(r) {
@@ -1183,7 +1183,7 @@ function renderPresupuestoDetail() {
     h += '<td class="pm-text-right">$' + pmFormatMoney(anual) + '</td>';
     h += '<td class="pm-text-right">$' + pmFormatMoney(anual / 12) + '</td></tr>';
   });
-  var benefAnual = pmPresupuesto ? ((pmPresupuesto.ventas_anual || 0) - (pmPresupuesto.costos_anual || 0) - (pmPresupuesto.gastos_anual || 0)) : 0;
+  var benefAnual = pmPresupuesto ? ((pmPresupuesto.ventas_it1_anual || 0) - (pmPresupuesto.costos_operativos_anual || 0) - (pmPresupuesto.gastos_anual || 0)) : 0;
   h += '<tr><td class="pm-font-bold">Beneficios</td>';
   h += '<td class="pm-text-right">$' + pmFormatMoney(benefAnual) + '</td>';
   h += '<td class="pm-text-right">$' + pmFormatMoney(benefAnual / 12) + '</td></tr>';
@@ -1198,8 +1198,8 @@ function renderPresupuestoDetail() {
   h += '</tr></thead><tbody>';
 
   var ejRows = [
-    { key: 'ventas', tipo: 'ventas' },
-    { key: 'costos', tipo: 'costo' },
+    { key: 'ventas_it1', tipo: 'ventas' },
+    { key: 'costos_operativos', tipo: 'costo' },
     { key: 'gastos', tipo: 'gasto' }
   ];
   ejRows.forEach(function(r) {
@@ -1212,8 +1212,8 @@ function renderPresupuestoDetail() {
     h += '<td class="pm-text-center"><span class="pm-badge ' + badge.cls + '">' + badge.label + '</span></td></tr>';
   });
 
-  var ejBenef = ejMes ? ((ejMes.ventas || 0) - (ejMes.costos || 0) - (ejMes.gastos || 0)) : 0;
-  var metaBenefMes = pmGetMetaMensual('ventas') - pmGetMetaMensual('costos') - pmGetMetaMensual('gastos');
+  var ejBenef = ejMes ? ((ejMes.ventas_it1 || 0) - (ejMes.costos_operativos || 0) - (ejMes.gastos || 0)) : 0;
+  var metaBenefMes = pmGetMetaMensual('ventas_it1') - pmGetMetaMensual('costos_operativos') - pmGetMetaMensual('gastos');
   var pctBenef = metaBenefMes ? (ejBenef / metaBenefMes * 100) : 0;
   var badgeBenef = pmBadgeStatus(pctBenef, 'beneficio');
   h += '<tr><td class="pm-text-right pm-font-bold">$' + pmFormatMoney(ejBenef) + '</td>';
@@ -1224,11 +1224,11 @@ function renderPresupuestoDetail() {
   var qTotalV = 0, qTotalC = 0, qTotalG = 0;
   qRange.forEach(function(m) {
     var e = pmGetEjecucionMes(m);
-    if (e) { qTotalV += (e.ventas || 0); qTotalC += (e.costos || 0); qTotalG += (e.gastos || 0); }
+    if (e) { qTotalV += (e.ventas_it1 || 0); qTotalC += (e.costos_operativos || 0); qTotalG += (e.gastos || 0); }
   });
   var qBenef = qTotalV - qTotalC - qTotalG;
-  var qMetaV = pmGetMetaMensual('ventas') * 3;
-  var qMetaC = pmGetMetaMensual('costos') * 3;
+  var qMetaV = pmGetMetaMensual('ventas_it1') * 3;
+  var qMetaC = pmGetMetaMensual('costos_operativos') * 3;
   var qMetaG = pmGetMetaMensual('gastos') * 3;
   var qMetaB = qMetaV - qMetaC - qMetaG;
 
@@ -1280,26 +1280,32 @@ function renderPresupuestoDetail() {
 function renderProyeccionDetail() {
   var h = '<button class="pc-back-btn" onclick="pmCloseDetail()">← Volver</button>';
 
-  var totalV = 0, totalC = 0, totalG = 0, totalS = 0;
+  var totalV = 0, totalCO = 0, totalG = 0, totalS = 0, totalIF = 0, totalGNA = 0;
   var mesesConData = 0;
   pmEjecucion.forEach(function(e) {
-    totalV += (e.ventas || 0);
-    totalC += (e.costos || 0);
+    totalV += (e.ventas_it1 || 0);
+    totalCO += (e.costos_operativos || 0);
     totalG += (e.gastos || 0);
     totalS += (e.salarios || 0);
+    totalIF += (e.ingreso_financiero || 0);
+    totalGNA += (e.gastos_no_admitidos || 0);
     mesesConData++;
   });
-  var gananciaNeta = totalV - totalC - totalG;
+  var gananciaNeta = totalV - totalCO - totalG + totalIF - totalGNA;
 
   var avgV = mesesConData ? totalV / mesesConData : 0;
-  var avgC = mesesConData ? totalC / mesesConData : 0;
+  var avgCO = mesesConData ? totalCO / mesesConData : 0;
   var avgG = mesesConData ? totalG / mesesConData : 0;
   var avgS = mesesConData ? totalS / mesesConData : 0;
+  var avgIF = mesesConData ? totalIF / mesesConData : 0;
+  var avgGNA = mesesConData ? totalGNA / mesesConData : 0;
   var mesesFaltantes = 12 - mesesConData;
   var projV = totalV + avgV * mesesFaltantes;
-  var projC = totalC + avgC * mesesFaltantes;
+  var projCO = totalCO + avgCO * mesesFaltantes;
   var projG = totalG + avgG * mesesFaltantes;
-  var projGanancia = projV - projC - projG;
+  var projIF = totalIF + avgIF * mesesFaltantes;
+  var projGNA = totalGNA + avgGNA * mesesFaltantes;
+  var projGanancia = projV - projCO - projG + projIF - projGNA;
 
   var perdidas = pmImpConfig ? (pmImpConfig.perdidas_compensables || 0) : 0;
   var baseISR = Math.max(gananciaNeta - perdidas, 0);
@@ -1344,20 +1350,24 @@ function renderProyeccionDetail() {
   h += '<div class="pm-panel"><div class="pm-panel-hdr" style="background:white">';
   h += '<h3 style="text-transform:uppercase;font-size:0.78rem;letter-spacing:0.3px">Realidad hasta hoy</h3></div>';
   h += '<div class="pm-panel-body"><table><thead><tr>';
-  h += '<th>Mes</th><th class="pm-text-right">Ventas</th><th class="pm-text-right">Costos</th><th class="pm-text-right">Gastos</th><th class="pm-text-right">Salarios</th>';
+  h += '<th>Mes</th><th class="pm-text-right">Ventas IT1</th><th class="pm-text-right">Costos Op.</th><th class="pm-text-right">Gastos</th><th class="pm-text-right">Salarios</th><th class="pm-text-right">Ing. Fin.</th><th class="pm-text-right">Gtos. N/A</th>';
   h += '</tr></thead><tbody>';
   pmEjecucion.forEach(function(e) {
     h += '<tr><td class="pm-font-bold">' + MESES_FULL[e.mes - 1] + '</td>';
-    h += '<td class="pm-text-right">' + pmFormatMoneyShort(e.ventas) + '</td>';
-    h += '<td class="pm-text-right">' + pmFormatMoneyShort(e.costos) + '</td>';
+    h += '<td class="pm-text-right">' + pmFormatMoneyShort(e.ventas_it1) + '</td>';
+    h += '<td class="pm-text-right">' + pmFormatMoneyShort(e.costos_operativos) + '</td>';
     h += '<td class="pm-text-right">' + pmFormatMoneyShort(e.gastos) + '</td>';
-    h += '<td class="pm-text-right">' + pmFormatMoneyShort(e.salarios) + '</td></tr>';
+    h += '<td class="pm-text-right">' + pmFormatMoneyShort(e.salarios) + '</td>';
+    h += '<td class="pm-text-right">' + pmFormatMoneyShort(e.ingreso_financiero) + '</td>';
+    h += '<td class="pm-text-right">' + pmFormatMoneyShort(e.gastos_no_admitidos) + '</td></tr>';
   });
   h += '<tr class="pm-row-total"><td class="pm-font-bold">Totales</td>';
   h += '<td class="pm-text-right">' + pmFormatMoneyShort(totalV) + '</td>';
-  h += '<td class="pm-text-right">' + pmFormatMoneyShort(totalC) + '</td>';
+  h += '<td class="pm-text-right">' + pmFormatMoneyShort(totalCO) + '</td>';
   h += '<td class="pm-text-right">' + pmFormatMoneyShort(totalG) + '</td>';
-  h += '<td class="pm-text-right">' + pmFormatMoneyShort(totalS) + '</td></tr>';
+  h += '<td class="pm-text-right">' + pmFormatMoneyShort(totalS) + '</td>';
+  h += '<td class="pm-text-right">' + pmFormatMoneyShort(totalIF) + '</td>';
+  h += '<td class="pm-text-right">' + pmFormatMoneyShort(totalGNA) + '</td></tr>';
   h += '</tbody></table>';
   h += '<div class="pm-ganancia"><span>Ganancia Neta (Realidad)</span><span class="pm-amount">$' + pmFormatMoney(gananciaNeta) + '</span></div>';
   h += '</div></div>';
@@ -1365,25 +1375,29 @@ function renderProyeccionDetail() {
   h += '<div class="pm-panel pm-panel-dark"><div class="pm-panel-hdr">';
   h += '<h3 style="text-transform:uppercase;font-size:0.78rem;letter-spacing:0.3px">Proyección a fin de año (promedios)</h3></div>';
   h += '<div class="pm-panel-body"><table><thead><tr>';
-  h += '<th>Mes</th><th class="pm-text-right">Ventas</th><th class="pm-text-right">Costos</th><th class="pm-text-right">Gastos</th><th class="pm-text-right">Salarios</th>';
+  h += '<th>Mes</th><th class="pm-text-right">Ventas IT1</th><th class="pm-text-right">Costos Op.</th><th class="pm-text-right">Gastos</th><th class="pm-text-right">Salarios</th><th class="pm-text-right">Ing. Fin.</th><th class="pm-text-right">Gtos. N/A</th>';
   h += '</tr></thead><tbody>';
   for (var m = 1; m <= 12; m++) {
     var isActual = pmEjecucion.some(function(e) { return e.mes === m; });
     if (isActual) {
-      h += '<tr class="pm-actual"><td>' + MESES_FULL[m - 1] + '</td><td class="pm-text-right">&ndash;</td><td class="pm-text-right">&ndash;</td><td class="pm-text-right">&ndash;</td><td class="pm-text-right">&ndash;</td></tr>';
+      h += '<tr class="pm-actual"><td>' + MESES_FULL[m - 1] + '</td><td class="pm-text-right">&ndash;</td><td class="pm-text-right">&ndash;</td><td class="pm-text-right">&ndash;</td><td class="pm-text-right">&ndash;</td><td class="pm-text-right">&ndash;</td><td class="pm-text-right">&ndash;</td></tr>';
     } else {
       h += '<tr class="pm-projected"><td>' + MESES_FULL[m - 1] + '</td>';
       h += '<td class="pm-text-right">' + pmFormatMoneyShort(avgV) + '</td>';
-      h += '<td class="pm-text-right">' + pmFormatMoneyShort(avgC) + '</td>';
+      h += '<td class="pm-text-right">' + pmFormatMoneyShort(avgCO) + '</td>';
       h += '<td class="pm-text-right">' + pmFormatMoneyShort(avgG) + '</td>';
-      h += '<td class="pm-text-right">' + pmFormatMoneyShort(avgS) + '</td></tr>';
+      h += '<td class="pm-text-right">' + pmFormatMoneyShort(avgS) + '</td>';
+      h += '<td class="pm-text-right">' + pmFormatMoneyShort(avgIF) + '</td>';
+      h += '<td class="pm-text-right">' + pmFormatMoneyShort(avgGNA) + '</td></tr>';
     }
   }
   h += '<tr class="pm-row-total"><td class="pm-font-bold">Globales</td>';
   h += '<td class="pm-text-right">' + pmFormatMoneyShort(projV) + '</td>';
-  h += '<td class="pm-text-right">' + pmFormatMoneyShort(projC) + '</td>';
+  h += '<td class="pm-text-right">' + pmFormatMoneyShort(projCO) + '</td>';
   h += '<td class="pm-text-right">' + pmFormatMoneyShort(projG) + '</td>';
-  h += '<td class="pm-text-right">0</td></tr>';
+  h += '<td class="pm-text-right">' + pmFormatMoneyShort(totalS) + '</td>';
+  h += '<td class="pm-text-right">' + pmFormatMoneyShort(projIF) + '</td>';
+  h += '<td class="pm-text-right">' + pmFormatMoneyShort(projGNA) + '</td></tr>';
   h += '</tbody></table>';
   h += '<div class="pm-ganancia"><span>Ganancia Neta (Proyectada Anual)</span><span class="pm-amount">$' + pmFormatMoney(projGanancia) + '</span></div>';
   h += '</div></div></div>';
@@ -1391,8 +1405,7 @@ function renderProyeccionDetail() {
   h += '<div class="pm-dual">';
 
   h += '<div class="pm-panel pm-panel-blue"><div class="pm-panel-hdr">';
-  h += '<h3 style="text-transform:uppercase;font-size:0.78rem;letter-spacing:0.3px">Proyección Impuestos</h3></div>';
-  h += '<div style="background:var(--blue);color:white;text-align:center;padding:6px;font-size:0.72rem;font-weight:600;border-bottom:1px solid rgba(255,255,255,0.2)">Impuesto Sobre la Renta*</div>';
+  h += '<h3 style="text-transform:uppercase;font-size:0.78rem;letter-spacing:0.3px">Impuesto Sobre la Renta</h3></div>';
   h += '<div class="pm-panel-body" style="padding:0"><table style="font-size:0.82rem"><tbody>';
   h += '<tr><td style="padding:10px 20px;font-weight:600">Base Imponible ISR</td><td class="pm-text-right" style="padding:10px 20px;font-weight:700">' + pmFormatMoney(gananciaNeta) + '</td></tr>';
   h += '<tr><td style="padding:10px 20px;color:var(--muted)">Pérdidas compensables</td><td class="pm-text-right" style="padding:10px 20px">' + (perdidas > 0 ? pmFormatMoney(perdidas) : '—') + '</td></tr>';
@@ -1462,29 +1475,44 @@ function renderProyeccionDetail() {
   h += '<div class="pm-crs-pill"><span style="color:white;font-weight:700;font-size:0.95rem">Total a Pagar</span>';
   h += '<span style="color:#fbbf24;font-weight:800;font-size:1.6rem">$' + pmFormatMoney(crsMonto) + '</span></div></div></div>';
 
-  h += '<div class="pm-card"><div class="pm-card-title">Anticipos Mensuales — Comparativo de Tramos</div>';
-  h += '<table><thead><tr><th>Mes</th><th class="pm-text-right">Anticipo (RD$)</th><th class="pm-text-center">Tramo</th><th>Nota</th></tr></thead><tbody>';
+  // Anticipos Mensuales — dos tablas lado a lado
   var totalAntAnual = 0;
-  for (var am = 1; am <= 12; am++) {
-    var antMonto = am <= 4 ? antTramo1 : antTramo2;
-    totalAntAnual += antMonto;
-    var tramo = am <= 4 ? 'Anterior' : 'Nuevo';
-    var tramoCls = am <= 4 ? 'na' : 'verde';
-    var nota = '';
-    if (am === 4) nota = 'Último mes tramo anterior';
-    if (am === 5) {
-      var diff5 = antTramo2 - antTramo1;
-      var pct5 = antTramo1 ? (diff5 / antTramo1 * 100) : 0;
-      nota = (diff5 < 0 ? '↓' : '↑') + ' Cambio de tramo — ' + (diff5 < 0 ? 'baja' : 'sube') + ' RD$' + pmFormatMoney(Math.abs(diff5)) + ' (' + Math.abs(pct5).toFixed(1) + '%)';
+  var antHalves = [
+    { titulo: 'Ene — Jun', desde: 1, hasta: 6 },
+    { titulo: 'Jul — Dic', desde: 7, hasta: 12 }
+  ];
+  h += '<div class="pm-card"><div class="pm-card-title">Anticipos Mensuales — Comparativo de Tramos</div>';
+  h += '<div class="pm-dual">';
+  for (var hi = 0; hi < 2; hi++) {
+    var half = antHalves[hi];
+    var subtotal = 0;
+    h += '<div class="pm-card" style="margin-bottom:0"><div class="pm-card-title" style="font-size:0.82rem;padding:10px 14px">' + half.titulo + '</div>';
+    h += '<table><thead><tr><th>Mes</th><th class="pm-text-right">Anticipo (RD$)</th><th class="pm-text-center">Tramo</th><th>Nota</th></tr></thead><tbody>';
+    for (var am = half.desde; am <= half.hasta; am++) {
+      var antMonto = am <= 4 ? antTramo1 : antTramo2;
+      subtotal += antMonto;
+      totalAntAnual += antMonto;
+      var tramo = am <= 4 ? 'Anterior' : 'Nuevo';
+      var tramoCls = am <= 4 ? 'na' : 'verde';
+      var nota = '';
+      if (am === 4) nota = 'Último mes tramo anterior';
+      if (am === 5) {
+        var diff5 = antTramo2 - antTramo1;
+        var pct5 = antTramo1 ? (diff5 / antTramo1 * 100) : 0;
+        nota = (diff5 < 0 ? '↓' : '↑') + ' Cambio — ' + (diff5 < 0 ? 'baja' : 'sube') + ' $' + pmFormatMoney(Math.abs(diff5)) + ' (' + Math.abs(pct5).toFixed(1) + '%)';
+      }
+      var rowStyle = am === 5 ? ' style="background:#fffbeb"' : '';
+      h += '<tr' + rowStyle + '><td' + (am === 5 ? ' class="pm-font-bold"' : '') + '>' + MESES_FULL[am - 1] + '</td>';
+      h += '<td class="pm-text-right pm-font-bold">' + pmFormatMoney(antMonto) + '</td>';
+      h += '<td class="pm-text-center"><span class="pm-sem ' + tramoCls + '"><span class="pm-dot"></span>' + tramo + '</span></td>';
+      h += '<td style="color:' + (am === 5 ? 'var(--amber);font-weight:600' : 'var(--muted)') + ';font-size:0.75rem">' + nota + '</td></tr>';
     }
-    var rowStyle = am === 5 ? ' style="background:#fffbeb"' : '';
-    h += '<tr' + rowStyle + '><td' + (am === 5 ? ' class="pm-font-bold"' : '') + '>' + MESES_FULL[am - 1] + '</td>';
-    h += '<td class="pm-text-right pm-font-bold">' + pmFormatMoney(antMonto) + '</td>';
-    h += '<td class="pm-text-center"><span class="pm-sem ' + tramoCls + '"><span class="pm-dot"></span>' + tramo + '</span></td>';
-    h += '<td style="color:' + (am === 5 ? 'var(--amber);font-weight:600' : 'var(--muted)') + '">' + nota + '</td></tr>';
+    h += '<tr class="pm-row-total"><td class="pm-font-bold">Subtotal</td><td class="pm-text-right pm-font-bold">' + pmFormatMoney(subtotal) + '</td><td></td><td></td></tr>';
+    h += '</tbody></table></div>';
   }
-  h += '<tr class="pm-row-total"><td class="pm-font-bold">Total Anual</td><td class="pm-text-right pm-font-bold">' + pmFormatMoney(totalAntAnual) + '</td><td></td><td></td></tr>';
-  h += '</tbody></table></div>';
+  h += '</div>';
+  h += '<div style="text-align:right;padding:8px 14px;font-weight:700;font-size:0.9rem;color:var(--navy)">Total Anual: $' + pmFormatMoney(totalAntAnual) + '</div>';
+  h += '</div>';
 
   return h;
 }
