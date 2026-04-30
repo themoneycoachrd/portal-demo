@@ -1475,14 +1475,12 @@ function renderPresupuestoDetail() {
   h += '<tr class="pm-row-total"><td class="pm-font-bold">Resultado Op.</td>';
   h += '<td class="pm-text-right" style="color:' + (resOpAnual >= 0 ? 'var(--green)' : 'var(--red)') + '">$' + pmFormatMoney(resOpAnual) + '</td>';
   h += '<td class="pm-text-right" style="color:' + (resOpAnual >= 0 ? 'var(--green)' : 'var(--red)') + '">$' + pmFormatMoney(resOpAnual / 12) + '</td></tr>';
-  if (pIF || pGNA) {
-    if (pIF) { h += '<tr><td class="pm-font-bold">Ing. Financiero</td><td class="pm-text-right">$' + pmFormatMoney(pIF) + '</td><td class="pm-text-right">$' + pmFormatMoney(pIF / 12) + '</td></tr>'; }
-    if (pGNA) { h += '<tr><td class="pm-font-bold">Gtos. No Admitidos</td><td class="pm-text-right">$' + pmFormatMoney(pGNA) + '</td><td class="pm-text-right">$' + pmFormatMoney(pGNA / 12) + '</td></tr>'; }
-    var gananciaAnual = resOpAnual + pIF - pGNA;
-    h += '<tr class="pm-row-total"><td class="pm-font-bold">Ganancia / Pérdida</td>';
-    h += '<td class="pm-text-right" style="color:' + (gananciaAnual >= 0 ? 'var(--green)' : 'var(--red)') + '">$' + pmFormatMoney(gananciaAnual) + '</td>';
-    h += '<td class="pm-text-right" style="color:' + (gananciaAnual >= 0 ? 'var(--green)' : 'var(--red)') + '">$' + pmFormatMoney(gananciaAnual / 12) + '</td></tr>';
-  }
+  h += '<tr><td class="pm-font-bold">Resultado Financiero</td><td class="pm-text-right">$' + pmFormatMoney(pIF) + '</td><td class="pm-text-right">$' + pmFormatMoney(pIF / 12) + '</td></tr>';
+  h += '<tr><td class="pm-font-bold">Gtos. No Admitidos</td><td class="pm-text-right">$' + pmFormatMoney(pGNA) + '</td><td class="pm-text-right">$' + pmFormatMoney(pGNA / 12) + '</td></tr>';
+  var gananciaAnual = resOpAnual + pIF - pGNA;
+  h += '<tr class="pm-row-total"><td class="pm-font-bold">Ganancia / Pérdida</td>';
+  h += '<td class="pm-text-right" style="color:' + (gananciaAnual >= 0 ? 'var(--green)' : 'var(--red)') + '">$' + pmFormatMoney(gananciaAnual) + '</td>';
+  h += '<td class="pm-text-right" style="color:' + (gananciaAnual >= 0 ? 'var(--green)' : 'var(--red)') + '">$' + pmFormatMoney(gananciaAnual / 12) + '</td></tr>';
   h += '</tbody></table></div></div>';
 
   var ejMes = pmGetEjecucionMes(mesNum);
@@ -1519,14 +1517,12 @@ function renderPresupuestoDetail() {
 
   var ejIF = ejMes ? (ejMes.ingreso_financiero || 0) : 0;
   var ejGNA = ejMes ? (ejMes.gastos_no_admitidos || 0) : 0;
-  if (ejIF || ejGNA) {
-    if (ejIF) { h += '<tr><td class="pm-text-right pm-font-bold">$' + pmFormatMoney(ejIF) + '</td><td colspan="2" class="pm-text-center" style="font-size:0.75rem;color:#666">Ing. Financiero</td></tr>'; }
-    if (ejGNA) { h += '<tr><td class="pm-text-right pm-font-bold">$' + pmFormatMoney(ejGNA) + '</td><td colspan="2" class="pm-text-center" style="font-size:0.75rem;color:#666">Gtos. No Admitidos</td></tr>'; }
-    var ejGanancia = ejResOp + ejIF - ejGNA;
-    var colorGan = ejGanancia >= 0 ? 'var(--green)' : 'var(--red)';
-    h += '<tr class="pm-row-total"><td class="pm-text-right pm-font-bold" style="color:' + colorGan + '">$' + pmFormatMoney(ejGanancia) + '</td>';
-    h += '<td colspan="2" class="pm-text-center" style="font-size:0.75rem;font-weight:600;color:' + colorGan + '">Ganancia / Pérdida</td></tr>';
-  }
+  h += '<tr><td class="pm-text-right pm-font-bold">$' + pmFormatMoney(ejIF) + '</td><td colspan="2" class="pm-text-center" style="font-size:0.75rem;color:#666">Resultado Financiero</td></tr>';
+  h += '<tr><td class="pm-text-right pm-font-bold">$' + pmFormatMoney(ejGNA) + '</td><td colspan="2" class="pm-text-center" style="font-size:0.75rem;color:#666">Gtos. No Admitidos</td></tr>';
+  var ejGanancia = ejResOp + ejIF - ejGNA;
+  var colorGan = ejGanancia >= 0 ? 'var(--green)' : 'var(--red)';
+  h += '<tr class="pm-row-total"><td class="pm-text-right pm-font-bold" style="color:' + colorGan + '">$' + pmFormatMoney(ejGanancia) + '</td>';
+  h += '<td colspan="2" class="pm-text-center" style="font-size:0.75rem;font-weight:600;color:' + colorGan + '">Ganancia / Pérdida</td></tr>';
   h += '</tbody></table></div></div></div>';
 
   var qTotalV = 0, qTotalC = 0, qTotalG = 0, qTotalS = 0, qTotalIF = 0, qTotalGNA = 0;
@@ -1585,7 +1581,7 @@ function renderPresupuestoDetail() {
 
   if (qTotalIF || qTotalGNA) {
     if (qTotalIF) {
-      h += '<tr><td class="pm-font-bold">Ing. Financiero</td>';
+      h += '<tr><td class="pm-font-bold">Resultado Financiero</td>';
       h += '<td class="pm-text-right">&ndash;</td><td class="pm-text-right">' + pmFormatMoneyShort(qTotalIF) + '</td>';
       h += '<td colspan="3"></td></tr>';
     }
@@ -1685,7 +1681,7 @@ function renderProyeccionDetail() {
   h += '<div class="pm-panel"><div class="pm-panel-hdr" style="background:white">';
   h += '<h3 style="text-transform:uppercase;font-size:0.78rem;letter-spacing:0.3px">Realidad hasta hoy</h3></div>';
   h += '<div class="pm-panel-body"><table><thead><tr>';
-  h += '<th>Mes</th><th class="pm-text-right">Ventas IT1</th><th class="pm-text-right">Costos Op.</th><th class="pm-text-right">Gastos</th><th class="pm-text-right">Salarios</th><th class="pm-text-right">Ing. Fin.</th><th class="pm-text-right">Gtos. N/A</th>';
+  h += '<th>Mes</th><th class="pm-text-right">Ventas IT1</th><th class="pm-text-right">Costos Op.</th><th class="pm-text-right">Gastos</th><th class="pm-text-right">Salarios</th><th class="pm-text-right">Res. Fin.</th><th class="pm-text-right">Gtos. N/A</th>';
   h += '</tr></thead><tbody>';
   pmEjecucion.forEach(function(e) {
     h += '<tr><td class="pm-font-bold">' + MESES_FULL[e.mes - 1] + '</td>';
@@ -1713,7 +1709,7 @@ function renderProyeccionDetail() {
   h += '<div class="pm-panel pm-panel-dark"><div class="pm-panel-hdr">';
   h += '<h3 style="text-transform:uppercase;font-size:0.78rem;letter-spacing:0.3px">Proyección a fin de año (promedios)</h3></div>';
   h += '<div class="pm-panel-body"><table><thead><tr>';
-  h += '<th>Mes</th><th class="pm-text-right">Ventas IT1</th><th class="pm-text-right">Costos Op.</th><th class="pm-text-right">Gastos</th><th class="pm-text-right">Salarios</th><th class="pm-text-right">Ing. Fin.</th><th class="pm-text-right">Gtos. N/A</th>';
+  h += '<th>Mes</th><th class="pm-text-right">Ventas IT1</th><th class="pm-text-right">Costos Op.</th><th class="pm-text-right">Gastos</th><th class="pm-text-right">Salarios</th><th class="pm-text-right">Res. Fin.</th><th class="pm-text-right">Gtos. N/A</th>';
   h += '</tr></thead><tbody>';
   for (var m = 1; m <= 12; m++) {
     var isActual = pmEjecucion.some(function(e) { return e.mes === m; });
@@ -2025,7 +2021,7 @@ function renderAdminDatos() {
   h += '<div class="pm-form-group"><label>Salarios (anual)</label>';
   h += '<input type="number" class="pm-form-input" id="pmPresSalarios" value="' + ps + '" placeholder="0.00" step="0.01">';
   h += '<div class="pm-calc">Mensual: $' + pmFormatMoney(ps ? ps / 12 : 0) + '</div></div>';
-  h += '<div class="pm-form-group"><label>Ingreso Financiero (anual)</label>';
+  h += '<div class="pm-form-group"><label>Resultado Financiero (anual)</label>';
   h += '<input type="number" class="pm-form-input" id="pmPresIngFin" value="' + pif + '" placeholder="0.00" step="0.01">';
   h += '<div class="pm-calc">Mensual: $' + pmFormatMoney(pif ? pif / 12 : 0) + '</div></div>';
   h += '<div class="pm-form-group"><label>Gastos No Admitidos (anual)</label>';
@@ -2067,7 +2063,7 @@ function renderAdminDatos() {
   h += '<div class="pm-form-group"><label>Costos Operativos</label><input type="number" class="pm-form-input" id="pmEjCostos" value="' + (ej ? ej.costos_operativos : '') + '" placeholder="0.00" step="0.01"></div>';
   h += '<div class="pm-form-group"><label>Gastos</label><input type="number" class="pm-form-input" id="pmEjGastos" value="' + (ej ? ej.gastos : '') + '" placeholder="0.00" step="0.01"></div>';
   h += '<div class="pm-form-group"><label>Salarios</label><input type="number" class="pm-form-input" id="pmEjSalarios" value="' + (ej ? ej.salarios : '') + '" placeholder="0.00" step="0.01"></div>';
-  h += '<div class="pm-form-group"><label>Ingreso Financiero</label><input type="number" class="pm-form-input" id="pmEjIngFin" value="' + (ej ? ej.ingreso_financiero : '') + '" placeholder="0.00" step="0.01"></div>';
+  h += '<div class="pm-form-group"><label>Resultado Financiero</label><input type="number" class="pm-form-input" id="pmEjIngFin" value="' + (ej ? ej.ingreso_financiero : '') + '" placeholder="0.00" step="0.01"></div>';
   h += '<div class="pm-form-group"><label>Gastos No Admitidos</label><input type="number" class="pm-form-input" id="pmEjGNA" value="' + (ej ? ej.gastos_no_admitidos : '') + '" placeholder="0.00" step="0.01"></div>';
   h += '</div>';
   h += '<div class="pm-btn-row"><button class="pm-btn-save primary" onclick="pmSaveEjecucion()">Guardar Ejecución</button></div>';
@@ -2233,8 +2229,9 @@ function pmParseEdoResultados(rows, meses) {
       }
     }
 
-    // Detect "Gastos no admitidos" sub-section
+    // Detect sub-sections within Otros gastos
     if (section === 'otros_gastos' && lowerA === 'gastos no admitidos') { subSection = 'gna'; continue; }
+    if (section === 'otros_gastos' && (lowerA === 'otros gastos no operacionales' || lowerA === 'gastos no operacionales' || lowerA === 'otros gastos operacionales')) { subSection = 'gastos_fin'; continue; }
 
     // Total rows — extract values (exact match to avoid subtotals like "Total Gastos Generales")
     if (lowerA === 'total ingresos' && section === 'ingresos') {
@@ -2289,11 +2286,20 @@ function pmParseEdoResultados(rows, meses) {
       continue;
     }
 
-    // Ingresos financieros total
+    // Ingresos financieros total (sección propia, se suma)
     if (section === 'ingresos_financieros' && lowerA.indexOf('total') === 0) {
       meses.forEach(function(m) {
         var val = parseFloat(rows[ri][m.col]) || 0;
-        result[m.mes].ingreso_financiero = val;
+        result[m.mes].ingreso_financiero += val;
+      });
+      continue;
+    }
+
+    // Otros gastos no operacionales total (intereses de préstamos, etc. — se resta)
+    if (section === 'otros_gastos' && subSection === 'gastos_fin' && lowerA.indexOf('total') === 0) {
+      meses.forEach(function(m) {
+        var val = parseFloat(rows[ri][m.col]) || 0;
+        result[m.mes].ingreso_financiero -= val;
       });
       continue;
     }
@@ -2317,6 +2323,15 @@ function pmParseEdoResultados(rows, meses) {
           result[m.mes].ingreso_financiero += val;
         });
       }
+    }
+
+    // Otros ingresos total (sección propia, se suma al resultado financiero)
+    if (section === 'otros_ingresos' && lowerA.indexOf('total') === 0) {
+      meses.forEach(function(m) {
+        var val = parseFloat(rows[ri][m.col]) || 0;
+        result[m.mes].ingreso_financiero += val;
+      });
+      continue;
     }
   }
 
@@ -2382,7 +2397,7 @@ function pmSelectExcelMes(mes) {
     { label: 'Costos Operativos', val: d.costos_operativos },
     { label: 'Gastos', val: d.gastos },
     { label: 'Salarios', val: d.salarios },
-    { label: 'Ingreso Financiero', val: d.ingreso_financiero },
+    { label: 'Resultado Financiero', val: d.ingreso_financiero },
     { label: 'Gastos No Admitidos', val: d.gastos_no_admitidos }
   ];
   items.forEach(function(it, i) {
