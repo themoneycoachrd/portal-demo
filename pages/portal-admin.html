@@ -2301,6 +2301,7 @@ function pmParseEdoResultados(rows, meses) {
         var val = parseFloat(rows[ri][m.col]) || 0;
         result[m.mes].ingreso_financiero -= val;
       });
+      subSection = '';  // reset para que "Total otros gastos" (sección padre) no re-matchee
       continue;
     }
 
