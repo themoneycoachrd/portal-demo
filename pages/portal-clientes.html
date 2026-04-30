@@ -181,11 +181,18 @@ body.embed .content { padding-top:12px; }
 .pm-sem.amarillo { background:#fef3c7; color:#92400e; }
 .pm-sem.rojo { background:#fee2e2; color:#991b1b; }
 .pm-sem.na { background:#f3f4f6; color:#6b7280; }
-.pm-dot { width:8px; height:8px; border-radius:50%; display:inline-block; }
+.pm-dot { width:12px; height:12px; border-radius:50%; display:inline-block; }
 .pm-sem.verde .pm-dot { background:var(--green); }
 .pm-sem.amarillo .pm-dot { background:var(--amber); }
 .pm-sem.rojo .pm-dot { background:var(--red); }
 .pm-sem.na .pm-dot { background:#9ca3af; }
+/* Semáforo solo bolita (sin fondo difuminado) */
+.pm-sem-dot { display:inline-flex; align-items:center; justify-content:center; padding:4px; }
+.pm-sem-dot .pm-dot { width:14px; height:14px; border-radius:50%; display:inline-block; box-shadow:0 1px 3px rgba(0,0,0,0.15); }
+.pm-sem-dot.verde .pm-dot { background:var(--green); }
+.pm-sem-dot.amarillo .pm-dot { background:var(--amber); }
+.pm-sem-dot.rojo .pm-dot { background:var(--red); }
+.pm-sem-dot.na .pm-dot { background:#9ca3af; }
 
 /* Variation arrows */
 .pm-var-up { color:var(--red); font-weight:600; font-size:0.78rem; }
@@ -664,17 +671,18 @@ function pmCalcCRS(ingresosAnuales) {
 function pmPctColor(pct, invert) {
   if (invert) {
     if (pct <= 100) return 'var(--green)';
+    if (pct <= 120) return 'var(--amber)';
     return 'var(--red)';
   }
   if (pct >= 90) return 'var(--green)';
-  if (pct >= 70) return 'var(--amber)';
+  if (pct >= 66) return 'var(--amber)';
   return 'var(--red)';
 }
 
 function pmBadgeStatus(pct, tipo) {
   if (tipo === 'ventas' || tipo === 'beneficio') {
-    if (pct >= 100) return { cls: 'pm-badge-verde', label: tipo === 'beneficio' ? 'Excelente' : 'En meta' };
-    if (pct >= 80) return { cls: 'pm-badge-amarillo', label: 'Cerca' };
+    if (pct >= 90) return { cls: 'pm-badge-verde', label: tipo === 'beneficio' ? 'Excelente' : 'En meta' };
+    if (pct >= 66) return { cls: 'pm-badge-amarillo', label: 'Cerca' };
     return { cls: 'pm-badge-rojo', label: 'Por debajo' };
   }
   if (pct <= 100) return { cls: 'pm-badge-verde', label: 'Controlado' };
@@ -684,8 +692,8 @@ function pmBadgeStatus(pct, tipo) {
 
 function pmSemColor(pct, tipo) {
   if (tipo === 'ventas' || tipo === 'beneficio') {
-    if (pct >= 100) return 'verde';
-    if (pct >= 80) return 'amarillo';
+    if (pct >= 90) return 'verde';
+    if (pct >= 66) return 'amarillo';
     return 'rojo';
   }
   if (pct <= 100) return 'verde';
@@ -1348,7 +1356,7 @@ function renderPresupuestoDetail() {
     var semCol = pmSemColor(pct, r.tipo);
     h += '<tr><td class="pm-text-right pm-font-bold">$' + pmFormatMoney(val) + '</td>';
     h += '<td class="pm-text-center">' + pct.toFixed(2) + '%</td>';
-    h += '<td class="pm-text-center"><span class="pm-sem ' + semCol + '" style="padding:2px 8px"><span class="pm-dot"></span></span></td></tr>';
+    h += '<td class="pm-text-center"><span class="pm-sem-dot ' + semCol + '"><span class="pm-dot"></span></span></td></tr>';
   });
 
   var ejResOp = ejMes ? ((ejMes.ventas_it1 || 0) - (ejMes.costos_operativos || 0) - (ejMes.gastos || 0)) : 0;
@@ -1357,7 +1365,7 @@ function renderPresupuestoDetail() {
   var semResOp = pmSemColor(pctResOp, 'beneficio');
   h += '<tr class="pm-row-total"><td class="pm-text-right pm-font-bold">$' + pmFormatMoney(ejResOp) + '</td>';
   h += '<td class="pm-text-center">' + pctResOp.toFixed(2) + '%</td>';
-  h += '<td class="pm-text-center"><span class="pm-sem ' + semResOp + '" style="padding:2px 8px"><span class="pm-dot"></span></span></td></tr>';
+  h += '<td class="pm-text-center"><span class="pm-sem-dot ' + semResOp + '"><span class="pm-dot"></span></span></td></tr>';
 
   var ejIF = ejMes ? (ejMes.ingreso_financiero || 0) : 0;
   var metaIF = pmGetMetaMensual('ingreso_financiero');
@@ -1423,7 +1431,7 @@ function renderPresupuestoDetail() {
     h += '<td class="pm-text-right">' + pmFormatMoneyShort(r.ej) + '</td>';
     h += '<td class="pm-text-right" style="color:' + diffColor + '">' + diffSign + pmFormatMoneyShort(diff) + '</td>';
     h += '<td class="pm-text-center"><span style="color:' + (pct >= 80 ? 'var(--green)' : 'var(--amber)') + ';font-weight:600">' + pct.toFixed(2) + '%</span></td>';
-    h += '<td class="pm-text-center"><span class="pm-sem ' + semCol + '" style="padding:2px 8px"><span class="pm-dot"></span></span></td></tr>';
+    h += '<td class="pm-text-center"><span class="pm-sem-dot ' + semCol + '"><span class="pm-dot"></span></span></td></tr>';
   });
 
   var diffResOp = qResOp - qMetaResOp;
@@ -1434,7 +1442,7 @@ function renderPresupuestoDetail() {
   h += '<td class="pm-text-right">' + pmFormatMoneyShort(qResOp) + '</td>';
   h += '<td class="pm-text-right" style="color:' + (diffResOp >= 0 ? 'var(--green)' : 'var(--red)') + '">' + (diffResOp >= 0 ? '+' : '') + pmFormatMoneyShort(diffResOp) + '</td>';
   h += '<td class="pm-text-center"><span style="color:' + (pctResOp >= 80 ? 'var(--green)' : 'var(--amber)') + ';font-weight:600">' + pctResOp.toFixed(2) + '%</span></td>';
-  h += '<td class="pm-text-center"><span class="pm-sem ' + semResOp + '" style="padding:2px 8px"><span class="pm-dot"></span></span></td></tr>';
+  h += '<td class="pm-text-center"><span class="pm-sem-dot ' + semResOp + '"><span class="pm-dot"></span></span></td></tr>';
 
   // Ing./Gasto Fin.
   var qMetaIF = pmGetMetaMensual('ingreso_financiero') * 3;
@@ -1446,7 +1454,7 @@ function renderPresupuestoDetail() {
   h += '<td class="pm-text-right" style="color:#666">' + pmFormatMoneyShort(qTotalIF) + '</td>';
   h += '<td class="pm-text-right" style="color:' + (qDiffIF >= 0 ? 'var(--green)' : 'var(--red)') + '">' + (qDiffIF >= 0 ? '+' : '') + pmFormatMoneyShort(qDiffIF) + '</td>';
   h += '<td class="pm-text-center">' + (qMetaIF ? '<span style="color:' + (qPctIF >= 80 ? 'var(--green)' : 'var(--amber)') + ';font-weight:600">' + qPctIF.toFixed(2) + '%</span>' : '') + '</td>';
-  h += '<td class="pm-text-center">' + (qMetaIF ? '<span class="pm-sem ' + qSemIF + '" style="padding:2px 8px"><span class="pm-dot"></span></span>' : '') + '</td></tr>';
+  h += '<td class="pm-text-center">' + (qMetaIF ? '<span class="pm-sem-dot ' + qSemIF + '"><span class="pm-dot"></span></span>' : '') + '</td></tr>';
 
   // Gtos. No Admitidos
   var qMetaGNA = pmGetMetaMensual('gastos_no_admitidos') * 3;
@@ -1458,7 +1466,7 @@ function renderPresupuestoDetail() {
   h += '<td class="pm-text-right" style="color:#666">' + pmFormatMoneyShort(qTotalGNA) + '</td>';
   h += '<td class="pm-text-right" style="color:' + (qDiffGNA <= 0 ? 'var(--green)' : 'var(--red)') + '">' + (qDiffGNA >= 0 ? '+' : '') + pmFormatMoneyShort(qDiffGNA) + '</td>';
   h += '<td class="pm-text-center">' + (qMetaGNA ? '<span style="color:' + (qPctGNA <= 100 ? 'var(--green)' : 'var(--red)') + ';font-weight:600">' + qPctGNA.toFixed(2) + '%</span>' : '') + '</td>';
-  h += '<td class="pm-text-center">' + (qMetaGNA ? '<span class="pm-sem ' + qSemGNA + '" style="padding:2px 8px"><span class="pm-dot"></span></span>' : '') + '</td></tr>';
+  h += '<td class="pm-text-center">' + (qMetaGNA ? '<span class="pm-sem-dot ' + qSemGNA + '"><span class="pm-dot"></span></span>' : '') + '</td></tr>';
 
   h += '</tbody></table>';
 
@@ -1824,7 +1832,7 @@ function renderDeclaracionesDetail() {
     histMeses.forEach(function(hm) {
       var dh = pmGetDeclForMes(hm, ob);
       var col = pmDeclColor(dh);
-      h += '<td class="pm-text-center"><span class="pm-sem ' + col + '" style="padding:2px 6px"><span class="pm-dot"></span></span></td>';
+      h += '<td class="pm-text-center"><span class="pm-sem-dot ' + col + '"><span class="pm-dot"></span></span></td>';
     });
 
     h += '</tr>';
