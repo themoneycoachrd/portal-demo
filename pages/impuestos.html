@@ -516,6 +516,13 @@ async function initApp() {
   selectedMes = getCurrentMonth();
 
   await Promise.all([loadContadoras(), loadImpuestos()]);
+
+  // Si no es admin, pre-filtrar por su nombre en contadora_impuestos
+  if (userRole !== 'admin' && userNameVal) {
+    var maestra = contadorasMap._maestra || {};
+    if (maestra[userNameVal]) selectedContadora = userNameVal;
+  }
+
   renderNav();
   renderMain();
 }

@@ -782,7 +782,7 @@ async function initAdmin(isEmbed) {
   var { data: { session } } = await sb.auth.getSession();
   if (!session) return;
 
-  var { data: profile } = await sb.from('profiles').select('rol').eq('id', session.user.id).single();
+  var { data: profile } = await sb.from('profiles').select('rol, nombre').eq('id', session.user.id).single();
   var allowedRoles = ['admin', 'contadores', 'impuestos'];
   if (!profile || allowedRoles.indexOf(profile.rol) < 0) {
     document.getElementById('loginOverlay').style.display = 'none';
@@ -791,6 +791,7 @@ async function initAdmin(isEmbed) {
   }
 
   var userRolPortal = profile.rol;
+  var userNombrePortal = profile.nombre || '';
   isAdminMode = (userRolPortal === 'admin');
   adminShowingIndex = true;
   if (isEmbed) document.body.classList.add('embed');
@@ -815,8 +816,16 @@ async function initAdmin(isEmbed) {
   allImpConfigBulk = icBulkRes.data || [];
   allDeclaracionesBulk = declBulkRes.data || [];
 
+  // Si no es admin, pre-filtrar por su nombre en contadora_impuestos
+  if (!isAdminMode && userNombrePortal) {
+    var tieneClientes = allClientes.some(function(c) {
+      return (c.contadora_impuestos || '') === userNombrePortal;
+    });
+    if (tieneClientes) selectedContadora = userNombrePortal;
+  }
+
   document.getElementById('loginOverlay').style.display = 'none';
-  document.getElementById('clientName').textContent = 'Admin';
+  document.getElementById('clientName').textContent = isAdminMode ? 'Admin' : userNombrePortal;
   document.getElementById('app').style.display = '';
   document.getElementById('mainTabs').style.display = '';
 
