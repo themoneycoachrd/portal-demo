@@ -2177,9 +2177,10 @@ function renderDeclaracionesDetail() {
 
     h += '<tr><td class="pm-font-bold">' + ob + '</td>';
 
-    // Fecha límite (fija por tipo de obligación)
+    // Fecha límite (fija por tipo de obligación, cae en el mes SIGUIENTE al de trabajo)
     var diaLim = PM_DIA_LIMITE[ob];
-    var fechaLimTxt = diaLim ? (diaLim + ' de ' + MESES_FULL[mesNum - 1].toLowerCase()) : '';
+    var mesLimIdx = mesNum < 12 ? mesNum : 0; // mesNum es 1-based, así que mesNum apunta al mes siguiente en el array
+    var fechaLimTxt = diaLim ? (diaLim + ' de ' + MESES_FULL[mesLimIdx].toLowerCase()) : '';
     h += '<td class="pm-text-center">' + (fechaLimTxt || '<span style="color:var(--muted)">—</span>') + '</td>';
 
     // Presentado: primero portal_declaraciones, fallback a checklist de impuestos
