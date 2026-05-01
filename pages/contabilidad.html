@@ -532,7 +532,8 @@ const EXCLUIDAS = ['Milka', 'Yolenny'];
 
 // ─── 23 items del checklist, ordenados por fecha cronologica ───
 const ITEM_GROUPS = [
-  { label: 'Nomina → TSS / IR-3 — Presentacion dia 3', from: 0, to: 6 },
+  { label: 'Nomina → TSS — Presentacion dia 3', from: 0, to: 5 },
+  { label: 'IR-3 — Presentacion dia 10', from: 6, to: 6 },
   { label: 'Proveedores informales — Presentacion dia 10', from: 7, to: 12 },
   { label: 'Anticipo — Presentacion dia 15', from: 13, to: 13 },
   { label: 'ITBIS — Presentacion dia 20', from: 14, to: 18 },
@@ -540,14 +541,16 @@ const ITEM_GROUPS = [
 ];
 
 const ITEMS = [
-  // ── Nomina → TSS / IR-3 (todo deadline dia 3, firma dia 28) ──
-  { id:'solicitud_nomina',        n:1,  label:'Solicitud de Nomina',                       tipoCss:'tipo-nomina',   impuesto:'TSS / IR-3',    dia:3,  mesRel:1 },
-  { id:'recepcion_nomina',        n:2,  label:'Recepcion de Nomina',                        tipoCss:'tipo-nomina',   impuesto:'TSS / IR-3',    dia:3,  mesRel:1 },
-  { id:'registro_nomina',         n:3,  label:'Registro de Nomina',                         tipoCss:'tipo-nomina',   impuesto:'TSS / IR-3',    dia:3,  mesRel:1 },
-  { id:'informar_impuestos',      n:4,  label:'Informar a Impuestos (via Trello)',           tipoCss:'tipo-nomina',   impuesto:'TSS / IR-3',    dia:3,  mesRel:1 },
-  { id:'autorizacion_tss_nomina', n:5,  label:'Subir autorizacion de TSS al cliente',       tipoCss:'tipo-nomina',   impuesto:'TSS / IR-3',    dia:3,  mesRel:1 },
-  { id:'autorizacion_tss',        n:6,  label:'Subir autorizacion al cliente (TSS)',        tipoCss:'tipo-tss',      impuesto:'TSS / IR-3',    dia:3,  mesRel:1 },
-  { id:'autorizacion_ir3',        n:7,  label:'Subir Autorizacion de IR-3 al cliente',      tipoCss:'tipo-ir3',      impuesto:'TSS / IR-3',    dia:3,  mesRel:1 },
+  // ── Nomina → TSS (deadline dia 3, firma dia 28) ──
+  { id:'solicitud_nomina',        n:1,  label:'Solicitud de Nomina',                       tipoCss:'tipo-nomina',   impuesto:'TSS',           dia:3,  mesRel:1 },
+  { id:'recepcion_nomina',        n:2,  label:'Recepcion de Nomina',                        tipoCss:'tipo-nomina',   impuesto:'TSS',           dia:3,  mesRel:1 },
+  { id:'registro_nomina',         n:3,  label:'Registro de Nomina',                         tipoCss:'tipo-nomina',   impuesto:'TSS',           dia:3,  mesRel:1 },
+  { id:'informar_impuestos',      n:4,  label:'Informar a Impuestos (via Trello)',           tipoCss:'tipo-nomina',   impuesto:'TSS',           dia:3,  mesRel:1 },
+  { id:'autorizacion_tss_nomina', n:5,  label:'Subir autorizacion de TSS al cliente',       tipoCss:'tipo-nomina',   impuesto:'TSS',           dia:3,  mesRel:1 },
+  { id:'autorizacion_tss',        n:6,  label:'Subir autorizacion al cliente (TSS)',        tipoCss:'tipo-tss',      impuesto:'TSS',           dia:3,  mesRel:1 },
+
+  // ── IR-3 (deadline dia 10) ──
+  { id:'autorizacion_ir3',        n:7,  label:'Subir autorizacion de IR-3 al cliente',      tipoCss:'tipo-ir3',      impuesto:'IR-3',          dia:10, mesRel:1 },
 
   // ── Proveedores informales (deadline dia 10, firma dia 5) ──
   { id:'solicitar_proveedores',   n:8,  label:'Solicitar Proveedores Informales',           tipoCss:'tipo-ir17',     impuesto:'Proveedores',   dia:10, mesRel:1 },
