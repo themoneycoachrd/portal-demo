@@ -110,6 +110,7 @@ body.embed .content { padding-top:12px; }
 
 /* Section cards */
 .pm-section-cards { display:grid; grid-template-columns:repeat(3, 1fr); gap:16px; }
+.pm-section-cards.pm-grid-2x2 { grid-template-columns:repeat(2, 1fr); }
 .pm-section-card { background:var(--card); border:2px solid var(--border); border-radius:12px; padding:32px 24px; text-align:center; cursor:pointer; transition:all 0.2s; }
 .pm-section-card:hover { border-color:var(--blue); transform:translateY(-2px); box-shadow:0 4px 12px rgba(0,0,0,0.08); }
 .pm-section-card .pm-icon { width:64px; height:64px; border-radius:50%; background:var(--bg); margin:0 auto 16px; display:flex; align-items:center; justify-content:center; font-size:1.6rem; }
@@ -1159,11 +1160,25 @@ function renderPresentacion(el) {
     h += '<span style="font-size:0.85rem;color:var(--muted);margin-left:12px">Presentación Mensual</span></div>';
     h += '</div>';
 
-    h += '<div class="pm-section-cards">';
-    h += '<div class="pm-section-card" onclick="pmOpenDetail(\'presupuesto\')">';
-    h += '<div class="pm-icon">📊</div>';
-    h += '<h3>Presupuesto vs Ejecución</h3>';
-    h += '<p>Comparativa de metas financieras y realidad operativa.</p></div>';
+    var isMSH = clienteNombre.indexOf('MSH') === 0;
+    h += '<div class="pm-section-cards' + (isMSH ? ' pm-grid-2x2' : '') + '">';
+
+    if (isMSH) {
+      h += '<div class="pm-section-card" onclick="pmOpenDetail(\'presupuesto-simple\')">';
+      h += '<div class="pm-icon">📊</div>';
+      h += '<h3>Presupuesto Simplificado</h3>';
+      h += '<p>Vista resumida: ventas, gastos y beneficio vs meta.</p></div>';
+
+      h += '<div class="pm-section-card" onclick="pmOpenDetail(\'presupuesto\')">';
+      h += '<div class="pm-icon">📈</div>';
+      h += '<h3>Presupuesto Completo</h3>';
+      h += '<p>Desglose de 7 partidas con proyección de impuestos.</p></div>';
+    } else {
+      h += '<div class="pm-section-card" onclick="pmOpenDetail(\'presupuesto\')">';
+      h += '<div class="pm-icon">📊</div>';
+      h += '<h3>Presupuesto vs Ejecución</h3>';
+      h += '<p>Comparativa de metas financieras y realidad operativa.</p></div>';
+    }
 
     h += '<div class="pm-section-card" onclick="pmOpenDetail(\'proyeccion\')">';
     h += '<div class="pm-icon">📋</div>';
@@ -1179,6 +1194,8 @@ function renderPresentacion(el) {
     if (pmEjecucion.length === 0 && !pmPresupuesto) {
       h += '<div class="pm-no-data" style="margin-top:24px"><p>Aún no hay datos cargados para este período.</p></div>';
     }
+  } else if (pmDetail === 'presupuesto-simple') {
+    h += renderPresupuestoMSH();
   } else if (pmDetail === 'presupuesto') {
     h += renderPresupuestoDetail();
   } else if (pmDetail === 'proyeccion') {
@@ -1192,7 +1209,6 @@ function renderPresentacion(el) {
 
 // ── PRESUPUESTO VS EJECUCIÓN ──
 function renderPresupuestoDetail() {
-  if (clienteNombre.indexOf('MSH') === 0) return renderPresupuestoMSH();
   var h = '<button class="pc-back-btn" onclick="pmCloseDetail()">← Volver</button>';
   var mesNum = pmGetMesIdx(selectedMes);
   var quarter = pmGetQuarterForMonth(mesNum);
@@ -1744,7 +1760,7 @@ function renderProyeccionDetail() {
 
   var isrAPagar = Math.max(isrProyectado - totalAnticipos, 0);
 
-  var tet = totalV > 0 ? (isrProyectado / totalV * 100) : 0;
+  var tet = projV > 0 ? (isrProyectado / projV * 100) : 0;
 
   var totalAntCalc = isrProyectado;
   var antMensualProx = totalAntCalc / 12;
@@ -1877,7 +1893,7 @@ function renderProyeccionDetail() {
   h += '<div class="pm-panel pm-panel-dark"><div class="pm-panel-hdr">';
   h += '<h3 style="text-transform:uppercase;font-size:0.78rem;letter-spacing:0.3px">Proyección Anticipo Próx. Año</h3></div>';
   h += '<div class="pm-panel-body" style="padding:0"><table style="font-size:0.82rem"><tbody>';
-  h += '<tr><td style="padding:10px 20px;color:var(--muted)">Ingresos Totales</td><td class="pm-text-right" style="padding:10px 20px;font-weight:700">$' + pmFormatMoney(totalV) + '</td></tr>';
+  h += '<tr><td style="padding:10px 20px;color:var(--muted)">Ingresos Totales</td><td class="pm-text-right" style="padding:10px 20px;font-weight:700">$' + pmFormatMoney(projV) + '</td></tr>';
   h += '<tr><td style="padding:10px 20px;color:var(--muted)">ISR Liquidado (Base)</td><td class="pm-text-right" style="padding:10px 20px;font-weight:700">$' + pmFormatMoney(isrProyectado) + '</td></tr>';
   h += '<tr><td style="padding:10px 20px;color:var(--muted)">T.E.T. (Tasa Efectiva)</td><td class="pm-text-right" style="padding:10px 20px;font-weight:600;color:var(--blue)">' + tet.toFixed(2) + '%</td></tr>';
   h += '<tr style="background:#fffbeb"><td style="padding:10px 20px;font-weight:600">Total Anticipo Calculado</td><td class="pm-text-right" style="padding:10px 20px;font-weight:700;color:var(--amber)">$' + pmFormatMoney(totalAntCalc) + '</td></tr>';
