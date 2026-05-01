@@ -1484,6 +1484,55 @@ function renderPresupuestoDetail() {
   h += '<div class="pm-ganancia"><span>Ganancia/Pérdida ' + qLabels[quarter - 1] + '</span><span class="pm-amount" style="color:' + qGanColor + '">$' + pmFormatMoney(qGanancia) + ' <span style="font-size:0.78rem;color:' + qPctGanColor + '">(' + qPctGan.toFixed(2) + '% de meta)</span></span></div>';
   h += '</div></div>';
 
+  // ── Panel de Obra (solo MSH Interiorismo) ──
+  if (clienteNombre === 'MSH Interiorismo') {
+    h += '<div class="pm-section-label" style="margin-top:24px">Ingreso de Obra vs Costos</div>';
+    h += '<div class="pm-panel" style="margin-bottom:16px">';
+    h += '<div class="pm-panel-hdr" style="background:#5b21b6;color:white;border-bottom:none">';
+    h += '<h3 style="color:white;text-transform:uppercase;font-size:0.78rem;letter-spacing:0.3px">Obra — Trimestre por mes</h3></div>';
+    h += '<div class="pm-panel-body" style="overflow-x:auto"><table>';
+    h += '<thead><tr><th style="min-width:110px">Concepto</th>';
+    qRange.forEach(function(m) {
+      h += '<th class="pm-text-right" style="border-right:' + (m < qRange[2] ? '2px solid var(--border)' : 'none') + '">' + MESES_FULL[m - 1] + '</th>';
+    });
+    h += '<th class="pm-text-right" style="font-weight:700">Total ' + qLabels[quarter - 1] + '</th>';
+    h += '</tr></thead><tbody>';
+
+    var obraTotalIng = 0, obraTotalCost = 0;
+    h += '<tr><td class="pm-font-bold">Ingreso de Obra</td>';
+    qRange.forEach(function(m) {
+      var ej = pmGetEjecucionMes(m);
+      var val = ej ? (ej.ingreso_obra || 0) : 0;
+      obraTotalIng += val;
+      h += '<td class="pm-text-right" style="border-right:' + (m < qRange[2] ? '2px solid var(--border)' : 'none') + '">$' + pmFormatMoney(val) + '</td>';
+    });
+    h += '<td class="pm-text-right pm-font-bold">$' + pmFormatMoney(obraTotalIng) + '</td></tr>';
+
+    h += '<tr><td class="pm-font-bold">Costos Operativos</td>';
+    qRange.forEach(function(m) {
+      var ej = pmGetEjecucionMes(m);
+      var val = ej ? (ej.costos_operativos || 0) : 0;
+      obraTotalCost += val;
+      h += '<td class="pm-text-right" style="border-right:' + (m < qRange[2] ? '2px solid var(--border)' : 'none') + '">$' + pmFormatMoney(val) + '</td>';
+    });
+    h += '<td class="pm-text-right pm-font-bold">$' + pmFormatMoney(obraTotalCost) + '</td></tr>';
+
+    h += '<tr class="pm-row-total" style="background:#f5f3ff"><td class="pm-font-bold" style="color:#5b21b6">Resultado de Obra</td>';
+    qRange.forEach(function(m) {
+      var ej = pmGetEjecucionMes(m);
+      var ing = ej ? (ej.ingreso_obra || 0) : 0;
+      var cost = ej ? (ej.costos_operativos || 0) : 0;
+      var res = ing - cost;
+      var color = res >= 0 ? 'var(--green)' : 'var(--red)';
+      h += '<td class="pm-text-right" style="color:' + color + ';border-right:' + (m < qRange[2] ? '2px solid var(--border)' : 'none') + '">$' + pmFormatMoney(res) + '</td>';
+    });
+    var obraTotal = obraTotalIng - obraTotalCost;
+    var obraTotalColor = obraTotal >= 0 ? 'var(--green)' : 'var(--red)';
+    h += '<td class="pm-text-right pm-font-bold" style="color:' + obraTotalColor + '">$' + pmFormatMoney(obraTotal) + '</td></tr>';
+
+    h += '</tbody></table></div></div>';
+  }
+
   return h;
 }
 
@@ -1517,7 +1566,7 @@ function renderProyeccionDetail() {
   var projGanancia = projV - projCO - projG + projIF - projGNA;
 
   var perdidas = pmImpConfig ? (pmImpConfig.perdidas_compensables || 0) : 0;
-  var baseISR = Math.max(gananciaNeta - perdidas, 0);
+  var baseISR = Math.max(projGanancia - perdidas, 0);
   var isrProyectado = baseISR * 0.27;
 
   var antTramo1 = pmImpConfig ? (pmImpConfig.anticipo_tramo1 || 0) : 0;
@@ -1613,7 +1662,7 @@ function renderProyeccionDetail() {
   h += '<div class="pm-panel pm-panel-blue"><div class="pm-panel-hdr">';
   h += '<h3 style="text-transform:uppercase;font-size:0.78rem;letter-spacing:0.3px">Impuesto Sobre la Renta</h3></div>';
   h += '<div class="pm-panel-body" style="padding:0"><table style="font-size:0.82rem"><tbody>';
-  h += '<tr><td style="padding:10px 20px;font-weight:600">Base Imponible ISR</td><td class="pm-text-right" style="padding:10px 20px;font-weight:700">' + pmFormatMoney(gananciaNeta) + '</td></tr>';
+  h += '<tr><td style="padding:10px 20px;font-weight:600">Ganancia Proyectada (12 meses)</td><td class="pm-text-right" style="padding:10px 20px;font-weight:700">' + pmFormatMoney(projGanancia) + '</td></tr>';
   h += '<tr><td style="padding:10px 20px;color:var(--muted)">Pérdidas compensables</td><td class="pm-text-right" style="padding:10px 20px">' + (perdidas > 0 ? pmFormatMoney(perdidas) : '—') + '</td></tr>';
   h += '<tr style="border-top:2px solid var(--text);background:#f8fafc;font-weight:700"><td style="padding:10px 20px">Renta Neta Imponible</td><td class="pm-text-right" style="padding:10px 20px">' + pmFormatMoney(baseISR) + '</td></tr>';
   h += '<tr><td style="padding:10px 20px;font-weight:700">ISR (27%) Proyectado</td><td class="pm-text-right" style="padding:10px 20px;font-weight:700">' + pmFormatMoney(isrProyectado) + '</td></tr>';
