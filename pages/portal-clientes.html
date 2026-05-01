@@ -391,6 +391,7 @@ var pmPresupuesto = null;
 var pmEjecucion = [];
 var pmImpConfig = null;
 var pmDeclaraciones = [];
+var pmImpChecklist = [];
 var pmYear = 2026;
 
 // Admin mode state
@@ -615,18 +616,21 @@ async function loadPresentacionData() {
     pmEjecucion = ejRes.data || [];
     pmImpConfig = (confRes.data && confRes.data.length > 0) ? confRes.data[0] : null;
     pmDeclaraciones = declRes.data || [];
+    pmImpChecklist = [];
   } else {
     // Modo admin: queries directas (tiene sesión)
-    var [presRes, ejRes, confRes, declRes] = await Promise.all([
+    var [presRes, ejRes, confRes, declRes, ckRes] = await Promise.all([
       sb.from('portal_presupuesto').select('*').eq('cliente', nombre).eq('anio', anio).single(),
       sb.from('portal_ejecucion').select('*').eq('cliente', nombre).eq('anio', anio).order('mes'),
       sb.from('portal_impuestos_config').select('*').eq('cliente', nombre).eq('anio', anio).single(),
-      sb.from('portal_declaraciones').select('*').eq('cliente', nombre).eq('anio', anio).order('mes')
+      sb.from('portal_declaraciones').select('*').eq('cliente', nombre).eq('anio', anio).order('mes'),
+      sb.from('impuestos_checklist').select('mes, impuesto, datos').eq('cliente', nombre).eq('anio', anio)
     ]);
     pmPresupuesto = presRes.data || null;
     pmEjecucion = ejRes.data || [];
     pmImpConfig = confRes.data || null;
     pmDeclaraciones = declRes.data || [];
+    pmImpChecklist = ckRes.data || [];
   }
 }
 
@@ -1723,11 +1727,27 @@ function renderProyeccionDetail() {
 // Calcula color semáforo: verde (antes de firma), amarillo (entre firma y deadline), rojo (después de deadline), na (sin datos)
 var PM_DIA_LIMITE = { 'TSS': 3, 'IR-3': 10, 'IR-17': 10, 'Anticipo': 15, 'ITBIS': 20 };
 
-function pmDeclColor(d) {
-  if (!d || !d.fecha_presentado || !d.fecha_limite) return 'na';
-  if (d.estado === 'no_aplico' || d.estado === 'pendiente') return 'na';
-  var pres = new Date(d.fecha_presentado + 'T00:00:00');
-  var limite = new Date(d.fecha_limite + 'T00:00:00');
+function pmGetFechaFromChecklist(mesNum, obligacion) {
+  var ck = pmImpChecklist.find(function(c) { return c.mes === String(mesNum) && c.impuesto === obligacion; });
+  if (!ck) {
+    ck = pmImpChecklist.find(function(c) { return parseInt(c.mes) === mesNum && c.impuesto === obligacion; });
+  }
+  if (!ck || !ck.datos) return null;
+  var d = ck.datos;
+  var steps = ['pagado', 'anticipo_pagado', 'aprobado_cliente', 'aprobada_impuestos', 'borrador_presentado', 'presentada_contadora'];
+  for (var i = 0; i < steps.length; i++) {
+    if (d[steps[i]] && d[steps[i]].done && d[steps[i]].fecha) return d[steps[i]].fecha;
+  }
+  return null;
+}
+
+function pmDeclColor(d, mesNum, obligacion) {
+  if (d && (d.estado === 'no_aplico' || d.estado === 'pendiente')) return 'na';
+  var fechaPres = (d && d.fecha_presentado) ? d.fecha_presentado : (mesNum && obligacion ? pmGetFechaFromChecklist(mesNum, obligacion) : null);
+  var fechaLim = d ? d.fecha_limite : null;
+  if (!fechaPres || !fechaLim) return 'na';
+  var pres = new Date(fechaPres + 'T00:00:00');
+  var limite = new Date(fechaLim + 'T00:00:00');
   var firma = new Date(limite); firma.setDate(firma.getDate() - 5);
   if (pres <= firma) return 'verde';
   if (pres <= limite) return 'amarillo';
@@ -1752,8 +1772,9 @@ function renderDeclaracionesDetail() {
 
   // Summary cards
   var greenCount = 0, yellowCount = 0, redCount = 0;
-  declMes.forEach(function(d) {
-    var c = pmDeclColor(d);
+  obligaciones.forEach(function(ob) {
+    var d = declMes.find(function(x) { return x.obligacion === ob; });
+    var c = pmDeclColor(d, mesNum, ob);
     if (c === 'verde') greenCount++;
     else if (c === 'amarillo') yellowCount++;
     else if (c === 'rojo') redCount++;
@@ -1807,8 +1828,9 @@ function renderDeclaracionesDetail() {
     var fechaLimTxt = diaLim ? (diaLim + ' de ' + MESES_FULL[mesNum - 1].toLowerCase()) : '';
     h += '<td class="pm-text-center">' + (fechaLimTxt || '<span style="color:var(--muted)">—</span>') + '</td>';
 
-    // Presentado
-    h += '<td class="pm-text-center">' + (d && d.fecha_presentado ? pmFormatDate(d.fecha_presentado) : '<span style="color:var(--muted)">—</span>') + '</td>';
+    // Presentado: primero portal_declaraciones, fallback a checklist de impuestos
+    var fechaPres = (d && d.fecha_presentado) ? d.fecha_presentado : pmGetFechaFromChecklist(mesNum, ob);
+    h += '<td class="pm-text-center">' + (fechaPres ? pmFormatDate(fechaPres) : '<span style="color:var(--muted)">—</span>') + '</td>';
 
     // Pagado mes anterior
     h += '<td class="pm-text-right">' + (montoPrev > 0 ? pmFormatMoney(montoPrev) : '<span style="color:var(--muted)">—</span>') + '</td>';
@@ -1833,7 +1855,7 @@ function renderDeclaracionesDetail() {
     // Puntualidad: dot por cada mes del historial
     histMeses.forEach(function(hm) {
       var dh = pmGetDeclForMes(hm, ob);
-      var col = pmDeclColor(dh);
+      var col = pmDeclColor(dh, hm, ob);
       h += '<td class="pm-text-center"><span class="pm-sem-dot ' + col + '"><span class="pm-dot"></span></span></td>';
     });
 

@@ -360,9 +360,9 @@ async function initApp() {
   document.getElementById('app').style.display = '';
 
   // Profile
-  var { data: profile } = await sb.from('profiles').select('nombre, role').eq('id', session.user.id).single();
+  var { data: profile } = await sb.from('profiles').select('nombre, rol').eq('id', session.user.id).single();
   if (profile) {
-    userRole = profile.role;
+    userRole = profile.rol;
     userName = profile.nombre || session.user.email;
   } else {
     userRole = 'viewer';

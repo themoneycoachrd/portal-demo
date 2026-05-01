@@ -454,6 +454,7 @@ var pmPresupuesto = null;
 var pmEjecucion = [];
 var pmImpConfig = null;
 var pmDeclaraciones = [];
+var pmImpChecklist = [];
 var pmYear = 2026;
 
 // Bulk presentación data for index view
@@ -660,17 +661,19 @@ async function loadPresentacionData() {
   var nombre = clienteNombre;
   var anio = pmYear;
 
-  var [presRes, ejRes, confRes, declRes] = await Promise.all([
+  var [presRes, ejRes, confRes, declRes, ckRes] = await Promise.all([
     sb.from('portal_presupuesto').select('*').eq('cliente', nombre).eq('anio', anio).single(),
     sb.from('portal_ejecucion').select('*').eq('cliente', nombre).eq('anio', anio).order('mes'),
     sb.from('portal_impuestos_config').select('*').eq('cliente', nombre).eq('anio', anio).single(),
-    sb.from('portal_declaraciones').select('*').eq('cliente', nombre).eq('anio', anio).order('mes')
+    sb.from('portal_declaraciones').select('*').eq('cliente', nombre).eq('anio', anio).order('mes'),
+    sb.from('impuestos_checklist').select('mes, impuesto, datos').eq('cliente', nombre).eq('anio', anio)
   ]);
 
   pmPresupuesto = presRes.data || null;
   pmEjecucion = ejRes.data || [];
   pmImpConfig = confRes.data || null;
   pmDeclaraciones = declRes.data || [];
+  pmImpChecklist = ckRes.data || [];
 }
 
 // Helpers de cálculo
@@ -742,6 +745,24 @@ function pmSemColor(pct, tipo) {
   if (pct <= 100) return 'verde';
   if (pct <= 120) return 'amarillo';
   return 'rojo';
+}
+
+// Busca la fecha de presentación desde el checklist de impuestos.
+// Prioridad: último paso completado del checklist (pagado > aprobado_cliente > aprobada_impuestos > presentada_contadora/borrador_presentado)
+function pmGetFechaFromChecklist(mesNum, obligacion) {
+  var ck = pmImpChecklist.find(function(c) { return c.mes === String(mesNum) && c.impuesto === obligacion; });
+  if (!ck) {
+    // Intentar con mes como número
+    ck = pmImpChecklist.find(function(c) { return parseInt(c.mes) === mesNum && c.impuesto === obligacion; });
+  }
+  if (!ck || !ck.datos) return null;
+  var d = ck.datos;
+  // Buscar de atrás para adelante: el último paso con fecha es el más relevante
+  var steps = ['pagado', 'anticipo_pagado', 'aprobado_cliente', 'aprobada_impuestos', 'borrador_presentado', 'presentada_contadora'];
+  for (var i = 0; i < steps.length; i++) {
+    if (d[steps[i]] && d[steps[i]].done && d[steps[i]].fecha) return d[steps[i]].fecha;
+  }
+  return null;
 }
 
 function pmGetQuarterForMonth(mesNum) {
@@ -2072,11 +2093,13 @@ function renderProyeccionDetail() {
 // Calcula color semáforo: verde (antes de firma), amarillo (entre firma y deadline), rojo (después de deadline), na (sin datos)
 var PM_DIA_LIMITE = { 'TSS': 3, 'IR-3': 10, 'IR-17': 10, 'Anticipo': 15, 'ITBIS': 20 };
 
-function pmDeclColor(d) {
-  if (!d || !d.fecha_presentado || !d.fecha_limite) return 'na';
-  if (d.estado === 'no_aplico' || d.estado === 'pendiente') return 'na';
-  var pres = new Date(d.fecha_presentado + 'T00:00:00');
-  var limite = new Date(d.fecha_limite + 'T00:00:00');
+function pmDeclColor(d, mesNum, obligacion) {
+  if (d && (d.estado === 'no_aplico' || d.estado === 'pendiente')) return 'na';
+  var fechaPres = (d && d.fecha_presentado) ? d.fecha_presentado : (mesNum && obligacion ? pmGetFechaFromChecklist(mesNum, obligacion) : null);
+  var fechaLim = d ? d.fecha_limite : null;
+  if (!fechaPres || !fechaLim) return 'na';
+  var pres = new Date(fechaPres + 'T00:00:00');
+  var limite = new Date(fechaLim + 'T00:00:00');
   var firma = new Date(limite); firma.setDate(firma.getDate() - 5);
   if (pres <= firma) return 'verde';
   if (pres <= limite) return 'amarillo';
@@ -2101,8 +2124,9 @@ function renderDeclaracionesDetail() {
 
   // Summary cards
   var greenCount = 0, yellowCount = 0, redCount = 0;
-  declMes.forEach(function(d) {
-    var c = pmDeclColor(d);
+  obligaciones.forEach(function(ob) {
+    var d = declMes.find(function(x) { return x.obligacion === ob; });
+    var c = pmDeclColor(d, mesNum, ob);
     if (c === 'verde') greenCount++;
     else if (c === 'amarillo') yellowCount++;
     else if (c === 'rojo') redCount++;
@@ -2157,8 +2181,9 @@ function renderDeclaracionesDetail() {
     var fechaLimTxt = diaLim ? (diaLim + ' de ' + MESES_FULL[mesNum - 1].toLowerCase()) : '';
     h += '<td class="pm-text-center">' + (fechaLimTxt || '<span style="color:var(--muted)">—</span>') + '</td>';
 
-    // Presentado
-    h += '<td class="pm-text-center">' + (d && d.fecha_presentado ? pmFormatDate(d.fecha_presentado) : '<span style="color:var(--muted)">—</span>') + '</td>';
+    // Presentado: primero portal_declaraciones, fallback a checklist de impuestos
+    var fechaPres = (d && d.fecha_presentado) ? d.fecha_presentado : pmGetFechaFromChecklist(mesNum, ob);
+    h += '<td class="pm-text-center">' + (fechaPres ? pmFormatDate(fechaPres) + (!d || !d.fecha_presentado ? ' <span style="font-size:0.6rem;color:var(--muted)" title="Desde checklist impuestos">☑</span>' : '') : '<span style="color:var(--muted)">—</span>') + '</td>';
 
     // Pagado mes anterior
     h += '<td class="pm-text-right">' + (montoPrev > 0 ? pmFormatMoney(montoPrev) : '<span style="color:var(--muted)">—</span>') + '</td>';
@@ -2183,7 +2208,7 @@ function renderDeclaracionesDetail() {
     // Puntualidad: dot por cada mes del historial
     histMeses.forEach(function(hm) {
       var dh = pmGetDeclForMes(hm, ob);
-      var col = pmDeclColor(dh);
+      var col = pmDeclColor(dh, hm, ob);
       h += '<td class="pm-text-center"><span class="pm-sem-dot ' + col + '"><span class="pm-dot"></span></span></td>';
     });
 
@@ -2331,8 +2356,10 @@ function renderAdminDatos() {
     h += '</select></div>';
     h += '<div class="pm-form-group"><label>Fecha Límite</label>';
     h += '<input type="date" class="pm-form-input" id="pmDecl_' + ob.replace(/-/g,'') + '_limite" value="' + (d && d.fecha_limite ? d.fecha_limite : '') + '"></div>';
-    h += '<div class="pm-form-group"><label>Fecha Presentado</label>';
-    h += '<input type="date" class="pm-form-input" id="pmDecl_' + ob.replace(/-/g,'') + '_presentado" value="' + (d && d.fecha_presentado ? d.fecha_presentado : '') + '"></div>';
+    var fechaCk = pmGetFechaFromChecklist(mesNum, ob);
+    var fechaPresVal = (d && d.fecha_presentado) ? d.fecha_presentado : (fechaCk || '');
+    h += '<div class="pm-form-group"><label>Fecha Presentado' + (fechaCk && !(d && d.fecha_presentado) ? ' <span style="font-size:0.65rem;color:var(--muted)">(del checklist)</span>' : '') + '</label>';
+    h += '<input type="date" class="pm-form-input" id="pmDecl_' + ob.replace(/-/g,'') + '_presentado" value="' + fechaPresVal + '"></div>';
     h += '<div class="pm-form-group"><label>Monto (RD$)</label>';
     h += '<input type="number" class="pm-form-input" id="pmDecl_' + ob.replace(/-/g,'') + '_monto" value="' + (d ? (d.monto || '') : '') + '" placeholder="0.00" step="0.01"></div>';
     h += '</div>';
