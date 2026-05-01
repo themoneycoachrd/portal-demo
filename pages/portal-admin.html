@@ -1558,6 +1558,7 @@ function renderPresentacion(el, backHtml) {
 
 // ── PRESUPUESTO VS EJECUCIÓN ──
 function renderPresupuestoDetail() {
+  if (clienteNombre.indexOf('MSH') === 0) return renderPresupuestoMSH();
   var h = '<button class="pc-back-btn" onclick="pmCloseDetail()">← Volver</button>';
   var mesNum = pmGetMesIdx(selectedMes);
   var quarter = pmGetQuarterForMonth(mesNum);
@@ -1850,57 +1851,125 @@ function renderPresupuestoDetail() {
   h += '<div class="pm-ganancia"><span>Ganancia/Pérdida ' + qLabels[quarter - 1] + '</span><span class="pm-amount" style="color:' + qGanColor + '">$' + pmFormatMoney(qGanancia) + ' <span style="font-size:0.78rem;color:' + qPctGanColor + '">(' + qPctGan.toFixed(2) + '% de meta)</span></span></div>';
   h += '</div></div>';
 
-  // ── Panel de Obra (solo MSH Interiorismo) ──
-  if (clienteNombre.indexOf('MSH') === 0) {
-    h += '<div class="pm-section-label" style="margin-top:24px">Ingreso de Obra vs Costos</div>';
-    h += '<div class="pm-panel" style="margin-bottom:16px">';
-    h += '<div class="pm-panel-hdr" style="background:#5b21b6;color:white;border-bottom:none">';
-    h += '<h3 style="color:white;text-transform:uppercase;font-size:0.78rem;letter-spacing:0.3px">Obra — Trimestre por mes</h3></div>';
-    h += '<div class="pm-panel-body" style="overflow-x:auto"><table>';
-    h += '<thead><tr><th style="min-width:110px">Concepto</th>';
-    qRange.forEach(function(m) {
-      h += '<th class="pm-text-right" style="border-right:' + (m < qRange[2] ? '2px solid var(--border)' : 'none') + '">' + MESES_FULL[m - 1] + '</th>';
-    });
-    h += '<th class="pm-text-right" style="font-weight:700">Total ' + qLabels[quarter - 1] + '</th>';
-    h += '</tr></thead><tbody>';
+  return h;
+}
 
-    var obraTotalIng = 0, obraTotalCost = 0;
-    // Ingreso de obra
-    h += '<tr><td class="pm-font-bold">Ingreso de Obra</td>';
-    qRange.forEach(function(m) {
-      var ej = pmGetEjecucionMes(m);
-      var val = ej ? (ej.ingreso_obra || 0) : 0;
-      obraTotalIng += val;
-      h += '<td class="pm-text-right" style="border-right:' + (m < qRange[2] ? '2px solid var(--border)' : 'none') + '">$' + pmFormatMoney(val) + '</td>';
-    });
-    h += '<td class="pm-text-right pm-font-bold">$' + pmFormatMoney(obraTotalIng) + '</td></tr>';
+// ── PRESUPUESTO MSH (simplificado) ──
+function renderPresupuestoMSH() {
+  var h = '<button class="pc-back-btn" onclick="pmCloseDetail()">← Volver</button>';
+  var mesNum = pmGetMesIdx(selectedMes);
+  var quarter = pmGetQuarterForMonth(mesNum);
+  var qRange = pmGetQuarterRange(quarter);
+  var qLabels = ['Q1', 'Q2', 'Q3', 'Q4'];
 
-    // Costos operativos
-    h += '<tr><td class="pm-font-bold">Costos Operativos</td>';
-    qRange.forEach(function(m) {
-      var ej = pmGetEjecucionMes(m);
-      var val = ej ? (ej.costos_operativos || 0) : 0;
-      obraTotalCost += val;
-      h += '<td class="pm-text-right" style="border-right:' + (m < qRange[2] ? '2px solid var(--border)' : 'none') + '">$' + pmFormatMoney(val) + '</td>';
-    });
-    h += '<td class="pm-text-right pm-font-bold">$' + pmFormatMoney(obraTotalCost) + '</td></tr>';
+  // ── 1. Trimestre por mes (Ventas, Gastos, Beneficio) ──
+  h += '<div class="pm-panel" style="margin-bottom:16px">';
+  h += '<div class="pm-panel-hdr" style="background:var(--navy);color:white;border-bottom:none">';
+  h += '<h3 style="color:white;text-transform:uppercase;font-size:0.78rem;letter-spacing:0.3px">Trimestre por mes</h3></div>';
+  h += '<div class="pm-panel-body" style="overflow-x:auto"><table>';
+  h += '<thead><tr><th style="min-width:90px">Concepto</th>';
+  qRange.forEach(function(m) {
+    h += '<th class="pm-text-right" style="border-right:' + (m < qRange[2] ? '2px solid var(--border)' : 'none') + '">' + MESES_FULL[m - 1] + '</th>';
+  });
+  h += '<th class="pm-text-right" style="font-weight:700">Total</th></tr></thead><tbody>';
 
-    // Resultado de obra
-    h += '<tr class="pm-row-total" style="background:#f5f3ff"><td class="pm-font-bold" style="color:#5b21b6">Resultado de Obra</td>';
-    qRange.forEach(function(m) {
-      var ej = pmGetEjecucionMes(m);
-      var ing = ej ? (ej.ingreso_obra || 0) : 0;
-      var cost = ej ? (ej.costos_operativos || 0) : 0;
-      var res = ing - cost;
-      var color = res >= 0 ? 'var(--green)' : 'var(--red)';
-      h += '<td class="pm-text-right" style="color:' + color + ';border-right:' + (m < qRange[2] ? '2px solid var(--border)' : 'none') + '">$' + pmFormatMoney(res) + '</td>';
-    });
-    var obraTotal = obraTotalIng - obraTotalCost;
-    var obraTotalColor = obraTotal >= 0 ? 'var(--green)' : 'var(--red)';
-    h += '<td class="pm-text-right pm-font-bold" style="color:' + obraTotalColor + '">$' + pmFormatMoney(obraTotal) + '</td></tr>';
+  var qTotV = 0, qTotG = 0;
+  // Ventas
+  h += '<tr><td class="pm-font-bold">Ventas</td>';
+  qRange.forEach(function(m) {
+    var ej = pmGetEjecucionMes(m);
+    var val = ej ? (ej.ventas_it1 || 0) : 0;
+    qTotV += val;
+    h += '<td class="pm-text-right" style="border-right:' + (m < qRange[2] ? '2px solid var(--border)' : 'none') + '">$' + pmFormatMoney(val) + '</td>';
+  });
+  h += '<td class="pm-text-right pm-font-bold">$' + pmFormatMoney(qTotV) + '</td></tr>';
 
-    h += '</tbody></table></div></div>';
-  }
+  // Gastos
+  h += '<tr><td class="pm-font-bold">Gastos</td>';
+  qRange.forEach(function(m) {
+    var ej = pmGetEjecucionMes(m);
+    var val = ej ? (ej.gastos || 0) : 0;
+    qTotG += val;
+    h += '<td class="pm-text-right" style="border-right:' + (m < qRange[2] ? '2px solid var(--border)' : 'none') + '">$' + pmFormatMoney(val) + '</td>';
+  });
+  h += '<td class="pm-text-right pm-font-bold">$' + pmFormatMoney(qTotG) + '</td></tr>';
+
+  // Beneficio/Pérdida
+  var qBen = qTotV - qTotG;
+  h += '<tr class="pm-row-total pm-row-ganancia"><td class="pm-font-bold" style="color:white">Beneficio / Pérdida</td>';
+  qRange.forEach(function(m) {
+    var ej = pmGetEjecucionMes(m);
+    var v = ej ? (ej.ventas_it1 || 0) : 0;
+    var g = ej ? (ej.gastos || 0) : 0;
+    var ben = v - g;
+    var color = ben >= 0 ? '#4ade80' : '#f87171';
+    h += '<td class="pm-text-right" style="color:' + color + ';border-right:' + (m < qRange[2] ? '2px solid var(--border)' : 'none') + '">$' + pmFormatMoney(ben) + '</td>';
+  });
+  var qBenColor = qBen >= 0 ? '#4ade80' : '#f87171';
+  h += '<td class="pm-text-right pm-font-bold" style="color:' + qBenColor + '">$' + pmFormatMoney(qBen) + '</td></tr>';
+  h += '</tbody></table></div></div>';
+
+  // ── 2. Ingreso de Obra vs Costos de Obra ──
+  h += '<div class="pm-section-label">Ingreso de Obra vs Costos de Obra</div>';
+  h += '<div class="pm-panel" style="margin-bottom:16px">';
+  h += '<div class="pm-panel-hdr" style="background:#5b21b6;color:white;border-bottom:none">';
+  h += '<h3 style="color:white;text-transform:uppercase;font-size:0.78rem;letter-spacing:0.3px">Obra — Trimestre por mes</h3></div>';
+  h += '<div class="pm-panel-body" style="overflow-x:auto"><table>';
+  h += '<thead><tr><th style="min-width:110px">Concepto</th>';
+  qRange.forEach(function(m) {
+    h += '<th class="pm-text-right" style="border-right:' + (m < qRange[2] ? '2px solid var(--border)' : 'none') + '">' + MESES_FULL[m - 1] + '</th>';
+  });
+  h += '<th class="pm-text-right" style="font-weight:700">Total</th></tr></thead><tbody>';
+
+  var oTotIng = 0, oTotCost = 0;
+  // Ingreso de obra
+  h += '<tr><td class="pm-font-bold">Ingreso de Obra</td>';
+  qRange.forEach(function(m) {
+    var ej = pmGetEjecucionMes(m);
+    var val = ej ? (ej.ingreso_obra || 0) : 0;
+    oTotIng += val;
+    h += '<td class="pm-text-right" style="border-right:' + (m < qRange[2] ? '2px solid var(--border)' : 'none') + '">$' + pmFormatMoney(val) + '</td>';
+  });
+  h += '<td class="pm-text-right pm-font-bold">$' + pmFormatMoney(oTotIng) + '</td></tr>';
+
+  // Costos de obra
+  h += '<tr><td class="pm-font-bold">Costos de Obra</td>';
+  qRange.forEach(function(m) {
+    var ej = pmGetEjecucionMes(m);
+    var val = ej ? (ej.costos_operativos || 0) : 0;
+    oTotCost += val;
+    h += '<td class="pm-text-right" style="border-right:' + (m < qRange[2] ? '2px solid var(--border)' : 'none') + '">$' + pmFormatMoney(val) + '</td>';
+  });
+  h += '<td class="pm-text-right pm-font-bold">$' + pmFormatMoney(oTotCost) + '</td></tr>';
+
+  // Resultado de obra
+  var oTotal = oTotIng - oTotCost;
+  h += '<tr class="pm-row-total" style="background:#f5f3ff"><td class="pm-font-bold" style="color:#5b21b6">Resultado de Obra</td>';
+  qRange.forEach(function(m) {
+    var ej = pmGetEjecucionMes(m);
+    var ing = ej ? (ej.ingreso_obra || 0) : 0;
+    var cost = ej ? (ej.costos_operativos || 0) : 0;
+    var res = ing - cost;
+    var color = res >= 0 ? 'var(--green)' : 'var(--red)';
+    h += '<td class="pm-text-right" style="color:' + color + ';border-right:' + (m < qRange[2] ? '2px solid var(--border)' : 'none') + '">$' + pmFormatMoney(res) + '</td>';
+  });
+  var oTotalColor = oTotal >= 0 ? 'var(--green)' : 'var(--red)';
+  h += '<td class="pm-text-right pm-font-bold" style="color:' + oTotalColor + '">$' + pmFormatMoney(oTotal) + '</td></tr>';
+  h += '</tbody></table></div></div>';
+
+  // ── 3. Trimestre completo (Ventas, Gastos, Beneficio) ──
+  h += '<div class="pm-section-label" style="margin-top:20px">Trimestre completo</div>';
+  h += '<div class="pm-panel" style="margin-bottom:16px">';
+  h += '<div class="pm-panel-hdr" style="background:var(--navy);color:white;border-bottom:none">';
+  h += '<h3 style="color:white;text-transform:uppercase;font-size:0.78rem;letter-spacing:0.3px">' + qLabels[quarter - 1] + ' — Resumen</h3></div>';
+  h += '<div class="pm-panel-body"><table>';
+  h += '<thead><tr><th>Concepto</th><th class="pm-text-right">Ejecutado</th></tr></thead><tbody>';
+  h += '<tr><td class="pm-font-bold">Ventas</td><td class="pm-text-right">$' + pmFormatMoney(qTotV) + '</td></tr>';
+  h += '<tr><td class="pm-font-bold">Gastos</td><td class="pm-text-right">$' + pmFormatMoney(qTotG) + '</td></tr>';
+  var benColor = qBen >= 0 ? 'var(--green)' : 'var(--red)';
+  h += '<tr class="pm-row-total pm-row-ganancia"><td class="pm-font-bold" style="color:white">Beneficio / Pérdida</td>';
+  h += '<td class="pm-text-right" style="color:' + qBenColor + '">$' + pmFormatMoney(qBen) + '</td></tr>';
+  h += '</tbody></table></div></div>';
 
   return h;
 }
@@ -2359,14 +2428,22 @@ function renderAdminDatos() {
   h += '</div>';
 
   var ej = pmGetEjecucionMes(pmGetMesIdx(selectedMes));
+  var isMSH = clienteNombre.indexOf('MSH') === 0;
   h += '<div class="pm-form-grid">';
-  h += '<div class="pm-form-group"><label>Ventas IT1</label><input type="number" class="pm-form-input" id="pmEjVentas" value="' + (ej ? ej.ventas_it1 : '') + '" placeholder="0.00" step="0.01"></div>';
-  h += '<div class="pm-form-group"><label>Costos Operativos</label><input type="number" class="pm-form-input" id="pmEjCostos" value="' + (ej ? ej.costos_operativos : '') + '" placeholder="0.00" step="0.01"></div>';
+  h += '<div class="pm-form-group"><label>Ventas</label><input type="number" class="pm-form-input" id="pmEjVentas" value="' + (ej ? ej.ventas_it1 : '') + '" placeholder="0.00" step="0.01"></div>';
+  if (!isMSH) {
+    h += '<div class="pm-form-group"><label>Costos Operativos</label><input type="number" class="pm-form-input" id="pmEjCostos" value="' + (ej ? ej.costos_operativos : '') + '" placeholder="0.00" step="0.01"></div>';
+  }
   h += '<div class="pm-form-group"><label>Gastos</label><input type="number" class="pm-form-input" id="pmEjGastos" value="' + (ej ? ej.gastos : '') + '" placeholder="0.00" step="0.01"></div>';
   h += '<div class="pm-form-group"><label>Ing./Gasto Fin.</label><input type="number" class="pm-form-input" id="pmEjIngFin" value="' + (ej ? ej.ingreso_financiero : '') + '" placeholder="0.00" step="0.01"></div>';
   h += '<div class="pm-form-group"><label>Gastos No Admitidos</label><input type="number" class="pm-form-input" id="pmEjGNA" value="' + (ej ? ej.gastos_no_admitidos : '') + '" placeholder="0.00" step="0.01"></div>';
-  if (clienteNombre.indexOf('MSH') === 0) {
-    h += '<div class="pm-form-group"><label>Ingreso de Obra (4.12.01)</label><input type="number" class="pm-form-input" id="pmEjIngresoObra" value="' + (ej ? (ej.ingreso_obra || '') : '') + '" placeholder="0.00" step="0.01"></div>';
+  if (isMSH) {
+    h += '</div>';
+    h += '<div style="margin-top:12px;padding-top:12px;border-top:2px solid #5b21b6">';
+    h += '<div style="font-size:0.78rem;font-weight:700;color:#5b21b6;margin-bottom:8px">Obra</div>';
+    h += '<div class="pm-form-grid">';
+    h += '<div class="pm-form-group"><label>Ingreso de Obra</label><input type="number" class="pm-form-input" id="pmEjIngresoObra" value="' + (ej ? (ej.ingreso_obra || '') : '') + '" placeholder="0.00" step="0.01"></div>';
+    h += '<div class="pm-form-group"><label>Costos de Obra</label><input type="number" class="pm-form-input" id="pmEjCostos" value="' + (ej ? ej.costos_operativos : '') + '" placeholder="0.00" step="0.01"></div>';
   }
   h += '</div>';
   h += '<div class="pm-btn-row"><button class="pm-btn-save primary" onclick="pmSaveEjecucion()">Guardar Ejecución</button></div>';
