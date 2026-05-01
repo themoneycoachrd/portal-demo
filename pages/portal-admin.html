@@ -1854,7 +1854,7 @@ function renderPresupuestoDetail() {
   return h;
 }
 
-// ── PRESUPUESTO MSH (simplificado) ──
+// ── PRESUPUESTO MSH (simplificado: Ventas, Gastos, Beneficio + Obra) ──
 function renderPresupuestoMSH() {
   var h = '<button class="pc-back-btn" onclick="pmCloseDetail()">← Volver</button>';
   var mesNum = pmGetMesIdx(selectedMes);
@@ -1862,40 +1862,45 @@ function renderPresupuestoMSH() {
   var qRange = pmGetQuarterRange(quarter);
   var qLabels = ['Q1', 'Q2', 'Q3', 'Q4'];
 
-  // ── 1. Trimestre por mes (Ventas, Gastos, Beneficio) ──
+  // Helpers MSH: meta mensual solo Ventas y Gastos
+  var metaV = pmGetMetaMensual('ventas_it1');
+  var metaG = pmGetMetaMensual('gastos');
+  var metaBen = metaV - metaG;
+
+  // ── 1. Trimestre por mes con % Meta ──
   h += '<div class="pm-panel" style="margin-bottom:16px">';
   h += '<div class="pm-panel-hdr" style="background:var(--navy);color:white;border-bottom:none">';
   h += '<h3 style="color:white;text-transform:uppercase;font-size:0.78rem;letter-spacing:0.3px">Trimestre por mes</h3></div>';
   h += '<div class="pm-panel-body" style="overflow-x:auto"><table>';
-  h += '<thead><tr><th style="min-width:90px">Concepto</th>';
+  h += '<thead><tr><th style="min-width:90px"></th>';
   qRange.forEach(function(m) {
-    h += '<th class="pm-text-right" style="border-right:' + (m < qRange[2] ? '2px solid var(--border)' : 'none') + '">' + MESES_FULL[m - 1] + '</th>';
+    h += '<th colspan="2" class="pm-text-center" style="border-right:' + (m < qRange[2] ? '2px solid var(--border)' : 'none') + '">' + MESES_FULL[m - 1] + '</th>';
   });
-  h += '<th class="pm-text-right" style="font-weight:700">Total</th></tr></thead><tbody>';
+  h += '</tr><tr><th>Concepto</th>';
+  qRange.forEach(function(m) {
+    h += '<th class="pm-text-right">Ejecutado</th><th class="pm-text-right" style="border-right:' + (m < qRange[2] ? '2px solid var(--border)' : 'none') + '">% Meta</th>';
+  });
+  h += '</tr></thead><tbody>';
 
-  var qTotV = 0, qTotG = 0;
-  // Ventas
-  h += '<tr><td class="pm-font-bold">Ventas</td>';
-  qRange.forEach(function(m) {
-    var ej = pmGetEjecucionMes(m);
-    var val = ej ? (ej.ventas_it1 || 0) : 0;
-    qTotV += val;
-    h += '<td class="pm-text-right" style="border-right:' + (m < qRange[2] ? '2px solid var(--border)' : 'none') + '">$' + pmFormatMoney(val) + '</td>';
+  var mshConceptos = [
+    { key: 'ventas_it1', label: 'Ventas', tipo: 'ventas' },
+    { key: 'gastos', label: 'Gastos', tipo: 'gasto' }
+  ];
+  mshConceptos.forEach(function(c) {
+    h += '<tr><td class="pm-font-bold">' + c.label + '</td>';
+    qRange.forEach(function(m) {
+      var ej = pmGetEjecucionMes(m);
+      var val = ej ? (ej[c.key] || 0) : 0;
+      var meta = pmGetMetaMensual(c.key);
+      var pct = pmPctMeta(val, meta);
+      var color = pmPctColor(pct, c.tipo !== 'ventas');
+      h += '<td class="pm-text-right">' + pmFormatMoney(val) + '</td>';
+      h += '<td class="pm-text-right" style="border-right:' + (m < qRange[2] ? '2px solid var(--border)' : 'none') + '"><span style="color:' + color + ';font-weight:600">' + pct.toFixed(2) + '%</span></td>';
+    });
+    h += '</tr>';
   });
-  h += '<td class="pm-text-right pm-font-bold">$' + pmFormatMoney(qTotV) + '</td></tr>';
-
-  // Gastos
-  h += '<tr><td class="pm-font-bold">Gastos</td>';
-  qRange.forEach(function(m) {
-    var ej = pmGetEjecucionMes(m);
-    var val = ej ? (ej.gastos || 0) : 0;
-    qTotG += val;
-    h += '<td class="pm-text-right" style="border-right:' + (m < qRange[2] ? '2px solid var(--border)' : 'none') + '">$' + pmFormatMoney(val) + '</td>';
-  });
-  h += '<td class="pm-text-right pm-font-bold">$' + pmFormatMoney(qTotG) + '</td></tr>';
 
   // Beneficio/Pérdida
-  var qBen = qTotV - qTotG;
   h += '<tr class="pm-row-total pm-row-ganancia"><td class="pm-font-bold" style="color:white">Beneficio / Pérdida</td>';
   qRange.forEach(function(m) {
     var ej = pmGetEjecucionMes(m);
@@ -1903,13 +1908,15 @@ function renderPresupuestoMSH() {
     var g = ej ? (ej.gastos || 0) : 0;
     var ben = v - g;
     var color = ben >= 0 ? '#4ade80' : '#f87171';
-    h += '<td class="pm-text-right" style="color:' + color + ';border-right:' + (m < qRange[2] ? '2px solid var(--border)' : 'none') + '">$' + pmFormatMoney(ben) + '</td>';
+    var pctBen = metaBen ? (ben / metaBen * 100) : 0;
+    var pctColor = pctBen >= 100 ? '#4ade80' : '#f87171';
+    h += '<td class="pm-text-right" style="color:' + color + '">' + pmFormatMoney(ben) + '</td>';
+    h += '<td class="pm-text-right" style="border-right:' + (m < qRange[2] ? '2px solid var(--border)' : 'none') + '"><span style="color:' + pctColor + ';font-weight:600">' + pctBen.toFixed(2) + '%</span></td>';
   });
-  var qBenColor = qBen >= 0 ? '#4ade80' : '#f87171';
-  h += '<td class="pm-text-right pm-font-bold" style="color:' + qBenColor + '">$' + pmFormatMoney(qBen) + '</td></tr>';
+  h += '</tr>';
   h += '</tbody></table></div></div>';
 
-  // ── 2. Ingreso de Obra vs Costos de Obra ──
+  // ── 2. Ingreso de Obra vs Costos de Obra (violeta) ──
   h += '<div class="pm-section-label">Ingreso de Obra vs Costos de Obra</div>';
   h += '<div class="pm-panel" style="margin-bottom:16px">';
   h += '<div class="pm-panel-hdr" style="background:#5b21b6;color:white;border-bottom:none">';
@@ -1922,7 +1929,6 @@ function renderPresupuestoMSH() {
   h += '<th class="pm-text-right" style="font-weight:700">Total</th></tr></thead><tbody>';
 
   var oTotIng = 0, oTotCost = 0;
-  // Ingreso de obra
   h += '<tr><td class="pm-font-bold">Ingreso de Obra</td>';
   qRange.forEach(function(m) {
     var ej = pmGetEjecucionMes(m);
@@ -1932,7 +1938,6 @@ function renderPresupuestoMSH() {
   });
   h += '<td class="pm-text-right pm-font-bold">$' + pmFormatMoney(oTotIng) + '</td></tr>';
 
-  // Costos de obra
   h += '<tr><td class="pm-font-bold">Costos de Obra</td>';
   qRange.forEach(function(m) {
     var ej = pmGetEjecucionMes(m);
@@ -1942,7 +1947,6 @@ function renderPresupuestoMSH() {
   });
   h += '<td class="pm-text-right pm-font-bold">$' + pmFormatMoney(oTotCost) + '</td></tr>';
 
-  // Resultado de obra
   var oTotal = oTotIng - oTotCost;
   h += '<tr class="pm-row-total" style="background:#f5f3ff"><td class="pm-font-bold" style="color:#5b21b6">Resultado de Obra</td>';
   qRange.forEach(function(m) {
@@ -1957,19 +1961,112 @@ function renderPresupuestoMSH() {
   h += '<td class="pm-text-right pm-font-bold" style="color:' + oTotalColor + '">$' + pmFormatMoney(oTotal) + '</td></tr>';
   h += '</tbody></table></div></div>';
 
-  // ── 3. Trimestre completo (Ventas, Gastos, Beneficio) ──
+  // ── 3. Mes en curso: Presupuesto vs Ejecución (dual panel) ──
+  h += '<div class="pm-section-label">Mes en curso</div>';
+  h += '<div class="pm-dual">';
+
+  // Panel Presupuesto
+  h += '<div class="pm-panel"><div class="pm-panel-hdr">';
+  h += '<h3><span class="pm-hdot" style="background:var(--blue)"></span> Presupuesto (Planificado)</h3></div>';
+  h += '<div class="pm-panel-body"><table><thead><tr>';
+  h += '<th>Concepto</th><th class="pm-text-right">Anual</th><th class="pm-text-right">Mensual (Meta)</th>';
+  h += '</tr></thead><tbody>';
+
+  var mshPresRows = [
+    { label: 'Ventas', key: 'ventas_it1' },
+    { label: 'Gastos', key: 'gastos' }
+  ];
+  mshPresRows.forEach(function(r) {
+    var anual = pmPresupuesto ? (pmPresupuesto[r.key + '_anual'] || 0) : 0;
+    h += '<tr><td class="pm-font-bold">' + r.label + '</td>';
+    h += '<td class="pm-text-right">$' + pmFormatMoney(anual) + '</td>';
+    h += '<td class="pm-text-right">$' + pmFormatMoney(anual / 12) + '</td></tr>';
+  });
+  var pVa = pmPresupuesto ? (pmPresupuesto.ventas_it1_anual || 0) : 0;
+  var pGa = pmPresupuesto ? (pmPresupuesto.gastos_anual || 0) : 0;
+  var benAnual = pVa - pGa;
+  var benPresColor = benAnual >= 0 ? '#4ade80' : '#f87171';
+  h += '<tr class="pm-row-total pm-row-ganancia"><td class="pm-font-bold" style="color:white">Beneficio / Pérdida</td>';
+  h += '<td class="pm-text-right" style="color:' + benPresColor + '">$' + pmFormatMoney(benAnual) + '</td>';
+  h += '<td class="pm-text-right" style="color:' + benPresColor + '">$' + pmFormatMoney(benAnual / 12) + '</td></tr>';
+  h += '</tbody></table></div></div>';
+
+  // Panel Ejecución
+  var ejMes = pmGetEjecucionMes(mesNum);
+  h += '<div class="pm-panel"><div class="pm-panel-hdr">';
+  h += '<h3><span class="pm-hdot" style="background:var(--green)"></span> Ejecución (Realidad)</h3>';
+  h += '<span class="pm-period">' + pmYear + '-' + String(mesNum).padStart(2, '0') + '</span></div>';
+  h += '<div class="pm-panel-body"><table><thead><tr>';
+  h += '<th class="pm-text-right">Ejecutado</th><th class="pm-text-center">% Logro</th><th class="pm-text-center">Estado</th>';
+  h += '</tr></thead><tbody>';
+
+  var mshEjRows = [
+    { key: 'ventas_it1', tipo: 'ventas' },
+    { key: 'gastos', tipo: 'gasto' }
+  ];
+  mshEjRows.forEach(function(r) {
+    var val = ejMes ? (ejMes[r.key] || 0) : 0;
+    var meta = pmGetMetaMensual(r.key);
+    var pct = pmPctMeta(val, meta);
+    var semCol = pmSemColor(pct, r.tipo);
+    h += '<tr><td class="pm-text-right pm-font-bold">$' + pmFormatMoney(val) + '</td>';
+    h += '<td class="pm-text-center">' + pct.toFixed(2) + '%</td>';
+    h += '<td class="pm-text-center"><span class="pm-sem-dot ' + semCol + '"><span class="pm-dot"></span></span></td></tr>';
+  });
+
+  var ejBen = ejMes ? ((ejMes.ventas_it1 || 0) - (ejMes.gastos || 0)) : 0;
+  var pctBenEj = metaBen ? (ejBen / metaBen * 100) : 0;
+  var ejBenColor = ejBen >= 0 ? '#4ade80' : '#f87171';
+  var pctBenEjColor = pctBenEj >= 100 ? '#4ade80' : '#f87171';
+  h += '<tr class="pm-row-total pm-row-ganancia"><td class="pm-text-right pm-font-bold" style="color:' + ejBenColor + '">$' + pmFormatMoney(ejBen) + '</td>';
+  h += '<td class="pm-text-center" style="font-weight:600"><span style="color:' + pctBenEjColor + '">' + pctBenEj.toFixed(2) + '%</span></td>';
+  h += '<td class="pm-text-center"></td></tr>';
+
+  h += '</tbody></table></div></div></div>';
+
+  // ── 4. Trimestre completo con Meta, Diferencia, % Logrado, Estado ──
+  var qTotV = 0, qTotG = 0;
+  qRange.forEach(function(m) {
+    var e = pmGetEjecucionMes(m);
+    if (e) { qTotV += (e.ventas_it1 || 0); qTotG += (e.gastos || 0); }
+  });
+  var qBen = qTotV - qTotG;
+  var qMetaV = metaV * 3;
+  var qMetaG = metaG * 3;
+  var qMetaBen = qMetaV - qMetaG;
+
   h += '<div class="pm-section-label" style="margin-top:20px">Trimestre completo</div>';
   h += '<div class="pm-panel" style="margin-bottom:16px">';
   h += '<div class="pm-panel-hdr" style="background:var(--navy);color:white;border-bottom:none">';
-  h += '<h3 style="color:white;text-transform:uppercase;font-size:0.78rem;letter-spacing:0.3px">' + qLabels[quarter - 1] + ' — Resumen</h3></div>';
-  h += '<div class="pm-panel-body"><table>';
-  h += '<thead><tr><th>Concepto</th><th class="pm-text-right">Ejecutado</th></tr></thead><tbody>';
-  h += '<tr><td class="pm-font-bold">Ventas</td><td class="pm-text-right">$' + pmFormatMoney(qTotV) + '</td></tr>';
-  h += '<tr><td class="pm-font-bold">Gastos</td><td class="pm-text-right">$' + pmFormatMoney(qTotG) + '</td></tr>';
-  var benColor = qBen >= 0 ? 'var(--green)' : 'var(--red)';
-  h += '<tr class="pm-row-total pm-row-ganancia"><td class="pm-font-bold" style="color:white">Beneficio / Pérdida</td>';
-  h += '<td class="pm-text-right" style="color:' + qBenColor + '">$' + pmFormatMoney(qBen) + '</td></tr>';
-  h += '</tbody></table></div></div>';
+  h += '<h3 style="color:white;text-transform:uppercase;font-size:0.78rem;letter-spacing:0.3px">' + qLabels[quarter - 1] + ' — ¿Se cumplió la meta del trimestre?</h3></div>';
+  h += '<div class="pm-panel-body"><table><thead><tr>';
+  h += '<th>Concepto</th><th class="pm-text-right">Meta ' + qLabels[quarter - 1] + '</th><th class="pm-text-right">Ejecutado ' + qLabels[quarter - 1] + '</th><th class="pm-text-right">Diferencia</th><th class="pm-text-center">% Logrado</th><th class="pm-text-center">Estado</th>';
+  h += '</tr></thead><tbody>';
+
+  var qRows = [
+    { label: 'Ventas', meta: qMetaV, ej: qTotV, tipo: 'ventas' },
+    { label: 'Gastos', meta: qMetaG, ej: qTotG, tipo: 'gasto' }
+  ];
+  qRows.forEach(function(r) {
+    var diff = r.ej - r.meta;
+    var pct = r.meta ? (r.ej / r.meta * 100) : 0;
+    var semCol = pmSemColor(pct, r.tipo);
+    var invert = (r.tipo !== 'ventas');
+    h += '<tr><td class="pm-font-bold">' + r.label + '</td>';
+    h += '<td class="pm-text-right">' + pmFormatMoneyShort(r.meta) + '</td>';
+    h += '<td class="pm-text-right">' + pmFormatMoneyShort(r.ej) + '</td>';
+    h += '<td class="pm-text-right">' + (diff >= 0 ? '+' : '') + pmFormatMoneyShort(diff) + '</td>';
+    h += '<td class="pm-text-center"><span style="color:' + pmPctColor(pct, invert) + ';font-weight:600">' + pct.toFixed(2) + '%</span></td>';
+    h += '<td class="pm-text-center"><span class="pm-sem-dot ' + semCol + '"><span class="pm-dot"></span></span></td></tr>';
+  });
+
+  h += '</tbody></table>';
+
+  var qPctBen = qMetaBen ? (qBen / qMetaBen * 100) : 0;
+  var qBenColor = qBen >= 0 ? 'var(--green)' : 'var(--red)';
+  var qPctBenColor = qPctBen >= 100 ? '#4ade80' : '#f87171';
+  h += '<div class="pm-ganancia"><span>Beneficio / Pérdida ' + qLabels[quarter - 1] + '</span><span class="pm-amount" style="color:' + qBenColor + '">$' + pmFormatMoney(qBen) + ' <span style="font-size:0.78rem;color:' + qPctBenColor + '">(' + qPctBen.toFixed(2) + '% de meta)</span></span></div>';
+  h += '</div></div>';
 
   return h;
 }
