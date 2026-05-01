@@ -1485,7 +1485,7 @@ function renderPresupuestoDetail() {
   h += '</div></div>';
 
   // ── Panel de Obra (solo MSH Interiorismo) ──
-  if (clienteNombre === 'MSH Interiorismo') {
+  if (clienteNombre.indexOf('MSH') === 0) {
     h += '<div class="pm-section-label" style="margin-top:24px">Ingreso de Obra vs Costos</div>';
     h += '<div class="pm-panel" style="margin-bottom:16px">';
     h += '<div class="pm-panel-hdr" style="background:#5b21b6;color:white;border-bottom:none">';

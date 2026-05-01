@@ -1851,7 +1851,7 @@ function renderPresupuestoDetail() {
   h += '</div></div>';
 
   // ── Panel de Obra (solo MSH Interiorismo) ──
-  if (clienteNombre === 'MSH Interiorismo') {
+  if (clienteNombre.indexOf('MSH') === 0) {
     h += '<div class="pm-section-label" style="margin-top:24px">Ingreso de Obra vs Costos</div>';
     h += '<div class="pm-panel" style="margin-bottom:16px">';
     h += '<div class="pm-panel-hdr" style="background:#5b21b6;color:white;border-bottom:none">';
@@ -2365,7 +2365,7 @@ function renderAdminDatos() {
   h += '<div class="pm-form-group"><label>Gastos</label><input type="number" class="pm-form-input" id="pmEjGastos" value="' + (ej ? ej.gastos : '') + '" placeholder="0.00" step="0.01"></div>';
   h += '<div class="pm-form-group"><label>Ing./Gasto Fin.</label><input type="number" class="pm-form-input" id="pmEjIngFin" value="' + (ej ? ej.ingreso_financiero : '') + '" placeholder="0.00" step="0.01"></div>';
   h += '<div class="pm-form-group"><label>Gastos No Admitidos</label><input type="number" class="pm-form-input" id="pmEjGNA" value="' + (ej ? ej.gastos_no_admitidos : '') + '" placeholder="0.00" step="0.01"></div>';
-  if (clienteNombre === 'MSH Interiorismo') {
+  if (clienteNombre.indexOf('MSH') === 0) {
     h += '<div class="pm-form-group"><label>Ingreso de Obra (4.12.01)</label><input type="number" class="pm-form-input" id="pmEjIngresoObra" value="' + (ej ? (ej.ingreso_obra || '') : '') + '" placeholder="0.00" step="0.01"></div>';
   }
   h += '</div>';
@@ -2825,7 +2825,7 @@ async function pmSaveEjecucion() {
     ingreso_financiero: inf,
     gastos_no_admitidos: gna
   };
-  if (clienteNombre === 'MSH Interiorismo') {
+  if (clienteNombre.indexOf('MSH') === 0) {
     var elObra = document.getElementById('pmEjIngresoObra');
     if (elObra) record.ingreso_obra = parseFloat(elObra.value) || 0;
   }
