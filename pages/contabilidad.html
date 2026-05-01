@@ -316,6 +316,134 @@ body.embed .header { display:none !important; }
 body.embed .breadcrumb-bar { display:none !important; }
 body.embed #app-wrapper { display:block !important; }
 body.embed .footer { display:none !important; }
+
+/* ─── Mobile responsive ─── */
+@media (max-width:640px) {
+  /* Header */
+  .header { padding:14px 16px; }
+  .header h1 { font-size:1.1rem; }
+  .header p { font-size:0.75rem; }
+  .header-inner { flex-wrap:wrap; gap:8px; }
+  .user-bar { width:100%; justify-content:flex-end; }
+
+  /* Breadcrumb */
+  .breadcrumb-bar { padding:8px 16px; font-size:11px; }
+
+  /* Main tabs */
+  .main-tabs { overflow-x:auto; -webkit-overflow-scrolling:touch; }
+  .main-tab { padding:10px 16px; font-size:0.82rem; white-space:nowrap; }
+
+  /* Sub tabs */
+  .sub-tabs { overflow-x:auto; -webkit-overflow-scrolling:touch; }
+  .sub-tab { padding:7px 12px; font-size:0.75rem; white-space:nowrap; }
+
+  /* Nav area (month tabs + contadora pills) */
+  .nav-area { padding:10px 16px; }
+  .month-tabs { gap:3px; }
+  .month-tab { padding:5px 10px; font-size:0.72rem; }
+  .contadora-pills { gap:3px; margin-top:8px; }
+  .contadora-pill { padding:4px 10px; font-size:0.72rem; }
+
+  /* Quarter bar */
+  .quarter-bar { padding:10px 16px; gap:4px; flex-wrap:wrap; }
+  .q-btn { padding:8px 6px; font-size:11px; }
+  .q-btn .q-label { font-size:13px; }
+  .q-btn .q-months { font-size:9px; }
+
+  /* Content */
+  .content { padding:16px; }
+
+  /* Summary stats */
+  .summary-stats { grid-template-columns:repeat(3, 1fr); gap:8px; }
+  .summary-stat { padding:10px 8px; }
+  .summary-stat-label { font-size:0.58rem; }
+  .summary-stat-value { font-size:1.2rem; }
+
+  /* Client cards */
+  .client-grid { grid-template-columns:1fr; gap:10px; }
+  .client-card { padding:14px; }
+
+  /* Client table */
+  .ck-client-table { font-size:0.75rem; }
+  .ck-client-table th { padding:8px 8px; font-size:0.6rem; }
+  .ck-client-table td { padding:8px 8px; }
+  .ck-progress-bar { width:60px; }
+
+  /* Detail view */
+  .detail-header { flex-wrap:wrap; gap:8px; }
+  .detail-title { font-size:15px; }
+  .progress-row { flex-wrap:wrap; padding:12px 14px; gap:8px; }
+  .progress-row .pr-count { min-width:auto; font-size:13px; }
+
+  /* Checklist table: scroll horizontal */
+  .check-table { display:block; overflow-x:auto; -webkit-overflow-scrolling:touch; }
+  .check-table th, .check-table td { white-space:nowrap; padding:6px 8px; font-size:0.75rem; }
+  .check-table th { font-size:0.58rem; }
+
+  /* Toggle group */
+  .toggle-opt { padding:4px 10px; font-size:10px; }
+
+  /* KPI: Score overview */
+  .score-overview { padding:14px; gap:14px; }
+  .score-big .num { font-size:36px; }
+  .score-row-label { width:90px; min-width:90px; font-size:11px; }
+
+  /* KPI: Bono card */
+  .bono-card { padding:18px; }
+  .bono-body { grid-template-columns:1fr 1fr 1fr; gap:10px; }
+  .bono-item-value { font-size:18px; }
+
+  /* KPI: Component cards */
+  .comp-header { flex-wrap:wrap; padding:12px 14px; gap:8px; }
+  .comp-body { padding:14px; }
+  .comp-title { font-size:13px; }
+
+  /* KPI: Digitacion table */
+  .dig-table { display:block; overflow-x:auto; -webkit-overflow-scrolling:touch; }
+  .dig-input { width:44px; font-size:0.78rem; padding:4px 2px; }
+  .dig-stats { grid-template-columns:repeat(3,1fr); gap:6px; }
+  .dig-stat { padding:8px; }
+  .dig-stat-value { font-size:16px; }
+
+  /* KPI: Trimestral table */
+  .tri-table { display:block; overflow-x:auto; -webkit-overflow-scrolling:touch; }
+  .tri-table th, .tri-table td { white-space:nowrap; padding:8px 10px; }
+
+  /* KPI: Escala */
+  .escala-mini { grid-template-columns:repeat(2,1fr); gap:4px; }
+
+  /* Selector cards (KPI) */
+  .selector-grid { grid-template-columns:1fr 1fr; gap:10px; }
+  .selector-card { padding:14px 12px; }
+
+  /* Stats row */
+  .stats { grid-template-columns:repeat(2,1fr); gap:8px; }
+  .stat { padding:12px; }
+  .stat-value { font-size:1.3rem; }
+
+  /* Save bar */
+  .save-bar { flex-wrap:wrap; }
+
+  /* View toggle */
+  .view-toggle-btn { padding:4px 10px; font-size:0.7rem; }
+
+  /* Cards */
+  .card { padding:14px; }
+  .card h3 { font-size:0.78rem; }
+
+  /* Client table (KPI) */
+  .client-table { display:block; overflow-x:auto; -webkit-overflow-scrolling:touch; }
+  .client-table th, .client-table td { white-space:nowrap; padding:6px 8px; }
+}
+
+/* Extra small screens */
+@media (max-width:380px) {
+  .summary-stats { grid-template-columns:repeat(2, 1fr); }
+  .bono-body { grid-template-columns:1fr; gap:8px; }
+  .dig-stats { grid-template-columns:1fr 1fr; }
+  .selector-grid { grid-template-columns:1fr; }
+  .header h1 { font-size:1rem; }
+}
 </style>
 </head>
 <body>
