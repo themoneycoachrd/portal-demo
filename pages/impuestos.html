@@ -504,9 +504,9 @@ async function initApp() {
   document.getElementById('loginOverlay').style.display = 'none';
   document.getElementById('app').style.display = '';
 
-  var { data: profile } = await sb.from('profiles').select('nombre, role').eq('id', session.user.id).single();
+  var { data: profile } = await sb.from('profiles').select('nombre, rol').eq('id', session.user.id).single();
   if (profile) {
-    userRole = profile.role;
+    userRole = profile.rol;
     userNameVal = profile.nombre || session.user.email;
   } else {
     userRole = 'viewer';
@@ -520,7 +520,9 @@ async function initApp() {
   // Si no es admin, pre-filtrar por su nombre en contadora_impuestos
   if (userRole !== 'admin' && userNameVal) {
     var maestra = contadorasMap._maestra || {};
-    if (maestra[userNameVal]) selectedContadora = userNameVal;
+    Object.keys(maestra).forEach(function(c) {
+      if (userNameVal.indexOf(c) >= 0 || c.indexOf(userNameVal) >= 0) selectedContadora = c;
+    });
   }
 
   renderNav();

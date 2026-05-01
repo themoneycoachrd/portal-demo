@@ -818,10 +818,11 @@ async function initAdmin(isEmbed) {
 
   // Si no es admin, pre-filtrar por su nombre en contadora_impuestos
   if (!isAdminMode && userNombrePortal) {
-    var tieneClientes = allClientes.some(function(c) {
-      return (c.contadora_impuestos || '') === userNombrePortal;
+    var contNames = {};
+    allClientes.forEach(function(c) { if (c.contadora_impuestos) contNames[c.contadora_impuestos] = true; });
+    Object.keys(contNames).forEach(function(c) {
+      if (userNombrePortal.indexOf(c) >= 0 || c.indexOf(userNombrePortal) >= 0) selectedContadora = c;
     });
-    if (tieneClientes) selectedContadora = userNombrePortal;
   }
 
   document.getElementById('loginOverlay').style.display = 'none';
