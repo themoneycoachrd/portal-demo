@@ -1035,7 +1035,7 @@ function renderAdminIndex() {
       if (hasPresupuesto(c.nombre)) conPres++;
       if (hasEjecucionMes(c.nombre, selectedMes)) conEjMes++;
       if (hasImpConfig(c.nombre)) conConfig++;
-      if (getDeclCount(c.nombre, selectedMes) >= 5) declCompletas++;
+      if (getDeclCount(c.nombre, selectedMes) >= 6) declCompletas++;
     });
 
     h += '<div class="summary-stats">';
@@ -1043,7 +1043,7 @@ function renderAdminIndex() {
     h += '<div class="summary-stat"><div class="summary-stat-label">Con presupuesto</div><div class="summary-stat-value" style="color:var(--green)">' + conPres + '</div></div>';
     h += '<div class="summary-stat"><div class="summary-stat-label">Ejecución del mes</div><div class="summary-stat-value" style="color:var(--amber)">' + conEjMes + '</div></div>';
     h += '<div class="summary-stat"><div class="summary-stat-label">Config impuestos</div><div class="summary-stat-value" style="color:var(--blue)">' + conConfig + '</div></div>';
-    h += '<div class="summary-stat"><div class="summary-stat-label">Declaraciones 5/5</div><div class="summary-stat-value" style="color:var(--green)">' + declCompletas + '</div></div>';
+    h += '<div class="summary-stat"><div class="summary-stat-label">Declaraciones 6/6</div><div class="summary-stat-value" style="color:var(--green)">' + declCompletas + '</div></div>';
     h += '</div>';
 
     h += '<div class="view-toggle-row"><div class="view-toggle">';
@@ -1086,7 +1086,7 @@ function renderAdminIndex() {
         h += '<td class="center"><span class="pc-status-badge ' + (hasPres ? 'pc-status-completo' : 'pc-status-pendiente') + '">' + (hasPres ? '&#10003;' : '&#10007;') + '</span></td>';
         h += '<td class="center"><span class="pc-status-badge ' + (ejCount >= 6 ? 'pc-status-completo' : ejCount > 0 ? 'pc-status-progreso' : 'pc-status-pendiente') + '">' + ejCount + '/12</span></td>';
         h += '<td class="center"><span class="pc-status-badge ' + (hasConf ? 'pc-status-completo' : 'pc-status-pendiente') + '">' + (hasConf ? '&#10003;' : '&#10007;') + '</span></td>';
-        h += '<td class="center"><span class="pc-status-badge ' + (declCt >= 5 ? 'pc-status-completo' : declCt > 0 ? 'pc-status-progreso' : 'pc-status-pendiente') + '">' + declCt + '/5</span></td>';
+        h += '<td class="center"><span class="pc-status-badge ' + (declCt >= 6 ? 'pc-status-completo' : declCt > 0 ? 'pc-status-progreso' : 'pc-status-pendiente') + '">' + declCt + '/6</span></td>';
         h += '<td class="center"><span class="pc-status-badge ' + estadoClass + '">' + estado + '</span></td>';
 
         h += '</tr>';
@@ -2091,7 +2091,8 @@ function renderProyeccionDetail() {
 
 // ── DECLARACIONES ──
 // Calcula color semáforo: verde (antes de firma), amarillo (entre firma y deadline), rojo (después de deadline), na (sin datos)
-var PM_DIA_LIMITE = { 'TSS': 3, 'IR-3': 10, 'IR-17': 10, 'Anticipo': 15, 'ITBIS': 20 };
+var PM_OBLIGACIONES = ['TSS', 'Infotep', 'IR-3', 'IR-17', 'Anticipo', 'ITBIS'];
+var PM_DIA_LIMITE = { 'TSS': 3, 'Infotep': 3, 'IR-3': 10, 'IR-17': 10, 'Anticipo': 15, 'ITBIS': 20 };
 
 function pmDeclColor(d, mesNum, obligacion) {
   if (d && (d.estado === 'no_aplico' || d.estado === 'pendiente')) return 'na';
@@ -2109,7 +2110,7 @@ function pmDeclColor(d, mesNum, obligacion) {
 function renderDeclaracionesDetail() {
   var h = '<button class="pc-back-btn" onclick="pmCloseDetail()">← Volver</button>';
   var mesNum = pmGetMesIdx(selectedMes);
-  var obligaciones = ['TSS', 'IR-3', 'IR-17', 'Anticipo', 'ITBIS'];
+  var obligaciones = PM_OBLIGACIONES;
 
   var declMes = pmDeclaraciones.filter(function(d) { return d.mes === mesNum; });
   var presentadas = declMes.filter(function(d) { return d.estado === 'a_tiempo' || d.estado === 'tarde'; }).length;
@@ -2340,7 +2341,7 @@ function renderAdminDatos() {
   h += '</div>';
 
   var mesNum = pmGetMesIdx(selectedMes);
-  var obligaciones = ['TSS', 'IR-3', 'IR-17', 'Anticipo', 'ITBIS'];
+  var obligaciones = PM_OBLIGACIONES;
 
   h += '<div class="pm-admin-form"><h3>Declaraciones <span class="pm-admin-badge">' + MESES_FULL[mesNum - 1] + ' ' + pmYear + '</span></h3>';
   h += '<div class="pm-decl-grid">';
@@ -2354,8 +2355,15 @@ function renderAdminDatos() {
       h += '<option value="' + st + '"' + (d && d.estado === st ? ' selected' : '') + '>' + labels[st] + '</option>';
     });
     h += '</select></div>';
+    // Auto-calcular fecha límite si no existe
+    var fechaLimVal = (d && d.fecha_limite) ? d.fecha_limite : '';
+    if (!fechaLimVal && PM_DIA_LIMITE[ob]) {
+      var mesNext = mesNum < 12 ? mesNum + 1 : 1;
+      var anioNext = mesNum < 12 ? pmYear : pmYear + 1;
+      fechaLimVal = anioNext + '-' + String(mesNext).padStart(2, '0') + '-' + String(PM_DIA_LIMITE[ob]).padStart(2, '0');
+    }
     h += '<div class="pm-form-group"><label>Fecha Límite</label>';
-    h += '<input type="date" class="pm-form-input" id="pmDecl_' + ob.replace(/-/g,'') + '_limite" value="' + (d && d.fecha_limite ? d.fecha_limite : '') + '"></div>';
+    h += '<input type="date" class="pm-form-input" id="pmDecl_' + ob.replace(/-/g,'') + '_limite" value="' + fechaLimVal + '"></div>';
     var fechaCk = pmGetFechaFromChecklist(mesNum, ob);
     var fechaPresVal = (d && d.fecha_presentado) ? d.fecha_presentado : (fechaCk || '');
     h += '<div class="pm-form-group"><label>Fecha Presentado' + (fechaCk && !(d && d.fecha_presentado) ? ' <span style="font-size:0.65rem;color:var(--muted)">(del checklist)</span>' : '') + '</label>';
@@ -2786,13 +2794,20 @@ async function pmSaveImpConfig() {
 
 async function pmSaveDeclaraciones() {
   var mesNum = pmGetMesIdx(selectedMes);
-  var obligaciones = ['TSS', 'IR-3', 'IR-17', 'Anticipo', 'ITBIS'];
+  var obligaciones = PM_OBLIGACIONES;
   var rows = [];
 
   obligaciones.forEach(function(ob) {
     var prefix = 'pmDecl_' + ob.replace(/-/g,'') + '_';
     var estado = document.getElementById(prefix + 'estado').value;
     var limite = document.getElementById(prefix + 'limite').value || null;
+    // Auto-calcular fecha_limite si no se llenó manualmente
+    if (!limite && PM_DIA_LIMITE[ob]) {
+      var mesNext = mesNum < 12 ? mesNum + 1 : 1;
+      var anioNext = mesNum < 12 ? pmYear : pmYear + 1;
+      var dia = PM_DIA_LIMITE[ob];
+      limite = anioNext + '-' + String(mesNext).padStart(2, '0') + '-' + String(dia).padStart(2, '0');
+    }
     var presentado = document.getElementById(prefix + 'presentado').value || null;
     var monto = parseFloat(document.getElementById(prefix + 'monto').value) || 0;
 
