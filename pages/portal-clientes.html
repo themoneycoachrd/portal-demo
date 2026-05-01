@@ -1725,7 +1725,8 @@ function renderProyeccionDetail() {
 
 // ── DECLARACIONES ──
 // Calcula color semáforo: verde (antes de firma), amarillo (entre firma y deadline), rojo (después de deadline), na (sin datos)
-var PM_DIA_LIMITE = { 'TSS': 3, 'IR-3': 10, 'IR-17': 10, 'Anticipo': 15, 'ITBIS': 20 };
+var PM_OBLIGACIONES = ['TSS', 'Infotep', 'IR-3', 'IR-17', 'Anticipo', 'ITBIS'];
+var PM_DIA_LIMITE = { 'TSS': 3, 'Infotep': 3, 'IR-3': 10, 'IR-17': 10, 'Anticipo': 15, 'ITBIS': 20 };
 
 function pmGetFechaFromChecklist(mesNum, obligacion) {
   var ck = pmImpChecklist.find(function(c) { return c.mes === String(mesNum) && c.impuesto === obligacion; });
@@ -1757,7 +1758,7 @@ function pmDeclColor(d, mesNum, obligacion) {
 function renderDeclaracionesDetail() {
   var h = '<button class="pc-back-btn" onclick="pmCloseDetail()">← Volver</button>';
   var mesNum = pmGetMesIdx(selectedMes);
-  var obligaciones = ['TSS', 'IR-3', 'IR-17', 'Anticipo', 'ITBIS'];
+  var obligaciones = PM_OBLIGACIONES;
 
   var declMes = pmDeclaraciones.filter(function(d) { return d.mes === mesNum; });
   var presentadas = declMes.filter(function(d) { return d.estado === 'a_tiempo' || d.estado === 'tarde'; }).length;
