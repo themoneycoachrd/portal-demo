@@ -1591,7 +1591,7 @@ function renderPresupuestoMSH() {
   h += '<tr><td class="pm-font-bold">Costos de Obra</td>';
   qRange.forEach(function(m) {
     var ej = pmGetEjecucionMes(m);
-    var val = ej ? (ej.costos_operativos || 0) : 0;
+    var val = ej ? (ej.costos_obra || 0) : 0;
     oTotCost += val;
     h += '<td class="pm-text-right" style="border-right:' + (m < qRange[2] ? '2px solid var(--border)' : 'none') + '">$' + pmFormatMoney(val) + '</td>';
   });
@@ -1602,7 +1602,7 @@ function renderPresupuestoMSH() {
   qRange.forEach(function(m) {
     var ej = pmGetEjecucionMes(m);
     var ing = ej ? (ej.ingreso_obra || 0) : 0;
-    var cost = ej ? (ej.costos_operativos || 0) : 0;
+    var cost = ej ? (ej.costos_obra || 0) : 0;
     var res = ing - cost;
     var color = res >= 0 ? 'var(--green)' : 'var(--red)';
     h += '<td class="pm-text-right" style="color:' + color + ';border-right:' + (m < qRange[2] ? '2px solid var(--border)' : 'none') + '">$' + pmFormatMoney(res) + '</td>';
