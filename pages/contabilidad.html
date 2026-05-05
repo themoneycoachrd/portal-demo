@@ -169,6 +169,23 @@ body { font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-se
 .tipo-cierre { background:#f1f5f9; color:#64748b; }
 .tipo-nomina { background:#eff6ff; color:#2563eb; }
 
+/* ─── Nota icon (checklist) ─── */
+.nota-btn { background:none; border:none; cursor:pointer; padding:2px 4px; font-size:14px; color:var(--light); transition:color 0.2s; }
+.nota-btn:hover { color:var(--blue); }
+.nota-btn.has-nota { color:var(--blue); }
+
+/* ─── Modal nota ─── */
+.nota-overlay { position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.4); z-index:9000; display:flex; align-items:center; justify-content:center; }
+.nota-modal { background:white; border-radius:12px; padding:24px; width:90%; max-width:420px; box-shadow:0 8px 32px rgba(0,0,0,0.18); }
+.nota-modal h3 { font-size:14px; font-weight:700; margin-bottom:4px; }
+.nota-modal .nota-sub { font-size:12px; color:var(--muted); margin-bottom:12px; }
+.nota-modal textarea { width:100%; height:100px; border:1px solid var(--border); border-radius:8px; padding:10px; font-size:13px; font-family:inherit; resize:vertical; }
+.nota-modal textarea:focus { outline:none; border-color:var(--blue); }
+.nota-modal-btns { display:flex; gap:8px; justify-content:flex-end; margin-top:12px; }
+.nota-modal-btns button { padding:8px 16px; border-radius:8px; font-size:12px; font-weight:600; cursor:pointer; font-family:inherit; border:1px solid var(--border); }
+.nota-modal-btns .btn-cancel { background:white; color:var(--muted); }
+.nota-modal-btns .btn-save { background:var(--blue); color:white; border-color:var(--blue); }
+
 /* ─── Selector de contadora (KPI) ─── */
 .selector-screen { text-align:center; padding:40px 20px; }
 .selector-screen h2 { font-size:18px; font-weight:700; margin-bottom:8px; }
@@ -818,7 +835,8 @@ function getCheckData(contadora, cliente, mes) {
   }
   const d = CHECKLIST_DATA[key].datos;
   ITEMS.forEach(item => {
-    if (!d[item.id]) d[item.id] = { done: false, fecha: '' };
+    if (!d[item.id]) d[item.id] = { done: false, fecha: '', nota: '' };
+    else if (d[item.id].nota === undefined) d[item.id].nota = '';
   });
   return CHECKLIST_DATA[key];
 }
@@ -1425,13 +1443,14 @@ function renderCkDetail(el) {
   html += '<th style="width:65px" class="center">Limite</th>';
   html += '<th style="width:100px" class="center">Estado</th>';
   html += '<th style="width:85px" class="center">Fecha</th>';
+  html += '<th style="width:40px" class="center">Nota</th>';
   html += '</tr></thead><tbody>';
 
   ITEMS.forEach((item, idx) => {
     // Insert group header row
     const group = ITEM_GROUPS.find(g => g.from === idx);
     if (group) {
-      html += '<tr class="group-row"><td colspan="7">' + group.label + '</td></tr>';
+      html += '<tr class="group-row"><td colspan="8">' + group.label + '</td></tr>';
     }
 
     const d = entry.datos[item.id] || { done: false, fecha: '' };
@@ -1461,6 +1480,9 @@ function renderCkDetail(el) {
     }
 
     html += '<td class="center" style="font-size:0.78rem">' + fechaDisplay + '</td>';
+    const notaVal = d.nota || '';
+    const notaClass = notaVal ? 'nota-btn has-nota' : 'nota-btn';
+    html += '<td class="center"><button class="' + notaClass + '" title="' + (notaVal ? 'Ver/editar nota' : 'Agregar nota') + '" onclick="openNotaModal(\'' + esc(contadora) + '\',\'' + esc(cliente) + '\',\'' + mes + '\',\'' + item.id + '\',\'' + esc(item.label) + '\')">&#9998;</button></td>';
     html += '</tr>';
   });
 
@@ -1827,6 +1849,50 @@ async function handleCkSave() {
 
   btn.disabled = false;
   btn.textContent = 'Guardar cambios';
+}
+
+// ─── Nota modal ───
+let notaCtx = null;
+
+function openNotaModal(contadora, cliente, mes, itemId, label) {
+  const entry = getCheckData(contadora, cliente, mes);
+  const d = entry.datos[itemId] || { done: false, fecha: '', nota: '' };
+  notaCtx = { contadora, cliente, mes, itemId };
+
+  const overlay = document.createElement('div');
+  overlay.className = 'nota-overlay';
+  overlay.id = 'nota-overlay';
+  overlay.onclick = function(e) { if (e.target === overlay) closeNotaModal(); };
+
+  overlay.innerHTML = '<div class="nota-modal">'
+    + '<h3>' + label + '</h3>'
+    + '<div class="nota-sub">Nota / novedad de esta tarea</div>'
+    + '<textarea id="nota-textarea" placeholder="Escribe la nota aquí...">' + (d.nota || '') + '</textarea>'
+    + '<div class="nota-modal-btns">'
+    + '<button class="btn-cancel" onclick="closeNotaModal()">Cancelar</button>'
+    + '<button class="btn-save" onclick="saveNota()">Guardar</button>'
+    + '</div></div>';
+
+  document.body.appendChild(overlay);
+  document.getElementById('nota-textarea').focus();
+}
+
+function closeNotaModal() {
+  const el = document.getElementById('nota-overlay');
+  if (el) el.remove();
+  notaCtx = null;
+}
+
+async function saveNota() {
+  if (!notaCtx) return;
+  const txt = document.getElementById('nota-textarea').value.trim();
+  const entry = getCheckData(notaCtx.contadora, notaCtx.cliente, notaCtx.mes);
+  if (!entry.datos[notaCtx.itemId]) entry.datos[notaCtx.itemId] = { done: false, fecha: '', nota: '' };
+  entry.datos[notaCtx.itemId].nota = txt;
+
+  await saveChecklist(notaCtx.contadora, notaCtx.cliente, notaCtx.mes);
+  closeNotaModal();
+  renderCkContent();
 }
 
 // ==================== KPI EVENT HANDLERS ====================
