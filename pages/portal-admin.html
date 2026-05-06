@@ -2394,6 +2394,11 @@ function renderDeclaracionesDetail() {
   h += '</div></div>';
   h += '</div>';
 
+  // Botón para marcar todas como presentadas
+  h += '<div style="margin-bottom:12px;text-align:right">';
+  h += '<button class="pm-btn-save" onclick="pmMarkAllDecl()" style="background:var(--green);color:white;border-color:var(--green)">✓ Marcar todas como presentadas</button>';
+  h += '</div>';
+
   // Últimos 3 meses para puntualidad inline
   var histMeses = [];
   for (var hm = mesNum; hm >= 1 && histMeses.length < 3; hm--) { histMeses.unshift(hm); }
@@ -3211,6 +3216,43 @@ async function pmSaveDeclNota() {
   var ej = pmGetEjecucionMes(mesNum);
   if (ej) { ej.nota_declaraciones = nota; }
   else { pmEjecucion.push({ cliente: clienteNombre, anio: pmYear, mes: mesNum, nota_declaraciones: nota }); }
+}
+
+async function pmMarkAllDecl() {
+  var mesNum = pmGetMesIdx(selectedMes);
+  var hoy = new Date().toISOString().split('T')[0];
+  var rows = [];
+
+  PM_OBLIGACIONES.forEach(function(ob) {
+    var mesNext = mesNum < 12 ? mesNum + 1 : 1;
+    var anioNext = mesNum < 12 ? pmYear : pmYear + 1;
+    var dia = PM_DIA_LIMITE[ob];
+    var limite = anioNext + '-' + String(mesNext).padStart(2, '0') + '-' + String(dia).padStart(2, '0');
+
+    rows.push({
+      cliente: clienteNombre,
+      anio: pmYear,
+      mes: mesNum,
+      obligacion: ob,
+      estado: 'a_tiempo',
+      fecha_limite: limite,
+      fecha_presentado: hoy,
+      monto: 0
+    });
+  });
+
+  // Preservar montos existentes
+  pmDeclaraciones.filter(function(d) { return d.mes === mesNum; }).forEach(function(existing) {
+    var row = rows.find(function(r) { return r.obligacion === existing.obligacion; });
+    if (row && existing.monto) row.monto = existing.monto;
+  });
+
+  var { error } = await sb.from('portal_declaraciones').upsert(rows, { onConflict: 'cliente,anio,mes,obligacion' });
+  if (error) { showToast('Error: ' + error.message); return; }
+
+  showToast('Todas las declaraciones de ' + MESES_FULL[mesNum - 1] + ' marcadas como presentadas');
+  await loadPresentacionData();
+  render();
 }
 
 function pmFormatDate(dateStr) {
