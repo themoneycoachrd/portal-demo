@@ -1376,7 +1376,57 @@ function renderDashboard(el, backHtml) {
     h += '</div></div>';
   });
 
+  // Botón para marcar todo el checklist como completado (temporal, para meses pasados)
+  h += '<div style="margin-top:16px;text-align:right">';
+  h += '<button id="btn-mark-all-ck" style="background:var(--green);color:white;border:none;padding:8px 18px;border-radius:8px;font-size:0.85rem;font-weight:600;cursor:pointer" onclick="markAllChecklistDone()">✓ Marcar todo como realizado</button>';
+  h += '</div>';
+
   el.innerHTML = h;
+}
+
+async function markAllChecklistDone() {
+  var btn = document.getElementById('btn-mark-all-ck');
+  if (btn) { btn.disabled = true; btn.textContent = 'Guardando...'; }
+
+  var impuestos = Object.keys(CHECKLIST);
+  for (var i = 0; i < impuestos.length; i++) {
+    var imp = impuestos[i];
+    var items = CHECKLIST[imp];
+    var dk = dataKey(imp, selectedMes);
+    if (!portalData[dk]) portalData[dk] = {};
+
+    for (var j = 0; j < items.length; j++) {
+      var item = items[j];
+      if (item.type === 'yesno') {
+        portalData[dk][item.id] = true;
+      } else if (item.type === 'monto' && !portalData[dk][item.id]) {
+        portalData[dk][item.id] = 1;
+      } else if (item.type === 'upload') {
+        var fk = fileKey(imp, selectedMes, item.fileType);
+        if (!portalFiles[fk] || portalFiles[fk].length === 0) {
+          var { error: fErr } = await sb.from('portal_clientes_archivos').insert({
+            cliente: clienteNombre,
+            mes: selectedMes,
+            impuesto: imp,
+            tipo: item.fileType,
+            nombre_archivo: '(completado manualmente)',
+            storage_path: 'placeholder/' + clienteNombre + '/' + selectedMes + '/' + imp + '/' + item.fileType,
+            size_bytes: 0
+          });
+          if (!fErr) {
+            if (!portalFiles[fk]) portalFiles[fk] = [];
+            portalFiles[fk].push({ id: 0, nombre_archivo: '(completado manualmente)', storage_path: 'placeholder' });
+          }
+        }
+      }
+    }
+
+    await saveData(imp, selectedMes);
+  }
+
+  if (btn) { btn.disabled = false; btn.textContent = '✓ Marcar todo como realizado'; }
+  showToast('Checklist de ' + MESES_FULL[MESES_KEY.indexOf(selectedMes)] + ' marcado como completado');
+  render();
 }
 
 // ==================== CHECKLIST TABS ====================
@@ -2403,11 +2453,6 @@ function renderDeclaracionesDetail() {
   h += '</div></div>';
   h += '</div>';
 
-  // Botón para marcar todas como presentadas
-  h += '<div style="margin-bottom:12px;text-align:right">';
-  h += '<button class="pm-btn-save" onclick="pmMarkAllDecl()" style="background:var(--green);color:white;border-color:var(--green)">✓ Marcar todas como presentadas</button>';
-  h += '</div>';
-
   // Últimos 3 meses para puntualidad inline
   var histMeses = [];
   for (var hm = mesNum; hm >= 1 && histMeses.length < 3; hm--) { histMeses.unshift(hm); }
@@ -3225,43 +3270,6 @@ async function pmSaveDeclNota() {
   var ej = pmGetEjecucionMes(mesNum);
   if (ej) { ej.nota_declaraciones = nota; }
   else { pmEjecucion.push({ cliente: clienteNombre, anio: pmYear, mes: mesNum, nota_declaraciones: nota }); }
-}
-
-async function pmMarkAllDecl() {
-  var mesNum = pmGetMesIdx(selectedMes);
-  var hoy = new Date().toISOString().split('T')[0];
-  var rows = [];
-
-  PM_OBLIGACIONES.forEach(function(ob) {
-    var mesNext = mesNum < 12 ? mesNum + 1 : 1;
-    var anioNext = mesNum < 12 ? pmYear : pmYear + 1;
-    var dia = PM_DIA_LIMITE[ob];
-    var limite = anioNext + '-' + String(mesNext).padStart(2, '0') + '-' + String(dia).padStart(2, '0');
-
-    rows.push({
-      cliente: clienteNombre,
-      anio: pmYear,
-      mes: mesNum,
-      obligacion: ob,
-      estado: 'a_tiempo',
-      fecha_limite: limite,
-      fecha_presentado: hoy,
-      monto: 0
-    });
-  });
-
-  // Preservar montos existentes
-  pmDeclaraciones.filter(function(d) { return d.mes === mesNum; }).forEach(function(existing) {
-    var row = rows.find(function(r) { return r.obligacion === existing.obligacion; });
-    if (row && existing.monto) row.monto = existing.monto;
-  });
-
-  var { error } = await sb.from('portal_declaraciones').upsert(rows, { onConflict: 'cliente,anio,mes,obligacion' });
-  if (error) { showToast('Error: ' + error.message); return; }
-
-  showToast('Todas las declaraciones de ' + MESES_FULL[mesNum - 1] + ' marcadas como presentadas');
-  await loadPresentacionData();
-  render();
 }
 
 function pmFormatDate(dateStr) {
