@@ -156,8 +156,8 @@ body.embed .content { padding-top:12px; }
 
 /* Total rows, ganancia bar */
 .pm-row-total td { border-top:2px solid var(--border); font-weight:700; background:#fffbeb; }
-.pm-row-ganancia td { background:#000 !important; color:white !important; border-top-color:#000 !important; }
-.pm-ganancia { background:#000; color:white; padding:12px 20px; display:flex; justify-content:space-between; align-items:center; font-size:0.85rem; font-weight:700; }
+.pm-row-ganancia td { background:var(--navy) !important; color:white !important; border-top-color:var(--navy) !important; }
+.pm-ganancia { background:var(--navy); color:white; padding:12px 20px; display:flex; justify-content:space-between; align-items:center; font-size:0.85rem; font-weight:700; }
 .pm-ganancia .pm-amount { color:var(--green); font-size:1.1rem; font-weight:800; }
 
 /* Summary cards */
@@ -1226,7 +1226,7 @@ function renderPresupuestoDetail() {
   h += '<div class="pm-dual">';
 
   h += '<div class="pm-panel"><div class="pm-panel-hdr">';
-  h += '<h3><span class="pm-hdot" style="background:var(--blue)"></span> Presupuesto (Planificado)</h3></div>';
+  h += '<h3 style="color:var(--navy)"><span class="pm-hdot" style="background:var(--blue)"></span> Presupuesto (Planificado)</h3></div>';
   h += '<div class="pm-panel-body"><table><thead><tr>';
   h += '<th>Concepto</th><th class="pm-text-right">Anual</th><th class="pm-text-right">Mensual (Meta)</th>';
   h += '</tr></thead><tbody>';
@@ -1270,7 +1270,7 @@ function renderPresupuestoDetail() {
 
   var ejMes = pmGetEjecucionMes(mesNum);
   h += '<div class="pm-panel"><div class="pm-panel-hdr">';
-  h += '<h3><span class="pm-hdot" style="background:var(--green)"></span> Ejecución (Realidad)</h3>';
+  h += '<h3 style="color:var(--navy)"><span class="pm-hdot" style="background:var(--green)"></span> Ejecución (Realidad)</h3>';
   h += '<span class="pm-period">' + pmYear + '-' + String(mesNum).padStart(2, '0') + '</span></div>';
   h += '<div class="pm-panel-body"><table><thead><tr>';
   h += '<th class="pm-text-right">Ejecutado</th><th class="pm-text-center">% Logro</th><th class="pm-text-center">Estado</th>';
@@ -1293,7 +1293,7 @@ function renderPresupuestoDetail() {
       if (expectedPct !== null) {
         pctColor = (pct > expectedPct) ? 'var(--red)' : 'var(--green)';
       }
-      semCol = (expectedPct !== null && pct > expectedPct) ? 'pm-sem-red' : 'pm-sem-green';
+      semCol = (expectedPct !== null && pct > expectedPct) ? 'rojo' : 'verde';
     } else {
       pct = pmPctMeta(val, meta);
       pctColor = pmPctColor(pct, r.tipo !== 'ventas');
@@ -1479,7 +1479,7 @@ function renderPresupuestoDetail() {
   h += '<div class="pm-panel-hdr" style="background:var(--navy);color:white;border-bottom:none">';
   h += '<h3 style="color:white;text-transform:uppercase;font-size:0.78rem;letter-spacing:0.3px">Trimestre completo</h3></div>';
   h += '<div class="pm-panel-body"><table><thead><tr>';
-  h += '<th>Concepto</th><th class="pm-text-right">Meta ' + qLabels[quarter - 1] + '</th><th class="pm-text-right">Ejecutado ' + qLabels[quarter - 1] + '</th><th class="pm-text-right">Diferencia</th><th class="pm-text-center">% Logrado</th><th class="pm-text-center">Estado</th>';
+  h += '<th>Concepto</th><th class="pm-text-right">Meta ' + qLabels[quarter - 1] + '</th><th class="pm-text-right">Ejecutado ' + qLabels[quarter - 1] + '</th><th class="pm-text-center">%</th><th class="pm-text-center">Estado</th>';
   h += '</tr></thead><tbody>';
 
   var qRows = [
@@ -1488,7 +1488,6 @@ function renderPresupuestoDetail() {
     { label: 'Gastos', meta: qMetaG, ej: qTotalG, tipo: 'gasto' }
   ];
   qRows.forEach(function(r) {
-    var diff = r.ej - r.meta;
     var pct, pctColor, semCol;
     if (r.tipo === 'costo') {
       pct = qTotalV ? (r.ej / qTotalV * 100) : 0;
@@ -1497,53 +1496,45 @@ function renderPresupuestoDetail() {
       if (expectedPct !== null) {
         pctColor = (pct > expectedPct) ? 'var(--red)' : 'var(--green)';
       }
-      semCol = (expectedPct !== null && pct > expectedPct) ? 'pm-sem-red' : 'pm-sem-green';
+      semCol = (expectedPct !== null && pct > expectedPct) ? 'rojo' : 'verde';
     } else {
       pct = r.meta ? (r.ej / r.meta * 100) : 0;
       var invert = (r.tipo !== 'ventas');
       pctColor = pmPctColor(pct, invert);
       semCol = pmSemColor(pct, r.tipo);
     }
-    var diffSign = diff >= 0 ? '+' : '';
     h += '<tr><td class="pm-font-bold">' + r.label + '</td>';
     h += '<td class="pm-text-right">' + pmFormatMoneyShort(r.meta) + '</td>';
     h += '<td class="pm-text-right">' + pmFormatMoneyShort(r.ej) + '</td>';
-    h += '<td class="pm-text-right">' + diffSign + pmFormatMoneyShort(diff) + '</td>';
     h += '<td class="pm-text-center"><span style="color:' + pctColor + ';font-weight:600">' + pct.toFixed(0) + '%</span></td>';
     h += '<td class="pm-text-center"><span class="pm-sem-dot ' + semCol + '"><span class="pm-dot"></span></span></td></tr>';
   });
 
-  var diffResOp = qResOp - qMetaResOp;
   var pctResOp = qMetaResOp ? (qResOp / qMetaResOp * 100) : 0;
   var semResOp = pmSemColor(pctResOp, 'beneficio');
   h += '<tr class="pm-row-total"><td class="pm-font-bold">Resultado Op.</td>';
   h += '<td class="pm-text-right">' + pmFormatMoneyShort(qMetaResOp) + '</td>';
   h += '<td class="pm-text-right">' + pmFormatMoneyShort(qResOp) + '</td>';
-  h += '<td class="pm-text-right">' + (diffResOp >= 0 ? '+' : '') + pmFormatMoneyShort(diffResOp) + '</td>';
   h += '<td class="pm-text-center"><span style="color:' + pmPctColor(pctResOp, false) + ';font-weight:600">' + pctResOp.toFixed(0) + '%</span></td>';
   h += '<td class="pm-text-center"><span class="pm-sem-dot ' + semResOp + '"><span class="pm-dot"></span></span></td></tr>';
 
   // Ing./Gto. No Op. (neto)
   var qMetaIF = (pmPresupuesto ? ((pmPresupuesto.ingreso_no_operacional_anual || 0) - (pmPresupuesto.gasto_no_operacional_anual || 0)) / 12 : 0) * 3;
   var qPctIF = qMetaIF ? (qTotalIF / qMetaIF * 100) : 0;
-  var qDiffIF = qTotalIF - qMetaIF;
   var qSemIF = qMetaIF ? pmSemColor(qPctIF, 'gasto') : 'na';
   h += '<tr><td class="pm-font-bold" style="color:var(--muted)">Ing./Gto. No Op.</td>';
   h += '<td class="pm-text-right" style="color:#666">' + (qMetaIF ? pmFormatMoneyShort(qMetaIF) : '—') + '</td>';
   h += '<td class="pm-text-right" style="color:#666">' + pmFormatMoneyShort(qTotalIF) + '</td>';
-  h += '<td class="pm-text-right">' + (qDiffIF >= 0 ? '+' : '') + pmFormatMoneyShort(qDiffIF) + '</td>';
   h += '<td class="pm-text-center">' + (qMetaIF ? '<span style="color:' + pmPctColor(qPctIF, true) + ';font-weight:600">' + qPctIF.toFixed(0) + '%</span>' : '') + '</td>';
   h += '<td class="pm-text-center">' + (qMetaIF ? '<span class="pm-sem-dot ' + qSemIF + '"><span class="pm-dot"></span></span>' : '') + '</td></tr>';
 
   // Gtos. No Admitidos
   var qMetaGNA = pmGetMetaMensual('gastos_no_admitidos') * 3;
   var qPctGNA = qMetaGNA ? (qTotalGNA / qMetaGNA * 100) : 0;
-  var qDiffGNA = qTotalGNA - qMetaGNA;
   var qSemGNA = qMetaGNA ? pmSemColor(qPctGNA, 'gasto') : 'na';
   h += '<tr><td class="pm-font-bold" style="color:var(--muted)">Gtos. No Admitidos</td>';
   h += '<td class="pm-text-right" style="color:#666">' + (qMetaGNA ? pmFormatMoneyShort(qMetaGNA) : '—') + '</td>';
   h += '<td class="pm-text-right" style="color:#666">' + pmFormatMoneyShort(qTotalGNA) + '</td>';
-  h += '<td class="pm-text-right">' + (qDiffGNA >= 0 ? '+' : '') + pmFormatMoneyShort(qDiffGNA) + '</td>';
   h += '<td class="pm-text-center">' + (qMetaGNA ? '<span style="color:' + pmPctColor(qPctGNA, true) + ';font-weight:600">' + qPctGNA.toFixed(0) + '%</span>' : '') + '</td>';
   h += '<td class="pm-text-center">' + (qMetaGNA ? '<span class="pm-sem-dot ' + qSemGNA + '"><span class="pm-dot"></span></span>' : '') + '</td></tr>';
 
@@ -1675,7 +1666,7 @@ function renderPresupuestoMSH() {
 
   // Panel Presupuesto
   h += '<div class="pm-panel"><div class="pm-panel-hdr">';
-  h += '<h3><span class="pm-hdot" style="background:var(--blue)"></span> Presupuesto (Planificado)</h3></div>';
+  h += '<h3 style="color:var(--navy)"><span class="pm-hdot" style="background:var(--blue)"></span> Presupuesto (Planificado)</h3></div>';
   h += '<div class="pm-panel-body"><table><thead><tr>';
   h += '<th>Concepto</th><th class="pm-text-right">Anual</th><th class="pm-text-right">Mensual (Meta)</th>';
   h += '</tr></thead><tbody>';
@@ -1700,7 +1691,7 @@ function renderPresupuestoMSH() {
   // Panel Ejecución
   var ejMes = pmGetEjecucionMes(mesNum);
   h += '<div class="pm-panel"><div class="pm-panel-hdr">';
-  h += '<h3><span class="pm-hdot" style="background:var(--green)"></span> Ejecución (Realidad)</h3>';
+  h += '<h3 style="color:var(--navy)"><span class="pm-hdot" style="background:var(--green)"></span> Ejecución (Realidad)</h3>';
   h += '<span class="pm-period">' + pmYear + '-' + String(mesNum).padStart(2, '0') + '</span></div>';
   h += '<div class="pm-panel-body"><table><thead><tr>';
   h += '<th class="pm-text-right">Ejecutado</th><th class="pm-text-center">% Logro</th><th class="pm-text-center">Estado</th>';
