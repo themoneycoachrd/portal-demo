@@ -1249,7 +1249,12 @@ function renderPresupuestoDetail() {
       var meta = pmGetMetaMensual(c.key);
       var pct = pmPctMeta(val, meta);
       var color = pmPctColor(pct, c.tipo !== 'ventas');
-      h += '<td class="pm-text-right">' + pmFormatMoney(val) + '</td>';
+      var costPctInline = '';
+      if (c.key === 'costos_operativos') {
+        var ventasMes = ej ? (ej.ventas_it1 || 0) : 0;
+        if (ventasMes) costPctInline = ' <span style="font-size:0.7rem;color:var(--muted);font-weight:400">(' + (val / ventasMes * 100).toFixed(0) + '%)</span>';
+      }
+      h += '<td class="pm-text-right">' + pmFormatMoney(val) + costPctInline + '</td>';
       h += '<td class="pm-text-right" style="border-right:' + (m < qRange[2] ? '2px solid var(--border)' : 'none') + '"><span style="color:' + color + ';font-weight:600">' + pct.toFixed(2) + '%</span></td>';
     });
     h += '</tr>';
