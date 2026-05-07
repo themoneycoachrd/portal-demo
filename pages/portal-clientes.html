@@ -1216,121 +1216,12 @@ function renderPresupuestoDetail() {
   var qLabels = ['Q1', 'Q2', 'Q3', 'Q4'];
   var qMonthNames = qRange.map(function(m) { return MESES_FULL[m - 1]; });
 
-  h += '<div class="pm-panel" style="margin-bottom:16px">';
-  h += '<div class="pm-panel-hdr" style="background:var(--navy);color:white;border-bottom:none">';
-  h += '<h3 style="color:white;text-transform:uppercase;font-size:0.78rem;letter-spacing:0.3px">Trimestre por mes</h3></div>';
-  h += '<div class="pm-panel-body" style="overflow-x:auto"><table>';
-
-  h += '<thead><tr><th style="min-width:90px"></th>';
-  qRange.forEach(function(m) {
-    h += '<th colspan="2" class="pm-text-center" style="border-right:' + (m < qRange[2] ? '2px solid var(--border)' : 'none') + '">' + MESES_FULL[m - 1] + '</th>';
-  });
-  h += '</tr><tr><th>Concepto</th>';
-  qRange.forEach(function(m) {
-    h += '<th class="pm-text-right">Ejecutado</th><th class="pm-text-right" style="border-right:' + (m < qRange[2] ? '2px solid var(--border)' : 'none') + '">% Meta</th>';
-  });
-  h += '</tr></thead><tbody>';
-
   var costPctLabel = '';
   if (pmPresupuesto && pmPresupuesto.ventas_it1_anual && pmPresupuesto.costos_operativos_anual) {
     costPctLabel = ' (' + (pmPresupuesto.costos_operativos_anual / pmPresupuesto.ventas_it1_anual * 100).toFixed(0) + '%)';
   }
-  var conceptos = [
-    { key: 'ventas_it1', label: 'Ventas', tipo: 'ventas' },
-    { key: 'costos_operativos', label: 'Costos' + costPctLabel, tipo: 'costo' },
-    { key: 'gastos', label: 'Gastos', tipo: 'gasto' }
-  ];
 
-  conceptos.forEach(function(c) {
-    h += '<tr><td class="pm-font-bold">' + c.label + '</td>';
-    qRange.forEach(function(m) {
-      var ej = pmGetEjecucionMes(m);
-      var val = ej ? (ej[c.key] || 0) : 0;
-      var meta = pmGetMetaMensual(c.key);
-      var pct, color;
-      if (c.key === 'costos_operativos') {
-        var ventasMes = ej ? (ej.ventas_it1 || 0) : 0;
-        pct = ventasMes ? (val / ventasMes * 100) : 0;
-        var expectedPct = (pmPresupuesto && pmPresupuesto.ventas_it1_anual) ? (pmPresupuesto.costos_operativos_anual / pmPresupuesto.ventas_it1_anual * 100) : null;
-        color = 'var(--muted)';
-        if (expectedPct !== null) {
-          if (pct > expectedPct + 5) color = 'var(--red)';
-          else if (pct < expectedPct) color = 'var(--amber)';
-          else color = 'var(--green)';
-        }
-      } else {
-        pct = pmPctMeta(val, meta);
-        color = pmPctColor(pct, c.tipo !== 'ventas');
-      }
-      h += '<td class="pm-text-right">' + pmFormatMoney(val) + '</td>';
-      var pctDisplay = pct.toFixed(0) + '%';
-      h += '<td class="pm-text-right" style="border-right:' + (m < qRange[2] ? '2px solid var(--border)' : 'none') + '"><span style="color:' + color + ';font-weight:600">' + pctDisplay + '</span></td>';
-    });
-    h += '</tr>';
-  });
-
-  h += '<tr class="pm-row-total"><td class="pm-font-bold">Resultado Op.</td>';
-  qRange.forEach(function(m) {
-    var ej = pmGetEjecucionMes(m);
-    var v = ej ? (ej.ventas_it1 || 0) : 0;
-    var c = ej ? (ej.costos_operativos || 0) : 0;
-    var g = ej ? (ej.gastos || 0) : 0;
-    var resOp = v - c - g;
-    var metaResOp = pmGetMetaMensual('ventas_it1') - pmGetMetaMensual('costos_operativos') - pmGetMetaMensual('gastos');
-    var pct = metaResOp ? (resOp / metaResOp * 100) : 0;
-    var color = resOp >= 0 ? 'var(--green)' : 'var(--red)';
-    h += '<td class="pm-text-right" style="color:' + color + '">' + pmFormatMoney(resOp) + '</td>';
-    h += '<td class="pm-text-right" style="border-right:' + (m < qRange[2] ? '2px solid var(--border)' : 'none') + '"><span style="color:' + color + ';font-weight:600">' + pct.toFixed(0) + '%</span></td>';
-  });
-  h += '</tr>';
-
-  // Ing./Gto. No Op. (neto)
-  h += '<tr><td class="pm-font-bold" style="color:var(--muted)">Ing./Gto. No Op.</td>';
-  var metaINO = pmPresupuesto ? ((pmPresupuesto.ingreso_no_operacional_anual || 0) - (pmPresupuesto.gasto_no_operacional_anual || 0)) / 12 : 0;
-  qRange.forEach(function(m) {
-    var ej = pmGetEjecucionMes(m);
-    var val = ej ? ((ej.ingreso_no_operacional || 0) - (ej.gasto_no_operacional || 0)) : 0;
-    var pctIF = metaINO ? (val / metaINO * 100) : 0;
-    var colorIF = metaINO ? pmPctColor(pctIF, true) : '#999';
-    h += '<td class="pm-text-right" style="color:#666">' + pmFormatMoney(val) + '</td>';
-    h += '<td class="pm-text-right" style="border-right:' + (m < qRange[2] ? '2px solid var(--border)' : 'none') + '"><span style="color:' + colorIF + ';font-weight:600">' + (metaINO ? pctIF.toFixed(0) + '%' : '—') + '</span></td>';
-  });
-  h += '</tr>';
-
-  // Gtos. No Admitidos
-  h += '<tr><td class="pm-font-bold" style="color:var(--muted)">Gtos. No Admitidos</td>';
-  qRange.forEach(function(m) {
-    var ej = pmGetEjecucionMes(m);
-    var val = ej ? (ej.gastos_no_admitidos || 0) : 0;
-    var metaGNA = pmGetMetaMensual('gastos_no_admitidos');
-    var pctGNA = metaGNA ? (val / metaGNA * 100) : 0;
-    var colorGNA = metaGNA ? pmPctColor(pctGNA, true) : '#999';
-    h += '<td class="pm-text-right" style="color:#666">' + pmFormatMoney(val) + '</td>';
-    h += '<td class="pm-text-right" style="border-right:' + (m < qRange[2] ? '2px solid var(--border)' : 'none') + '"><span style="color:' + colorGNA + ';font-weight:600">' + (metaGNA ? pctGNA.toFixed(0) + '%' : '—') + '</span></td>';
-  });
-  h += '</tr>';
-
-  // Ganancia/Pérdida
-  var metaGanMes = (pmGetMetaMensual('ventas_it1') - pmGetMetaMensual('costos_operativos') - pmGetMetaMensual('gastos')) + (pmPresupuesto ? ((pmPresupuesto.ingreso_no_operacional_anual || 0) - (pmPresupuesto.gasto_no_operacional_anual || 0)) / 12 : 0) - pmGetMetaMensual('gastos_no_admitidos');
-  h += '<tr class="pm-row-total pm-row-ganancia"><td class="pm-font-bold" style="color:white">Ganancia/Pérdida</td>';
-  qRange.forEach(function(m) {
-    var ej = pmGetEjecucionMes(m);
-    var v = ej ? (ej.ventas_it1 || 0) : 0;
-    var c = ej ? (ej.costos_operativos || 0) : 0;
-    var g = ej ? (ej.gastos || 0) : 0;
-    var iF = ej ? ((ej.ingreso_no_operacional || 0) - (ej.gasto_no_operacional || 0)) : 0;
-    var gna = ej ? (ej.gastos_no_admitidos || 0) : 0;
-    var gan = v - c - g + iF - gna;
-    var color = gan >= 0 ? '#4ade80' : '#f87171';
-    var pctGan = metaGanMes ? (gan / metaGanMes * 100) : 0;
-    var pctGanColor = (gan >= 0 && pctGan >= 100) ? '#4ade80' : '#f87171';
-    h += '<td class="pm-text-right" style="color:' + color + '">' + pmFormatMoney(gan) + '</td>';
-    h += '<td class="pm-text-right" style="border-right:' + (m < qRange[2] ? '2px solid var(--border)' : 'none') + '"><span style="color:' + pctGanColor + ';font-weight:600">' + pctGan.toFixed(0) + '%</span></td>';
-  });
-  h += '</tr>';
-
-  h += '</tbody></table></div></div>';
-
+  // ── Mes en curso: Presupuesto vs Ejecución (dual panel) ──
   h += '<div class="pm-section-label">Mes en curso</div>';
   h += '<div class="pm-dual">';
 
@@ -1394,21 +1285,28 @@ function renderPresupuestoDetail() {
   ejRows.forEach(function(r) {
     var val = ejMes ? (ejMes[r.key] || 0) : 0;
     var meta = pmGetMetaMensual(r.key);
-    var pct = pmPctMeta(val, meta);
-    var semCol = pmSemColor(pct, r.tipo);
-    var pctColor = pmPctColor(pct, r.tipo !== 'ventas');
-    var costLabel = '';
-    if (r.key === 'costos_operativos' && ejVentasMes) {
-      costLabel = ' <span style="font-size:0.72rem;color:var(--muted);font-weight:400">(' + (val / ejVentasMes * 100).toFixed(0) + '% de ventas)</span>';
+    var pct, pctColor, semCol;
+    if (r.key === 'costos_operativos') {
+      pct = ejVentasMes ? (val / ejVentasMes * 100) : 0;
+      var expectedPct = (pmPresupuesto && pmPresupuesto.ventas_it1_anual) ? (pmPresupuesto.costos_operativos_anual / pmPresupuesto.ventas_it1_anual * 100) : null;
+      pctColor = 'var(--muted)';
+      if (expectedPct !== null) {
+        pctColor = (pct > expectedPct) ? 'var(--red)' : 'var(--green)';
+      }
+      semCol = (expectedPct !== null && pct > expectedPct) ? 'pm-sem-red' : 'pm-sem-green';
+    } else {
+      pct = pmPctMeta(val, meta);
+      pctColor = pmPctColor(pct, r.tipo !== 'ventas');
+      semCol = pmSemColor(pct, r.tipo);
     }
-    h += '<tr><td class="pm-text-right pm-font-bold">$' + pmFormatMoney(val) + costLabel + '</td>';
+    h += '<tr><td class="pm-text-right pm-font-bold">$' + pmFormatMoney(val) + '</td>';
     h += '<td class="pm-text-center"><span style="color:' + pctColor + ';font-weight:600">' + pct.toFixed(0) + '%</span></td>';
     h += '<td class="pm-text-center"><span class="pm-sem-dot ' + semCol + '"><span class="pm-dot"></span></span></td></tr>';
   });
 
   var ejResOp = ejMes ? ((ejMes.ventas_it1 || 0) - (ejMes.costos_operativos || 0) - (ejMes.gastos || 0)) : 0;
-  var metaResOpMes = pmGetMetaMensual('ventas_it1') - pmGetMetaMensual('costos_operativos') - pmGetMetaMensual('gastos');
-  var pctResOp = metaResOpMes ? (ejResOp / metaResOpMes * 100) : 0;
+  var metaResOpMesEj = pmGetMetaMensual('ventas_it1') - pmGetMetaMensual('costos_operativos') - pmGetMetaMensual('gastos');
+  var pctResOp = metaResOpMesEj ? (ejResOp / metaResOpMesEj * 100) : 0;
   var semResOp = pmSemColor(pctResOp, 'beneficio');
   var resOpColor = ejResOp >= 0 ? 'var(--green)' : 'var(--red)';
   var pctResOpColor = (ejResOp >= 0 && pctResOp >= 90) ? 'var(--green)' : (pctResOp >= 66 ? 'var(--amber)' : 'var(--red)');
@@ -1436,7 +1334,7 @@ function renderPresupuestoDetail() {
 
   var ejGanancia = ejResOp + ejIF - ejGNA;
   var ejGanColor = ejGanancia >= 0 ? '#4ade80' : '#f87171';
-  var metaGanMesEj = metaResOpMes + metaIFNeto - pmGetMetaMensual('gastos_no_admitidos');
+  var metaGanMesEj = metaResOpMesEj + metaIFNeto - pmGetMetaMensual('gastos_no_admitidos');
   var pctGanEj = metaGanMesEj ? (ejGanancia / metaGanMesEj * 100) : 0;
   var pctGanEjColor = (ejGanancia >= 0 && pctGanEj >= 100) ? '#4ade80' : '#f87171';
   h += '<tr class="pm-row-total pm-row-ganancia"><td class="pm-text-right pm-font-bold" style="color:' + ejGanColor + '">$' + pmFormatMoney(ejGanancia) + '</td>';
@@ -1444,6 +1342,120 @@ function renderPresupuestoDetail() {
   h += '<td class="pm-text-center"></td></tr>';
 
   h += '</tbody></table></div></div></div>';
+
+  // ── Trimestre por mes ──
+  h += '<div class="pm-panel" style="margin-bottom:16px">';
+  h += '<div class="pm-panel-hdr" style="background:var(--navy);color:white;border-bottom:none">';
+  h += '<h3 style="color:white;text-transform:uppercase;font-size:0.78rem;letter-spacing:0.3px">Trimestre por mes</h3></div>';
+  h += '<div class="pm-panel-body" style="overflow-x:auto"><table>';
+
+  h += '<thead><tr><th style="min-width:90px"></th><th></th>';
+  qRange.forEach(function(m) {
+    h += '<th colspan="2" class="pm-text-center" style="border-right:' + (m < qRange[2] ? '2px solid var(--border)' : 'none') + '">' + MESES_FULL[m - 1] + '</th>';
+  });
+  h += '</tr><tr><th>Concepto</th><th class="pm-text-right">Meta/mes</th>';
+  qRange.forEach(function(m) {
+    h += '<th class="pm-text-right">Ejecutado</th><th class="pm-text-right" style="border-right:' + (m < qRange[2] ? '2px solid var(--border)' : 'none') + '">%</th>';
+  });
+  h += '</tr></thead><tbody>';
+  var conceptos = [
+    { key: 'ventas_it1', label: 'Ventas', tipo: 'ventas' },
+    { key: 'costos_operativos', label: 'Costos' + costPctLabel, tipo: 'costo' },
+    { key: 'gastos', label: 'Gastos', tipo: 'gasto' }
+  ];
+
+  conceptos.forEach(function(c) {
+    var meta = pmGetMetaMensual(c.key);
+    h += '<tr><td class="pm-font-bold">' + c.label + '</td>';
+    h += '<td class="pm-text-right" style="color:var(--muted)">' + pmFormatMoney(meta) + '</td>';
+    qRange.forEach(function(m) {
+      var ej = pmGetEjecucionMes(m);
+      var val = ej ? (ej[c.key] || 0) : 0;
+      var pct, color;
+      if (c.key === 'costos_operativos') {
+        var ventasMes = ej ? (ej.ventas_it1 || 0) : 0;
+        pct = ventasMes ? (val / ventasMes * 100) : 0;
+        var expectedPct = (pmPresupuesto && pmPresupuesto.ventas_it1_anual) ? (pmPresupuesto.costos_operativos_anual / pmPresupuesto.ventas_it1_anual * 100) : null;
+        color = 'var(--muted)';
+        if (expectedPct !== null) {
+          color = (pct > expectedPct) ? 'var(--red)' : 'var(--green)';
+        }
+      } else {
+        pct = pmPctMeta(val, meta);
+        color = pmPctColor(pct, c.tipo !== 'ventas');
+      }
+      h += '<td class="pm-text-right">' + pmFormatMoney(val) + '</td>';
+      var pctDisplay = pct.toFixed(0) + '%';
+      h += '<td class="pm-text-right" style="border-right:' + (m < qRange[2] ? '2px solid var(--border)' : 'none') + '"><span style="color:' + color + ';font-weight:600">' + pctDisplay + '</span></td>';
+    });
+    h += '</tr>';
+  });
+
+  var metaResOpMes = pmGetMetaMensual('ventas_it1') - pmGetMetaMensual('costos_operativos') - pmGetMetaMensual('gastos');
+  h += '<tr class="pm-row-total"><td class="pm-font-bold">Resultado Op.</td>';
+  h += '<td class="pm-text-right" style="color:var(--muted)">' + pmFormatMoney(metaResOpMes) + '</td>';
+  qRange.forEach(function(m) {
+    var ej = pmGetEjecucionMes(m);
+    var v = ej ? (ej.ventas_it1 || 0) : 0;
+    var c = ej ? (ej.costos_operativos || 0) : 0;
+    var g = ej ? (ej.gastos || 0) : 0;
+    var resOp = v - c - g;
+    var pct = metaResOpMes ? (resOp / metaResOpMes * 100) : 0;
+    var color = resOp >= 0 ? 'var(--green)' : 'var(--red)';
+    h += '<td class="pm-text-right" style="color:' + color + '">' + pmFormatMoney(resOp) + '</td>';
+    h += '<td class="pm-text-right" style="border-right:' + (m < qRange[2] ? '2px solid var(--border)' : 'none') + '"><span style="color:' + color + ';font-weight:600">' + pct.toFixed(0) + '%</span></td>';
+  });
+  h += '</tr>';
+
+  // Ing./Gto. No Op. (neto)
+  var metaINO = pmPresupuesto ? ((pmPresupuesto.ingreso_no_operacional_anual || 0) - (pmPresupuesto.gasto_no_operacional_anual || 0)) / 12 : 0;
+  h += '<tr><td class="pm-font-bold" style="color:var(--muted)">Ing./Gto. No Op.</td>';
+  h += '<td class="pm-text-right" style="color:var(--muted)">' + pmFormatMoney(metaINO) + '</td>';
+  qRange.forEach(function(m) {
+    var ej = pmGetEjecucionMes(m);
+    var val = ej ? ((ej.ingreso_no_operacional || 0) - (ej.gasto_no_operacional || 0)) : 0;
+    var pctIF = metaINO ? (val / metaINO * 100) : 0;
+    var colorIF = metaINO ? pmPctColor(pctIF, true) : '#999';
+    h += '<td class="pm-text-right" style="color:#666">' + pmFormatMoney(val) + '</td>';
+    h += '<td class="pm-text-right" style="border-right:' + (m < qRange[2] ? '2px solid var(--border)' : 'none') + '"><span style="color:' + colorIF + ';font-weight:600">' + (metaINO ? pctIF.toFixed(0) + '%' : '—') + '</span></td>';
+  });
+  h += '</tr>';
+
+  // Gtos. No Admitidos
+  var metaGNAmes = pmGetMetaMensual('gastos_no_admitidos');
+  h += '<tr><td class="pm-font-bold" style="color:var(--muted)">Gtos. No Admitidos</td>';
+  h += '<td class="pm-text-right" style="color:var(--muted)">' + pmFormatMoney(metaGNAmes) + '</td>';
+  qRange.forEach(function(m) {
+    var ej = pmGetEjecucionMes(m);
+    var val = ej ? (ej.gastos_no_admitidos || 0) : 0;
+    var pctGNA = metaGNAmes ? (val / metaGNAmes * 100) : 0;
+    var colorGNA = metaGNAmes ? pmPctColor(pctGNA, true) : '#999';
+    h += '<td class="pm-text-right" style="color:#666">' + pmFormatMoney(val) + '</td>';
+    h += '<td class="pm-text-right" style="border-right:' + (m < qRange[2] ? '2px solid var(--border)' : 'none') + '"><span style="color:' + colorGNA + ';font-weight:600">' + (metaGNAmes ? pctGNA.toFixed(0) + '%' : '—') + '</span></td>';
+  });
+  h += '</tr>';
+
+  // Ganancia/Pérdida
+  var metaGanMes = metaResOpMes + metaINO - metaGNAmes;
+  h += '<tr class="pm-row-total pm-row-ganancia"><td class="pm-font-bold" style="color:white">Ganancia/Pérdida</td>';
+  h += '<td class="pm-text-right" style="color:white">' + pmFormatMoney(metaGanMes) + '</td>';
+  qRange.forEach(function(m) {
+    var ej = pmGetEjecucionMes(m);
+    var v = ej ? (ej.ventas_it1 || 0) : 0;
+    var c = ej ? (ej.costos_operativos || 0) : 0;
+    var g = ej ? (ej.gastos || 0) : 0;
+    var iF = ej ? ((ej.ingreso_no_operacional || 0) - (ej.gasto_no_operacional || 0)) : 0;
+    var gna = ej ? (ej.gastos_no_admitidos || 0) : 0;
+    var gan = v - c - g + iF - gna;
+    var color = gan >= 0 ? '#4ade80' : '#f87171';
+    var pctGan = metaGanMes ? (gan / metaGanMes * 100) : 0;
+    var pctGanColor = (gan >= 0 && pctGan >= 100) ? '#4ade80' : '#f87171';
+    h += '<td class="pm-text-right" style="color:' + color + '">' + pmFormatMoney(gan) + '</td>';
+    h += '<td class="pm-text-right" style="border-right:' + (m < qRange[2] ? '2px solid var(--border)' : 'none') + '"><span style="color:' + pctGanColor + ';font-weight:600">' + pctGan.toFixed(0) + '%</span></td>';
+  });
+  h += '</tr>';
+
+  h += '</tbody></table></div></div>';
 
   var qTotalV = 0, qTotalC = 0, qTotalG = 0, qTotalINO = 0, qTotalGNO = 0, qTotalGNA = 0;
   qRange.forEach(function(m) {
@@ -1477,15 +1489,27 @@ function renderPresupuestoDetail() {
   ];
   qRows.forEach(function(r) {
     var diff = r.ej - r.meta;
-    var pct = r.meta ? (r.ej / r.meta * 100) : 0;
-    var semCol = pmSemColor(pct, r.tipo);
-    var invert = (r.tipo !== 'ventas');
+    var pct, pctColor, semCol;
+    if (r.tipo === 'costo') {
+      pct = qTotalV ? (r.ej / qTotalV * 100) : 0;
+      var expectedPct = (pmPresupuesto && pmPresupuesto.ventas_it1_anual) ? (pmPresupuesto.costos_operativos_anual / pmPresupuesto.ventas_it1_anual * 100) : null;
+      pctColor = 'var(--muted)';
+      if (expectedPct !== null) {
+        pctColor = (pct > expectedPct) ? 'var(--red)' : 'var(--green)';
+      }
+      semCol = (expectedPct !== null && pct > expectedPct) ? 'pm-sem-red' : 'pm-sem-green';
+    } else {
+      pct = r.meta ? (r.ej / r.meta * 100) : 0;
+      var invert = (r.tipo !== 'ventas');
+      pctColor = pmPctColor(pct, invert);
+      semCol = pmSemColor(pct, r.tipo);
+    }
     var diffSign = diff >= 0 ? '+' : '';
     h += '<tr><td class="pm-font-bold">' + r.label + '</td>';
     h += '<td class="pm-text-right">' + pmFormatMoneyShort(r.meta) + '</td>';
     h += '<td class="pm-text-right">' + pmFormatMoneyShort(r.ej) + '</td>';
     h += '<td class="pm-text-right">' + diffSign + pmFormatMoneyShort(diff) + '</td>';
-    h += '<td class="pm-text-center"><span style="color:' + pmPctColor(pct, invert) + ';font-weight:600">' + pct.toFixed(0) + '%</span></td>';
+    h += '<td class="pm-text-center"><span style="color:' + pctColor + ';font-weight:600">' + pct.toFixed(0) + '%</span></td>';
     h += '<td class="pm-text-center"><span class="pm-sem-dot ' + semCol + '"><span class="pm-dot"></span></span></td></tr>';
   });
 
