@@ -1252,7 +1252,17 @@ function renderPresupuestoDetail() {
       var costPctInline = '';
       if (c.key === 'costos_operativos') {
         var ventasMes = ej ? (ej.ventas_it1 || 0) : 0;
-        if (ventasMes) costPctInline = ' <span style="font-size:0.7rem;color:var(--muted);font-weight:400">(' + (val / ventasMes * 100).toFixed(0) + '%)</span>';
+        if (ventasMes) {
+          var actualPct = val / ventasMes * 100;
+          var expectedPct = (pmPresupuesto && pmPresupuesto.ventas_it1_anual) ? (pmPresupuesto.costos_operativos_anual / pmPresupuesto.ventas_it1_anual * 100) : null;
+          var pctColor = 'var(--muted)';
+          if (expectedPct !== null) {
+            if (actualPct > expectedPct + 5) pctColor = 'var(--red)';
+            else if (actualPct < expectedPct) pctColor = 'var(--amber)';
+            else pctColor = 'var(--green)';
+          }
+          costPctInline = ' <span style="font-size:0.7rem;color:' + pctColor + ';font-weight:600">(' + actualPct.toFixed(0) + '%)</span>';
+        }
       }
       h += '<td class="pm-text-right">' + pmFormatMoney(val) + costPctInline + '</td>';
       h += '<td class="pm-text-right" style="border-right:' + (m < qRange[2] ? '2px solid var(--border)' : 'none') + '"><span style="color:' + color + ';font-weight:600">' + pct.toFixed(2) + '%</span></td>';
