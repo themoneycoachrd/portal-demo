@@ -632,15 +632,22 @@ async function dbDeleteLead(lead) {
   await sb.from('leads').delete().eq('id', lead._id);
 }
 
-// Actualizar ROAS de un mes
+// Actualizar o crear ROAS de un mes (upsert por mes+anio)
 async function dbUpdateRoas(mes, r) {
-  if (!r._id) return;
-  await sb.from('roas_mensual').update({
+  const payload = {
+    mes: mes, anio: 2026,
     leads: r.leads, presupuesto: r.presupuesto,
     ejecutado: r.ejecutado, cierres: r.cierres,
     vendido: r.vendido, cotizado: r.cotizado,
     cpa: r.cpa, retorno: r.retorno, roas: r.roas
-  }).eq('id', r._id);
+  };
+  if (r._id) {
+    await sb.from('roas_mensual').update(payload).eq('id', r._id);
+  } else {
+    const { data, error } = await sb.from('roas_mensual').insert(payload).select('id').single();
+    if (data && data.id) r._id = data.id;
+    if (error) console.error('Error insertando ROAS:', error);
+  }
 }
 
 function syncRoasFromPipeline() {
