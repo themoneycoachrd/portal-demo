@@ -1263,7 +1263,7 @@ function renderPresupuestoDetail() {
         color = pmPctColor(pct, c.tipo !== 'ventas');
       }
       h += '<td class="pm-text-right">' + pmFormatMoney(val) + '</td>';
-      var pctDisplay = (c.key === 'costos_operativos') ? pct.toFixed(0) + '%' : pct.toFixed(2) + '%';
+      var pctDisplay = pct.toFixed(0) + '%';
       h += '<td class="pm-text-right" style="border-right:' + (m < qRange[2] ? '2px solid var(--border)' : 'none') + '"><span style="color:' + color + ';font-weight:600">' + pctDisplay + '</span></td>';
     });
     h += '</tr>';
@@ -1280,7 +1280,7 @@ function renderPresupuestoDetail() {
     var pct = metaResOp ? (resOp / metaResOp * 100) : 0;
     var color = resOp >= 0 ? 'var(--green)' : 'var(--red)';
     h += '<td class="pm-text-right" style="color:' + color + '">' + pmFormatMoney(resOp) + '</td>';
-    h += '<td class="pm-text-right" style="border-right:' + (m < qRange[2] ? '2px solid var(--border)' : 'none') + '"><span style="color:' + color + ';font-weight:600">' + pct.toFixed(2) + '%</span></td>';
+    h += '<td class="pm-text-right" style="border-right:' + (m < qRange[2] ? '2px solid var(--border)' : 'none') + '"><span style="color:' + color + ';font-weight:600">' + pct.toFixed(0) + '%</span></td>';
   });
   h += '</tr>';
 
@@ -1293,7 +1293,7 @@ function renderPresupuestoDetail() {
     var pctIF = metaINO ? (val / metaINO * 100) : 0;
     var colorIF = metaINO ? pmPctColor(pctIF, true) : '#999';
     h += '<td class="pm-text-right" style="color:#666">' + pmFormatMoney(val) + '</td>';
-    h += '<td class="pm-text-right" style="border-right:' + (m < qRange[2] ? '2px solid var(--border)' : 'none') + '"><span style="color:' + colorIF + ';font-weight:600">' + (metaINO ? pctIF.toFixed(2) + '%' : '—') + '</span></td>';
+    h += '<td class="pm-text-right" style="border-right:' + (m < qRange[2] ? '2px solid var(--border)' : 'none') + '"><span style="color:' + colorIF + ';font-weight:600">' + (metaINO ? pctIF.toFixed(0) + '%' : '—') + '</span></td>';
   });
   h += '</tr>';
 
@@ -1306,7 +1306,7 @@ function renderPresupuestoDetail() {
     var pctGNA = metaGNA ? (val / metaGNA * 100) : 0;
     var colorGNA = metaGNA ? pmPctColor(pctGNA, true) : '#999';
     h += '<td class="pm-text-right" style="color:#666">' + pmFormatMoney(val) + '</td>';
-    h += '<td class="pm-text-right" style="border-right:' + (m < qRange[2] ? '2px solid var(--border)' : 'none') + '"><span style="color:' + colorGNA + ';font-weight:600">' + (metaGNA ? pctGNA.toFixed(2) + '%' : '—') + '</span></td>';
+    h += '<td class="pm-text-right" style="border-right:' + (m < qRange[2] ? '2px solid var(--border)' : 'none') + '"><span style="color:' + colorGNA + ';font-weight:600">' + (metaGNA ? pctGNA.toFixed(0) + '%' : '—') + '</span></td>';
   });
   h += '</tr>';
 
@@ -1325,7 +1325,7 @@ function renderPresupuestoDetail() {
     var pctGan = metaGanMes ? (gan / metaGanMes * 100) : 0;
     var pctGanColor = (gan >= 0 && pctGan >= 100) ? '#4ade80' : '#f87171';
     h += '<td class="pm-text-right" style="color:' + color + '">' + pmFormatMoney(gan) + '</td>';
-    h += '<td class="pm-text-right" style="border-right:' + (m < qRange[2] ? '2px solid var(--border)' : 'none') + '"><span style="color:' + pctGanColor + ';font-weight:600">' + pctGan.toFixed(2) + '%</span></td>';
+    h += '<td class="pm-text-right" style="border-right:' + (m < qRange[2] ? '2px solid var(--border)' : 'none') + '"><span style="color:' + pctGanColor + ';font-weight:600">' + pctGan.toFixed(0) + '%</span></td>';
   });
   h += '</tr>';
 
@@ -1402,7 +1402,7 @@ function renderPresupuestoDetail() {
       costLabel = ' <span style="font-size:0.72rem;color:var(--muted);font-weight:400">(' + (val / ejVentasMes * 100).toFixed(0) + '% de ventas)</span>';
     }
     h += '<tr><td class="pm-text-right pm-font-bold">$' + pmFormatMoney(val) + costLabel + '</td>';
-    h += '<td class="pm-text-center"><span style="color:' + pctColor + ';font-weight:600">' + pct.toFixed(2) + '%</span></td>';
+    h += '<td class="pm-text-center"><span style="color:' + pctColor + ';font-weight:600">' + pct.toFixed(0) + '%</span></td>';
     h += '<td class="pm-text-center"><span class="pm-sem-dot ' + semCol + '"><span class="pm-dot"></span></span></td></tr>';
   });
 
@@ -1413,7 +1413,7 @@ function renderPresupuestoDetail() {
   var resOpColor = ejResOp >= 0 ? 'var(--green)' : 'var(--red)';
   var pctResOpColor = (ejResOp >= 0 && pctResOp >= 90) ? 'var(--green)' : (pctResOp >= 66 ? 'var(--amber)' : 'var(--red)');
   h += '<tr class="pm-row-total"><td class="pm-text-right pm-font-bold" style="color:' + resOpColor + '">$' + pmFormatMoney(ejResOp) + '</td>';
-  h += '<td class="pm-text-center"><span style="color:' + pctResOpColor + ';font-weight:600">' + pctResOp.toFixed(2) + '%</span></td>';
+  h += '<td class="pm-text-center"><span style="color:' + pctResOpColor + ';font-weight:600">' + pctResOp.toFixed(0) + '%</span></td>';
   h += '<td class="pm-text-center"><span class="pm-sem-dot ' + semResOp + '"><span class="pm-dot"></span></span></td></tr>';
 
   var ejINO = ejMes ? (ejMes.ingreso_no_operacional || 0) : 0;
@@ -1423,7 +1423,7 @@ function renderPresupuestoDetail() {
   var pctIF = metaIFNeto ? (ejIF / metaIFNeto * 100) : 0;
   var semIF = metaIFNeto ? pmSemColor(pctIF, 'gasto') : 'na';
   h += '<tr><td class="pm-text-right pm-font-bold" style="color:#666">$' + pmFormatMoney(ejIF) + '</td>';
-  h += '<td class="pm-text-center" style="color:#666">' + (metaIFNeto ? pctIF.toFixed(2) + '%' : '—') + '</td>';
+  h += '<td class="pm-text-center" style="color:#666">' + (metaIFNeto ? pctIF.toFixed(0) + '%' : '—') + '</td>';
   h += '<td class="pm-text-center">' + (metaIFNeto ? '<span class="pm-sem-dot ' + semIF + '"><span class="pm-dot"></span></span>' : '') + '</td></tr>';
 
   var ejGNA = ejMes ? (ejMes.gastos_no_admitidos || 0) : 0;
@@ -1431,7 +1431,7 @@ function renderPresupuestoDetail() {
   var pctGNA = metaGNA ? (ejGNA / metaGNA * 100) : 0;
   var semGNA = metaGNA ? pmSemColor(pctGNA, 'gasto') : 'na';
   h += '<tr><td class="pm-text-right pm-font-bold" style="color:#666">$' + pmFormatMoney(ejGNA) + '</td>';
-  h += '<td class="pm-text-center" style="color:#666">' + (metaGNA ? pctGNA.toFixed(2) + '%' : '—') + '</td>';
+  h += '<td class="pm-text-center" style="color:#666">' + (metaGNA ? pctGNA.toFixed(0) + '%' : '—') + '</td>';
   h += '<td class="pm-text-center">' + (metaGNA ? '<span class="pm-sem-dot ' + semGNA + '"><span class="pm-dot"></span></span>' : '') + '</td></tr>';
 
   var ejGanancia = ejResOp + ejIF - ejGNA;
@@ -1440,7 +1440,7 @@ function renderPresupuestoDetail() {
   var pctGanEj = metaGanMesEj ? (ejGanancia / metaGanMesEj * 100) : 0;
   var pctGanEjColor = (ejGanancia >= 0 && pctGanEj >= 100) ? '#4ade80' : '#f87171';
   h += '<tr class="pm-row-total pm-row-ganancia"><td class="pm-text-right pm-font-bold" style="color:' + ejGanColor + '">$' + pmFormatMoney(ejGanancia) + '</td>';
-  h += '<td class="pm-text-center" style="font-weight:600"><span style="color:' + pctGanEjColor + '">' + pctGanEj.toFixed(2) + '%</span></td>';
+  h += '<td class="pm-text-center" style="font-weight:600"><span style="color:' + pctGanEjColor + '">' + pctGanEj.toFixed(0) + '%</span></td>';
   h += '<td class="pm-text-center"></td></tr>';
 
   h += '</tbody></table></div></div></div>';
@@ -1485,7 +1485,7 @@ function renderPresupuestoDetail() {
     h += '<td class="pm-text-right">' + pmFormatMoneyShort(r.meta) + '</td>';
     h += '<td class="pm-text-right">' + pmFormatMoneyShort(r.ej) + '</td>';
     h += '<td class="pm-text-right">' + diffSign + pmFormatMoneyShort(diff) + '</td>';
-    h += '<td class="pm-text-center"><span style="color:' + pmPctColor(pct, invert) + ';font-weight:600">' + pct.toFixed(2) + '%</span></td>';
+    h += '<td class="pm-text-center"><span style="color:' + pmPctColor(pct, invert) + ';font-weight:600">' + pct.toFixed(0) + '%</span></td>';
     h += '<td class="pm-text-center"><span class="pm-sem-dot ' + semCol + '"><span class="pm-dot"></span></span></td></tr>';
   });
 
@@ -1496,7 +1496,7 @@ function renderPresupuestoDetail() {
   h += '<td class="pm-text-right">' + pmFormatMoneyShort(qMetaResOp) + '</td>';
   h += '<td class="pm-text-right">' + pmFormatMoneyShort(qResOp) + '</td>';
   h += '<td class="pm-text-right">' + (diffResOp >= 0 ? '+' : '') + pmFormatMoneyShort(diffResOp) + '</td>';
-  h += '<td class="pm-text-center"><span style="color:' + pmPctColor(pctResOp, false) + ';font-weight:600">' + pctResOp.toFixed(2) + '%</span></td>';
+  h += '<td class="pm-text-center"><span style="color:' + pmPctColor(pctResOp, false) + ';font-weight:600">' + pctResOp.toFixed(0) + '%</span></td>';
   h += '<td class="pm-text-center"><span class="pm-sem-dot ' + semResOp + '"><span class="pm-dot"></span></span></td></tr>';
 
   // Ing./Gto. No Op. (neto)
@@ -1508,7 +1508,7 @@ function renderPresupuestoDetail() {
   h += '<td class="pm-text-right" style="color:#666">' + (qMetaIF ? pmFormatMoneyShort(qMetaIF) : '—') + '</td>';
   h += '<td class="pm-text-right" style="color:#666">' + pmFormatMoneyShort(qTotalIF) + '</td>';
   h += '<td class="pm-text-right">' + (qDiffIF >= 0 ? '+' : '') + pmFormatMoneyShort(qDiffIF) + '</td>';
-  h += '<td class="pm-text-center">' + (qMetaIF ? '<span style="color:' + pmPctColor(qPctIF, true) + ';font-weight:600">' + qPctIF.toFixed(2) + '%</span>' : '') + '</td>';
+  h += '<td class="pm-text-center">' + (qMetaIF ? '<span style="color:' + pmPctColor(qPctIF, true) + ';font-weight:600">' + qPctIF.toFixed(0) + '%</span>' : '') + '</td>';
   h += '<td class="pm-text-center">' + (qMetaIF ? '<span class="pm-sem-dot ' + qSemIF + '"><span class="pm-dot"></span></span>' : '') + '</td></tr>';
 
   // Gtos. No Admitidos
@@ -1520,7 +1520,7 @@ function renderPresupuestoDetail() {
   h += '<td class="pm-text-right" style="color:#666">' + (qMetaGNA ? pmFormatMoneyShort(qMetaGNA) : '—') + '</td>';
   h += '<td class="pm-text-right" style="color:#666">' + pmFormatMoneyShort(qTotalGNA) + '</td>';
   h += '<td class="pm-text-right">' + (qDiffGNA >= 0 ? '+' : '') + pmFormatMoneyShort(qDiffGNA) + '</td>';
-  h += '<td class="pm-text-center">' + (qMetaGNA ? '<span style="color:' + pmPctColor(qPctGNA, true) + ';font-weight:600">' + qPctGNA.toFixed(2) + '%</span>' : '') + '</td>';
+  h += '<td class="pm-text-center">' + (qMetaGNA ? '<span style="color:' + pmPctColor(qPctGNA, true) + ';font-weight:600">' + qPctGNA.toFixed(0) + '%</span>' : '') + '</td>';
   h += '<td class="pm-text-center">' + (qMetaGNA ? '<span class="pm-sem-dot ' + qSemGNA + '"><span class="pm-dot"></span></span>' : '') + '</td></tr>';
 
   h += '</tbody></table>';
@@ -1530,7 +1530,7 @@ function renderPresupuestoDetail() {
   var qPctGan = qMetaGan ? (qGanancia / qMetaGan * 100) : 0;
   var qGanColor = qGanancia >= 0 ? 'var(--green)' : 'var(--red)';
   var qPctGanColor = (qGanancia >= 0 && qPctGan >= 100) ? '#4ade80' : '#f87171';
-  h += '<div class="pm-ganancia"><span>Ganancia/Pérdida ' + qLabels[quarter - 1] + '</span><span class="pm-amount" style="color:' + qGanColor + '">$' + pmFormatMoney(qGanancia) + ' <span style="font-size:0.78rem;color:' + qPctGanColor + '">(' + qPctGan.toFixed(2) + '% de meta)</span></span></div>';
+  h += '<div class="pm-ganancia"><span>Ganancia/Pérdida ' + qLabels[quarter - 1] + '</span><span class="pm-amount" style="color:' + qGanColor + '">$' + pmFormatMoney(qGanancia) + ' <span style="font-size:0.78rem;color:' + qPctGanColor + '">(' + qPctGan.toFixed(0) + '% de meta)</span></span></div>';
   h += '</div></div>';
 
   return h;
@@ -1579,7 +1579,7 @@ function renderPresupuestoMSH() {
       var pct = pmPctMeta(val, c.meta);
       var color = pmPctColor(pct, c.tipo !== 'ventas');
       h += '<td class="pm-text-right">' + pmFormatMoney(val) + '</td>';
-      h += '<td class="pm-text-right" style="border-right:' + (m < qRange[2] ? '2px solid var(--border)' : 'none') + '"><span style="color:' + color + ';font-weight:600">' + pct.toFixed(2) + '%</span></td>';
+      h += '<td class="pm-text-right" style="border-right:' + (m < qRange[2] ? '2px solid var(--border)' : 'none') + '"><span style="color:' + color + ';font-weight:600">' + pct.toFixed(0) + '%</span></td>';
     });
     h += '</tr>';
   });
@@ -1595,7 +1595,7 @@ function renderPresupuestoMSH() {
     var pctBen = metaBen ? (ben / metaBen * 100) : 0;
     var pctColor = (ben >= 0 && pctBen >= 100) ? '#4ade80' : '#f87171';
     h += '<td class="pm-text-right" style="color:' + color + '">' + pmFormatMoney(ben) + '</td>';
-    h += '<td class="pm-text-right" style="border-right:' + (m < qRange[2] ? '2px solid var(--border)' : 'none') + '"><span style="color:' + pctColor + ';font-weight:600">' + pctBen.toFixed(2) + '%</span></td>';
+    h += '<td class="pm-text-right" style="border-right:' + (m < qRange[2] ? '2px solid var(--border)' : 'none') + '"><span style="color:' + pctColor + ';font-weight:600">' + pctBen.toFixed(0) + '%</span></td>';
   });
   h += '</tr>';
   h += '</tbody></table></div></div>';
@@ -1693,7 +1693,7 @@ function renderPresupuestoMSH() {
     var semCol = pmSemColor(pct, r.tipo);
     h += '<tr><td class="pm-text-right pm-font-bold">$' + pmFormatMoney(val) + '</td>';
     var pctColor = pmPctColor(pct, r.tipo !== 'ventas');
-    h += '<td class="pm-text-center"><span style="color:' + pctColor + ';font-weight:600">' + pct.toFixed(2) + '%</span></td>';
+    h += '<td class="pm-text-center"><span style="color:' + pctColor + ';font-weight:600">' + pct.toFixed(0) + '%</span></td>';
     h += '<td class="pm-text-center"><span class="pm-sem-dot ' + semCol + '"><span class="pm-dot"></span></span></td></tr>';
   });
 
@@ -1702,7 +1702,7 @@ function renderPresupuestoMSH() {
   var ejBenColor = ejBen >= 0 ? '#4ade80' : '#f87171';
   var pctBenEjColor = (ejBen >= 0 && pctBenEj >= 100) ? '#4ade80' : '#f87171';
   h += '<tr class="pm-row-total pm-row-ganancia"><td class="pm-text-right pm-font-bold" style="color:' + ejBenColor + '">$' + pmFormatMoney(ejBen) + '</td>';
-  h += '<td class="pm-text-center" style="font-weight:600"><span style="color:' + pctBenEjColor + '">' + pctBenEj.toFixed(2) + '%</span></td>';
+  h += '<td class="pm-text-center" style="font-weight:600"><span style="color:' + pctBenEjColor + '">' + pctBenEj.toFixed(0) + '%</span></td>';
   h += '<td class="pm-text-center"></td></tr>';
 
   h += '</tbody></table></div></div></div>';
@@ -1739,7 +1739,7 @@ function renderPresupuestoMSH() {
     h += '<td class="pm-text-right">' + pmFormatMoneyShort(r.meta) + '</td>';
     h += '<td class="pm-text-right">' + pmFormatMoneyShort(r.ej) + '</td>';
     h += '<td class="pm-text-right">' + (diff >= 0 ? '+' : '') + pmFormatMoneyShort(diff) + '</td>';
-    h += '<td class="pm-text-center"><span style="color:' + pmPctColor(pct, invert) + ';font-weight:600">' + pct.toFixed(2) + '%</span></td>';
+    h += '<td class="pm-text-center"><span style="color:' + pmPctColor(pct, invert) + ';font-weight:600">' + pct.toFixed(0) + '%</span></td>';
     h += '<td class="pm-text-center"><span class="pm-sem-dot ' + semCol + '"><span class="pm-dot"></span></span></td></tr>';
   });
 
@@ -1748,7 +1748,7 @@ function renderPresupuestoMSH() {
   var qPctBen = qMetaBen ? (qBen / qMetaBen * 100) : 0;
   var qBenColor = qBen >= 0 ? 'var(--green)' : 'var(--red)';
   var qPctBenColor = (qBen >= 0 && qPctBen >= 100) ? '#4ade80' : '#f87171';
-  h += '<div class="pm-ganancia"><span>Beneficio / Pérdida ' + qLabels[quarter - 1] + '</span><span class="pm-amount" style="color:' + qBenColor + '">$' + pmFormatMoney(qBen) + ' <span style="font-size:0.78rem;color:' + qPctBenColor + '">(' + qPctBen.toFixed(2) + '% de meta)</span></span></div>';
+  h += '<div class="pm-ganancia"><span>Beneficio / Pérdida ' + qLabels[quarter - 1] + '</span><span class="pm-amount" style="color:' + qBenColor + '">$' + pmFormatMoney(qBen) + ' <span style="font-size:0.78rem;color:' + qPctBenColor + '">(' + qPctBen.toFixed(0) + '% de meta)</span></span></div>';
   h += '</div></div>';
 
   return h;
@@ -1936,7 +1936,7 @@ function renderProyeccionDetail() {
   h += '<div class="pm-panel-body" style="padding:0"><table style="font-size:0.82rem"><tbody>';
   h += '<tr><td style="padding:10px 20px;color:var(--muted)">Ingresos Totales</td><td class="pm-text-right" style="padding:10px 20px;font-weight:700">$' + pmFormatMoney(projV) + '</td></tr>';
   h += '<tr><td style="padding:10px 20px;color:var(--muted)">ISR Liquidado (Base)</td><td class="pm-text-right" style="padding:10px 20px;font-weight:700">$' + pmFormatMoney(isrProyectado) + '</td></tr>';
-  h += '<tr><td style="padding:10px 20px;color:var(--muted)">T.E.T. (Tasa Efectiva)</td><td class="pm-text-right" style="padding:10px 20px;font-weight:600;color:var(--blue)">' + tet.toFixed(2) + '%</td></tr>';
+  h += '<tr><td style="padding:10px 20px;color:var(--muted)">T.E.T. (Tasa Efectiva)</td><td class="pm-text-right" style="padding:10px 20px;font-weight:600;color:var(--blue)">' + tet.toFixed(0) + '%</td></tr>';
   h += '<tr style="background:#fffbeb"><td style="padding:10px 20px;font-weight:600">Total Anticipo Calculado</td><td class="pm-text-right" style="padding:10px 20px;font-weight:700;color:var(--amber)">$' + pmFormatMoney(totalAntCalc) + '</td></tr>';
   h += '<tr style="border-top:1px solid var(--border)"><td style="padding:14px 20px;font-weight:700">Anticipo Mensual Estimado</td>';
   h += '<td class="pm-text-right" style="padding:14px 20px"><div style="font-weight:800;font-size:1.3rem;color:var(--amber)">$' + pmFormatMoney(antMensualProx) + '</div>';
