@@ -1695,16 +1695,16 @@ function renderPresupuestoDetail() {
   });
   h += '</tr>';
 
-  // Ing./Gasto Fin.
-  h += '<tr><td class="pm-font-bold" style="color:var(--muted)">Ing./Gasto Fin.</td>';
+  // Ing./Gto. No Op. (neto: ingreso_no_operacional - gasto_no_operacional)
+  h += '<tr><td class="pm-font-bold" style="color:var(--muted)">Ing./Gto. No Op.</td>';
+  var metaINO = pmPresupuesto ? ((pmPresupuesto.ingreso_no_operacional_anual || 0) - (pmPresupuesto.gasto_no_operacional_anual || 0)) / 12 : 0;
   qRange.forEach(function(m) {
     var ej = pmGetEjecucionMes(m);
-    var val = ej ? (ej.ingreso_financiero || 0) : 0;
-    var metaIF = pmGetMetaMensual('ingreso_financiero');
-    var pctIF = metaIF ? (val / metaIF * 100) : 0;
-    var colorIF = metaIF ? pmPctColor(pctIF, true) : '#999';
+    var val = ej ? ((ej.ingreso_no_operacional || 0) - (ej.gasto_no_operacional || 0)) : 0;
+    var pctIF = metaINO ? (val / metaINO * 100) : 0;
+    var colorIF = metaINO ? pmPctColor(pctIF, true) : '#999';
     h += '<td class="pm-text-right" style="color:#666">' + pmFormatMoney(val) + '</td>';
-    h += '<td class="pm-text-right" style="border-right:' + (m < qRange[2] ? '2px solid var(--border)' : 'none') + '"><span style="color:' + colorIF + ';font-weight:600">' + (metaIF ? pctIF.toFixed(2) + '%' : '—') + '</span></td>';
+    h += '<td class="pm-text-right" style="border-right:' + (m < qRange[2] ? '2px solid var(--border)' : 'none') + '"><span style="color:' + colorIF + ';font-weight:600">' + (metaINO ? pctIF.toFixed(2) + '%' : '—') + '</span></td>';
   });
   h += '</tr>';
 
@@ -1722,14 +1722,14 @@ function renderPresupuestoDetail() {
   h += '</tr>';
 
   // Ganancia/Pérdida
-  var metaGanMes = (pmGetMetaMensual('ventas_it1') - pmGetMetaMensual('costos_operativos') - pmGetMetaMensual('gastos')) + pmGetMetaMensual('ingreso_financiero') - pmGetMetaMensual('gastos_no_admitidos');
+  var metaGanMes = (pmGetMetaMensual('ventas_it1') - pmGetMetaMensual('costos_operativos') - pmGetMetaMensual('gastos')) + (pmPresupuesto ? ((pmPresupuesto.ingreso_no_operacional_anual || 0) - (pmPresupuesto.gasto_no_operacional_anual || 0)) / 12 : 0) - pmGetMetaMensual('gastos_no_admitidos');
   h += '<tr class="pm-row-total pm-row-ganancia"><td class="pm-font-bold" style="color:white">Ganancia/Pérdida</td>';
   qRange.forEach(function(m) {
     var ej = pmGetEjecucionMes(m);
     var v = ej ? (ej.ventas_it1 || 0) : 0;
     var c = ej ? (ej.costos_operativos || 0) : 0;
     var g = ej ? (ej.gastos || 0) : 0;
-    var iF = ej ? (ej.ingreso_financiero || 0) : 0;
+    var iF = ej ? ((ej.ingreso_no_operacional || 0) - (ej.gasto_no_operacional || 0)) : 0;
     var gna = ej ? (ej.gastos_no_admitidos || 0) : 0;
     var gan = v - c - g + iF - gna;
     var color = gan >= 0 ? '#4ade80' : '#f87171';
@@ -1770,16 +1770,18 @@ function renderPresupuestoDetail() {
   h += '<td class="pm-text-right" style="color:' + (resOpAnual >= 0 ? 'var(--green)' : 'var(--red)') + '">$' + pmFormatMoney(resOpAnual) + '</td>';
   h += '<td class="pm-text-right" style="color:' + (resOpAnual >= 0 ? 'var(--green)' : 'var(--red)') + '">$' + pmFormatMoney(resOpAnual / 12) + '</td></tr>';
 
-  var pIF = pmPresupuesto ? (pmPresupuesto.ingreso_financiero_anual || 0) : 0;
+  var pINO = pmPresupuesto ? (pmPresupuesto.ingreso_no_operacional_anual || 0) : 0;
+  var pGNO = pmPresupuesto ? (pmPresupuesto.gasto_no_operacional_anual || 0) : 0;
+  var pIFNeto = pINO - pGNO;
   var pGNA = pmPresupuesto ? (pmPresupuesto.gastos_no_admitidos_anual || 0) : 0;
-  h += '<tr><td class="pm-font-bold" style="color:var(--muted)">Ing./Gasto Fin.</td>';
-  h += '<td class="pm-text-right" style="color:#666">$' + pmFormatMoney(pIF) + '</td>';
-  h += '<td class="pm-text-right" style="color:#666">$' + pmFormatMoney(pIF / 12) + '</td></tr>';
+  h += '<tr><td class="pm-font-bold" style="color:var(--muted)">Ing./Gto. No Op.</td>';
+  h += '<td class="pm-text-right" style="color:#666">$' + pmFormatMoney(pIFNeto) + '</td>';
+  h += '<td class="pm-text-right" style="color:#666">$' + pmFormatMoney(pIFNeto / 12) + '</td></tr>';
   h += '<tr><td class="pm-font-bold" style="color:var(--muted)">Gtos. No Admitidos</td>';
   h += '<td class="pm-text-right" style="color:#666">$' + pmFormatMoney(pGNA) + '</td>';
   h += '<td class="pm-text-right" style="color:#666">$' + pmFormatMoney(pGNA / 12) + '</td></tr>';
 
-  var ganAnual = resOpAnual + pIF - pGNA;
+  var ganAnual = resOpAnual + pIFNeto - pGNA;
   var ganPresColor = ganAnual >= 0 ? '#4ade80' : '#f87171';
   h += '<tr class="pm-row-total pm-row-ganancia"><td class="pm-font-bold" style="color:white">Ganancia/Pérdida</td>';
   h += '<td class="pm-text-right" style="color:' + ganPresColor + '">$' + pmFormatMoney(ganAnual) + '</td>';
@@ -1794,6 +1796,7 @@ function renderPresupuestoDetail() {
   h += '<th class="pm-text-right">Ejecutado</th><th class="pm-text-center">% Logro</th><th class="pm-text-center">Estado</th>';
   h += '</tr></thead><tbody>';
 
+  var ejVentasMes = ejMes ? (ejMes.ventas_it1 || 0) : 0;
   var ejRows = [
     { key: 'ventas_it1', tipo: 'ventas' },
     { key: 'costos_operativos', tipo: 'costo' },
@@ -1805,7 +1808,11 @@ function renderPresupuestoDetail() {
     var pct = pmPctMeta(val, meta);
     var semCol = pmSemColor(pct, r.tipo);
     var pctColor = pmPctColor(pct, r.tipo !== 'ventas');
-    h += '<tr><td class="pm-text-right pm-font-bold">$' + pmFormatMoney(val) + '</td>';
+    var costLabel = '';
+    if (r.key === 'costos_operativos' && ejVentasMes) {
+      costLabel = ' <span style="font-size:0.72rem;color:var(--muted);font-weight:400">(' + (val / ejVentasMes * 100).toFixed(0) + '% de ventas)</span>';
+    }
+    h += '<tr><td class="pm-text-right pm-font-bold">$' + pmFormatMoney(val) + costLabel + '</td>';
     h += '<td class="pm-text-center"><span style="color:' + pctColor + ';font-weight:600">' + pct.toFixed(2) + '%</span></td>';
     h += '<td class="pm-text-center"><span class="pm-sem-dot ' + semCol + '"><span class="pm-dot"></span></span></td></tr>';
   });
@@ -1820,13 +1827,15 @@ function renderPresupuestoDetail() {
   h += '<td class="pm-text-center"><span style="color:' + pctResOpColor + ';font-weight:600">' + pctResOp.toFixed(2) + '%</span></td>';
   h += '<td class="pm-text-center"><span class="pm-sem-dot ' + semResOp + '"><span class="pm-dot"></span></span></td></tr>';
 
-  var ejIF = ejMes ? (ejMes.ingreso_financiero || 0) : 0;
-  var metaIF = pmGetMetaMensual('ingreso_financiero');
-  var pctIF = metaIF ? (ejIF / metaIF * 100) : 0;
-  var semIF = metaIF ? pmSemColor(pctIF, 'gasto') : 'na';
+  var ejINO = ejMes ? (ejMes.ingreso_no_operacional || 0) : 0;
+  var ejGNO = ejMes ? (ejMes.gasto_no_operacional || 0) : 0;
+  var ejIF = ejINO - ejGNO;
+  var metaIFNeto = pmPresupuesto ? ((pmPresupuesto.ingreso_no_operacional_anual || 0) - (pmPresupuesto.gasto_no_operacional_anual || 0)) / 12 : 0;
+  var pctIF = metaIFNeto ? (ejIF / metaIFNeto * 100) : 0;
+  var semIF = metaIFNeto ? pmSemColor(pctIF, 'gasto') : 'na';
   h += '<tr><td class="pm-text-right pm-font-bold" style="color:#666">$' + pmFormatMoney(ejIF) + '</td>';
-  h += '<td class="pm-text-center" style="color:#666">' + (metaIF ? pctIF.toFixed(2) + '%' : '—') + '</td>';
-  h += '<td class="pm-text-center">' + (metaIF ? '<span class="pm-sem-dot ' + semIF + '"><span class="pm-dot"></span></span>' : '') + '</td></tr>';
+  h += '<td class="pm-text-center" style="color:#666">' + (metaIFNeto ? pctIF.toFixed(2) + '%' : '—') + '</td>';
+  h += '<td class="pm-text-center">' + (metaIFNeto ? '<span class="pm-sem-dot ' + semIF + '"><span class="pm-dot"></span></span>' : '') + '</td></tr>';
 
   var ejGNA = ejMes ? (ejMes.gastos_no_admitidos || 0) : 0;
   var metaGNA = pmGetMetaMensual('gastos_no_admitidos');
@@ -1838,7 +1847,7 @@ function renderPresupuestoDetail() {
 
   var ejGanancia = ejResOp + ejIF - ejGNA;
   var ejGanColor = ejGanancia >= 0 ? '#4ade80' : '#f87171';
-  var metaGanMesEj = metaResOpMes + pmGetMetaMensual('ingreso_financiero') - pmGetMetaMensual('gastos_no_admitidos');
+  var metaGanMesEj = metaResOpMes + metaIFNeto - pmGetMetaMensual('gastos_no_admitidos');
   var pctGanEj = metaGanMesEj ? (ejGanancia / metaGanMesEj * 100) : 0;
   var pctGanEjColor = (ejGanancia >= 0 && pctGanEj >= 100) ? '#4ade80' : '#f87171';
   h += '<tr class="pm-row-total pm-row-ganancia"><td class="pm-text-right pm-font-bold" style="color:' + ejGanColor + '">$' + pmFormatMoney(ejGanancia) + '</td>';
@@ -1847,15 +1856,17 @@ function renderPresupuestoDetail() {
 
   h += '</tbody></table></div></div></div>';
 
-  var qTotalV = 0, qTotalC = 0, qTotalG = 0, qTotalIF = 0, qTotalGNA = 0;
+  var qTotalV = 0, qTotalC = 0, qTotalG = 0, qTotalINO = 0, qTotalGNO = 0, qTotalGNA = 0;
   qRange.forEach(function(m) {
     var e = pmGetEjecucionMes(m);
     if (e) {
       qTotalV += (e.ventas_it1 || 0); qTotalC += (e.costos_operativos || 0);
-      qTotalG += (e.gastos || 0); qTotalIF += (e.ingreso_financiero || 0);
+      qTotalG += (e.gastos || 0); qTotalINO += (e.ingreso_no_operacional || 0);
+      qTotalGNO += (e.gasto_no_operacional || 0);
       qTotalGNA += (e.gastos_no_admitidos || 0);
     }
   });
+  var qTotalIF = qTotalINO - qTotalGNO;
   var qResOp = qTotalV - qTotalC - qTotalG;
   var qMetaV = pmGetMetaMensual('ventas_it1') * 3;
   var qMetaC = pmGetMetaMensual('costos_operativos') * 3;
@@ -1899,12 +1910,12 @@ function renderPresupuestoDetail() {
   h += '<td class="pm-text-center"><span style="color:' + pmPctColor(pctResOp, false) + ';font-weight:600">' + pctResOp.toFixed(2) + '%</span></td>';
   h += '<td class="pm-text-center"><span class="pm-sem-dot ' + semResOp + '"><span class="pm-dot"></span></span></td></tr>';
 
-  // Ing./Gasto Fin.
-  var qMetaIF = pmGetMetaMensual('ingreso_financiero') * 3;
+  // Ing./Gto. No Op. (neto)
+  var qMetaIF = (pmPresupuesto ? ((pmPresupuesto.ingreso_no_operacional_anual || 0) - (pmPresupuesto.gasto_no_operacional_anual || 0)) / 12 : 0) * 3;
   var qPctIF = qMetaIF ? (qTotalIF / qMetaIF * 100) : 0;
   var qDiffIF = qTotalIF - qMetaIF;
   var qSemIF = qMetaIF ? pmSemColor(qPctIF, 'gasto') : 'na';
-  h += '<tr><td class="pm-font-bold" style="color:var(--muted)">Ing./Gasto Fin.</td>';
+  h += '<tr><td class="pm-font-bold" style="color:var(--muted)">Ing./Gto. No Op.</td>';
   h += '<td class="pm-text-right" style="color:#666">' + (qMetaIF ? pmFormatMoneyShort(qMetaIF) : '—') + '</td>';
   h += '<td class="pm-text-right" style="color:#666">' + pmFormatMoneyShort(qTotalIF) + '</td>';
   h += '<td class="pm-text-right">' + (qDiffIF >= 0 ? '+' : '') + pmFormatMoneyShort(qDiffIF) + '</td>';
@@ -1926,7 +1937,7 @@ function renderPresupuestoDetail() {
   h += '</tbody></table>';
 
   var qGanancia = qResOp + qTotalIF - qTotalGNA;
-  var qMetaGan = qMetaResOp + (pmGetMetaMensual('ingreso_financiero') * 3) - (pmGetMetaMensual('gastos_no_admitidos') * 3);
+  var qMetaGan = qMetaResOp + qMetaIF - (pmGetMetaMensual('gastos_no_admitidos') * 3);
   var qPctGan = qMetaGan ? (qGanancia / qMetaGan * 100) : 0;
   var qGanColor = qGanancia >= 0 ? 'var(--green)' : 'var(--red)';
   var qPctGanColor = (qGanancia >= 0 && qPctGan >= 100) ? '#4ade80' : '#f87171';
@@ -2158,28 +2169,33 @@ function renderPresupuestoMSH() {
 function renderProyeccionDetail() {
   var h = '<button class="pc-back-btn" onclick="pmCloseDetail()">← Volver</button>';
 
-  var totalV = 0, totalCO = 0, totalG = 0, totalIF = 0, totalGNA = 0;
+  var totalV = 0, totalCO = 0, totalG = 0, totalINO = 0, totalGNO = 0, totalGNA = 0;
   var mesesConData = 0;
   pmEjecucion.forEach(function(e) {
     totalV += (e.ventas_it1 || 0);
     totalCO += (e.costos_operativos || 0);
     totalG += (e.gastos || 0);
-    totalIF += (e.ingreso_financiero || 0);
+    totalINO += (e.ingreso_no_operacional || 0);
+    totalGNO += (e.gasto_no_operacional || 0);
     totalGNA += (e.gastos_no_admitidos || 0);
     mesesConData++;
   });
+  var totalIF = totalINO - totalGNO;
   var gananciaNeta = totalV - totalCO - totalG + totalIF - totalGNA;
 
   var avgV = mesesConData ? totalV / mesesConData : 0;
   var avgCO = mesesConData ? totalCO / mesesConData : 0;
   var avgG = mesesConData ? totalG / mesesConData : 0;
-  var avgIF = mesesConData ? totalIF / mesesConData : 0;
+  var avgINO = mesesConData ? totalINO / mesesConData : 0;
+  var avgGNO = mesesConData ? totalGNO / mesesConData : 0;
   var avgGNA = mesesConData ? totalGNA / mesesConData : 0;
   var mesesFaltantes = 12 - mesesConData;
   var projV = totalV + avgV * mesesFaltantes;
   var projCO = totalCO + avgCO * mesesFaltantes;
   var projG = totalG + avgG * mesesFaltantes;
-  var projIF = totalIF + avgIF * mesesFaltantes;
+  var projINO = totalINO + avgINO * mesesFaltantes;
+  var projGNO = totalGNO + avgGNO * mesesFaltantes;
+  var projIF = projINO - projGNO;
   var projGNA = totalGNA + avgGNA * mesesFaltantes;
   var projGanancia = projV - projCO - projG + projIF - projGNA;
 
@@ -2228,14 +2244,15 @@ function renderProyeccionDetail() {
   h += '<div class="pm-panel pm-panel-dark"><div class="pm-panel-hdr">';
   h += '<h3 style="text-transform:uppercase;font-size:0.78rem;letter-spacing:0.3px">Realidad hasta hoy</h3></div>';
   h += '<div class="pm-panel-body" style="overflow-x:auto"><div style="display:inline-block;min-width:100%"><table class="pm-table-compact"><thead><tr>';
-  h += '<th>Mes</th><th class="pm-text-right">Ventas IT1</th><th class="pm-text-right">Costos</th><th class="pm-text-right">Gastos</th><th class="pm-text-right">Ing./Gto.Fin.</th><th class="pm-text-right">Gtos. N/A</th>';
+  h += '<th>Mes</th><th class="pm-text-right">Ventas IT1</th><th class="pm-text-right">Costos</th><th class="pm-text-right">Gastos</th><th class="pm-text-right">Ing./Gto. No Op.</th><th class="pm-text-right">Gtos. N/A</th>';
   h += '</tr></thead><tbody>';
   pmEjecucion.forEach(function(e) {
+    var eIF = (e.ingreso_no_operacional || 0) - (e.gasto_no_operacional || 0);
     h += '<tr><td class="pm-font-bold">' + MESES_FULL[e.mes - 1] + '</td>';
     h += '<td class="pm-text-right">' + pmFormatMoneyShort(e.ventas_it1) + '</td>';
     h += '<td class="pm-text-right">' + pmFormatMoneyShort(e.costos_operativos) + '</td>';
     h += '<td class="pm-text-right">' + pmFormatMoneyShort(e.gastos) + '</td>';
-    h += '<td class="pm-text-right">' + pmFormatMoneyShort(e.ingreso_financiero) + '</td>';
+    h += '<td class="pm-text-right">' + pmFormatMoneyShort(eIF) + '</td>';
     h += '<td class="pm-text-right">' + pmFormatMoneyShort(e.gastos_no_admitidos) + '</td></tr>';
   });
   h += '<tr class="pm-row-total"><td class="pm-font-bold">Totales</td>';
@@ -2251,8 +2268,9 @@ function renderProyeccionDetail() {
   h += '<div class="pm-panel pm-panel-dark"><div class="pm-panel-hdr">';
   h += '<h3 style="text-transform:uppercase;font-size:0.78rem;letter-spacing:0.3px">Proyección a fin de año (promedios)</h3></div>';
   h += '<div class="pm-panel-body" style="overflow-x:auto"><div style="display:inline-block;min-width:100%"><table class="pm-table-compact"><thead><tr>';
-  h += '<th>Mes</th><th class="pm-text-right">Ventas IT1</th><th class="pm-text-right">Costos</th><th class="pm-text-right">Gastos</th><th class="pm-text-right">Ing./Gto.Fin.</th><th class="pm-text-right">Gtos. N/A</th>';
+  h += '<th>Mes</th><th class="pm-text-right">Ventas IT1</th><th class="pm-text-right">Costos</th><th class="pm-text-right">Gastos</th><th class="pm-text-right">Ing./Gto. No Op.</th><th class="pm-text-right">Gtos. N/A</th>';
   h += '</tr></thead><tbody>';
+  var avgIF = avgINO - avgGNO;
   for (var m = 1; m <= 12; m++) {
     var isActual = pmEjecucion.some(function(e) { return e.mes === m; });
     if (isActual) {
@@ -2631,7 +2649,8 @@ async function pmSavePresupuestoSimple() {
     row.ventas_it1_anual = pmPresupuesto.ventas_it1_anual || 0;
     row.costos_operativos_anual = pmPresupuesto.costos_operativos_anual || 0;
     row.gastos_anual = pmPresupuesto.gastos_anual || 0;
-    row.ingreso_financiero_anual = pmPresupuesto.ingreso_financiero_anual || 0;
+    row.ingreso_no_operacional_anual = pmPresupuesto.ingreso_no_operacional_anual || 0;
+    row.gasto_no_operacional_anual = pmPresupuesto.gasto_no_operacional_anual || 0;
     row.gastos_no_admitidos_anual = pmPresupuesto.gastos_no_admitidos_anual || 0;
   }
   var { error } = await sb.from('portal_presupuesto').upsert(row, { onConflict: 'cliente,anio' });
@@ -2656,7 +2675,8 @@ async function pmSaveEjecucionSimple() {
     ventas_it1: existing ? (existing.ventas_it1 || 0) : 0,
     costos_operativos: existing ? (existing.costos_operativos || 0) : 0,
     gastos: existing ? (existing.gastos || 0) : 0,
-    ingreso_financiero: existing ? (existing.ingreso_financiero || 0) : 0,
+    ingreso_no_operacional: existing ? (existing.ingreso_no_operacional || 0) : 0,
+    gasto_no_operacional: existing ? (existing.gasto_no_operacional || 0) : 0,
     gastos_no_admitidos: existing ? (existing.gastos_no_admitidos || 0) : 0
   };
   var { error } = await sb.from('portal_ejecucion').upsert(record, { onConflict: 'cliente,anio,mes' });
@@ -2675,7 +2695,8 @@ function renderAdminDatos() {
   var pv = pmPresupuesto ? (pmPresupuesto.ventas_it1_anual || '') : '';
   var pco = pmPresupuesto ? (pmPresupuesto.costos_operativos_anual || '') : '';
   var pg = pmPresupuesto ? (pmPresupuesto.gastos_anual || '') : '';
-  var pif = pmPresupuesto ? (pmPresupuesto.ingreso_financiero_anual || '') : '';
+  var pino = pmPresupuesto ? (pmPresupuesto.ingreso_no_operacional_anual || '') : '';
+  var pgno = pmPresupuesto ? (pmPresupuesto.gasto_no_operacional_anual || '') : '';
   var pgna = pmPresupuesto ? (pmPresupuesto.gastos_no_admitidos_anual || '') : '';
 
   h += '<div class="pm-admin-form"><h3>Presupuesto Anual <span class="pm-admin-badge">Año ' + pmYear + '</span></h3>';
@@ -2689,9 +2710,12 @@ function renderAdminDatos() {
   h += '<div class="pm-form-group"><label>Gastos (anual)</label>';
   h += '<input type="number" class="pm-form-input" id="pmPresGastos" value="' + pg + '" placeholder="0.00" step="0.01">';
   h += '<div class="pm-calc">Mensual: $' + pmFormatMoney(pg ? pg / 12 : 0) + '</div></div>';
-  h += '<div class="pm-form-group"><label>Ing./Gasto Fin. (anual)</label>';
-  h += '<input type="number" class="pm-form-input" id="pmPresIF" value="' + pif + '" placeholder="0.00" step="0.01">';
-  h += '<div class="pm-calc">Mensual: $' + pmFormatMoney(pif ? pif / 12 : 0) + '</div></div>';
+  h += '<div class="pm-form-group"><label>Ingreso No Operacional (anual)</label>';
+  h += '<input type="number" class="pm-form-input" id="pmPresINO" value="' + pino + '" placeholder="0.00" step="0.01">';
+  h += '<div class="pm-calc">Mensual: $' + pmFormatMoney(pino ? pino / 12 : 0) + '</div></div>';
+  h += '<div class="pm-form-group"><label>Gasto No Operacional (anual)</label>';
+  h += '<input type="number" class="pm-form-input" id="pmPresGNO" value="' + pgno + '" placeholder="0.00" step="0.01">';
+  h += '<div class="pm-calc">Mensual: $' + pmFormatMoney(pgno ? pgno / 12 : 0) + '</div></div>';
   h += '<div class="pm-form-group"><label>Gtos. No Admitidos (anual)</label>';
   h += '<input type="number" class="pm-form-input" id="pmPresGNA" value="' + pgna + '" placeholder="0.00" step="0.01">';
   h += '<div class="pm-calc">Mensual: $' + pmFormatMoney(pgna ? pgna / 12 : 0) + '</div></div>';
@@ -2730,7 +2754,8 @@ function renderAdminDatos() {
   h += '<div class="pm-form-group"><label>Ventas</label><input type="number" class="pm-form-input" id="pmEjVentas" value="' + (ej ? ej.ventas_it1 : '') + '" placeholder="0.00" step="0.01"></div>';
   h += '<div class="pm-form-group"><label>Costos Operativos</label><input type="number" class="pm-form-input" id="pmEjCostos" value="' + (ej ? ej.costos_operativos : '') + '" placeholder="0.00" step="0.01"></div>';
   h += '<div class="pm-form-group"><label>Gastos</label><input type="number" class="pm-form-input" id="pmEjGastos" value="' + (ej ? ej.gastos : '') + '" placeholder="0.00" step="0.01"></div>';
-  h += '<div class="pm-form-group"><label>Ing./Gasto Fin.</label><input type="number" class="pm-form-input" id="pmEjIngFin" value="' + (ej ? ej.ingreso_financiero : '') + '" placeholder="0.00" step="0.01"></div>';
+  h += '<div class="pm-form-group"><label>Ingreso No Operacional</label><input type="number" class="pm-form-input" id="pmEjINO" value="' + (ej ? ej.ingreso_no_operacional : '') + '" placeholder="0.00" step="0.01"></div>';
+  h += '<div class="pm-form-group"><label>Gasto No Operacional</label><input type="number" class="pm-form-input" id="pmEjGNO" value="' + (ej ? ej.gasto_no_operacional : '') + '" placeholder="0.00" step="0.01"></div>';
   h += '<div class="pm-form-group"><label>Gastos No Admitidos</label><input type="number" class="pm-form-input" id="pmEjGNA" value="' + (ej ? ej.gastos_no_admitidos : '') + '" placeholder="0.00" step="0.01"></div>';
   h += '</div>';
   h += '<div class="pm-btn-row"><button class="pm-btn-save primary" onclick="pmSaveEjecucion()">Guardar Ejecución</button></div>';
@@ -2805,7 +2830,8 @@ function pmUpdateEjFields() {
   document.getElementById('pmEjVentas').value = ej ? ej.ventas_it1 : '';
   document.getElementById('pmEjCostos').value = ej ? ej.costos_operativos : '';
   document.getElementById('pmEjGastos').value = ej ? ej.gastos : '';
-  document.getElementById('pmEjIngFin').value = ej ? ej.ingreso_financiero : '';
+  document.getElementById('pmEjINO').value = ej ? ej.ingreso_no_operacional : '';
+  document.getElementById('pmEjGNO').value = ej ? ej.gasto_no_operacional : '';
   document.getElementById('pmEjGNA').value = ej ? ej.gastos_no_admitidos : '';
 }
 
@@ -2867,10 +2893,10 @@ function pmParseExcel(input) {
 }
 
 function pmParseEdoResultados(rows, meses) {
-  // For each mes, we need: ventas_it1, costos_operativos, gastos, ingreso_financiero, gastos_no_admitidos
+  // For each mes, we need: ventas_it1, costos_operativos, gastos, ingreso_no_operacional, gasto_no_operacional, gastos_no_admitidos
   // Nota: salarios se incluyen dentro de gastos (no se separan)
   var result = {};
-  meses.forEach(function(m) { result[m.mes] = { ventas_it1: 0, costos_operativos: 0, gastos: 0, ingreso_financiero: 0, gastos_no_admitidos: 0 }; });
+  meses.forEach(function(m) { result[m.mes] = { ventas_it1: 0, costos_operativos: 0, gastos: 0, ingreso_no_operacional: 0, gasto_no_operacional: 0, gastos_no_admitidos: 0 }; });
 
   var section = '';      // current top-level section
   var subSection = '';   // current sub-section within Gastos
@@ -2958,43 +2984,45 @@ function pmParseEdoResultados(rows, meses) {
       continue;
     }
 
-    // Ingresos financieros total (sección propia, se suma)
+    // Ingresos financieros total (sección propia → ingreso no operacional)
     if (section === 'ingresos_financieros' && lowerA.indexOf('total') === 0) {
       meses.forEach(function(m) {
         var val = parseFloat(rows[ri][m.col]) || 0;
-        result[m.mes].ingreso_financiero += val;
+        result[m.mes].ingreso_no_operacional += val;
       });
       continue;
     }
 
-    // Otros gastos no operacionales total (intereses de préstamos, etc. — se resta)
+    // Otros gastos no operacionales total (intereses de préstamos, etc. → gasto no operacional)
     if (section === 'otros_gastos' && subSection === 'gastos_fin' && lowerA.indexOf('total') === 0) {
       meses.forEach(function(m) {
         var val = parseFloat(rows[ri][m.col]) || 0;
-        result[m.mes].ingreso_financiero -= val;
+        result[m.mes].gasto_no_operacional += val;
       });
-      subSection = '';  // reset para que "Total otros gastos" (sección padre) no re-matchee
+      subSection = '';
       continue;
     }
 
     // Detail account lines — salary accounts are now included in gastos total (no separate tracking)
 
     // Check for "Ingresos Financieros" as single-line entry (some clients)
-    // Guard: skip if we're inside the ingresos_financieros section (the Total at line ~2290 handles it)
+    // Guard: skip if we're inside the ingresos_financieros section (the Total handles it)
     if (section !== 'ingresos_financieros' && (lowerA.indexOf('ingreso financiero') >= 0 || lowerA.indexOf('ingresos financieros') >= 0)) {
       if (cleanA.match(/\d{3}\.\d{2}/)) {
         meses.forEach(function(m) {
           var val = parseFloat(rows[ri][m.col]) || 0;
-          result[m.mes].ingreso_financiero += val;
+          if (val >= 0) { result[m.mes].ingreso_no_operacional += val; }
+          else { result[m.mes].gasto_no_operacional += Math.abs(val); }
         });
       }
     }
 
-    // Otros ingresos total (sección propia, se suma al resultado financiero)
+    // Otros ingresos total (sección propia → ingreso no operacional)
     if (section === 'otros_ingresos' && lowerA.indexOf('total') === 0) {
       meses.forEach(function(m) {
         var val = parseFloat(rows[ri][m.col]) || 0;
-        result[m.mes].ingreso_financiero += val;
+        if (val >= 0) { result[m.mes].ingreso_no_operacional += val; }
+        else { result[m.mes].gasto_no_operacional += Math.abs(val); }
       });
       continue;
     }
@@ -3061,7 +3089,8 @@ function pmSelectExcelMes(mes) {
     { label: 'Ventas IT1', val: d.ventas_it1 },
     { label: 'Costos Operativos', val: d.costos_operativos },
     { label: 'Gastos', val: d.gastos },
-    { label: 'Ing./Gasto Fin.', val: d.ingreso_financiero },
+    { label: 'Ingreso No Operacional', val: d.ingreso_no_operacional },
+    { label: 'Gasto No Operacional', val: d.gasto_no_operacional },
     { label: 'Gastos No Admitidos', val: d.gastos_no_admitidos }
   ];
   items.forEach(function(it, i) {
@@ -3091,7 +3120,8 @@ function pmApplyExcelMes(mes) {
   document.getElementById('pmEjVentas').value = d.ventas_it1 ? d.ventas_it1.toFixed(2) : '';
   document.getElementById('pmEjCostos').value = d.costos_operativos ? d.costos_operativos.toFixed(2) : '';
   document.getElementById('pmEjGastos').value = d.gastos ? d.gastos.toFixed(2) : '';
-  document.getElementById('pmEjIngFin').value = d.ingreso_financiero ? d.ingreso_financiero.toFixed(2) : '';
+  document.getElementById('pmEjINO').value = d.ingreso_no_operacional ? d.ingreso_no_operacional.toFixed(2) : '';
+  document.getElementById('pmEjGNO').value = d.gasto_no_operacional ? d.gasto_no_operacional.toFixed(2) : '';
   document.getElementById('pmEjGNA').value = d.gastos_no_admitidos ? d.gastos_no_admitidos.toFixed(2) : '';
 
   showToast(MESES_FULL[mes - 1] + ' cargado. Revisa y guarda.');
@@ -3120,7 +3150,8 @@ async function pmSaveAllExcelMeses() {
       ventas_it1: d.ventas_it1 || 0,
       costos_operativos: d.costos_operativos || 0,
       gastos: d.gastos || 0,
-      ingreso_financiero: d.ingreso_financiero || 0,
+      ingreso_no_operacional: d.ingreso_no_operacional || 0,
+      gasto_no_operacional: d.gasto_no_operacional || 0,
       gastos_no_admitidos: d.gastos_no_admitidos || 0
     }, { onConflict: 'cliente,anio,mes' });
 
@@ -3150,7 +3181,8 @@ async function pmSavePresupuesto() {
   var v = parseFloat(document.getElementById('pmPresVentas').value) || 0;
   var c = parseFloat(document.getElementById('pmPresCostos').value) || 0;
   var g = parseFloat(document.getElementById('pmPresGastos').value) || 0;
-  var iF = parseFloat(document.getElementById('pmPresIF').value) || 0;
+  var ino = parseFloat(document.getElementById('pmPresINO').value) || 0;
+  var gno = parseFloat(document.getElementById('pmPresGNO').value) || 0;
   var gna = parseFloat(document.getElementById('pmPresGNA').value) || 0;
 
   var { error } = await sb.from('portal_presupuesto').upsert({
@@ -3159,7 +3191,8 @@ async function pmSavePresupuesto() {
     ventas_it1_anual: v,
     costos_operativos_anual: c,
     gastos_anual: g,
-    ingreso_financiero_anual: iF,
+    ingreso_no_operacional_anual: ino,
+    gasto_no_operacional_anual: gno,
     gastos_no_admitidos_anual: gna
   }, { onConflict: 'cliente,anio' });
 
@@ -3174,7 +3207,8 @@ async function pmSaveEjecucion() {
   var v = parseFloat(document.getElementById('pmEjVentas').value) || 0;
   var c = parseFloat(document.getElementById('pmEjCostos').value) || 0;
   var g = parseFloat(document.getElementById('pmEjGastos').value) || 0;
-  var inf = parseFloat(document.getElementById('pmEjIngFin').value) || 0;
+  var ino = parseFloat(document.getElementById('pmEjINO').value) || 0;
+  var gno = parseFloat(document.getElementById('pmEjGNO').value) || 0;
   var gna = parseFloat(document.getElementById('pmEjGNA').value) || 0;
 
   // Preservar campos de obra si ya existen (se editan desde Datos Simplificado)
@@ -3186,7 +3220,8 @@ async function pmSaveEjecucion() {
     ventas_it1: v,
     costos_operativos: c,
     gastos: g,
-    ingreso_financiero: inf,
+    ingreso_no_operacional: ino,
+    gasto_no_operacional: gno,
     gastos_no_admitidos: gna,
     ingreso_obra: existing ? (existing.ingreso_obra || 0) : 0,
     costos_obra: existing ? (existing.costos_obra || 0) : 0
