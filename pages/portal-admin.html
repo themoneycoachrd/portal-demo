@@ -1902,8 +1902,8 @@ function renderPresupuestoDetail() {
   h += '<div class="pm-panel" style="margin-bottom:16px">';
   h += '<div class="pm-panel-hdr" style="background:var(--navy);color:white;border-bottom:none">';
   h += '<h3 style="color:white;text-transform:uppercase;font-size:0.78rem;letter-spacing:0.3px">Trimestre completo</h3></div>';
-  h += '<div class="pm-panel-body"><table style="table-layout:fixed;width:100%"><colgroup><col style="width:30%"><col style="width:22%"><col style="width:22%"><col style="width:13%"><col style="width:13%"></colgroup><thead><tr>';
-  h += '<th>Concepto</th><th class="pm-text-right">Meta ' + qLabels[quarter - 1] + '</th><th class="pm-text-right">Ejecutado ' + qLabels[quarter - 1] + '</th><th class="pm-text-center">%</th><th class="pm-text-center">Estado</th>';
+  h += '<div class="pm-panel-body"><table style="table-layout:fixed;width:100%"><colgroup><col style="width:28%"><col style="width:22%"><col style="width:22%"><col style="width:14%"><col style="width:14%"></colgroup><thead><tr>';
+  h += '<th>Concepto</th><th class="pm-text-center">Meta ' + qLabels[quarter - 1] + '</th><th class="pm-text-center">Ejecutado ' + qLabels[quarter - 1] + '</th><th class="pm-text-center">%</th><th class="pm-text-center">Estado</th>';
   h += '</tr></thead><tbody>';
 
   var qRows = [
@@ -1929,8 +1929,8 @@ function renderPresupuestoDetail() {
       semCol = pmSemColor(pct, r.tipo);
     }
     h += '<tr><td class="pm-font-bold">' + r.label + '</td>';
-    h += '<td class="pm-text-right">' + pmFormatMoneyShort(r.meta) + '</td>';
-    h += '<td class="pm-text-right">' + pmFormatMoneyShort(r.ej) + '</td>';
+    h += '<td class="pm-text-center">' + pmFormatMoneyShort(r.meta) + '</td>';
+    h += '<td class="pm-text-center">' + pmFormatMoneyShort(r.ej) + '</td>';
     h += '<td class="pm-text-center"><span style="color:' + pctColor + ';font-weight:600">' + pct.toFixed(0) + '%</span></td>';
     h += '<td class="pm-text-center"><span class="pm-sem-dot ' + semCol + '"><span class="pm-dot"></span></span></td></tr>';
   });
@@ -1938,8 +1938,8 @@ function renderPresupuestoDetail() {
   var pctResOp = qMetaResOp ? (qResOp / qMetaResOp * 100) : 0;
   var semResOp = pmSemColor(pctResOp, 'beneficio');
   h += '<tr class="pm-row-total"><td class="pm-font-bold">Resultado Op.</td>';
-  h += '<td class="pm-text-right">' + pmFormatMoneyShort(qMetaResOp) + '</td>';
-  h += '<td class="pm-text-right">' + pmFormatMoneyShort(qResOp) + '</td>';
+  h += '<td class="pm-text-center">' + pmFormatMoneyShort(qMetaResOp) + '</td>';
+  h += '<td class="pm-text-center">' + pmFormatMoneyShort(qResOp) + '</td>';
   h += '<td class="pm-text-center"><span style="color:' + pmPctColor(pctResOp, false) + ';font-weight:600">' + pctResOp.toFixed(0) + '%</span></td>';
   h += '<td class="pm-text-center"><span class="pm-sem-dot ' + semResOp + '"><span class="pm-dot"></span></span></td></tr>';
 
@@ -1948,8 +1948,8 @@ function renderPresupuestoDetail() {
   var qPctIF = qMetaIF ? (qTotalIF / qMetaIF * 100) : 0;
   var qSemIF = qMetaIF ? pmSemColor(qPctIF, 'gasto') : 'na';
   h += '<tr><td class="pm-font-bold" style="color:var(--muted)">Ing./Gto. No Op.</td>';
-  h += '<td class="pm-text-right" style="color:#666">' + (qMetaIF ? pmFormatMoneyShort(qMetaIF) : '—') + '</td>';
-  h += '<td class="pm-text-right" style="color:#666">' + pmFormatMoneyShort(qTotalIF) + '</td>';
+  h += '<td class="pm-text-center" style="color:#666">' + (qMetaIF ? pmFormatMoneyShort(qMetaIF) : '—') + '</td>';
+  h += '<td class="pm-text-center" style="color:#666">' + pmFormatMoneyShort(qTotalIF) + '</td>';
   h += '<td class="pm-text-center">' + (qMetaIF ? '<span style="color:' + pmPctColor(qPctIF, true) + ';font-weight:600">' + qPctIF.toFixed(0) + '%</span>' : '') + '</td>';
   h += '<td class="pm-text-center">' + (qMetaIF ? '<span class="pm-sem-dot ' + qSemIF + '"><span class="pm-dot"></span></span>' : '') + '</td></tr>';
 
@@ -1958,8 +1958,8 @@ function renderPresupuestoDetail() {
   var qPctGNA = qMetaGNA ? (qTotalGNA / qMetaGNA * 100) : 0;
   var qSemGNA = qMetaGNA ? pmSemColor(qPctGNA, 'gasto') : 'na';
   h += '<tr><td class="pm-font-bold" style="color:var(--muted)">Gtos. No Admitidos</td>';
-  h += '<td class="pm-text-right" style="color:#666">' + (qMetaGNA ? pmFormatMoneyShort(qMetaGNA) : '—') + '</td>';
-  h += '<td class="pm-text-right" style="color:#666">' + pmFormatMoneyShort(qTotalGNA) + '</td>';
+  h += '<td class="pm-text-center" style="color:#666">' + (qMetaGNA ? pmFormatMoneyShort(qMetaGNA) : '—') + '</td>';
+  h += '<td class="pm-text-center" style="color:#666">' + pmFormatMoneyShort(qTotalGNA) + '</td>';
   h += '<td class="pm-text-center">' + (qMetaGNA ? '<span style="color:' + pmPctColor(qPctGNA, true) + ';font-weight:600">' + qPctGNA.toFixed(0) + '%</span>' : '') + '</td>';
   h += '<td class="pm-text-center">' + (qMetaGNA ? '<span class="pm-sem-dot ' + qSemGNA + '"><span class="pm-dot"></span></span>' : '') + '</td></tr>';
 
