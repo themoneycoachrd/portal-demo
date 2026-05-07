@@ -1247,25 +1247,24 @@ function renderPresupuestoDetail() {
       var ej = pmGetEjecucionMes(m);
       var val = ej ? (ej[c.key] || 0) : 0;
       var meta = pmGetMetaMensual(c.key);
-      var pct = pmPctMeta(val, meta);
-      var color = pmPctColor(pct, c.tipo !== 'ventas');
-      var costPctInline = '';
+      var pct, color;
       if (c.key === 'costos_operativos') {
         var ventasMes = ej ? (ej.ventas_it1 || 0) : 0;
-        if (ventasMes) {
-          var actualPct = val / ventasMes * 100;
-          var expectedPct = (pmPresupuesto && pmPresupuesto.ventas_it1_anual) ? (pmPresupuesto.costos_operativos_anual / pmPresupuesto.ventas_it1_anual * 100) : null;
-          var pctColor = 'var(--muted)';
-          if (expectedPct !== null) {
-            if (actualPct > expectedPct + 5) pctColor = 'var(--red)';
-            else if (actualPct < expectedPct) pctColor = 'var(--amber)';
-            else pctColor = 'var(--green)';
-          }
-          costPctInline = ' <span style="font-size:0.7rem;color:' + pctColor + ';font-weight:600">(' + actualPct.toFixed(0) + '%)</span>';
+        pct = ventasMes ? (val / ventasMes * 100) : 0;
+        var expectedPct = (pmPresupuesto && pmPresupuesto.ventas_it1_anual) ? (pmPresupuesto.costos_operativos_anual / pmPresupuesto.ventas_it1_anual * 100) : null;
+        color = 'var(--muted)';
+        if (expectedPct !== null) {
+          if (pct > expectedPct + 5) color = 'var(--red)';
+          else if (pct < expectedPct) color = 'var(--amber)';
+          else color = 'var(--green)';
         }
+      } else {
+        pct = pmPctMeta(val, meta);
+        color = pmPctColor(pct, c.tipo !== 'ventas');
       }
-      h += '<td class="pm-text-right">' + pmFormatMoney(val) + costPctInline + '</td>';
-      h += '<td class="pm-text-right" style="border-right:' + (m < qRange[2] ? '2px solid var(--border)' : 'none') + '"><span style="color:' + color + ';font-weight:600">' + pct.toFixed(2) + '%</span></td>';
+      h += '<td class="pm-text-right">' + pmFormatMoney(val) + '</td>';
+      var pctDisplay = (c.key === 'costos_operativos') ? pct.toFixed(0) + '%' : pct.toFixed(2) + '%';
+      h += '<td class="pm-text-right" style="border-right:' + (m < qRange[2] ? '2px solid var(--border)' : 'none') + '"><span style="color:' + color + ';font-weight:600">' + pctDisplay + '</span></td>';
     });
     h += '</tr>';
   });
