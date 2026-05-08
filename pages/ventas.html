@@ -303,6 +303,19 @@ tr.expanded { background: #f0f9ff; }
   text-align: right;
   font-family: inherit;
 }
+.roas-save-btn {
+  padding: 3px 10px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  background: var(--blue);
+  color: white;
+  transition: background 0.15s;
+}
+.roas-save-btn:hover { background: #3451c7; }
+.roas-save-btn.saved { background: var(--green); pointer-events: none; }
 
 /* ==================== MISC ==================== */
 .empty-state {
@@ -671,7 +684,7 @@ function syncRoasFromPipeline() {
   // Guardar ROAS actualizados en Supabase (en background)
   MONTHS.forEach(m => {
     const r = APP.data.roas[m];
-    if (r && r._id) dbUpdateRoas(m, r);
+    if (r && (r._id || r.leads > 0)) dbUpdateRoas(m, r);
   });
 }
 
@@ -1129,7 +1142,7 @@ function renderROAS() {
   if (!isVentas) {
     html += '<div class="card"><h3 style="font-size:0.95rem;margin-bottom:12px;">Detalle Mensual <span style="font-weight:400;font-size:0.8rem;color:var(--muted);">(presupuesto y ejecutado editables, lo dem\u00e1s se calcula del pipeline)</span></h3>';
     html += '<div class="roas-table-wrapper"><table class="roas-table">';
-    html += '<thead><tr><th>Mes</th><th>Leads</th><th>Presupuesto</th><th>Ejecutado</th><th>CPL</th><th>Cierres</th><th>% Cierre</th><th>Monto Vendido</th><th>CPA</th><th>Retorno</th><th>ROAS</th></tr></thead>';
+    html += '<thead><tr><th>Mes</th><th>Leads</th><th>Presupuesto</th><th>Ejecutado</th><th>CPL</th><th>Cierres</th><th>% Cierre</th><th>Monto Vendido</th><th>CPA</th><th>Retorno</th><th>ROAS</th><th></th></tr></thead>';
     html += '<tbody>';
     activeMonths.forEach((m) => {
       const i = MONTHS.indexOf(m);
@@ -1165,6 +1178,7 @@ function renderROAS() {
       html += `<td>${fmtCurrency(Math.round(cpa * 100) / 100)}</td>`;
       html += `<td>${fmtCurrency(Math.round(retorno))}</td>`;
       html += `<td>${roasVal.toFixed(2)}x</td>`;
+      html += `<td><button class="roas-save-btn" data-roas-save="${m}">Guardar</button></td>`;
       html += '</tr>';
     });
 
@@ -1180,6 +1194,7 @@ function renderROAS() {
     html += `<td>${fmtCurrency(Math.round(totCpa * 100) / 100)}</td>`;
     html += `<td>${fmtCurrency(Math.round(totRetorno))}</td>`;
     html += `<td>${totRoas.toFixed(2)}x</td>`;
+    html += '<td></td>';
     html += '</tr>';
 
     html += '</tbody></table></div></div>';
@@ -1201,21 +1216,49 @@ function bindROASEvents() {
     };
   });
 
-  // Save on blur or enter for inline edit
+  // Confirmar valor al salir del campo o presionar Enter (solo guarda en memoria local)
   document.querySelectorAll('.inline-edit').forEach(input => {
-    const save = () => {
+    const confirm = () => {
       const m = input.dataset.roasMonth;
       const field = input.dataset.roasField;
       APP.data.roas[m][field] = parseFloat(input.value) || 0;
-      // Recalcular derivados que dependen de ejecutado
-      syncRoasFromPipeline();
+      // Recalcular derivados locales
+      const d = APP.data.roas[m];
+      const leads = APP.data.pipeline[m] || [];
+      const ganados = leads.filter(l => l.f === 'Cerrado Ganado');
+      const ejec = d.ejecutado || 0;
+      d.cpa = ganados.length > 0 ? Math.round(ejec / ganados.length * 100) / 100 : 0;
+      const totalVendido = d.vendido || 0;
+      d.retorno = Math.round((totalVendido - ejec) * 100) / 100;
+      d.roas = ejec > 0 ? Math.round(totalVendido / ejec * 100) / 100 : 0;
       APP.editingRoas = null;
       renderROAS();
     };
-    input.onblur = save;
+    input.onblur = confirm;
     input.onkeydown = (e) => {
-      if (e.key === 'Enter') save();
+      if (e.key === 'Enter') confirm();
       if (e.key === 'Escape') { APP.editingRoas = null; renderROAS(); }
+    };
+  });
+
+  // Botón Guardar por fila — graba en Supabase
+  document.querySelectorAll('.roas-save-btn').forEach(btn => {
+    btn.onclick = async () => {
+      const m = btn.dataset.roasSave;
+      const r = APP.data.roas[m];
+      btn.textContent = 'Guardando...';
+      btn.disabled = true;
+      try {
+        await dbUpdateRoas(m, r);
+        btn.textContent = 'Guardado';
+        btn.classList.add('saved');
+        setTimeout(() => { btn.textContent = 'Guardar'; btn.classList.remove('saved'); btn.disabled = false; }, 2000);
+      } catch (err) {
+        console.error('Error guardando ROAS:', err);
+        btn.textContent = 'Error';
+        btn.style.background = 'var(--red)';
+        setTimeout(() => { btn.textContent = 'Guardar'; btn.style.background = ''; btn.disabled = false; }, 2000);
+      }
     };
   });
 }
