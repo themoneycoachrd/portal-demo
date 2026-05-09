@@ -2815,10 +2815,21 @@ function bdRenderClientes() {
   });
   var allForMes = clActivosMes.concat(clInactivosMes);
 
+  // Calcular nuevos y churn del mes
+  var clMesPrefix = '2026-' + String(clMesIdx + 1).padStart(2, '0');
+  var clNuevosMes = bdClientes.filter(function(c) {
+    return c.fecha_entrada && c.fecha_entrada.indexOf(clMesPrefix) === 0;
+  });
+  var clChurnMes = bdClientes.filter(function(c) {
+    return c.fecha_salida && c.fecha_salida.indexOf(clMesPrefix) === 0;
+  });
+  var clInicioMes = clActivosMes.length - clNuevosMes.length + clChurnMes.length;
+
   h += '<div class="bd-summary">';
-  h += '<div class="bd-summary-item"><div class="bd-summary-count">' + clActivosMes.length + '</div><div class="bd-summary-label">Clientes activos</div></div>';
-  h += '<div class="bd-summary-item"><div class="bd-summary-count">' + clInactivosMes.length + '</div><div class="bd-summary-label">Inactivos</div></div>';
-  h += '<div class="bd-summary-item"><div class="bd-summary-count">' + allForMes.length + '</div><div class="bd-summary-label">Total</div></div>';
+  h += '<div class="bd-summary-item"><div class="bd-summary-count">' + clInicioMes + '</div><div class="bd-summary-label">Inicio</div></div>';
+  h += '<div class="bd-summary-item"><div class="bd-summary-count" style="color:var(--green)">+' + clNuevosMes.length + '</div><div class="bd-summary-label">Nuevos</div></div>';
+  h += '<div class="bd-summary-item"><div class="bd-summary-count" style="color:var(--red)">-' + clChurnMes.length + '</div><div class="bd-summary-label">Churn</div></div>';
+  h += '<div class="bd-summary-item"><div class="bd-summary-count" style="font-weight:700">' + clActivosMes.length + '</div><div class="bd-summary-label">Cierre</div></div>';
   h += '</div>';
 
   h += '<div class="cl-toolbar">';
