@@ -1675,38 +1675,14 @@ function ccRenderSoftware(el) {
     </div>
     <div class="card">
       <h3>Clientes por tipo de licencia</h3>
-      ${groupKeys.map(lic => {
-        const clientes = groups[lic];
-        const montoTotal = clientes.reduce((s,c) => s + c.monto, 0);
-        const color = LICENCIA_COLORS[lic] || '#7c8495';
-        const groupId = 'sw-lic-' + lic.replace(/[^a-zA-Z]/g, '');
-        return '<div class="contadora-card">' +
-          '<div class="cc-contadora-header" onclick="ccToggleSwLic(\'' + groupId + '\', this)">' +
-            '<div class="contadora-color" style="background:' + color + '"></div>' +
-            '<div class="contadora-info"><div class="contadora-name-row">' +
-              '<span class="contadora-title">' + lic + '</span>' +
-              '<div class="contadora-pills">' +
-                '<span class="pill pill-blue">' + clientes.length + ' cliente' + (clientes.length > 1 ? 's' : '') + '</span>' +
-                '<span class="pill pill-green">US$ ' + montoTotal + '/mes</span>' +
-              '</div>' +
-            '</div></div>' +
-            '<span class="contadora-arrow">▼</span>' +
-          '</div>' +
-          '<div class="contadora-detail" id="' + groupId + '">' +
-            '<table class="detail-table"><tr><th>Cliente</th><th>Monto</th><th>Desde</th></tr>' +
-            clientes.map(c => {
-              var desde = '—';
-              if (c.fecha_entrada) {
-                var parts = c.fecha_entrada.split('-');
-                var mesNames = ['','Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
-                desde = mesNames[parseInt(parts[1])] + ' ' + parts[0];
-              }
-              return '<tr><td><strong>' + c.n + '</strong></td><td>US$ ' + c.monto + '</td><td>' + desde + '</td></tr>';
-            }).join('') +
-            '</table>' +
-          '</div>' +
-        '</div>';
-      }).join('')}
+      <div class="table-wrap"><table>
+        <tr><th>Tipo de licencia</th><th>Cantidad</th><th>Clientes</th></tr>
+        ${groupKeys.map(lic => {
+          const clientes = groups[lic];
+          const nombres = clientes.map(c => c.n).sort((a,b) => a.localeCompare(b,'es')).join(', ');
+          return '<tr><td><strong>' + lic + '</strong></td><td style="text-align:center">' + clientes.length + '</td><td style="font-size:0.82rem">' + nombres + '</td></tr>';
+        }).join('')}
+      </table></div>
     </div>
   `;
   el.innerHTML = html;
