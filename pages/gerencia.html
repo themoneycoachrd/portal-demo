@@ -1419,6 +1419,44 @@ function ccRenderServicios(el) {
   }
   html += '</div>';
 
+  // Resumen mensual (movimiento mes a mes)
+  var ccServBase = ccAllClientes.filter(function(c) { return c.fecha_entrada && c.fecha_entrada < '2026-01-01'; });
+  var ccServAcum = ccServBase.length;
+  var MESES_MAP_SERV = {enero:'01',febrero:'02',marzo:'03',abril:'04',mayo:'05',junio:'06',julio:'07',agosto:'08',septiembre:'09',octubre:'10',noviembre:'11',diciembre:'12'};
+  html += '<div class="card" style="margin-bottom:16px">';
+  html += '<div style="display:flex;align-items:center;justify-content:space-between;cursor:pointer" onclick="document.getElementById(\'cc-serv-resumen\').style.display=document.getElementById(\'cc-serv-resumen\').style.display===\'none\'?\'\':\'none\';this.querySelector(\'span\').textContent=document.getElementById(\'cc-serv-resumen\').style.display===\'none\'?\'▼ Mostrar\':\'▲ Ocultar\'">';
+  html += '<h3 style="margin:0">Resumen mensual</h3>';
+  html += '<span style="font-size:0.78rem;color:var(--muted)">▼ Mostrar</span>';
+  html += '</div>';
+  html += '<div id="cc-serv-resumen" style="display:none;margin-top:14px">';
+  html += '<div class="table-wrap"><table>';
+  html += '<tr><th>Mes</th><th>Inicio</th><th>Nuevos</th><th>Churn</th><th>Neto</th><th>Cierre</th><th>Crecimiento</th></tr>';
+  MESES.forEach(function(m, i) {
+    if (i > currentMonthIdx) return;
+    var prefix = '2026-' + MESES_MAP_SERV[m];
+    var mNuevos = ccAllClientes.filter(function(c) { return c.fecha_entrada && c.fecha_entrada.indexOf(prefix) === 0; });
+    var mChurn = ccAllClientes.filter(function(c) { return c.fecha_salida && c.fecha_salida.indexOf(prefix) === 0; });
+    var inicio = ccServAcum;
+    ccServAcum += mNuevos.length - mChurn.length;
+    var neto = mNuevos.length - mChurn.length;
+    var pct = inicio > 0 ? (neto / inicio * 100) : 0;
+    var netoStr = (neto >= 0 ? '+' : '') + neto;
+    var netoColor = neto >= 0 ? 'var(--green)' : 'var(--red)';
+    var pctStr = (pct >= 0 ? '+' : '') + pct.toFixed(1) + '%';
+    var pctColor = pct >= 0 ? 'var(--green)' : 'var(--red)';
+    var isSel = m === ccServMes;
+    html += '<tr style="cursor:pointer;' + (isSel ? 'background:#f0f4ff;font-weight:600' : '') + '" onclick="ccServMes=\'' + m + '\';ccRenderContent()">';
+    html += '<td><strong>' + MESES_FULL[i] + '</strong></td>';
+    html += '<td>' + inicio + '</td>';
+    html += '<td style="color:var(--green)">' + mNuevos.length + '</td>';
+    html += '<td style="color:var(--red)">' + mChurn.length + '</td>';
+    html += '<td style="color:' + netoColor + '">' + netoStr + '</td>';
+    html += '<td><strong>' + ccServAcum + '</strong></td>';
+    html += '<td style="color:' + pctColor + '">' + pctStr + '</td>';
+    html += '</tr>';
+  });
+  html += '</table></div></div></div>';
+
   // Determine which list to show
   var lista, titulo;
   if (ccServFiltro === 'Solo impuestos') { lista = imp; titulo = 'Tax One'; }
