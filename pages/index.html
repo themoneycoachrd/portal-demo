@@ -785,7 +785,7 @@ async function loadDashboardData() {
       var notLeft = !c.fecha_salida || c.fecha_salida > currLastDay;
       if (entered && notLeft) {
         contaTotal++;
-        if (c.responsabilidad_contabilidad !== false) contaTxServ += (c.monto_adm || 0);
+        if (c.responsabilidad_contabilidad !== false) contaTxServ += (parseInt(c.monto_adm) || 0);
       }
     });
 
@@ -867,11 +867,11 @@ async function loadDashboardData() {
         vendido += tl;
         var nombre = l.nombre || '';
         var cat = (l.categoria || '').trim();
-        if (cat === 'Recurrente') nombresRec.push(nombre);
-        else if (cat === 'Implementacion') nombresImpl.push(nombre);
-        else if (cat === 'Facturacion Electronica') nombresFE.push(nombre);
+        if (cat.indexOf('Servicios Recurrentes') >= 0) nombresRec.push(nombre);
+        else if (cat.indexOf('Implementacion') >= 0) nombresImpl.push(nombre);
+        else if (cat.indexOf('Facturacion Electronica') >= 0) nombresFE.push(nombre);
         else nombresSinCat.push(nombre);
-        if (soft > 0) nombresSoft.push(nombre);
+        if (cat.indexOf('Adm') >= 0 || soft > 0) nombresSoft.push(nombre);
       }
     });
     vendido = Math.round(vendido * 100) / 100;

@@ -583,16 +583,12 @@
             <option value="Basic+FE+POS">Basic+FE+POS</option>
             <option value="Standard">Standard</option>
             <option value="Standard+FE">Standard+FE</option>
-            <option value="Standard+FE+POS">Standard+FE+POS</option>
             <option value="Premium">Premium</option>
             <option value="Premium+FE">Premium+FE</option>
-            <option value="Premium+FE+POS">Premium+FE+POS</option>
             <option value="Nómina">Nómina</option>
             <option value="Nómina+FE">Nómina+FE</option>
             <option value="Manufactura">Manufactura</option>
             <option value="Manufactura+FE">Manufactura+FE</option>
-            <option value="POS">POS</option>
-            <option value="POS+FE">POS+FE</option>
           </select>
         </div>
       </div>
@@ -601,10 +597,10 @@
           <label>Transacciones contratadas</label>
           <select id="cl-m-monto-adm">
             <option value="">—</option>
-            <option value="0-50">0 a 50</option>
-            <option value="51-100">51 a 100</option>
-            <option value="101-150">101 a 150</option>
-            <option value="Más de 150">Más de 150</option>
+            <option value="50">0 a 50</option>
+            <option value="100">51 a 100</option>
+            <option value="150">101 a 150</option>
+            <option value="200">Más de 150</option>
           </select>
         </div>
         <div class="m-field">
@@ -3229,7 +3225,7 @@ async function clSaveClient() {
     telefono: document.getElementById('cl-m-telefono').value.trim() || null,
     tipo_servicio: document.getElementById('cl-m-tipo-servicio').value || null,
     software: document.getElementById('cl-m-software').value || null,
-    monto_adm: document.getElementById('cl-m-monto-adm').value || null,
+    monto_adm: document.getElementById('cl-m-monto-adm').value ? parseInt(document.getElementById('cl-m-monto-adm').value) : null,
     servicio_recurrente: document.getElementById('cl-m-servicio-recurrente').value.trim() || null,
     servicio_impl: document.getElementById('cl-m-servicio-impl').value.trim() || null,
     responsabilidad_contabilidad: document.getElementById('cl-m-resp-contab').checked,
