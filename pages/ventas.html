@@ -303,6 +303,13 @@ tr.expanded { background: #f0f9ff; }
   text-align: right;
   font-family: inherit;
 }
+.cat-checks { display:flex; gap:8px; flex-wrap:wrap; margin-top:4px; }
+.cat-checks label { display:flex; align-items:center; gap:4px; font-size:0.8rem; cursor:pointer; padding:3px 8px; border:1px solid var(--border); border-radius:6px; transition:all 0.15s; }
+.cat-checks label:hover { border-color:var(--blue); }
+.cat-checks input[type="checkbox"] { margin:0; }
+.cat-checks input[type="checkbox"]:checked + span { color:var(--blue); font-weight:600; }
+.cat-badge { display:inline-block; background:#f0f4ff; color:#4361ee; font-size:10px; padding:2px 6px; border-radius:4px; margin:1px 2px; }
+
 .roas-save-btn {
   padding: 3px 10px;
   font-size: 0.72rem;
@@ -488,13 +495,15 @@ body.embed .footer { display: none !important; }
   <span class="current">Pipeline de Ventas</span>
 </div>
 
-<div class="main-tabs">
+<div class="main-tabs" id="main-tabs-container">
   <button class="main-tab active" data-tab="roas">ROAS</button>
   <button class="main-tab" data-tab="pipeline">Pipeline</button>
+  <button class="main-tab" data-tab="movimiento" id="tab-btn-movimiento" style="display:none">Movimiento</button>
 </div>
 
 <div id="tab-roas" class="container"></div>
 <div id="tab-pipeline" class="container hidden"></div>
+<div id="tab-movimiento" class="container hidden"></div>
 
 <div class="footer">Conectado a Supabase — los datos se guardan en la nube.</div>
 
@@ -519,6 +528,20 @@ const FUNNEL_COLORS = {
 };
 
 const TEMP_DISPLAY = { 'Caliente': 'Caliente', 'Tibio': 'Tibio', 'Frio': 'Fr\u00edo' };
+
+const CATEGORIAS = ['ADM', 'Implementacion', 'Facturacion Electronica', 'Servicios Recurrentes'];
+function parseCats(str) { return (str || '').split(',').map(s => s.trim()).filter(Boolean); }
+function renderCatBadges(str) {
+  var cats = parseCats(str);
+  if (!cats.length) return '-';
+  return cats.map(c => '<span class="cat-badge">' + c + '</span>').join('');
+}
+function renderCatChecks(selected) {
+  var cats = parseCats(selected);
+  return '<div class="cat-checks">' + CATEGORIAS.map(c =>
+    '<label><input type="checkbox" data-cat="' + c + '"' + (cats.indexOf(c) >= 0 ? ' checked' : '') + '><span>' + c + '</span></label>'
+  ).join('') + '</div>';
+}
 
 // ==================== UTILS ====================
 function fmt(n) { return n != null ? n.toLocaleString('es-DO') : '0'; }
@@ -700,6 +723,7 @@ let APP = {
   addingLead: false,
   editingRoas: null, // {month, field}
   charts: {},
+  movMonth: null, // mes seleccionado en tab Movimiento
   userRole: null,  // 'admin', 'comercial', 'contadores', etc.
   userName: ''
 };
@@ -707,7 +731,12 @@ let APP = {
 // ==================== COMPONENTS ====================
 
 function renderMainTabs() {
+  // Mostrar tab Movimiento solo para admin
+  const btnMov = document.getElementById('tab-btn-movimiento');
+  if (btnMov) btnMov.style.display = (APP.userRole !== 'comercial') ? '' : 'none';
+
   document.querySelectorAll('.main-tab').forEach(tab => {
+    if (tab.style.display === 'none') return;
     tab.classList.toggle('active', tab.dataset.tab === APP.activeTab);
     tab.onclick = () => {
       APP.activeTab = tab.dataset.tab;
@@ -717,6 +746,7 @@ function renderMainTabs() {
   });
   document.getElementById('tab-pipeline').classList.toggle('hidden', APP.activeTab !== 'pipeline');
   document.getElementById('tab-roas').classList.toggle('hidden', APP.activeTab !== 'roas');
+  document.getElementById('tab-movimiento').classList.toggle('hidden', APP.activeTab !== 'movimiento');
 }
 
 function renderPipeline() {
@@ -857,7 +887,7 @@ function renderPipeline() {
         <td>${isGanado ? descPct + '%' : '-'}</td>
         <td class="currency">${isGanado ? '<strong>' + fmt(Math.round(vendido)) + '</strong>' : '-'}</td>` : ''}
         <td>${lead.notas}</td>
-        <td>${lead.categoria ? '<span class="badge" style="background:#f0f4ff;color:#4361ee;font-size:10px">' + lead.categoria + '</span>' : '-'}</td>
+        <td>${renderCatBadges(lead.categoria)}</td>
       </tr>`;
       if (isExpanded) {
         html += renderEditRow(lead, realIdx);
@@ -901,13 +931,8 @@ function renderEditRow(lead, idx) {
     <div class="edit-form" style="grid-template-columns:1fr 2fr 2fr;margin-top:8px;">
       <div class="field"><label>Descuento % (Impl + FE)</label><input type="number" data-field="desc" value="${descVal}" min="0" max="100"></div>
       <div class="field"><label>Notas</label><textarea data-field="notas">${esc(lead.notas)}</textarea></div>
-      <div class="field"><label>Categoria</label>
-        <select data-field="categoria">
-          <option value="" ${!lead.categoria ? 'selected' : ''}>Sin categoria</option>
-          <option value="Implementacion" ${lead.categoria === 'Implementacion' ? 'selected' : ''}>Implementacion</option>
-          <option value="Facturacion Electronica" ${lead.categoria === 'Facturacion Electronica' ? 'selected' : ''}>Facturacion Electronica</option>
-          <option value="Recurrente" ${lead.categoria === 'Recurrente' ? 'selected' : ''}>Recurrente</option>
-        </select>
+      <div class="field"><label>Categorías</label>
+        ${renderCatChecks(lead.categoria)}
       </div>
     </div>
     <div class="edit-actions">
@@ -946,13 +971,8 @@ function renderAddLeadForm() {
     <div class="edit-form" style="grid-template-columns:1fr 2fr 1fr;margin-top:12px;">
       <div class="field"><label>Descuento % (Impl + FE)</label><input type="number" data-field="desc" value="25" min="0" max="100"></div>
       <div class="field"><label>Notas</label><textarea data-field="notas"></textarea></div>
-      <div class="field"><label>Categoria</label>
-        <select data-field="categoria">
-          <option value="">Sin categoria</option>
-          <option value="Implementacion">Implementacion</option>
-          <option value="Facturacion Electronica">Facturacion Electronica</option>
-          <option value="Recurrente">Recurrente</option>
-        </select>
+      <div class="field"><label>Categorías</label>
+        ${renderCatChecks('')}
       </div>
     </div>
     <div class="edit-actions">
@@ -1012,6 +1032,10 @@ function bindPipelineEvents() {
           lead[field] = val;
         }
       });
+      // Recoger categorías de checkboxes
+      const checkedCats = [];
+      editRow.querySelectorAll('[data-cat]').forEach(cb => { if (cb.checked) checkedCats.push(cb.dataset.cat); });
+      lead.categoria = checkedCats.join(',');
       dbUpdateLead(lead); // Guardar en Supabase
       syncRoasFromPipeline();
       APP.expandedRow = -1;
@@ -1060,6 +1084,10 @@ function bindPipelineEvents() {
           newLead[field] = val;
         }
       });
+      // Recoger categorías de checkboxes
+      const checkedCats = [];
+      form.querySelectorAll('[data-cat]').forEach(cb => { if (cb.checked) checkedCats.push(cb.dataset.cat); });
+      newLead.categoria = checkedCats.join(',');
       if (!newLead.n || !newLead.n.trim()) { alert('El nombre es obligatorio.'); return; }
       // Insertar en Supabase y obtener ID antes de agregar al array
       const newId = await dbInsertLead(APP.currentMonth, newLead);
@@ -1366,11 +1394,115 @@ function renderCharts() {
   }
 }
 
+// ==================== MOVIMIENTO ====================
+
+function renderMovimiento() {
+  const container = document.getElementById('tab-movimiento');
+  if (!APP.movMonth) APP.movMonth = APP.currentMonth;
+  const pipeline = APP.data.pipeline;
+
+  // Contar clientes ganados por categoría para el mes seleccionado
+  const ganados = (pipeline[APP.movMonth] || []).filter(l => l.f === 'Cerrado Ganado');
+  const countByCat = {};
+  CATEGORIAS.forEach(c => { countByCat[c] = 0; });
+  var sinCat = 0;
+  ganados.forEach(l => {
+    var cats = parseCats(l.categoria);
+    if (!cats.length) { sinCat++; return; }
+    cats.forEach(c => { if (countByCat[c] !== undefined) countByCat[c]++; });
+  });
+
+  // Colores por categoría
+  var catColors = { 'ADM': '#4361ee', 'Implementacion': '#10b981', 'Facturacion Electronica': '#f59e0b', 'Servicios Recurrentes': '#8b5cf6' };
+
+  let html = '';
+
+  // Month pills
+  html += '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:20px">';
+  MONTHS.forEach((m, i) => {
+    var hasData = (pipeline[m] || []).some(l => l.f === 'Cerrado Ganado');
+    html += '<button class="month-tab mov-month' + (m === APP.movMonth ? ' active' : '') + '" data-mov-month="' + m + '" style="' + (!hasData ? 'opacity:0.4' : '') + '">' + MONTH_LABELS[i].substring(0,3) + '</button>';
+  });
+  html += '</div>';
+
+  // Summary cards
+  html += '<h3 style="font-size:1rem;margin-bottom:12px">Clientes nuevos en ' + MONTH_LABELS[MONTHS.indexOf(APP.movMonth)] + ' — <span style="color:var(--green);font-weight:700">' + ganados.length + ' total</span></h3>';
+  html += '<div class="stats-grid" style="grid-template-columns:repeat(' + CATEGORIAS.length + ',1fr);margin-bottom:24px">';
+  CATEGORIAS.forEach(c => {
+    var color = catColors[c] || 'var(--navy)';
+    html += '<div class="stat-card"><div class="label">' + c + '</div><div class="value" style="color:' + color + '">' + countByCat[c] + '</div></div>';
+  });
+  html += '</div>';
+
+  // Acumulado anual
+  html += '<h3 style="font-size:0.95rem;margin-bottom:12px;color:var(--muted)">Acumulado 2026</h3>';
+  html += '<div class="stats-grid" style="grid-template-columns:repeat(' + CATEGORIAS.length + ',1fr);margin-bottom:24px">';
+  var acumByCat = {};
+  CATEGORIAS.forEach(c => { acumByCat[c] = 0; });
+  var totalAcum = 0;
+  MONTHS.forEach(m => {
+    (pipeline[m] || []).filter(l => l.f === 'Cerrado Ganado').forEach(l => {
+      parseCats(l.categoria).forEach(c => { if (acumByCat[c] !== undefined) acumByCat[c]++; });
+      totalAcum++;
+    });
+  });
+  CATEGORIAS.forEach(c => {
+    var color = catColors[c] || 'var(--navy)';
+    html += '<div class="stat-card"><div class="label">' + c + '</div><div class="value" style="color:' + color + '">' + acumByCat[c] + '</div></div>';
+  });
+  html += '</div>';
+
+  // Tabla detalle del mes
+  if (ganados.length > 0) {
+    html += '<div class="card"><h3 style="font-size:0.95rem;margin-bottom:12px">Detalle — ' + MONTH_LABELS[MONTHS.indexOf(APP.movMonth)] + '</h3>';
+    html += '<div class="table-wrapper"><table style="width:100%;border-collapse:collapse;font-size:0.85rem">';
+    html += '<thead><tr><th style="text-align:left;padding:8px;font-size:0.75rem;text-transform:uppercase;color:var(--muted);border-bottom:2px solid var(--border)">#</th>';
+    html += '<th style="text-align:left;padding:8px;font-size:0.75rem;text-transform:uppercase;color:var(--muted);border-bottom:2px solid var(--border)">Cliente</th>';
+    html += '<th style="text-align:left;padding:8px;font-size:0.75rem;text-transform:uppercase;color:var(--muted);border-bottom:2px solid var(--border)">Empresa</th>';
+    html += '<th style="text-align:left;padding:8px;font-size:0.75rem;text-transform:uppercase;color:var(--muted);border-bottom:2px solid var(--border)">Categorías</th>';
+    html += '<th style="text-align:right;padding:8px;font-size:0.75rem;text-transform:uppercase;color:var(--muted);border-bottom:2px solid var(--border)">Monto Vendido</th>';
+    html += '</tr></thead><tbody>';
+    var includeSoft = MONTHS.indexOf(APP.movMonth) >= 2;
+    ganados.forEach((l, i) => {
+      var vendido = leadVendido(l, includeSoft);
+      html += '<tr style="border-bottom:1px solid var(--border)">';
+      html += '<td style="padding:8px">' + (i + 1) + '</td>';
+      html += '<td style="padding:8px;font-weight:600">' + l.n + '</td>';
+      html += '<td style="padding:8px">' + (l.e || l.t || '-') + '</td>';
+      html += '<td style="padding:8px">' + renderCatBadges(l.categoria) + '</td>';
+      html += '<td style="padding:8px;text-align:right;font-weight:600">' + fmtCurrency(Math.round(vendido)) + '</td>';
+      html += '</tr>';
+    });
+    html += '</tbody></table></div></div>';
+  } else {
+    html += '<div class="card" style="text-align:center;color:var(--muted);padding:40px">No hay clientes cerrados en ' + MONTH_LABELS[MONTHS.indexOf(APP.movMonth)] + '</div>';
+  }
+
+  // Sin categoría warning
+  if (sinCat > 0) {
+    html += '<div style="margin-top:12px;padding:12px 16px;background:#fef3cd;border:1px solid #ffc107;border-radius:8px;font-size:0.85rem;color:#856404">';
+    html += '<strong>' + sinCat + ' cliente' + (sinCat > 1 ? 's' : '') + ' sin categoría.</strong> Ve al Pipeline y asígnales categoría para que aparezcan en el desglose.';
+    html += '</div>';
+  }
+
+  container.innerHTML = html;
+
+  // Bind month pills
+  container.querySelectorAll('.mov-month').forEach(btn => {
+    btn.onclick = () => {
+      APP.movMonth = btn.dataset.movMonth;
+      renderMovimiento();
+    };
+  });
+}
+
 // ==================== MAIN APP ====================
 
 function renderApp() {
   if (APP.activeTab === 'pipeline') {
     renderPipeline();
+  } else if (APP.activeTab === 'movimiento') {
+    renderMovimiento();
   } else {
     renderROAS();
   }
