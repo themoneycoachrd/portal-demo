@@ -1209,6 +1209,10 @@ function ccToggleDashDetail(mes) {
   const row = document.getElementById('dash-detail-'+mes);
   if (row) row.style.display = row.style.display === 'none' ? '' : 'none';
 }
+function ccToggleDashSwDetail(mes) {
+  const row = document.getElementById('dash-sw-detail-'+mes);
+  if (row) row.style.display = row.style.display === 'none' ? '' : 'none';
+}
 
 function ccToggleCargaDetail(rowId) {
   const row = document.getElementById(rowId);
@@ -1576,56 +1580,126 @@ function ccRenderDashboard(el) {
   const ytdColor = ytdNeto >= 0 ? 'stat-green' : 'stat-red';
   const ytdPctStr = (ytdGrowth >= 0 ? '+' : '') + ytdGrowth.toFixed(1) + '%';
 
-  let html = `
-    <div class="stats">
-      <div class="stat"><div class="stat-label">Clientes actuales · ${fechaHoy}</div><div class="stat-value">${last.total}</div><div class="stat-sub">Base inicio de año: ${baseLine}</div></div>
-      <div class="stat"><div class="stat-label">Nuevos en 2026</div><div class="stat-value stat-green">${totalNuevos}</div><div class="stat-sub">${baseLine > 0 ? (totalNuevos / baseLine * 100).toFixed(1) : 0}% de crecimiento</div></div>
-      <div class="stat"><div class="stat-label">Churn en 2026</div><div class="stat-value stat-red">${totalChurn}</div><div class="stat-sub">${baseLine > 0 ? (totalChurn / baseLine * 100).toFixed(1) : 0}% de churn</div></div>
-      <div class="stat"><div class="stat-label">Crecimiento 2026</div><div class="stat-value ${ytdColor}">${ytdPctStr}</div><div class="stat-sub">${ytdSign}${ytdNeto} clientes neto vs inicio de año</div></div>
+  // Software stats
+  const swStats = ccGetSoftwareStats();
+  const swLast = swStats.rows[swStats.rows.length - 1];
+  const swTotalNuevos = swStats.rows.reduce((s,r) => s + r.nuevos.length, 0);
+  const swTotalChurn = swStats.rows.reduce((s,r) => s + r.churn.length, 0);
+  const swBaseLine = swStats.baseCount;
+  const swCurrent = swLast ? swLast.total : swBaseLine;
+  const swYtdNeto = swCurrent - swBaseLine;
+  const swYtdGrowth = swBaseLine > 0 ? (swYtdNeto / swBaseLine * 100) : 0;
+  const swYtdSign = swYtdNeto >= 0 ? '+' : '';
+  const swYtdColor = swYtdNeto >= 0 ? 'stat-green' : 'stat-red';
+  const swYtdPctStr = (swYtdGrowth >= 0 ? '+' : '') + swYtdGrowth.toFixed(1) + '%';
+  const swGrowthData = swStats.rows.map(r => r.pct);
+
+  let html = '';
+
+  // ═══ SECCION OUTSOURCING ═══
+  html += '<div style="margin-bottom:8px"><span style="font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--muted)">Outsourcing</span></div>';
+  html += `<div class="stats">
+    <div class="stat"><div class="stat-label">Clientes actuales · ${fechaHoy}</div><div class="stat-value">${last.total}</div><div class="stat-sub">Base inicio de año: ${baseLine}</div></div>
+    <div class="stat"><div class="stat-label">Nuevos en 2026</div><div class="stat-value stat-green">${totalNuevos}</div><div class="stat-sub">${baseLine > 0 ? (totalNuevos / baseLine * 100).toFixed(1) : 0}% de crecimiento</div></div>
+    <div class="stat"><div class="stat-label">Churn en 2026</div><div class="stat-value stat-red">${totalChurn}</div><div class="stat-sub">${baseLine > 0 ? (totalChurn / baseLine * 100).toFixed(1) : 0}% de churn</div></div>
+    <div class="stat"><div class="stat-label">Crecimiento 2026</div><div class="stat-value ${ytdColor}">${ytdPctStr}</div><div class="stat-sub">${ytdSign}${ytdNeto} clientes neto vs inicio de año</div></div>
+  </div>`;
+  html += `<div class="charts-grid">
+    <div class="card"><h3>Evolucion de clientes</h3><canvas id="chartEvo"></canvas></div>
+    <div class="card"><h3>Resumen mensual</h3>
+      <div class="table-wrap"><table style="font-size:0.78rem">
+        <tr><th>Mes</th><th>Inicio</th><th>Nuevos</th><th>Churn</th><th>Neto</th><th>Cierre</th><th>%</th></tr>
+        ${months.map((m,i)=>{
+          const d=ccDATA[m];
+          const inicio=d.total-d.nuevos.length+d.churn.length;
+          const neto=d.nuevos.length-d.churn.length;
+          const pct=growthData[i];
+          const pctStr=(pct>=0?'+':'')+pct.toFixed(1)+'%';
+          const detailId='dash-detail-'+m;
+          const nuevosHtml=d.nuevos.length>0?d.nuevos.map(n=>'<span class="badge badge-new" style="margin:1px 2px">'+n+'</span>').join(''):'—';
+          const churnHtml=d.churn.length>0?d.churn.map(n=>'<span class="badge badge-churn" style="margin:1px 2px">'+n+'</span>').join(''):'—';
+          return `<tr style="cursor:pointer" onclick="ccToggleDashDetail('${m}')">
+          <td><strong>${MESES_LABEL[MESES.indexOf(m)]}</strong></td><td>${inicio}</td>
+          <td style="color:var(--green)">${d.nuevos.length}</td><td style="color:var(--red)">${d.churn.length}</td>
+          <td style="color:${neto>=0?'var(--green)':'var(--red)'}">${neto>=0?'+':''}${neto}</td>
+          <td><strong>${d.total}</strong></td>
+          <td style="color:${pct>=0?'var(--green)':'var(--red)'}">${pctStr}</td></tr>
+          <tr id="${detailId}" style="display:none"><td colspan="7" style="padding:8px 12px;background:#f8fafc;border-bottom:2px solid var(--border)">
+            <div style="display:flex;gap:16px;flex-wrap:wrap">
+              <div><span style="font-size:10px;font-weight:700;color:var(--green);text-transform:uppercase">Entraron:</span><div style="margin-top:3px;display:flex;flex-wrap:wrap;gap:3px">${nuevosHtml}</div></div>
+              <div><span style="font-size:10px;font-weight:700;color:var(--red);text-transform:uppercase">Salieron:</span><div style="margin-top:3px;display:flex;flex-wrap:wrap;gap:3px">${churnHtml}</div></div>
+            </div>
+          </td></tr>`;
+        }).join('')}
+      </table></div>
     </div>
-    <div class="charts-grid">
-      <div class="card"><h3>Evolucion de clientes</h3><canvas id="chartEvo"></canvas></div>
-      <div class="card"><h3>Crecimiento neto mensual (%)</h3><canvas id="chartGrowth"></canvas></div>
+  </div>`;
+
+  // ═══ SECCION SOFTWARE ═══
+  html += '<div style="margin:28px 0 8px"><span style="font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--muted)">Software</span></div>';
+  html += `<div class="stats">
+    <div class="stat"><div class="stat-label">Clientes software</div><div class="stat-value">${swCurrent}</div><div class="stat-sub">Base inicio de año: ${swBaseLine}</div></div>
+    <div class="stat"><div class="stat-label">Nuevos en 2026</div><div class="stat-value stat-green">${swTotalNuevos}</div><div class="stat-sub">${swBaseLine > 0 ? (swTotalNuevos / swBaseLine * 100).toFixed(1) : 0}% de crecimiento</div></div>
+    <div class="stat"><div class="stat-label">Churn en 2026</div><div class="stat-value stat-red">${swTotalChurn}</div><div class="stat-sub">${swBaseLine > 0 ? (swTotalChurn / swBaseLine * 100).toFixed(1) : 0}% de churn</div></div>
+    <div class="stat"><div class="stat-label">Crecimiento 2026</div><div class="stat-value ${swYtdColor}">${swYtdPctStr}</div><div class="stat-sub">${swYtdSign}${swYtdNeto} clientes neto vs inicio de año</div></div>
+  </div>`;
+  html += `<div class="charts-grid">
+    <div class="card"><h3>Evolucion de clientes software</h3><canvas id="chartSwEvo"></canvas></div>
+    <div class="card"><h3>Resumen mensual software</h3>
+      <div class="table-wrap"><table style="font-size:0.78rem">
+        <tr><th>Mes</th><th>Inicio</th><th>Nuevos</th><th>Churn</th><th>Neto</th><th>Cierre</th><th>%</th><th>Monto</th></tr>
+        ${swStats.rows.map((r,i)=>{
+          const mi=MESES.indexOf(r.mes);
+          const inicio=r.total-r.nuevos.length+r.churn.length;
+          const pctStr=(r.pct>=0?'+':'')+r.pct.toFixed(1)+'%';
+          const netoStr=(r.neto>=0?'+':'')+r.neto;
+          const detailId='dash-sw-detail-'+r.mes;
+          const nuevosHtml=r.nuevos.length>0?r.nuevos.map(c=>'<span class="badge badge-new" style="margin:1px 2px">'+(c.nombre||c.n||'')+'</span>').join(''):'—';
+          const churnHtml=r.churn.length>0?r.churn.map(c=>'<span class="badge badge-churn" style="margin:1px 2px">'+(c.nombre||c.n||'')+'</span>').join(''):'—';
+          return `<tr style="cursor:pointer" onclick="ccToggleDashSwDetail('${r.mes}')">
+          <td><strong>${MESES_LABEL[mi]}</strong></td><td>${inicio}</td>
+          <td style="color:var(--green)">${r.nuevos.length}</td><td style="color:var(--red)">${r.churn.length}</td>
+          <td style="color:${r.neto>=0?'var(--green)':'var(--red)'}">${netoStr}</td>
+          <td><strong>${r.total}</strong></td>
+          <td style="color:${r.pct>=0?'var(--green)':'var(--red)'}">${pctStr}</td>
+          <td>US$ ${r.monto.toLocaleString()}</td></tr>
+          <tr id="${detailId}" style="display:none"><td colspan="8" style="padding:8px 12px;background:#f8fafc;border-bottom:2px solid var(--border)">
+            <div style="display:flex;gap:16px;flex-wrap:wrap">
+              <div><span style="font-size:10px;font-weight:700;color:var(--green);text-transform:uppercase">Entraron:</span><div style="margin-top:3px;display:flex;flex-wrap:wrap;gap:3px">${nuevosHtml}</div></div>
+              <div><span style="font-size:10px;font-weight:700;color:var(--red);text-transform:uppercase">Salieron:</span><div style="margin-top:3px;display:flex;flex-wrap:wrap;gap:3px">${churnHtml}</div></div>
+            </div>
+          </td></tr>`;
+        }).join('')}
+      </table></div>
     </div>
-    <div class="charts-grid">
-      <div class="card"><h3>Transacciones mensuales (Serv. Contratado)</h3><canvas id="chartTx"></canvas></div>
-      <div class="card"><h3>Resumen mensual</h3>
-        <div class="table-wrap"><table>
-          <tr><th>Mes</th><th>Inicio</th><th>Nuevos</th><th>Churn</th><th>Neto</th><th>Cierre</th><th>Crecimiento</th><th>Fact.</th></tr>
-          ${months.map((m,i)=>{
-            const d=ccDATA[m];
-            const inicio=d.total-d.nuevos.length+d.churn.length;
-            const neto=d.nuevos.length-d.churn.length;
-            const pct=growthData[i];
-            const pctStr=(pct>=0?'+':'')+pct.toFixed(1)+'%';
-            const detailId='dash-detail-'+m;
-            const nuevosHtml=d.nuevos.length>0?d.nuevos.map(n=>'<span class="badge badge-new" style="margin:1px 2px">'+n+'</span>').join(''):'—';
-            const churnHtml=d.churn.length>0?d.churn.map(n=>'<span class="badge badge-churn" style="margin:1px 2px">'+n+'</span>').join(''):'—';
-            return `<tr style="cursor:pointer" onclick="ccToggleDashDetail('${m}')">
-            <td><strong>${MESES_FULL[MESES.indexOf(m)]}</strong></td><td>${inicio}</td>
-            <td style="color:var(--green)">${d.nuevos.length}</td><td style="color:var(--red)">${d.churn.length}</td>
-            <td style="color:${neto>=0?'var(--green)':'var(--red)'}">${neto>=0?'+':''}${neto}</td>
-            <td><strong>${d.total}</strong></td>
-            <td style="color:${pct>=0?'var(--green)':'var(--red)'}">${pctStr}</td>
-            <td>${d.txTotal.serv.toLocaleString()}</td></tr>
-            <tr id="${detailId}" style="display:none"><td colspan="8" style="padding:10px 14px;background:#f8fafc;border-bottom:2px solid var(--border)">
-              <div style="display:flex;gap:20px;flex-wrap:wrap">
-                <div><span style="font-size:11px;font-weight:700;color:var(--green);text-transform:uppercase;letter-spacing:0.3px">Entraron:</span><div style="margin-top:4px;display:flex;flex-wrap:wrap;gap:4px">${nuevosHtml}</div></div>
-                <div><span style="font-size:11px;font-weight:700;color:var(--red);text-transform:uppercase;letter-spacing:0.3px">Salieron:</span><div style="margin-top:4px;display:flex;flex-wrap:wrap;gap:4px">${churnHtml}</div></div>
-              </div>
-            </td></tr>`;
-          }).join('')}
-        </table></div>
-      </div>
-    </div>
-  `;
+  </div>`;
+
+  // ═══ SECCION GENERAL ═══
+  html += '<div style="margin:28px 0 8px"><span style="font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--muted)">General</span></div>';
+  html += `<div class="charts-grid">
+    <div class="card"><h3>Crecimiento neto mensual (%)</h3><canvas id="chartGrowth"></canvas></div>
+    <div class="card"><h3>Transacciones mensuales (Serv. Contratado)</h3><canvas id="chartTx"></canvas></div>
+  </div>`;
+
   el.innerHTML = html;
 
+  // Charts
   const labels = months.map(m=>MESES_LABEL[MESES.indexOf(m)]);
+
+  // Outsourcing evolution
   ccCharts.push(new Chart(document.getElementById("chartEvo"),{
     type:"bar", data:{labels, datasets:[{label:"Clientes",data:months.map(m=>ccDATA[m].total),backgroundColor:"#4361ee",borderRadius:4}]},
     options:{responsive:true,plugins:{legend:{display:false}},scales:{y:{beginAtZero:false,min:Math.min(...months.map(m=>ccDATA[m].total))-3}}}
   }));
+
+  // Software evolution
+  const swLabels = swStats.rows.map(r => MESES_LABEL[MESES.indexOf(r.mes)]);
+  ccCharts.push(new Chart(document.getElementById("chartSwEvo"),{
+    type:"bar", data:{labels:swLabels, datasets:[{label:"Clientes Software",data:swStats.rows.map(r=>r.total),backgroundColor:"#8b5cf6",borderRadius:4}]},
+    options:{responsive:true,plugins:{legend:{display:false}},scales:{y:{beginAtZero:false,min:Math.max(0,Math.min(...swStats.rows.map(r=>r.total))-3)}}}
+  }));
+
+  // Growth % (outsourcing)
   ccCharts.push(new Chart(document.getElementById("chartGrowth"),{
     type:"bar", data:{labels, datasets:[{
       label:"Crecimiento %",
@@ -1635,6 +1709,8 @@ function ccRenderDashboard(el) {
     }]},
     options:{responsive:true,plugins:{legend:{display:false}},scales:{y:{ticks:{callback:v=>v+'%'}}}}
   }));
+
+  // Transacciones
   ccCharts.push(new Chart(document.getElementById("chartTx"),{
     type:"line", data:{labels, datasets:[
       {label:"Serv. Contratado",data:months.map(m=>ccDATA[m].txTotal.serv),borderColor:"#4361ee",backgroundColor:"rgba(67,97,238,0.1)",fill:true,tension:0.3,pointRadius:5,pointBackgroundColor:"#4361ee"}
