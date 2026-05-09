@@ -2202,32 +2202,43 @@ function ccRenderFacturacion(el) {
 
   // Cambios del mes
   if (swNuevos.length > 0 || swChurn.length > 0) {
-    html += '<div class="card" style="margin-bottom:16px">';
+    html += '<div class="card" style="margin-bottom:16px;overflow-x:auto">';
     html += '<h3 style="margin-bottom:12px">Cambios del mes</h3>';
     html += '<table style="width:100%;border-collapse:collapse;font-size:0.82rem">';
     html += '<tr>';
-    html += '<th style="text-align:left;' + thStyle + ';min-width:160px">Cliente</th>';
-    html += '<th style="text-align:left;' + thStyle + ';min-width:120px">Licencia</th>';
-    html += '<th style="text-align:right;' + thStyle + ';min-width:90px">Monto</th>';
+    html += '<th style="text-align:left;' + thStyle + ';min-width:140px">Cliente</th>';
+    html += '<th style="text-align:left;' + thStyle + ';min-width:110px">Licencia</th>';
+    html += '<th style="text-align:right;' + thStyle + ';min-width:70px">Monto</th>';
+    html += '<th style="text-align:right;' + thStyle + ';min-width:70px">Desc.</th>';
+    html += '<th style="text-align:right;' + thStyle + ';min-width:80px">Monto real</th>';
+    html += '<th style="text-align:left;' + thStyle + ';min-width:120px">Nota</th>';
     html += '<th style="text-align:center;' + thStyle + ';min-width:70px">Acción</th>';
     html += '</tr>';
     swNuevos.forEach(function(c) {
-      var precio = ccGetPrecioSoftware(c.licencia);
-      var precioStr = precio ? ('US$ ' + precio) : ('US$ ' + (c.monto || 0));
+      var precio = ccGetPrecioSoftware(c.licencia) || c.monto || 0;
+      var tieneDesc = c.descuento_pct && (!c.descuento_vence || c.descuento_vence >= lastDayStr);
+      var montoReal = tieneDesc ? +(precio * (1 - c.descuento_pct / 100)).toFixed(1) : null;
       html += '<tr>';
       html += '<td style="' + tdStyle + '"><strong>' + (c.n || c.nombre || '') + '</strong></td>';
       html += '<td style="' + tdStyle + '">' + (c.licencia || '—') + '</td>';
-      html += '<td style="' + tdStyle + ';text-align:right;font-weight:600">' + precioStr + '</td>';
+      html += '<td style="' + tdStyle + ';text-align:right;font-weight:600' + (tieneDesc ? ';text-decoration:line-through;color:var(--muted)' : '') + '">US$ ' + precio + '</td>';
+      html += '<td style="' + tdStyle + ';text-align:right;color:var(--green);font-weight:600">' + (tieneDesc ? c.descuento_pct + '%' : '') + '</td>';
+      html += '<td style="' + tdStyle + ';text-align:right;font-weight:700">' + (tieneDesc ? 'US$ ' + montoReal : '') + '</td>';
+      html += '<td style="' + tdStyle + ';font-size:0.75rem">' + (tieneDesc && c.descuento_nota ? c.descuento_nota + (c.descuento_vence ? ' · vence ' + c.descuento_vence : '') : '') + '</td>';
       html += '<td style="' + tdStyle + ';text-align:center"><span style="background:#ecfdf5;color:var(--green);padding:2px 10px;border-radius:10px;font-size:0.72rem;font-weight:600">Agregar</span></td>';
       html += '</tr>';
     });
     swChurn.forEach(function(c) {
-      var precio = ccGetPrecioSoftware(c.licencia);
-      var precioStr = precio ? ('US$ ' + precio) : ('US$ ' + (c.monto || 0));
+      var precio = ccGetPrecioSoftware(c.licencia) || c.monto || 0;
+      var tieneDesc = c.descuento_pct && (!c.descuento_vence || c.descuento_vence >= lastDayStr);
+      var montoReal = tieneDesc ? +(precio * (1 - c.descuento_pct / 100)).toFixed(1) : null;
       html += '<tr>';
       html += '<td style="' + tdStyle + '"><strong>' + (c.n || c.nombre || '') + '</strong></td>';
       html += '<td style="' + tdStyle + '">' + (c.licencia || '—') + '</td>';
-      html += '<td style="' + tdStyle + ';text-align:right;font-weight:600">' + precioStr + '</td>';
+      html += '<td style="' + tdStyle + ';text-align:right;font-weight:600' + (tieneDesc ? ';text-decoration:line-through;color:var(--muted)' : '') + '">US$ ' + precio + '</td>';
+      html += '<td style="' + tdStyle + ';text-align:right;color:var(--green);font-weight:600">' + (tieneDesc ? c.descuento_pct + '%' : '') + '</td>';
+      html += '<td style="' + tdStyle + ';text-align:right;font-weight:700">' + (tieneDesc ? 'US$ ' + montoReal : '') + '</td>';
+      html += '<td style="' + tdStyle + ';font-size:0.75rem">' + (tieneDesc && c.descuento_nota ? c.descuento_nota + (c.descuento_vence ? ' · vence ' + c.descuento_vence : '') : '') + '</td>';
       html += '<td style="' + tdStyle + ';text-align:center"><span style="background:#fef2f2;color:var(--red);padding:2px 10px;border-radius:10px;font-size:0.72rem;font-weight:600">Quitar</span></td>';
       html += '</tr>';
     });
@@ -2242,75 +2253,52 @@ function ccRenderFacturacion(el) {
   html += '<h3 style="margin:0">Facturas activas software</h3>';
   html += '<span style="font-size:0.78rem;color:var(--muted)">▼ Ver lista completa (' + swActivos.length + ')</span>';
   html += '</div>';
-  html += '<div id="fact-sw-list" style="display:none;margin-top:12px">';
+  html += '<div id="fact-sw-list" style="display:none;margin-top:12px;overflow-x:auto">';
   html += '<table style="width:100%;border-collapse:collapse;font-size:0.78rem">';
+  var swListTh = 'padding:6px 10px;border-bottom:1px solid var(--border);font-size:0.68rem;text-transform:uppercase;color:var(--muted);white-space:nowrap';
   html += '<tr>';
-  html += '<th style="text-align:left;padding:6px 10px;border-bottom:1px solid var(--border);font-size:0.68rem;text-transform:uppercase;color:var(--muted);min-width:30px">#</th>';
-  html += '<th style="text-align:left;padding:6px 10px;border-bottom:1px solid var(--border);font-size:0.68rem;text-transform:uppercase;color:var(--muted);min-width:160px">Cliente</th>';
-  html += '<th style="text-align:left;padding:6px 10px;border-bottom:1px solid var(--border);font-size:0.68rem;text-transform:uppercase;color:var(--muted);min-width:120px">Licencia</th>';
-  html += '<th style="text-align:right;padding:6px 10px;border-bottom:1px solid var(--border);font-size:0.68rem;text-transform:uppercase;color:var(--muted);min-width:90px">Monto</th>';
+  html += '<th style="text-align:left;' + swListTh + ';min-width:30px">#</th>';
+  html += '<th style="text-align:left;' + swListTh + ';min-width:140px">Cliente</th>';
+  html += '<th style="text-align:left;' + swListTh + ';min-width:110px">Licencia</th>';
+  html += '<th style="text-align:right;' + swListTh + ';min-width:70px">Monto</th>';
+  html += '<th style="text-align:right;' + swListTh + ';min-width:60px">Desc.</th>';
+  html += '<th style="text-align:right;' + swListTh + ';min-width:80px">Monto real</th>';
+  html += '<th style="text-align:left;' + swListTh + ';min-width:120px">Nota</th>';
   html += '</tr>';
   var swSorted = swActivos.slice().sort(function(a, b) { return (a.n || a.nombre || '').localeCompare(b.n || b.nombre || '', 'es'); });
   var swGranTotal = 0;
+  var swGranTotalReal = 0;
   swSorted.forEach(function(c, i) {
     var isNew = swNuevos.some(function(n) { return (n.n || n.nombre) === (c.n || c.nombre); });
-    var precio = ccGetPrecioSoftware(c.licencia);
-    var montoVal = precio || c.monto || 0;
-    swGranTotal += montoVal;
-    var precioStr = 'US$ ' + montoVal;
+    var precio = ccGetPrecioSoftware(c.licencia) || c.monto || 0;
+    var tieneDesc = c.descuento_pct && (!c.descuento_vence || c.descuento_vence >= lastDayStr);
+    var montoReal = tieneDesc ? +(precio * (1 - c.descuento_pct / 100)).toFixed(1) : precio;
+    swGranTotal += precio;
+    swGranTotalReal += montoReal;
     html += '<tr style="' + (isNew ? 'background:#f0fdf4' : '') + '">';
     html += '<td style="padding:6px 10px;border-bottom:1px solid #f3f4f6">' + (i + 1) + '</td>';
     html += '<td style="padding:6px 10px;border-bottom:1px solid #f3f4f6"><strong>' + (c.n || c.nombre || '') + '</strong>' + (isNew ? ' <span style="background:#ecfdf5;color:var(--green);padding:1px 6px;border-radius:8px;font-size:0.65rem;font-weight:600">nuevo</span>' : '') + '</td>';
     html += '<td style="padding:6px 10px;border-bottom:1px solid #f3f4f6">' + (c.licencia || '—') + '</td>';
-    html += '<td style="padding:6px 10px;border-bottom:1px solid #f3f4f6;text-align:right;font-weight:600">' + precioStr + '</td>';
+    html += '<td style="padding:6px 10px;border-bottom:1px solid #f3f4f6;text-align:right;font-weight:600' + (tieneDesc ? ';text-decoration:line-through;color:var(--muted)' : '') + '">US$ ' + precio + '</td>';
+    html += '<td style="padding:6px 10px;border-bottom:1px solid #f3f4f6;text-align:right;color:var(--green);font-weight:600">' + (tieneDesc ? c.descuento_pct + '%' : '') + '</td>';
+    html += '<td style="padding:6px 10px;border-bottom:1px solid #f3f4f6;text-align:right;font-weight:700">' + (tieneDesc ? 'US$ ' + montoReal : '') + '</td>';
+    html += '<td style="padding:6px 10px;border-bottom:1px solid #f3f4f6;font-size:0.72rem">' + (tieneDesc && c.descuento_nota ? c.descuento_nota + (c.descuento_vence ? ' · vence ' + c.descuento_vence : '') : '') + '</td>';
     html += '</tr>';
   });
   // Fila total software
   html += '<tr style="background:#f8fafc;font-weight:700">';
   html += '<td colspan="3" style="padding:8px 10px;border-top:2px solid var(--border);text-align:right;font-size:0.72rem;text-transform:uppercase;color:var(--muted)">Total</td>';
-  html += '<td style="padding:8px 10px;border-top:2px solid var(--border);text-align:right">US$ ' + swGranTotal.toLocaleString() + '</td>';
+  if (swGranTotal !== swGranTotalReal) {
+    html += '<td style="padding:8px 10px;border-top:2px solid var(--border);text-align:right;text-decoration:line-through;color:var(--muted)">US$ ' + swGranTotal.toLocaleString() + '</td>';
+    html += '<td style="padding:8px 10px;border-top:2px solid var(--border);text-align:right"></td>';
+    html += '<td style="padding:8px 10px;border-top:2px solid var(--border);text-align:right">US$ ' + swGranTotalReal.toLocaleString(undefined, {minimumFractionDigits: 0, maximumFractionDigits: 1}) + '</td>';
+    html += '<td style="padding:8px 10px;border-top:2px solid var(--border)"></td>';
+  } else {
+    html += '<td style="padding:8px 10px;border-top:2px solid var(--border);text-align:right">US$ ' + swGranTotal.toLocaleString() + '</td>';
+    html += '<td colspan="3" style="padding:8px 10px;border-top:2px solid var(--border)"></td>';
+  }
   html += '</tr>';
   html += '</table></div></div>';
-
-  // ─── DESCUENTOS (lee del cliente software) ───
-  var clientesConDescuento = swActivos.filter(function(c) {
-    if (!c.descuento_pct) return false;
-    // Si ya venció, no mostrar
-    if (c.descuento_vence && c.descuento_vence < lastDayStr) return false;
-    return true;
-  });
-
-  if (clientesConDescuento.length > 0) {
-    html += '<div class="section-header" style="font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--muted);margin:24px 0 12px">Descuentos activos</div>';
-    html += '<div class="card">';
-    html += '<table style="width:100%;border-collapse:collapse;font-size:0.82rem">';
-    html += '<tr>';
-    html += '<th style="text-align:left;' + thStyle + ';min-width:160px">Cliente</th>';
-    html += '<th style="text-align:left;' + thStyle + ';min-width:120px">Licencia</th>';
-    html += '<th style="text-align:right;' + thStyle + ';min-width:80px">Descuento</th>';
-    html += '<th style="text-align:right;' + thStyle + ';min-width:90px">Monto orig.</th>';
-    html += '<th style="text-align:right;' + thStyle + ';min-width:90px">Monto real</th>';
-    html += '<th style="text-align:left;' + thStyle + ';min-width:140px">Nota</th>';
-    html += '<th style="text-align:left;' + thStyle + ';min-width:100px">Vence</th>';
-    html += '</tr>';
-    clientesConDescuento.forEach(function(c) {
-      var precio = ccGetPrecioSoftware(c.licencia) || c.monto || 0;
-      var montoReal = Math.round(precio * (1 - c.descuento_pct / 100));
-      var venceProx = c.descuento_vence && c.descuento_vence <= '2026-' + String(mesIdx + 2).padStart(2, '0') + '-01';
-      html += '<tr>';
-      html += '<td style="' + tdStyle + '"><strong>' + (c.n || c.nombre || '') + '</strong></td>';
-      html += '<td style="' + tdStyle + '">' + (c.licencia || '—') + '</td>';
-      html += '<td style="' + tdStyle + ';text-align:right;font-weight:600;color:var(--green)">' + c.descuento_pct + '%</td>';
-      html += '<td style="' + tdStyle + ';text-align:right;text-decoration:line-through;color:var(--muted)">US$ ' + precio + '</td>';
-      html += '<td style="' + tdStyle + ';text-align:right;font-weight:700">US$ ' + montoReal + '</td>';
-      html += '<td style="' + tdStyle + ';font-size:0.75rem">' + (c.descuento_nota || '') + '</td>';
-      html += '<td style="' + tdStyle + ';font-size:0.75rem;' + (venceProx ? 'color:var(--red);font-weight:600' : '') + '">' + (c.descuento_vence || 'Indefinido') + '</td>';
-      html += '</tr>';
-    });
-    html += '</table>';
-    html += '<p style="font-size:0.72rem;color:var(--muted);margin-top:10px">Los descuentos se editan desde el perfil del cliente en Base de Datos → Software</p>';
-    html += '</div>';
-  }
 
   el.innerHTML = html;
 }
