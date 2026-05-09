@@ -613,10 +613,6 @@
           </select>
         </div>
       </div>
-      <div class="m-field">
-        <label>Servicio recurrente</label>
-        <input type="text" id="cl-m-servicio-recurrente" placeholder="Ej: Tax One">
-      </div>
       <div class="m-row">
         <div class="m-field">
           <label style="margin-bottom:4px">Contabilidad</label>
@@ -947,7 +943,7 @@ async function ccLoadData() {
   MESES.forEach(function(m) { data[m] = null; });
 
   // 1. Cargar todos los clientes de la maestra
-  var { data: clientes } = await sb.from('clientes').select('nombre, fecha_entrada, fecha_salida, activo, monto_adm, contadora_contabilidad, contadora_impuestos, responsabilidad_contabilidad, tipo_servicio, rnc, servicio_recurrente, software');
+  var { data: clientes } = await sb.from('clientes').select('nombre, fecha_entrada, fecha_salida, activo, monto_adm, contadora_contabilidad, contadora_impuestos, responsabilidad_contabilidad, tipo_servicio, rnc, software');
   clientes = clientes || [];
   ccAllClientes = clientes;
 
@@ -2020,19 +2016,19 @@ function ccRenderFacturacion(el) {
     html += '<div class="card" style="margin-bottom:16px">';
     html += '<h3 style="margin-bottom:12px">Cambios del mes</h3>';
     html += '<table style="width:100%;border-collapse:collapse;font-size:0.82rem">';
-    html += '<tr><th style="text-align:left;padding:8px;border-bottom:1px solid var(--border);font-size:0.68rem;text-transform:uppercase;color:var(--muted)">Cliente</th><th style="text-align:left;padding:8px;border-bottom:1px solid var(--border);font-size:0.68rem;text-transform:uppercase;color:var(--muted)">Serv. Recurrente</th><th style="text-align:left;padding:8px;border-bottom:1px solid var(--border);font-size:0.68rem;text-transform:uppercase;color:var(--muted)">Licencia Adm</th><th style="text-align:right;padding:8px;border-bottom:1px solid var(--border);font-size:0.68rem;text-transform:uppercase;color:var(--muted)">Monto</th><th style="text-align:center;padding:8px;border-bottom:1px solid var(--border);font-size:0.68rem;text-transform:uppercase;color:var(--muted)">Acción</th></tr>';
+    html += '<tr><th style="text-align:left;padding:8px;border-bottom:1px solid var(--border);font-size:0.68rem;text-transform:uppercase;color:var(--muted)">Cliente</th><th style="text-align:left;padding:8px;border-bottom:1px solid var(--border);font-size:0.68rem;text-transform:uppercase;color:var(--muted)">Servicio</th><th style="text-align:right;padding:8px;border-bottom:1px solid var(--border);font-size:0.68rem;text-transform:uppercase;color:var(--muted)">Transacciones</th><th style="text-align:left;padding:8px;border-bottom:1px solid var(--border);font-size:0.68rem;text-transform:uppercase;color:var(--muted)">Licencia Adm</th><th style="text-align:center;padding:8px;border-bottom:1px solid var(--border);font-size:0.68rem;text-transform:uppercase;color:var(--muted)">Acción</th></tr>';
     outNuevos.forEach(function(c) {
       html += '<tr><td style="padding:8px;border-bottom:1px solid #f3f4f6"><strong>' + c.nombre + '</strong></td>';
-      html += '<td style="padding:8px;border-bottom:1px solid #f3f4f6">' + (c.servicio_recurrente || '—') + '</td>';
+      html += '<td style="padding:8px;border-bottom:1px solid #f3f4f6">' + (c.tipo_servicio || '—') + '</td>';
+      html += '<td style="padding:8px;border-bottom:1px solid #f3f4f6;text-align:right">' + (c.monto_adm || 0) + '</td>';
       html += '<td style="padding:8px;border-bottom:1px solid #f3f4f6">' + (c.software || '—') + '</td>';
-      html += '<td style="padding:8px;border-bottom:1px solid #f3f4f6;text-align:right">' + (c.monto_adm || 0) + ' tx</td>';
       html += '<td style="padding:8px;border-bottom:1px solid #f3f4f6;text-align:center"><span style="background:#ecfdf5;color:var(--green);padding:2px 10px;border-radius:10px;font-size:0.72rem;font-weight:600">Agregar</span></td></tr>';
     });
     outChurn.forEach(function(c) {
       html += '<tr><td style="padding:8px;border-bottom:1px solid #f3f4f6"><strong>' + c.nombre + '</strong></td>';
-      html += '<td style="padding:8px;border-bottom:1px solid #f3f4f6">' + (c.servicio_recurrente || '—') + '</td>';
+      html += '<td style="padding:8px;border-bottom:1px solid #f3f4f6">' + (c.tipo_servicio || '—') + '</td>';
+      html += '<td style="padding:8px;border-bottom:1px solid #f3f4f6;text-align:right">' + (c.monto_adm || 0) + '</td>';
       html += '<td style="padding:8px;border-bottom:1px solid #f3f4f6">' + (c.software || '—') + '</td>';
-      html += '<td style="padding:8px;border-bottom:1px solid #f3f4f6;text-align:right">' + (c.monto_adm || 0) + ' tx</td>';
       html += '<td style="padding:8px;border-bottom:1px solid #f3f4f6;text-align:center"><span style="background:#fef2f2;color:var(--red);padding:2px 10px;border-radius:10px;font-size:0.72rem;font-weight:600">Quitar</span></td></tr>';
     });
     html += '</table></div>';
@@ -2048,16 +2044,16 @@ function ccRenderFacturacion(el) {
   html += '</div>';
   html += '<div id="fact-out-list" style="display:none;margin-top:12px">';
   html += '<table style="width:100%;border-collapse:collapse;font-size:0.78rem">';
-  html += '<tr><th style="text-align:left;padding:6px 8px;border-bottom:1px solid var(--border);font-size:0.68rem;text-transform:uppercase;color:var(--muted)">#</th><th style="text-align:left;padding:6px 8px;border-bottom:1px solid var(--border);font-size:0.68rem;text-transform:uppercase;color:var(--muted)">Cliente</th><th style="text-align:left;padding:6px 8px;border-bottom:1px solid var(--border);font-size:0.68rem;text-transform:uppercase;color:var(--muted)">Serv. Recurrente</th><th style="text-align:left;padding:6px 8px;border-bottom:1px solid var(--border);font-size:0.68rem;text-transform:uppercase;color:var(--muted)">Licencia Adm</th><th style="text-align:right;padding:6px 8px;border-bottom:1px solid var(--border);font-size:0.68rem;text-transform:uppercase;color:var(--muted)">Monto</th></tr>';
+  html += '<tr><th style="text-align:left;padding:6px 8px;border-bottom:1px solid var(--border);font-size:0.68rem;text-transform:uppercase;color:var(--muted)">#</th><th style="text-align:left;padding:6px 8px;border-bottom:1px solid var(--border);font-size:0.68rem;text-transform:uppercase;color:var(--muted)">Cliente</th><th style="text-align:left;padding:6px 8px;border-bottom:1px solid var(--border);font-size:0.68rem;text-transform:uppercase;color:var(--muted)">Servicio</th><th style="text-align:right;padding:6px 8px;border-bottom:1px solid var(--border);font-size:0.68rem;text-transform:uppercase;color:var(--muted)">Transacciones</th><th style="text-align:left;padding:6px 8px;border-bottom:1px solid var(--border);font-size:0.68rem;text-transform:uppercase;color:var(--muted)">Licencia Adm</th></tr>';
   var outSorted = outActivos.slice().sort(function(a, b) { return (a.nombre || '').localeCompare(b.nombre || '', 'es'); });
   outSorted.forEach(function(c, i) {
     var isNew = outNuevos.some(function(n) { return n.nombre === c.nombre; });
     html += '<tr style="' + (isNew ? 'background:#f0fdf4' : '') + '">';
     html += '<td style="padding:6px 8px;border-bottom:1px solid #f3f4f6">' + (i + 1) + '</td>';
     html += '<td style="padding:6px 8px;border-bottom:1px solid #f3f4f6"><strong>' + c.nombre + '</strong>' + (isNew ? ' <span style="background:#ecfdf5;color:var(--green);padding:1px 6px;border-radius:8px;font-size:0.65rem;font-weight:600">nuevo</span>' : '') + '</td>';
-    html += '<td style="padding:6px 8px;border-bottom:1px solid #f3f4f6">' + (c.servicio_recurrente || '—') + '</td>';
+    html += '<td style="padding:6px 8px;border-bottom:1px solid #f3f4f6">' + (c.tipo_servicio || '—') + '</td>';
+    html += '<td style="padding:6px 8px;border-bottom:1px solid #f3f4f6;text-align:right">' + (c.monto_adm || 0) + '</td>';
     html += '<td style="padding:6px 8px;border-bottom:1px solid #f3f4f6">' + (c.software || '—') + '</td>';
-    html += '<td style="padding:6px 8px;border-bottom:1px solid #f3f4f6;text-align:right">' + (c.monto_adm || 0) + ' tx</td>';
     html += '</tr>';
   });
   html += '</table></div></div>';
@@ -3285,7 +3281,6 @@ function clOpenModal(editId) {
     document.getElementById('cl-m-fecha-entrada').value = c.fecha_entrada || '';
     document.getElementById('cl-m-inicio-fiscal').value = c.inicio_responsabilidad_fiscal || '';
     document.getElementById('cl-m-software').value = c.software || '';
-    document.getElementById('cl-m-servicio-recurrente').value = c.servicio_recurrente || '';
     document.getElementById('cl-m-servicio-impl').value = c.servicio_impl || '';
     document.getElementById('cl-m-fecha-inicio-impl').value = c.fecha_inicio_impl || '';
     document.getElementById('cl-m-fecha-fin-impl').value = c.fecha_fin_impl || '';
@@ -3318,7 +3313,6 @@ function clOpenModal(editId) {
     document.getElementById('cl-m-fecha-entrada').value = '';
     document.getElementById('cl-m-inicio-fiscal').value = '';
     document.getElementById('cl-m-software').value = '';
-    document.getElementById('cl-m-servicio-recurrente').value = '';
     document.getElementById('cl-m-servicio-impl').value = '';
     document.getElementById('cl-m-fecha-inicio-impl').value = '';
     document.getElementById('cl-m-fecha-fin-impl').value = '';
@@ -3406,7 +3400,6 @@ async function clSaveClient() {
     tipo_servicio: document.getElementById('cl-m-tipo-servicio').value || null,
     software: document.getElementById('cl-m-software').value || null,
     monto_adm: document.getElementById('cl-m-monto-adm').value ? parseInt(document.getElementById('cl-m-monto-adm').value) : null,
-    servicio_recurrente: document.getElementById('cl-m-servicio-recurrente').value.trim() || null,
     servicio_impl: document.getElementById('cl-m-servicio-impl').value.trim() || null,
     responsabilidad_contabilidad: document.getElementById('cl-m-resp-contab').checked,
     contadora_contabilidad: newContab,
