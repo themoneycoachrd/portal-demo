@@ -494,6 +494,8 @@
       <h3 id="cl-modal-title">Nuevo cliente</h3>
       <button class="modal-close" onclick="clCloseModal()" title="Cerrar">✕</button>
     </div>
+    <!-- ═══ Sección 1: Datos del cliente ═══ -->
+    <div style="font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--muted);margin-bottom:10px">Datos del cliente</div>
     <div class="m-row">
       <div class="m-field">
         <label>Nombre del cliente *</label>
@@ -519,27 +521,6 @@
       <div class="m-field">
         <label>Teléfono</label>
         <input type="text" id="cl-m-telefono" placeholder="809-000-0000">
-      </div>
-      <div class="m-field">
-        <label>Tipo de servicio</label>
-        <select id="cl-m-tipo-servicio">
-          <option value="">—</option>
-          <option value="Contabilidad completa">Contabilidad completa</option>
-          <option value="Solo impuestos">Solo impuestos</option>
-          <option value="Solo supervisión">Solo supervisión</option>
-          <option value="Bookkeeping">Bookkeeping</option>
-        </select>
-      </div>
-    </div>
-    <div class="m-row">
-      <div class="m-field">
-        <label>Monto Adm (transacciones contratadas)</label>
-        <select id="cl-m-monto-adm">
-          <option value="">—</option>
-          <option value="50">50</option>
-          <option value="100">100</option>
-          <option value="200">200</option>
-        </select>
       </div>
       <div class="m-field">
         <label>Estado</label>
@@ -573,38 +554,58 @@
         </div>
       </div>
     </div>
-    <div class="m-row">
-      <div class="m-field">
-        <label style="margin-bottom:4px">Contabilidad</label>
-        <div style="display:flex;align-items:center;gap:8px">
-          <label style="font-size:0.8rem;color:var(--muted);display:flex;align-items:center;gap:4px"><input type="checkbox" id="cl-m-resp-contab" checked> Responsabilidad</label>
-          <select id="cl-m-contadora-contab" style="flex:1"><option value="">Sin asignar</option></select>
-        </div>
-      </div>
-      <div class="m-field">
-        <label style="margin-bottom:4px">Impuestos</label>
-        <div style="display:flex;align-items:center;gap:8px">
-          <label style="font-size:0.8rem;color:var(--muted);display:flex;align-items:center;gap:4px"><input type="checkbox" id="cl-m-resp-imp" checked> Responsabilidad</label>
-          <select id="cl-m-contadora-imp" style="flex:1"><option value="">Sin asignar</option></select>
-        </div>
-      </div>
+    <div class="m-field">
+      <label>Notas</label>
+      <textarea id="cl-m-notas" placeholder="Cualquier detalle relevante..."></textarea>
     </div>
-    <div class="m-row">
-      <div class="m-field">
-        <label>Fecha de entrada</label>
-        <input type="date" id="cl-m-fecha-entrada">
-      </div>
-      <div class="m-field">
-        <label>Inicio responsabilidad fiscal</label>
-        <input type="date" id="cl-m-inicio-fiscal">
-      </div>
-    </div>
+    <!-- ═══ Sección 2: Servicio contratado ═══ -->
     <div style="border-top:1px solid var(--border);margin:12px 0;padding-top:12px">
       <div style="font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--muted);margin-bottom:10px">Servicio contratado</div>
       <div class="m-row">
         <div class="m-field">
-          <label>Software</label>
-          <input type="text" id="cl-m-software" placeholder="Ej: Adm Basic + FE">
+          <label>Tipo de servicio</label>
+          <select id="cl-m-tipo-servicio">
+            <option value="">—</option>
+            <option value="Contabilidad completa">Contabilidad completa</option>
+            <option value="Solo impuestos">Solo impuestos</option>
+            <option value="Solo supervisión">Solo supervisión</option>
+            <option value="Bookkeeping">Bookkeeping</option>
+          </select>
+        </div>
+        <div class="m-field">
+          <label>Licencia Adm</label>
+          <select id="cl-m-software">
+            <option value="">—</option>
+            <option value="Starter">Starter</option>
+            <option value="Starter+FE">Starter+FE</option>
+            <option value="Basic">Basic</option>
+            <option value="Basic+FE">Basic+FE</option>
+            <option value="Basic+FE+POS">Basic+FE+POS</option>
+            <option value="Standard">Standard</option>
+            <option value="Standard+FE">Standard+FE</option>
+            <option value="Standard+FE+POS">Standard+FE+POS</option>
+            <option value="Premium">Premium</option>
+            <option value="Premium+FE">Premium+FE</option>
+            <option value="Premium+FE+POS">Premium+FE+POS</option>
+            <option value="Nómina">Nómina</option>
+            <option value="Nómina+FE">Nómina+FE</option>
+            <option value="Manufactura">Manufactura</option>
+            <option value="Manufactura+FE">Manufactura+FE</option>
+            <option value="POS">POS</option>
+            <option value="POS+FE">POS+FE</option>
+          </select>
+        </div>
+      </div>
+      <div class="m-row">
+        <div class="m-field">
+          <label>Transacciones contratadas</label>
+          <select id="cl-m-monto-adm">
+            <option value="">—</option>
+            <option value="0-50">0 a 50</option>
+            <option value="51-100">51 a 100</option>
+            <option value="101-150">101 a 150</option>
+            <option value="Más de 150">Más de 150</option>
+          </select>
         </div>
         <div class="m-field">
           <label>Servicio recurrente</label>
@@ -617,15 +618,46 @@
       </div>
       <div class="m-row">
         <div class="m-field">
-          <label>Inicio implementación</label>
-          <input type="date" id="cl-m-fecha-inicio-impl">
+          <label style="margin-bottom:4px">Contabilidad</label>
+          <div style="display:flex;align-items:center;gap:8px">
+            <label style="font-size:0.8rem;color:var(--muted);display:flex;align-items:center;gap:4px"><input type="checkbox" id="cl-m-resp-contab" checked> Responsabilidad</label>
+            <select id="cl-m-contadora-contab" style="flex:1"><option value="">Sin asignar</option></select>
+          </div>
         </div>
         <div class="m-field">
-          <label>Fin esperado implementación</label>
-          <input type="date" id="cl-m-fecha-fin-impl">
+          <label style="margin-bottom:4px">Impuestos</label>
+          <div style="display:flex;align-items:center;gap:8px">
+            <label style="font-size:0.8rem;color:var(--muted);display:flex;align-items:center;gap:4px"><input type="checkbox" id="cl-m-resp-imp" checked> Responsabilidad</label>
+            <select id="cl-m-contadora-imp" style="flex:1"><option value="">Sin asignar</option></select>
+          </div>
+        </div>
+      </div>
+      <!-- Sub-sección: Fechas -->
+      <div style="margin-top:12px;padding-top:10px;border-top:1px dashed var(--border)">
+        <div style="font-size:0.68rem;font-weight:600;text-transform:uppercase;letter-spacing:0.4px;color:var(--light);margin-bottom:8px">Fechas</div>
+        <div class="m-row">
+          <div class="m-field">
+            <label>Fecha de entrada</label>
+            <input type="date" id="cl-m-fecha-entrada">
+          </div>
+          <div class="m-field">
+            <label>Inicio responsabilidad fiscal</label>
+            <input type="date" id="cl-m-inicio-fiscal">
+          </div>
+        </div>
+        <div class="m-row">
+          <div class="m-field">
+            <label>Inicio implementación</label>
+            <input type="date" id="cl-m-fecha-inicio-impl">
+          </div>
+          <div class="m-field">
+            <label>Fin esperado implementación</label>
+            <input type="date" id="cl-m-fecha-fin-impl">
+          </div>
         </div>
       </div>
     </div>
+    <!-- ═══ Sección 3: Empresa ═══ -->
     <div style="border-top:1px solid var(--border);margin:12px 0;padding-top:12px">
       <div style="font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--muted);margin-bottom:10px">Empresa</div>
       <div class="m-row">
@@ -638,10 +670,6 @@
           <input type="text" id="cl-m-estado-contabilidad" placeholder="Ej: No tiene / Tiene contador interno">
         </div>
       </div>
-    </div>
-    <div class="m-field">
-      <label>Notas</label>
-      <textarea id="cl-m-notas" placeholder="Cualquier detalle relevante..."></textarea>
     </div>
     <div class="m-field hidden" id="cl-m-motivo-wrap" style="background:#fef9e7;border:1px solid #f5d76e;border-radius:8px;padding:12px">
       <label style="color:#b7950b;font-weight:600;font-size:0.82rem">Motivo del cambio de contadora</label>
@@ -3186,7 +3214,6 @@ async function clSaveClient() {
   }
   document.getElementById('cl-m-nombre-err').style.display = 'none';
 
-  var montoVal = document.getElementById('cl-m-monto-adm').value;
   var newContab = document.getElementById('cl-m-contadora-contab').value || null;
   var newImp = document.getElementById('cl-m-contadora-imp').value || null;
   var contadoraChanged = clEditingId && (
@@ -3201,22 +3228,22 @@ async function clSaveClient() {
     email: document.getElementById('cl-m-email').value.trim() || null,
     telefono: document.getElementById('cl-m-telefono').value.trim() || null,
     tipo_servicio: document.getElementById('cl-m-tipo-servicio').value || null,
+    software: document.getElementById('cl-m-software').value || null,
+    monto_adm: document.getElementById('cl-m-monto-adm').value || null,
+    servicio_recurrente: document.getElementById('cl-m-servicio-recurrente').value.trim() || null,
+    servicio_impl: document.getElementById('cl-m-servicio-impl').value.trim() || null,
     responsabilidad_contabilidad: document.getElementById('cl-m-resp-contab').checked,
     contadora_contabilidad: newContab,
     responsabilidad_impuestos: document.getElementById('cl-m-resp-imp').checked,
     contadora_impuestos: newImp,
-    monto_adm: montoVal ? parseInt(montoVal) : null,
     fecha_entrada: document.getElementById('cl-m-fecha-entrada').value || null,
+    inicio_responsabilidad_fiscal: document.getElementById('cl-m-inicio-fiscal').value || null,
+    fecha_inicio_impl: document.getElementById('cl-m-fecha-inicio-impl').value || null,
+    fecha_fin_impl: document.getElementById('cl-m-fecha-fin-impl').value || null,
     fecha_salida: document.getElementById('cl-m-fecha-salida').value || null,
     activo: clModalActivo,
     motivo_salida: !clModalActivo ? (document.getElementById('cl-m-motivo-salida').value || null) : null,
     nota_salida: !clModalActivo ? (document.getElementById('cl-m-nota-salida').value.trim() || null) : null,
-    inicio_responsabilidad_fiscal: document.getElementById('cl-m-inicio-fiscal').value || null,
-    software: document.getElementById('cl-m-software').value.trim() || null,
-    servicio_recurrente: document.getElementById('cl-m-servicio-recurrente').value.trim() || null,
-    servicio_impl: document.getElementById('cl-m-servicio-impl').value.trim() || null,
-    fecha_inicio_impl: document.getElementById('cl-m-fecha-inicio-impl').value || null,
-    fecha_fin_impl: document.getElementById('cl-m-fecha-fin-impl').value || null,
     tipo_empresa: document.getElementById('cl-m-tipo-empresa').value.trim() || null,
     estado_contabilidad: document.getElementById('cl-m-estado-contabilidad').value.trim() || null,
     notas: document.getElementById('cl-m-notas').value.trim() || null
