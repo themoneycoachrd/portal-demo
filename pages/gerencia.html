@@ -1805,8 +1805,8 @@ function ccRenderSoftware(el) {
 
   // Stats cards: Total / Inicio / Nuevos / Churn / Cierre (mismo estilo que Outsourcing)
   html += '<div class="stats">';
-  html += '<div class="stat"><div class="stat-label">Total clientes</div><div class="stat-value">' + ccSOFTWARE_CLIENTES.filter(function(c){return c.activo!==false}).length + '</div><div class="stat-sub">En cartera software</div></div>';
-  html += '<div class="stat" style="cursor:pointer;border:2px solid ' + (ccSwFiltro === 'inicio' ? 'var(--navy)' : 'transparent') + '" onclick="ccSwFilter(\'inicio\')"><div class="stat-label">Inicio</div><div class="stat-value">' + ccSwInicio + '</div><div class="stat-sub">' + MESES_FULL[swMesIdx] + '</div></div>';
+  html += '<div class="stat"><div class="stat-label">Total clientes</div><div class="stat-value" style="color:var(--purple)">' + ccSOFTWARE_CLIENTES.filter(function(c){return c.activo!==false}).length + '</div><div class="stat-sub">En cartera software</div></div>';
+  html += '<div class="stat" style="cursor:pointer;border:2px solid ' + (ccSwFiltro === 'inicio' ? 'var(--blue)' : 'transparent') + '" onclick="ccSwFilter(\'inicio\')"><div class="stat-label">Inicio</div><div class="stat-value" style="color:var(--blue)">' + ccSwInicio + '</div><div class="stat-sub">' + MESES_FULL[swMesIdx] + '</div></div>';
   html += '<div class="stat" style="cursor:pointer;border:2px solid ' + (ccSwFiltro === 'nuevos' ? 'var(--green)' : 'transparent') + '" onclick="ccSwFilter(\'nuevos\')"><div class="stat-label">Nuevos</div><div class="stat-value stat-green">' + ccSwNuevos.length + '</div><div class="stat-sub">' + MESES_FULL[swMesIdx] + '</div></div>';
   html += '<div class="stat" style="cursor:pointer;border:2px solid ' + (ccSwFiltro === 'churn' ? 'var(--red)' : 'transparent') + '" onclick="ccSwFilter(\'churn\')"><div class="stat-label">Churn</div><div class="stat-value stat-red">' + ccSwChurn.length + '</div><div class="stat-sub">' + MESES_FULL[swMesIdx] + '</div></div>';
   html += '<div class="stat" style="cursor:pointer;border:2px solid ' + (ccSwFiltro === 'cierre' ? 'var(--navy)' : 'transparent') + '" onclick="ccSwFilter(\'cierre\')"><div class="stat-label">Cierre</div><div class="stat-value">' + total + '</div><div class="stat-sub">' + MESES_FULL[swMesIdx] + '</div></div>';
@@ -1834,10 +1834,12 @@ function ccRenderSoftware(el) {
   // Add any keys not in licOrder
   Object.keys(licCounts).forEach(function(k) { if (licKeys.indexOf(k) === -1) licKeys.push(k); });
 
+  var licColors = {'Starter':'#6366f1','Starter+FE':'#6366f1','Basic':'#4361ee','Basic+FE':'#4361ee','Basic+FE+POS':'#4361ee','Standard':'#10b981','Standard+FE':'#10b981','Premium':'#f59e0b','Premium+FE':'#f59e0b','Nómina':'#ec4899','Nómina+FE':'#ec4899','Manufactura':'#f97316','Manufactura+FE':'#f97316','Sin asignar':'#a3aab8'};
   html += '<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px">';
   licKeys.forEach(function(lic) {
     var isActive = ccSwLicFiltro === lic;
-    html += '<button style="padding:3px 10px;border-radius:12px;font-size:0.72rem;font-weight:' + (isActive ? '700' : '500') + ';border:1px solid ' + (isActive ? 'var(--blue)' : 'var(--border)') + ';background:' + (isActive ? '#eef2ff' : 'white') + ';color:' + (isActive ? 'var(--blue)' : 'var(--text)') + ';cursor:pointer" onclick="ccSwLicFilter(\'' + lic.replace(/'/g, "\\'") + '\')">' + lic + ' <span style="opacity:0.6">(' + licCounts[lic] + ')</span></button>';
+    var col = licColors[lic] || '#64748b';
+    html += '<button style="padding:4px 12px;border-radius:12px;font-size:0.72rem;font-weight:' + (isActive ? '700' : '600') + ';border:1.5px solid ' + (isActive ? col : col+'40') + ';background:' + (isActive ? col+'18' : col+'0a') + ';color:' + col + ';cursor:pointer" onclick="ccSwLicFilter(\'' + lic.replace(/'/g, "\\'") + '\')">' + lic + ' <span style="opacity:0.7">(' + licCounts[lic] + ')</span></button>';
   });
   html += '</div>';
 
