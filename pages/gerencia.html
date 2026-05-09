@@ -2754,7 +2754,8 @@ function bdRenderSubTabs() {
     { id:'software', label:'Software' + (pendSw ? ' <span style="background:var(--amber);color:white;font-size:10px;padding:1px 6px;border-radius:10px;margin-left:4px">' + pendSw + '</span>' : '') },
     { id:'contadoras', label:'Contadores' },
     { id:'asignaciones', label:'Asignaciones' },
-    { id:'links', label:'Links Portal' }
+    { id:'links', label:'Links Portal' },
+    { id:'link-dashboard', label:'Link Dashboard' }
   ];
   el.innerHTML = tabs.map(function(t) {
     return '<button class="bd-sub-tab ' + (bdActiveSubTab === t.id ? 'active' : '') + '" onclick="bdSwitchSubTab(\'' + t.id + '\')">' + t.label + '</button>';
@@ -2783,6 +2784,7 @@ function bdRenderContent() {
   else if (bdActiveSubTab === 'contadoras') bdRenderContadoras();
   else if (bdActiveSubTab === 'asignaciones') bdRenderAsignaciones();
   else if (bdActiveSubTab === 'links') bdRenderLinks();
+  else if (bdActiveSubTab === 'link-dashboard') bdRenderLinkDashboard();
 }
 
 // ═══════════════════════════════════════════
@@ -4123,6 +4125,31 @@ function bdCopyAllLinks() {
   }).join('\n');
   navigator.clipboard.writeText(text).then(function() {
     gerShowToast('Todos los links copiados al portapapeles');
+  });
+}
+
+function bdRenderLinkDashboard() {
+  var el = document.getElementById('bd-content');
+  if (!el) return;
+  var baseUrl = window.location.origin + window.location.pathname.replace(/\/[^/]*$/, '/');
+  var dashUrl = baseUrl + 'dashboard-publico.html';
+  var h = '';
+  h += '<div style="padding:40px 20px;text-align:center">';
+  h += '<div style="font-size:14px;font-weight:700;color:var(--navy);margin-bottom:12px">Dashboard Público</div>';
+  h += '<div style="font-size:0.82rem;color:var(--muted);margin-bottom:20px">Link para compartir el dashboard de clientes sin necesidad de login.</div>';
+  h += '<div style="background:#f8fafc;border:1px solid var(--border);border-radius:10px;padding:16px;display:inline-block;max-width:600px;width:100%">';
+  h += '<div style="font-size:0.75rem;color:var(--light);margin-bottom:6px">URL del dashboard:</div>';
+  h += '<div style="font-size:0.82rem;color:var(--navy);font-weight:500;word-break:break-all;margin-bottom:12px" id="dash-pub-url">' + dashUrl + '</div>';
+  h += '<button style="padding:8px 20px;border-radius:8px;font-size:0.8rem;font-weight:600;cursor:pointer;border:1px solid var(--blue);background:var(--blue);color:white;font-family:inherit" onclick="bdCopyDashLink()">Copiar link</button>';
+  h += ' <a href="' + dashUrl + '" target="_blank" style="padding:8px 20px;border-radius:8px;font-size:0.8rem;font-weight:600;text-decoration:none;border:1px solid var(--border);background:white;color:var(--navy);font-family:inherit;display:inline-block">Abrir ↗</a>';
+  h += '</div></div>';
+  el.innerHTML = h;
+}
+
+function bdCopyDashLink() {
+  var url = document.getElementById('dash-pub-url').textContent;
+  navigator.clipboard.writeText(url).then(function() {
+    gerShowToast('Link del dashboard copiado');
   });
 }
 

@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard — Account One</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root {
+  --navy: #1a2332;
+  --blue: #4361ee;
+  --green: #10b981;
+  --red: #ef4444;
+  --amber: #f59e0b;
+  --border: #e8ecf0;
+  --muted: #64748b;
+  --light: #a3aab8;
+  --purple: #8b5cf6;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif; background:#fff; color:var(--navy); line-height:1.5; }
+
+/* Header */
+.top-bar { position:fixed; top:0; left:0; right:0; background:white; border-bottom:1px solid var(--border); padding:12px 24px; display:flex; justify-content:flex-end; align-items:center; z-index:100; }
+.top-bar span { font-size:13px; font-weight:700; color:var(--navy); }
+
+/* Content */
+.main { padding:60px 24px 40px; max-width:1200px; margin:0 auto; }
+
+/* Section headers */
+.section-header { font-size:0.72rem; font-weight:700; text-transform:uppercase; letter-spacing:0.5px; color:var(--muted); margin:28px 0 12px; }
+.section-header:first-child { margin-top:0; }
+
+/* Stats */
+.stats { display:grid; grid-template-columns:repeat(4, 1fr); gap:12px; margin-bottom:20px; }
+.stat { background:white; border:1px solid var(--border); border-radius:12px; padding:16px; text-align:center; }
+.stat-label { font-size:0.72rem; font-weight:600; color:var(--muted); text-transform:uppercase; letter-spacing:0.3px; margin-bottom:4px; }
+.stat-value { font-size:1.6rem; font-weight:800; color:var(--navy); }
+.stat-sub { font-size:0.72rem; color:var(--light); margin-top:2px; }
+.stat-green { color:var(--green); }
+.stat-red { color:var(--red); }
+
+/* Charts grid */
+.charts-grid { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:20px; }
+.card { background:white; border:1px solid var(--border); border-radius:12px; padding:20px; }
+.card h3 { font-size:0.82rem; font-weight:700; color:var(--navy); margin-bottom:12px; }
+
+/* Tables */
+.card table { width:100%; border-collapse:collapse; font-size:0.78rem; }
+.card table th { text-transform:uppercase; font-size:0.68rem; color:var(--muted); font-weight:600; padding:6px 8px; text-align:left; border-bottom:1px solid var(--border); }
+.card table td { padding:6px 8px; border-bottom:1px solid #f3f4f6; }
+.card table tr.summary-row { cursor:pointer; }
+.card table tr.summary-row:hover { background:#fafbfc; }
+.card table tr.detail-row td { padding:8px 12px; background:#f9fafb; }
+
+/* Badges */
+.badge-new { background:#ecfdf5; color:var(--green); padding:2px 8px; border-radius:10px; font-size:0.7rem; font-weight:600; display:inline-block; margin:2px; }
+.badge-churn { background:#fef2f2; color:var(--red); padding:2px 8px; border-radius:10px; font-size:0.7rem; font-weight:600; display:inline-block; margin:2px; }
+
+/* Loading */
+.loading { text-align:center; padding:80px 20px; color:var(--muted); font-size:0.9rem; }
+
+/* Responsive */
+@media (max-width:900px) { .charts-grid { grid-template-columns:1fr; } }
+@media (max-width:700px) { .stats { grid-template-columns:repeat(2, 1fr); } }
+</style>
+</head>
+<body>
+
+<div class="top-bar"><span>Account One</span></div>
+<div class="main">
+  <div id="dashboard"><div class="loading">Cargando dashboard...</div></div>
+</div>
+
+<script>
+const SUPABASE_URL = 'https://ouetusstqvpyjeycfdio.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im91ZXR1c3N0cXZweWpleWNmZGlvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY2NDcwNzksImV4cCI6MjA5MjIyMzA3OX0.Bsys947JLGEuf3zdBF2GPFdbJVJtaZdC4YEmyBU5Bow';
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+const MESES = ["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
+const MESES_LABEL = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
+
+function todayStr() {
+  var d = new Date();
+  return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+}
+
+function toggleDetail(id) {
+  var row = document.getElementById(id);
+  row.style.display = row.style.display === 'none' ? 'table-row' : 'none';
+}
+
+async function init() {
+  // Load data
+  var [resC, resSw, resA] = await Promise.all([
+    sb.from('clientes').select('nombre, fecha_entrada, fecha_salida, activo, monto_adm, responsabilidad_contabilidad'),
+    sb.from('clientes_software').select('*'),
+    sb.from('asignaciones').select('*').eq('anio', 2026)
+  ]);
+  var clientes = resC.data || [];
+  var software = resSw.data || [];
+  var asignaciones = resA.data || [];
+
+  var now = new Date();
+  var currentMonth = now.getMonth(); // 0-based
+
+  // ─── OUTSOURCING ───
+  var outData = [];
+  for (var m = 0; m <= currentMonth; m++) {
+    var year = 2026;
+    var lastDay = new Date(year, m + 1, 0);
+    var lastDayStr = year + '-' + String(m+1).padStart(2,'0') + '-' + String(lastDay.getDate()).padStart(2,'0');
+    var firstDayStr = year + '-' + String(m+1).padStart(2,'0') + '-01';
+
+    var nuevos = clientes.filter(function(c) {
+      if (!c.fecha_entrada) return false;
+      var d = new Date(c.fecha_entrada + 'T00:00:00');
+      return d.getFullYear() === 2026 && d.getMonth() === m;
+    });
+    var churn = clientes.filter(function(c) {
+      if (!c.fecha_salida) return false;
+      var d = new Date(c.fecha_salida + 'T00:00:00');
+      return d.getFullYear() === 2026 && d.getMonth() === m;
+    });
+    var activos = clientes.filter(function(c) {
+      if (!c.fecha_entrada) return false;
+      var entrada = c.fecha_entrada;
+      if (entrada > lastDayStr) return false;
+      if (c.fecha_salida && c.fecha_salida <= lastDayStr) return false;
+      return true;
+    });
+    var total = activos.length;
+    var servTotal = activos.reduce(function(sum, c) {
+      if (c.responsabilidad_contabilidad === false) return sum;
+      return sum + (parseInt(c.monto_adm) || 0);
+    }, 0);
+
+    outData.push({ mes: m, total: total, nuevos: nuevos.length, churn: churn.length, servTotal: servTotal, nuevosNames: nuevos.map(function(c){return c.nombre}), churnNames: churn.map(function(c){return c.nombre}) });
+  }
+
+  var baseLine = outData.length > 0 ? outData[0].total - outData[0].nuevos + outData[0].churn : 0;
+
+  // ─── SOFTWARE ───
+  var swClientes = software.map(function(r) {
+    return { nombre: r.nombre, monto: parseFloat(r.monto_mensual) || 0, fecha_entrada: r.fecha_entrada, fecha_salida: r.fecha_salida, activo: r.activo !== false };
+  });
+  var baseCount = swClientes.filter(function(c) { return c.fecha_entrada && c.fecha_entrada < '2026-01-01'; }).length;
+
+  var swData = [];
+  var swRunning = baseCount;
+  for (var m = 0; m <= currentMonth; m++) {
+    var nuevos = swClientes.filter(function(c) {
+      if (!c.fecha_entrada) return false;
+      var d = new Date(c.fecha_entrada + 'T00:00:00');
+      return d.getFullYear() === 2026 && d.getMonth() === m;
+    });
+    var churn = swClientes.filter(function(c) {
+      if (!c.fecha_salida) return false;
+      var d = new Date(c.fecha_salida + 'T00:00:00');
+      return d.getFullYear() === 2026 && d.getMonth() === m;
+    });
+    swRunning = swRunning + nuevos.length - churn.length;
+
+    var year = 2026;
+    var lastDay = new Date(year, m + 1, 0);
+    var lastDayStr = year + '-' + String(m+1).padStart(2,'0') + '-' + String(lastDay.getDate()).padStart(2,'0');
+    var activosSw = swClientes.filter(function(c) {
+      if (!c.fecha_entrada) return false;
+      if (c.fecha_entrada > lastDayStr) return false;
+      if (c.fecha_salida && c.fecha_salida <= lastDayStr) return false;
+      return true;
+    });
+    var monto = activosSw.reduce(function(sum, c) { return sum + c.monto; }, 0);
+
+    swData.push({ mes: m, total: swRunning, nuevos: nuevos.length, churn: churn.length, monto: monto, nuevosNames: nuevos.map(function(c){return c.nombre}), churnNames: churn.map(function(c){return c.nombre}) });
+  }
+
+  // ─── TX DATA ───
+  var txByMonth = MESES.map(function() { return 0; });
+  asignaciones.forEach(function(a) {
+    if (!a.adm || !a.mes) return;
+    var idx = MESES.indexOf(a.mes.toLowerCase());
+    if (idx >= 0) txByMonth[idx] += parseInt(a.adm) || 0;
+  });
+
+  // ─── RENDER ───
+  var last = outData[outData.length - 1] || { total:0, nuevos:0, churn:0 };
+  var totalNuevos = outData.reduce(function(s,d){return s+d.nuevos},0);
+  var totalChurn = outData.reduce(function(s,d){return s+d.churn},0);
+  var crecPct = baseLine > 0 ? ((last.total - baseLine) / baseLine * 100) : 0;
+  var crecNeto = last.total - baseLine;
+  var nuevoPct = baseLine > 0 ? (totalNuevos / baseLine * 100).toFixed(0) : 0;
+  var churnPct = baseLine > 0 ? (totalChurn / baseLine * 100).toFixed(0) : 0;
+  var crecColor = crecNeto >= 0 ? 'stat-green' : 'stat-red';
+  var crecSign = crecNeto >= 0 ? '+' : '';
+
+  var swLast = swData[swData.length - 1] || { total:0, nuevos:0, churn:0, monto:0 };
+  var swTotalNuevos = swData.reduce(function(s,d){return s+d.nuevos},0);
+  var swTotalChurn = swData.reduce(function(s,d){return s+d.churn},0);
+  var swCrecPct = baseCount > 0 ? ((swLast.total - baseCount) / baseCount * 100) : 0;
+  var swCrecNeto = swLast.total - baseCount;
+  var swNuevoPct = baseCount > 0 ? (swTotalNuevos / baseCount * 100).toFixed(0) : 0;
+  var swChurnPct = baseCount > 0 ? (swTotalChurn / baseCount * 100).toFixed(0) : 0;
+  var swCrecColor = swCrecNeto >= 0 ? 'stat-green' : 'stat-red';
+  var swCrecSign = swCrecNeto >= 0 ? '+' : '';
+
+  var html = '';
+
+  // ─── OUTSOURCING SECTION ───
+  html += '<div class="section-header">Outsourcing</div>';
+  html += '<div class="stats">';
+  html += '<div class="stat"><div class="stat-label">Clientes actuales &middot; ' + todayStr() + '</div><div class="stat-value">' + last.total + '</div><div class="stat-sub">Base inicio año: ' + baseLine + '</div></div>';
+  html += '<div class="stat"><div class="stat-label">Nuevos en 2026</div><div class="stat-value stat-green">' + totalNuevos + '</div><div class="stat-sub">' + nuevoPct + '% de crecimiento</div></div>';
+  html += '<div class="stat"><div class="stat-label">Churn en 2026</div><div class="stat-value stat-red">' + totalChurn + '</div><div class="stat-sub">' + churnPct + '% de churn</div></div>';
+  html += '<div class="stat"><div class="stat-label">Crecimiento 2026</div><div class="stat-value ' + crecColor + '">' + crecSign + crecPct.toFixed(1) + '%</div><div class="stat-sub">' + crecSign + crecNeto + ' clientes neto vs inicio de año</div></div>';
+  html += '</div>';
+
+  // Chart + Table
+  html += '<div class="charts-grid">';
+  html += '<div class="card"><h3>Evolución de clientes</h3><canvas id="chartOut"></canvas></div>';
+  html += '<div class="card"><h3>Resumen mensual</h3><table><thead><tr><th>Mes</th><th>Inicio</th><th>Nuevos</th><th>Churn</th><th>Neto</th><th>Cierre</th><th>%</th></tr></thead><tbody>';
+  var runBase = baseLine;
+  for (var i = 0; i < outData.length; i++) {
+    var d = outData[i];
+    var inicio = runBase;
+    var neto = d.nuevos - d.churn;
+    var pct = inicio > 0 ? ((neto / inicio) * 100).toFixed(1) : '0.0';
+    html += '<tr class="summary-row" onclick="toggleDetail(\'out-detail-'+i+'\')"><td>' + MESES_LABEL[d.mes] + '</td><td>' + inicio + '</td><td style="color:var(--green)">' + d.nuevos + '</td><td style="color:var(--red)">' + d.churn + '</td><td>' + (neto>=0?'+':'') + neto + '</td><td><b>' + d.total + '</b></td><td>' + pct + '%</td></tr>';
+    html += '<tr class="detail-row" id="out-detail-'+i+'" style="display:none"><td colspan="7">';
+    if (d.nuevosNames.length) html += d.nuevosNames.map(function(n){return '<span class="badge-new">'+n+'</span>'}).join(' ');
+    if (d.churnNames.length) html += ' ' + d.churnNames.map(function(n){return '<span class="badge-churn">'+n+'</span>'}).join(' ');
+    if (!d.nuevosNames.length && !d.churnNames.length) html += '<span style="color:var(--light);font-size:0.72rem">Sin movimiento</span>';
+    html += '</td></tr>';
+    runBase = d.total;
+  }
+  html += '</tbody></table></div></div>';
+
+  // ─── SOFTWARE SECTION ───
+  html += '<div class="section-header">Software</div>';
+  html += '<div class="stats">';
+  html += '<div class="stat"><div class="stat-label">Clientes actuales &middot; ' + todayStr() + '</div><div class="stat-value">' + swLast.total + '</div><div class="stat-sub">Base inicio año: ' + baseCount + '</div></div>';
+  html += '<div class="stat"><div class="stat-label">Nuevos en 2026</div><div class="stat-value stat-green">' + swTotalNuevos + '</div><div class="stat-sub">' + swNuevoPct + '% de crecimiento</div></div>';
+  html += '<div class="stat"><div class="stat-label">Churn en 2026</div><div class="stat-value stat-red">' + swTotalChurn + '</div><div class="stat-sub">' + swChurnPct + '% de churn</div></div>';
+  html += '<div class="stat"><div class="stat-label">Crecimiento 2026</div><div class="stat-value ' + swCrecColor + '">' + swCrecSign + swCrecPct.toFixed(1) + '%</div><div class="stat-sub">' + swCrecSign + swCrecNeto + ' clientes neto vs inicio de año</div></div>';
+  html += '</div>';
+
+  html += '<div class="charts-grid">';
+  html += '<div class="card"><h3>Evolución de clientes software</h3><canvas id="chartSw"></canvas></div>';
+  html += '<div class="card"><h3>Resumen mensual software</h3><table><thead><tr><th>Mes</th><th>Inicio</th><th>Nuevos</th><th>Churn</th><th>Neto</th><th>Cierre</th><th>%</th><th>Monto</th></tr></thead><tbody>';
+  var swRunBase = baseCount;
+  for (var i = 0; i < swData.length; i++) {
+    var d = swData[i];
+    var inicio = swRunBase;
+    var neto = d.nuevos - d.churn;
+    var pct = inicio > 0 ? ((neto / inicio) * 100).toFixed(1) : '0.0';
+    html += '<tr class="summary-row" onclick="toggleDetail(\'sw-detail-'+i+'\')"><td>' + MESES_LABEL[d.mes] + '</td><td>' + inicio + '</td><td style="color:var(--green)">' + d.nuevos + '</td><td style="color:var(--red)">' + d.churn + '</td><td>' + (neto>=0?'+':'') + neto + '</td><td><b>' + d.total + '</b></td><td>' + pct + '%</td><td>$' + d.monto.toLocaleString() + '</td></tr>';
+    html += '<tr class="detail-row" id="sw-detail-'+i+'" style="display:none"><td colspan="8">';
+    if (d.nuevosNames.length) html += d.nuevosNames.map(function(n){return '<span class="badge-new">'+n+'</span>'}).join(' ');
+    if (d.churnNames.length) html += ' ' + d.churnNames.map(function(n){return '<span class="badge-churn">'+n+'</span>'}).join(' ');
+    if (!d.nuevosNames.length && !d.churnNames.length) html += '<span style="color:var(--light);font-size:0.72rem">Sin movimiento</span>';
+    html += '</td></tr>';
+    swRunBase = d.total;
+  }
+  html += '</tbody></table></div></div>';
+
+  // ─── GENERAL SECTION ───
+  html += '<div class="section-header">General</div>';
+  html += '<div class="charts-grid">';
+  html += '<div class="card"><h3>Crecimiento neto mensual (%)</h3><canvas id="chartGrowth"></canvas></div>';
+  html += '<div class="card"><h3>Transacciones mensuales (Serv. Contratado)</h3><canvas id="chartTx"></canvas></div>';
+  html += '</div>';
+
+  document.getElementById('dashboard').innerHTML = html;
+
+  // ─── CHARTS ───
+  var outLabels = outData.map(function(d){return MESES_LABEL[d.mes]});
+  var outValues = outData.map(function(d){return d.total});
+
+  new Chart(document.getElementById('chartOut'), {
+    type: 'bar',
+    data: { labels: outLabels, datasets: [{ label: 'Clientes', data: outValues, backgroundColor: '#4361ee', borderRadius: 4 }] },
+    options: { responsive:true, plugins:{legend:{display:false}}, scales:{y:{beginAtZero:false}} }
+  });
+
+  var swLabels = swData.map(function(d){return MESES_LABEL[d.mes]});
+  var swValues = swData.map(function(d){return d.total});
+
+  new Chart(document.getElementById('chartSw'), {
+    type: 'bar',
+    data: { labels: swLabels, datasets: [{ label: 'Clientes Software', data: swValues, backgroundColor: '#8b5cf6', borderRadius: 4 }] },
+    options: { responsive:true, plugins:{legend:{display:false}}, scales:{y:{beginAtZero:false}} }
+  });
+
+  // Growth chart (combined outsourcing + software net %)
+  var growthLabels = [];
+  var growthValues = [];
+  var growthColors = [];
+  var prevOut = baseLine;
+  var prevSw = baseCount;
+  for (var i = 0; i < outData.length; i++) {
+    var totalPrev = prevOut + prevSw;
+    var totalNow = outData[i].total + (swData[i] ? swData[i].total : prevSw);
+    var pct = totalPrev > 0 ? ((totalNow - totalPrev) / totalPrev * 100) : 0;
+    growthLabels.push(MESES_LABEL[outData[i].mes]);
+    growthValues.push(parseFloat(pct.toFixed(1)));
+    growthColors.push(pct >= 0 ? '#10b981' : '#ef4444');
+    prevOut = outData[i].total;
+    prevSw = swData[i] ? swData[i].total : prevSw;
+  }
+
+  new Chart(document.getElementById('chartGrowth'), {
+    type: 'bar',
+    data: { labels: growthLabels, datasets: [{ label: '% Crecimiento', data: growthValues, backgroundColor: growthColors, borderRadius: 4 }] },
+    options: { responsive:true, plugins:{legend:{display:false}}, scales:{y:{ticks:{callback:function(v){return v+'%'}}}} }
+  });
+
+  // TX chart
+  var txLabels = MESES_LABEL.slice(0, currentMonth + 1);
+  var txValues = txByMonth.slice(0, currentMonth + 1);
+
+  new Chart(document.getElementById('chartTx'), {
+    type: 'line',
+    data: { labels: txLabels, datasets: [{ label: 'Transacciones', data: txValues, borderColor: '#4361ee', backgroundColor: 'rgba(67,97,238,0.1)', fill: true, tension: 0.3, pointRadius: 4 }] },
+    options: { responsive:true, plugins:{legend:{display:false}}, scales:{y:{beginAtZero:true}} }
+  });
+}
+
+init();
+</script>
+</body>
+</html>
