@@ -1760,7 +1760,7 @@ function ccRenderSoftware(el) {
     var lic = c.licencia || 'Sin asignar';
     licCounts[lic] = (licCounts[lic] || 0) + 1;
   });
-  var licOrder = ['Starter','Basic','Standard','Premium','Nómina','Manufactura','POS','Starter+FE','Basic+FE','Standard+FE','Premium+FE','Nómina+FE','POS+FE','Sin asignar'];
+  var licOrder = ['Starter','Basic','Basic+FE','Basic+POS','Standard','Standard+FE','Premium','Premium+FE','Nómina','Nómina+FE','Manufactura','Manufactura+FE','POS','POS+FE','Sin asignar'];
   var licKeys = licOrder.filter(function(k) { return licCounts[k]; });
   // Add any keys not in licOrder
   Object.keys(licCounts).forEach(function(k) { if (licKeys.indexOf(k) === -1) licKeys.push(k); });
