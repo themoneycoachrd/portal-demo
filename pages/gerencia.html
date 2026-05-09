@@ -2629,6 +2629,7 @@ var clSearch = '';
 var clEditingId = null;
 var bdContEditingId = null;
 var swSearch = '';
+var swFilter = 'todos'; // 'todos' | 'nuevos' | 'churn'
 var swEditingId = null;
 var swModalActivo = true;
 
@@ -3180,6 +3181,7 @@ clSaveClient = async function() {
 
 function bdSwitchSwMes(mes) {
   bdSwMes = mes;
+  swFilter = 'todos';
   bdRenderSoftware();
 }
 
@@ -3234,12 +3236,32 @@ function bdRenderSoftware() {
   // Calcular facturación mensual total
   var facturacionMes = swActivosMes.reduce(function(sum, c) { return sum + (c.monto_mensual || 0); }, 0);
 
+  // Calcular nuevos (fecha_entrada cae en el mes seleccionado)
+  var mesPrefix = '2026-' + String(swMesIdx + 1).padStart(2, '0');
+  var swNuevosMes = bdSoftwareClientes.filter(function(c) {
+    return c.fecha_entrada && c.fecha_entrada.indexOf(mesPrefix) === 0;
+  });
+  // Calcular churn (fecha_salida cae en el mes seleccionado)
+  var swChurnMes = bdSoftwareClientes.filter(function(c) {
+    return c.fecha_salida && c.fecha_salida.indexOf(mesPrefix) === 0;
+  });
+
   h += '<div class="bd-summary">';
   h += '<div class="bd-summary-item"><div class="bd-summary-count">' + swActivosMes.length + '</div><div class="bd-summary-label">Activos</div></div>';
-  h += '<div class="bd-summary-item"><div class="bd-summary-count">' + swInactivosMes.length + '</div><div class="bd-summary-label">Inactivos</div></div>';
+  h += '<div class="bd-summary-item' + (swFilter === 'nuevos' ? ' bd-summary-active' : '') + '" style="cursor:pointer;border:2px solid ' + (swFilter === 'nuevos' ? 'var(--green)' : 'transparent') + ';border-radius:10px" onclick="swSetFilter(\'nuevos\')"><div class="bd-summary-count" style="color:var(--green)">' + swNuevosMes.length + '</div><div class="bd-summary-label">Nuevos</div></div>';
+  h += '<div class="bd-summary-item' + (swFilter === 'churn' ? ' bd-summary-active' : '') + '" style="cursor:pointer;border:2px solid ' + (swFilter === 'churn' ? 'var(--red)' : 'transparent') + ';border-radius:10px" onclick="swSetFilter(\'churn\')"><div class="bd-summary-count" style="color:var(--red)">' + swChurnMes.length + '</div><div class="bd-summary-label">Churn</div></div>';
   h += '<div class="bd-summary-item"><div class="bd-summary-count">' + allSwForMes.length + '</div><div class="bd-summary-label">Total</div></div>';
   h += '<div class="bd-summary-item"><div class="bd-summary-count" style="font-size:1rem">US$ ' + facturacionMes.toLocaleString() + '</div><div class="bd-summary-label">Facturación mensual</div></div>';
   h += '</div>';
+  // Filter indicator
+  if (swFilter !== 'todos') {
+    var filterLabel = swFilter === 'nuevos' ? 'Mostrando solo nuevos de ' + bdSwMes : 'Mostrando churn de ' + bdSwMes;
+    var filterColor = swFilter === 'nuevos' ? 'var(--green)' : 'var(--red)';
+    h += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;padding:8px 12px;background:' + (swFilter === 'nuevos' ? '#ecfdf5' : '#fef2f2') + ';border-radius:8px;font-size:0.8rem;color:' + filterColor + ';font-weight:500">';
+    h += '<span>' + filterLabel + '</span>';
+    h += '<button style="margin-left:auto;padding:3px 10px;border-radius:5px;border:1px solid ' + filterColor + ';background:white;font-size:0.72rem;cursor:pointer;color:' + filterColor + '" onclick="swSetFilter(\'todos\')">Ver todos</button>';
+    h += '</div>';
+  }
 
   h += '<div class="cl-toolbar">';
   h += '<input class="cl-search" type="text" placeholder="Buscar cliente software..." value="' + esc(swSearch) + '" oninput="swSearch=this.value;bdRenderSoftware()">';
@@ -3248,10 +3270,16 @@ function bdRenderSoftware() {
   }
   h += '</div>';
 
+  // Aplicar filtro nuevos/churn
   var filtered = allSwForMes;
+  if (swFilter === 'nuevos') {
+    filtered = swNuevosMes;
+  } else if (swFilter === 'churn') {
+    filtered = swChurnMes;
+  }
   if (swSearch) {
     var q = swSearch.toLowerCase();
-    filtered = allSwForMes.filter(function(c) {
+    filtered = filtered.filter(function(c) {
       return (c.nombre || '').toLowerCase().indexOf(q) >= 0
         || (c.rnc || '').toLowerCase().indexOf(q) >= 0
         || (c.contacto || '').toLowerCase().indexOf(q) >= 0;
@@ -3322,6 +3350,11 @@ function bdRenderSoftware() {
 }
 
 // ─── Software modal functions ───
+
+function swSetFilter(f) {
+  swFilter = (swFilter === f) ? 'todos' : f;
+  bdRenderSoftware();
+}
 
 function swToggleActivo() {
   swModalActivo = !swModalActivo;
