@@ -741,6 +741,23 @@
     </div>
     <div class="m-row">
       <div class="m-field">
+        <label>Tipo de licencia</label>
+        <select id="sw-m-tipo-licencia">
+          <option value="">— Sin asignar —</option>
+          <option value="Starter">Starter</option>
+          <option value="Starter + FE">Starter + FE</option>
+          <option value="Basic">Basic</option>
+          <option value="Basic + FE">Basic + FE</option>
+          <option value="Basic + FE + POS">Basic + FE + POS</option>
+          <option value="Standard">Standard</option>
+          <option value="Standard + FE">Standard + FE</option>
+          <option value="Premium + FE">Premium + FE</option>
+          <option value="Nomina">Nómina</option>
+          <option value="Manufactura">Manufactura</option>
+          <option value="Punto de Venta">Punto de Venta</option>
+        </select>
+      </div>
+      <div class="m-field">
         <label>Fecha de entrada</label>
         <input type="date" id="sw-m-fecha-entrada">
       </div>
@@ -1218,6 +1235,18 @@ function ccToggleSwDetail(mes) {
   if (detail) detail.style.display = detail.style.display === 'none' ? '' : 'none';
 }
 
+function ccToggleSwLicTable() {
+  var tbl = document.getElementById('sw-lic-table');
+  var tog = document.getElementById('sw-lic-toggle');
+  if (tbl.style.display === 'none') {
+    tbl.style.display = '';
+    tog.textContent = '▲ Ocultar';
+  } else {
+    tbl.style.display = 'none';
+    tog.textContent = '▼ Mostrar';
+  }
+}
+
 function ccToggleSwLic(id, headerEl) {
   const detail = document.getElementById(id);
   const arrow = headerEl.querySelector('.contadora-arrow');
@@ -1612,8 +1641,11 @@ function ccRenderSoftware(el) {
   const totalChurn = stats.rows.reduce((s,r) => s + r.churn.length, 0);
   const ytdPct = stats.baseCount > 0 ? ((last.total - stats.baseCount) / stats.baseCount * 100) : 0;
 
+  // Filtrar solo clientes activos hoy (sin fecha_salida o fecha_salida futura)
+  const hoy = new Date().toISOString().slice(0, 10);
+  const swActuales = ccSOFTWARE_CLIENTES.filter(c => !c.fecha_salida || c.fecha_salida > hoy);
   const groups = {};
-  ccSOFTWARE_CLIENTES.forEach(c => {
+  swActuales.forEach(c => {
     var lic = c.licencia || 'Sin asignar';
     if (!groups[lic]) groups[lic] = [];
     groups[lic].push(c);
@@ -1674,15 +1706,21 @@ function ccRenderSoftware(el) {
       </table></div>
     </div>
     <div class="card">
-      <h3>Clientes por tipo de licencia</h3>
-      <div class="table-wrap"><table>
-        <tr><th>Tipo de licencia</th><th>Cantidad</th><th>Clientes</th></tr>
-        ${groupKeys.map(lic => {
-          const clientes = groups[lic];
-          const nombres = clientes.map(c => c.n).sort((a,b) => a.localeCompare(b,'es')).join(', ');
-          return '<tr><td><strong>' + lic + '</strong></td><td style="text-align:center">' + clientes.length + '</td><td style="font-size:0.82rem">' + nombres + '</td></tr>';
-        }).join('')}
-      </table></div>
+      <div style="display:flex;align-items:center;justify-content:space-between;cursor:pointer" onclick="ccToggleSwLicTable()">
+        <h3 style="margin:0">Clientes por tipo de licencia</h3>
+        <span id="sw-lic-toggle" style="font-size:0.78rem;color:var(--muted)">▼ Mostrar</span>
+      </div>
+      <div id="sw-lic-table" style="display:none;margin-top:14px">
+        <div style="font-size:0.78rem;color:var(--muted);margin-bottom:8px">${swActuales.length} clientes activos</div>
+        <div class="table-wrap"><table>
+          <tr><th>Tipo de licencia</th><th>Cantidad</th><th>Clientes</th></tr>
+          ${groupKeys.map(lic => {
+            const clientes = groups[lic];
+            const nombres = clientes.map(c => c.n).sort((a,b) => a.localeCompare(b,'es')).join(', ');
+            return '<tr><td><strong>' + lic + '</strong></td><td style="text-align:center">' + clientes.length + '</td><td style="font-size:0.82rem">' + nombres + '</td></tr>';
+          }).join('')}
+        </table></div>
+      </div>
     </div>
   `;
   el.innerHTML = html;
@@ -3391,6 +3429,7 @@ function swOpenModal(editId) {
     document.getElementById('sw-m-email').value = c.email || '';
     document.getElementById('sw-m-telefono').value = c.telefono || '';
     document.getElementById('sw-m-monto').value = c.monto_mensual || '';
+    document.getElementById('sw-m-tipo-licencia').value = c.tipo_licencia || '';
     document.getElementById('sw-m-fecha-entrada').value = c.fecha_entrada || '';
     document.getElementById('sw-m-fecha-salida').value = c.fecha_salida || '';
     document.getElementById('sw-m-motivo-salida').value = c.motivo_salida || '';
@@ -3405,6 +3444,7 @@ function swOpenModal(editId) {
     document.getElementById('sw-m-email').value = '';
     document.getElementById('sw-m-telefono').value = '';
     document.getElementById('sw-m-monto').value = '';
+    document.getElementById('sw-m-tipo-licencia').value = '';
     document.getElementById('sw-m-fecha-entrada').value = '';
     document.getElementById('sw-m-fecha-salida').value = '';
     document.getElementById('sw-m-motivo-salida').value = '';
@@ -3452,6 +3492,7 @@ async function swSaveClient() {
     email: document.getElementById('sw-m-email').value.trim() || null,
     telefono: document.getElementById('sw-m-telefono').value.trim() || null,
     monto_mensual: montoVal ? parseInt(montoVal) : null,
+    tipo_licencia: document.getElementById('sw-m-tipo-licencia').value || null,
     fecha_entrada: document.getElementById('sw-m-fecha-entrada').value || null,
     fecha_salida: document.getElementById('sw-m-fecha-salida').value || null,
     activo: swModalActivo,
