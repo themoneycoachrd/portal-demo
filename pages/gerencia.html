@@ -1803,12 +1803,13 @@ function ccRenderSoftware(el) {
   });
   var ccSwInicio = total - ccSwNuevos.length + ccSwChurn.length;
 
-  // Stats cards: Inicio / Nuevos / Churn / Cierre
-  html += '<div class="bd-summary">';
-  html += '<div class="bd-summary-item' + (ccSwFiltro === 'inicio' ? ' bd-summary-active' : '') + '" style="cursor:pointer;border:2px solid ' + (ccSwFiltro === 'inicio' ? 'var(--navy)' : 'transparent') + ';border-radius:10px" onclick="ccSwFilter(\'inicio\')"><div class="bd-summary-count">' + ccSwInicio + '</div><div class="bd-summary-label">Inicio</div></div>';
-  html += '<div class="bd-summary-item' + (ccSwFiltro === 'nuevos' ? ' bd-summary-active' : '') + '" style="cursor:pointer;border:2px solid ' + (ccSwFiltro === 'nuevos' ? 'var(--green)' : 'transparent') + ';border-radius:10px" onclick="ccSwFilter(\'nuevos\')"><div class="bd-summary-count" style="color:var(--green)">' + ccSwNuevos.length + '</div><div class="bd-summary-label">Nuevos</div></div>';
-  html += '<div class="bd-summary-item' + (ccSwFiltro === 'churn' ? ' bd-summary-active' : '') + '" style="cursor:pointer;border:2px solid ' + (ccSwFiltro === 'churn' ? 'var(--red)' : 'transparent') + ';border-radius:10px" onclick="ccSwFilter(\'churn\')"><div class="bd-summary-count" style="color:var(--red)">' + ccSwChurn.length + '</div><div class="bd-summary-label">Churn</div></div>';
-  html += '<div class="bd-summary-item' + (ccSwFiltro === 'cierre' ? ' bd-summary-active' : '') + '" style="cursor:pointer;border:2px solid ' + (ccSwFiltro === 'cierre' ? 'var(--navy)' : 'transparent') + ';border-radius:10px" onclick="ccSwFilter(\'cierre\')"><div class="bd-summary-count" style="font-weight:700">' + total + '</div><div class="bd-summary-label">Cierre</div></div>';
+  // Stats cards: Total / Inicio / Nuevos / Churn / Cierre (mismo estilo que Outsourcing)
+  html += '<div class="stats">';
+  html += '<div class="stat"><div class="stat-label">Total clientes</div><div class="stat-value">' + ccSOFTWARE_CLIENTES.filter(function(c){return c.activo!==false}).length + '</div><div class="stat-sub">En cartera software</div></div>';
+  html += '<div class="stat" style="cursor:pointer;border:2px solid ' + (ccSwFiltro === 'inicio' ? 'var(--navy)' : 'transparent') + '" onclick="ccSwFilter(\'inicio\')"><div class="stat-label">Inicio</div><div class="stat-value">' + ccSwInicio + '</div><div class="stat-sub">' + MESES_FULL[swMesIdx] + '</div></div>';
+  html += '<div class="stat" style="cursor:pointer;border:2px solid ' + (ccSwFiltro === 'nuevos' ? 'var(--green)' : 'transparent') + '" onclick="ccSwFilter(\'nuevos\')"><div class="stat-label">Nuevos</div><div class="stat-value stat-green">' + ccSwNuevos.length + '</div><div class="stat-sub">' + MESES_FULL[swMesIdx] + '</div></div>';
+  html += '<div class="stat" style="cursor:pointer;border:2px solid ' + (ccSwFiltro === 'churn' ? 'var(--red)' : 'transparent') + '" onclick="ccSwFilter(\'churn\')"><div class="stat-label">Churn</div><div class="stat-value stat-red">' + ccSwChurn.length + '</div><div class="stat-sub">' + MESES_FULL[swMesIdx] + '</div></div>';
+  html += '<div class="stat" style="cursor:pointer;border:2px solid ' + (ccSwFiltro === 'cierre' ? 'var(--navy)' : 'transparent') + '" onclick="ccSwFilter(\'cierre\')"><div class="stat-label">Cierre</div><div class="stat-value">' + total + '</div><div class="stat-sub">' + MESES_FULL[swMesIdx] + '</div></div>';
   html += '</div>';
 
   // Filter indicator
@@ -1828,7 +1829,7 @@ function ccRenderSoftware(el) {
     var lic = c.licencia || 'Sin asignar';
     licCounts[lic] = (licCounts[lic] || 0) + 1;
   });
-  var licOrder = ['Starter','Starter+FE','Basic','Basic+FE','Basic+FE+POS','Standard','Standard+FE','Standard+FE+POS','Premium','Premium+FE','Premium+FE+POS','Nómina','Nómina+FE','Manufactura','Manufactura+FE','POS','POS+FE','Sin asignar'];
+  var licOrder = ['Starter','Starter+FE','Basic','Basic+FE','Basic+FE+POS','Standard','Standard+FE','Premium','Premium+FE','Nómina','Nómina+FE','Manufactura','Manufactura+FE','Sin asignar'];
   var licKeys = licOrder.filter(function(k) { return licCounts[k]; });
   // Add any keys not in licOrder
   Object.keys(licCounts).forEach(function(k) { if (licKeys.indexOf(k) === -1) licKeys.push(k); });
@@ -1906,7 +1907,13 @@ function ccRenderSoftware(el) {
     titulo = 'Clientes al cierre de ' + MESES_FULL[swMesIdx];
   }
 
+  var licSortOrder = ['Starter','Starter+FE','Basic','Basic+FE','Basic+FE+POS','Standard','Standard+FE','Premium','Premium+FE','Nómina','Nómina+FE','Manufactura','Manufactura+FE','Sin asignar'];
   lista.sort(function(a, b) {
+    var licA = a.licencia || 'Sin asignar';
+    var licB = b.licencia || 'Sin asignar';
+    var idxA = licSortOrder.indexOf(licA); if (idxA === -1) idxA = 99;
+    var idxB = licSortOrder.indexOf(licB); if (idxB === -1) idxB = 99;
+    if (idxA !== idxB) return idxA - idxB;
     return ((a.n || a.nombre || '')).localeCompare((b.n || b.nombre || ''), 'es');
   });
 
