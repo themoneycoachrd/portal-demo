@@ -2658,6 +2658,7 @@ var clSearch = '';
 var clEditingId = null;
 var bdContEditingId = null;
 var swSearch = '';
+var clFilter = 'todos'; // 'todos' | 'nuevos' | 'churn'
 var swFilter = 'todos'; // 'todos' | 'nuevos' | 'churn'
 var swEditingId = null;
 var swModalActivo = true;
@@ -2772,6 +2773,12 @@ function bdGetClientesForMes(mesName) {
 
 function bdSwitchClMes(mes) {
   bdClMes = mes;
+  clFilter = 'todos';
+  bdRenderClientes();
+}
+
+function clSetFilter(f) {
+  clFilter = (clFilter === f) ? 'todos' : f;
   bdRenderClientes();
 }
 
@@ -2827,10 +2834,19 @@ function bdRenderClientes() {
 
   h += '<div class="bd-summary">';
   h += '<div class="bd-summary-item"><div class="bd-summary-count">' + clInicioMes + '</div><div class="bd-summary-label">Inicio</div></div>';
-  h += '<div class="bd-summary-item"><div class="bd-summary-count" style="color:var(--green)">+' + clNuevosMes.length + '</div><div class="bd-summary-label">Nuevos</div></div>';
-  h += '<div class="bd-summary-item"><div class="bd-summary-count" style="color:var(--red)">-' + clChurnMes.length + '</div><div class="bd-summary-label">Churn</div></div>';
+  h += '<div class="bd-summary-item' + (clFilter === 'nuevos' ? ' bd-summary-active' : '') + '" style="cursor:pointer;border:2px solid ' + (clFilter === 'nuevos' ? 'var(--green)' : 'transparent') + ';border-radius:10px" onclick="clSetFilter(\'nuevos\')"><div class="bd-summary-count" style="color:var(--green)">' + clNuevosMes.length + '</div><div class="bd-summary-label">Nuevos</div></div>';
+  h += '<div class="bd-summary-item' + (clFilter === 'churn' ? ' bd-summary-active' : '') + '" style="cursor:pointer;border:2px solid ' + (clFilter === 'churn' ? 'var(--red)' : 'transparent') + ';border-radius:10px" onclick="clSetFilter(\'churn\')"><div class="bd-summary-count" style="color:var(--red)">' + clChurnMes.length + '</div><div class="bd-summary-label">Churn</div></div>';
   h += '<div class="bd-summary-item"><div class="bd-summary-count" style="font-weight:700">' + clActivosMes.length + '</div><div class="bd-summary-label">Cierre</div></div>';
   h += '</div>';
+  // Filter indicator
+  if (clFilter !== 'todos') {
+    var clFilterLabel = clFilter === 'nuevos' ? 'Mostrando solo nuevos de ' + bdClMes : 'Mostrando churn de ' + bdClMes;
+    var clFilterColor = clFilter === 'nuevos' ? 'var(--green)' : 'var(--red)';
+    h += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;padding:8px 12px;background:' + (clFilter === 'nuevos' ? '#ecfdf5' : '#fef2f2') + ';border-radius:8px;font-size:0.8rem;color:' + clFilterColor + ';font-weight:500">';
+    h += '<span>' + clFilterLabel + '</span>';
+    h += '<button style="margin-left:auto;padding:3px 10px;border-radius:5px;border:1px solid ' + clFilterColor + ';background:white;font-size:0.72rem;cursor:pointer;color:' + clFilterColor + '" onclick="clSetFilter(\'todos\')">Ver todos</button>';
+    h += '</div>';
+  }
 
   h += '<div class="cl-toolbar">';
   h += '<input class="cl-search" type="text" placeholder="Buscar cliente..." value="' + esc(clSearch) + '" oninput="clSearch=this.value;bdRenderClientes()">';
@@ -2839,7 +2855,13 @@ function bdRenderClientes() {
   }
   h += '</div>';
 
+  // Aplicar filtro nuevos/churn
   var filtered = allForMes;
+  if (clFilter === 'nuevos') {
+    filtered = clNuevosMes;
+  } else if (clFilter === 'churn') {
+    filtered = clChurnMes;
+  }
   if (clSearch) {
     var q = clSearch.toLowerCase();
     filtered = allForMes.filter(function(c) {
@@ -3293,8 +3315,8 @@ function bdRenderSoftware() {
 
   h += '<div class="bd-summary">';
   h += '<div class="bd-summary-item"><div class="bd-summary-count">' + swInicioMes + '</div><div class="bd-summary-label">Inicio</div></div>';
-  h += '<div class="bd-summary-item' + (swFilter === 'nuevos' ? ' bd-summary-active' : '') + '" style="cursor:pointer;border:2px solid ' + (swFilter === 'nuevos' ? 'var(--green)' : 'transparent') + ';border-radius:10px" onclick="swSetFilter(\'nuevos\')"><div class="bd-summary-count" style="color:var(--green)">+' + swNuevosMes.length + '</div><div class="bd-summary-label">Nuevos</div></div>';
-  h += '<div class="bd-summary-item' + (swFilter === 'churn' ? ' bd-summary-active' : '') + '" style="cursor:pointer;border:2px solid ' + (swFilter === 'churn' ? 'var(--red)' : 'transparent') + ';border-radius:10px" onclick="swSetFilter(\'churn\')"><div class="bd-summary-count" style="color:var(--red)">-' + swChurnMes.length + '</div><div class="bd-summary-label">Churn</div></div>';
+  h += '<div class="bd-summary-item' + (swFilter === 'nuevos' ? ' bd-summary-active' : '') + '" style="cursor:pointer;border:2px solid ' + (swFilter === 'nuevos' ? 'var(--green)' : 'transparent') + ';border-radius:10px" onclick="swSetFilter(\'nuevos\')"><div class="bd-summary-count" style="color:var(--green)">' + swNuevosMes.length + '</div><div class="bd-summary-label">Nuevos</div></div>';
+  h += '<div class="bd-summary-item' + (swFilter === 'churn' ? ' bd-summary-active' : '') + '" style="cursor:pointer;border:2px solid ' + (swFilter === 'churn' ? 'var(--red)' : 'transparent') + ';border-radius:10px" onclick="swSetFilter(\'churn\')"><div class="bd-summary-count" style="color:var(--red)">' + swChurnMes.length + '</div><div class="bd-summary-label">Churn</div></div>';
   h += '<div class="bd-summary-item"><div class="bd-summary-count" style="font-weight:700">' + swActivosMes.length + '</div><div class="bd-summary-label">Cierre</div></div>';
   h += '<div class="bd-summary-item"><div class="bd-summary-count" style="font-size:1rem">US$ ' + facturacionMes.toLocaleString() + '</div><div class="bd-summary-label">Facturación</div></div>';
   h += '</div>';
