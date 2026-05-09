@@ -837,11 +837,11 @@ async function loadDashboardData() {
       // Total actual: entró antes o durante este mes Y no salió antes del fin del mes
       var enteredCur = !fe || fe <= curLastStr;
       var notExitedCur = !fs || fs > curLastStr;
-      if (enteredCur && notExitedCur && c.activo !== false) softTotal++;
+      if (enteredCur && notExitedCur) softTotal++;
       // Total mes anterior
       var enteredPrev = !fe || fe <= prevLastStr;
       var notExitedPrev = !fs || fs > prevLastStr;
-      if (enteredPrev && notExitedPrev && c.activo !== false) softPrev++;
+      if (enteredPrev && notExitedPrev) softPrev++;
     });
   } catch(e) { console.error('Dashboard clientes_software:', e); }
 

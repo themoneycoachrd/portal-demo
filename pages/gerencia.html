@@ -3209,7 +3209,7 @@ function swGetClientesForMes(mes) {
   return bdSoftwareClientes.filter(function(c) {
     var entered = !c.fecha_entrada || c.fecha_entrada <= lastDayStr;
     var notExited = !c.fecha_salida || c.fecha_salida > lastDayStr;
-    return entered && notExited && c.activo !== false;
+    return entered && notExited;
   });
 }
 
