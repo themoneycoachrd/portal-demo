@@ -832,8 +832,8 @@ let gerMainTab = 'clientes';
 function renderGerMainTabs() {
   const el = document.getElementById('mainTabs');
   el.innerHTML = [
-    { id:'clientes', label:'Control de Clientes' },
-    { id:'contadoras', label:'Control de Contadoras' },
+    { id:'clientes', label:'Clientes' },
+    { id:'contadoras', label:'Contadoras' },
     { id:'basedatos', label:'Base de Datos' }
   ].map(t => '<button class="main-tab ' + (gerMainTab === t.id ? 'active' : '') + '" onclick="switchGerTab(\'' + t.id + '\')">' + t.label + '</button>').join('');
 }
@@ -1310,10 +1310,9 @@ function ccRenderMainTabs() {
   const el = document.getElementById("ccMainTabs");
   const tabs = [
     {id:'dashboard', label:'Dashboard'},
-    {id:'servicios', label:'Servicios'},
-    {id:'implementacion', label:'Implementaciones'},
+    {id:'servicios', label:'Clientes'},
     {id:'software', label:'Software'},
-    {id:'perfiles', label:'Perfiles'}
+    {id:'implementacion', label:'Implementaciones'}
   ];
   el.innerHTML = tabs.map(t =>
     `<button class="sub-tab ${ccActiveMainTab===t.id?'active':''}" onclick="ccNavigateMain('${t.id}')">${t.label}</button>`
@@ -1343,9 +1342,8 @@ function ccRenderContent() {
   ccDestroyCharts();
   const el = document.getElementById("cc-content");
   if (ccActiveMainTab === "servicios") return ccRenderServicios(el);
-  if (ccActiveMainTab === "implementacion") return ccRenderImplementacion(el);
-  if (ccActiveMainTab === "perfiles") return ccRenderPerfiles(el);
   if (ccActiveMainTab === "software") return ccRenderSoftware(el);
+  if (ccActiveMainTab === "implementacion") return ccRenderImplementacion(el);
   if (ccActiveSubTab === null) return ccRenderDashboard(el);
   const d = ccGetMonthData(ccActiveSubTab);
   if (!d) { el.innerHTML = '<div class="empty">Sin datos para este mes todavia.</div>'; return; }
@@ -2718,6 +2716,7 @@ function bdRenderSubTabs() {
     { id:'software', label:'Clientes Software' + (pendSw ? ' <span style="background:var(--amber);color:white;font-size:10px;padding:1px 6px;border-radius:10px;margin-left:4px">' + pendSw + '</span>' : '') },
     { id:'asignaciones', label:'Asignaciones' },
     { id:'contadoras', label:'Contadores' },
+    { id:'perfiles', label:'Perfiles' },
     { id:'links', label:'Links Portal' }
   ];
   el.innerHTML = tabs.map(function(t) {
@@ -2746,6 +2745,7 @@ function bdRenderContent() {
   else if (bdActiveSubTab === 'software') bdRenderSoftware();
   else if (bdActiveSubTab === 'contadoras') bdRenderContadoras();
   else if (bdActiveSubTab === 'asignaciones') bdRenderAsignaciones();
+  else if (bdActiveSubTab === 'perfiles') ccRenderPerfiles(document.getElementById('bd-content'));
   else if (bdActiveSubTab === 'links') bdRenderLinks();
 }
 
