@@ -1358,7 +1358,8 @@ function ccRenderContent() {
 var ccServFiltro = null; // null = todos, o 'Contabilidad completa', 'Solo impuestos', 'Solo supervisión'
 var ccServMes = MESES[new Date().getMonth()]; // mes actual para tab Servicios
 var ccSwMes = MESES[new Date().getMonth()]; // mes actual para tab Software
-var ccSwFiltro = null; // null = todos, o tipo de licencia
+var ccSwFiltro = null; // null = todos, 'inicio','nuevos','churn','cierre'
+var ccSwLicFiltro = null; // null = todos, o nombre de licencia
 
 function ccSwGetActivosMes(mesKey) {
   var mesIdx = MESES.indexOf(mesKey);
@@ -1374,6 +1375,12 @@ function ccSwGetActivosMes(mesKey) {
 function ccSwFilter(tipo) {
   if (tipo === null) { ccSwFiltro = null; }
   else { ccSwFiltro = (ccSwFiltro === tipo) ? null : tipo; }
+  ccSwLicFiltro = null;
+  ccRenderContent();
+}
+function ccSwLicFilter(lic) {
+  ccSwLicFiltro = (ccSwLicFiltro === lic) ? null : lic;
+  ccSwFiltro = null;
   ccRenderContent();
 }
 
@@ -1747,6 +1754,24 @@ function ccRenderSoftware(el) {
     html += '</div>';
   }
 
+  // License type pills (compact)
+  var licCounts = {};
+  swActivos.forEach(function(c) {
+    var lic = c.licencia || 'Sin asignar';
+    licCounts[lic] = (licCounts[lic] || 0) + 1;
+  });
+  var licOrder = ['Starter','Basic','Standard','Premium','Nómina','Manufactura','POS','Starter+FE','Basic+FE','Standard+FE','Premium+FE','Nómina+FE','POS+FE','Sin asignar'];
+  var licKeys = licOrder.filter(function(k) { return licCounts[k]; });
+  // Add any keys not in licOrder
+  Object.keys(licCounts).forEach(function(k) { if (licKeys.indexOf(k) === -1) licKeys.push(k); });
+
+  html += '<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px">';
+  licKeys.forEach(function(lic) {
+    var isActive = ccSwLicFiltro === lic;
+    html += '<button style="padding:3px 10px;border-radius:12px;font-size:0.72rem;font-weight:' + (isActive ? '700' : '500') + ';border:1px solid ' + (isActive ? 'var(--blue)' : 'var(--border)') + ';background:' + (isActive ? '#eef2ff' : 'white') + ';color:' + (isActive ? 'var(--blue)' : 'var(--text)') + ';cursor:pointer" onclick="ccSwLicFilter(\'' + lic.replace(/'/g, "\\'") + '\')">' + lic + ' <span style="opacity:0.6">(' + licCounts[lic] + ')</span></button>';
+  });
+  html += '</div>';
+
   // Resumen mensual (colapsable)
   var stats = ccGetSoftwareStats();
   html += '<div class="card" style="margin-bottom:16px">';
@@ -1789,18 +1814,19 @@ function ccRenderSoftware(el) {
   // Listado de clientes del mes seleccionado
   var lista = swActivos;
   var titulo = 'Todos los clientes software';
-  if (ccSwFiltro === 'nuevos') {
+  if (ccSwLicFiltro) {
+    lista = swActivos.filter(function(c) { return (c.licencia || 'Sin asignar') === ccSwLicFiltro; });
+    titulo = ccSwLicFiltro + ' — ' + MESES_FULL[swMesIdx];
+  } else if (ccSwFiltro === 'nuevos') {
     lista = ccSwNuevos;
     titulo = 'Nuevos en ' + MESES_FULL[swMesIdx];
   } else if (ccSwFiltro === 'churn') {
     lista = ccSwChurn;
     titulo = 'Churn de ' + MESES_FULL[swMesIdx];
   } else if (ccSwFiltro === 'inicio') {
-    // Clientes activos al inicio del mes = activos del mes anterior
     if (swMesIdx > 0) {
       lista = ccSwGetActivosMes(MESES[swMesIdx - 1]);
     } else {
-      // Enero: activos pre-2026
       lista = ccSOFTWARE_CLIENTES.filter(function(c) {
         var entered = !c.fecha_entrada || c.fecha_entrada < '2026-01-01';
         var notLeft = !c.fecha_salida || c.fecha_salida >= '2026-01-01';
