@@ -998,8 +998,14 @@ async function ccLoadImplementaciones() {
 }
 
 async function ccLoadSoftwareClientes() {
-  const { data } = await sb.from('software_clientes').select('*');
-  ccSOFTWARE_CLIENTES = (data || []).map(r => ({ n: r.cliente, licencia: r.licencia, monto: parseFloat(r.monto) || 0, periodo: r.periodo }));
+  const { data } = await sb.from('clientes_software').select('*');
+  ccSOFTWARE_CLIENTES = (data || []).map(r => ({
+    _id: r.id, n: r.nombre, licencia: r.tipo_licencia || '',
+    monto: parseFloat(r.monto_mensual) || 0,
+    fecha_entrada: r.fecha_entrada || null,
+    fecha_salida: r.fecha_salida || null,
+    activo: r.activo !== false
+  }));
 }
 
 async function ccLoadPerfilesFromDB() {
@@ -1069,20 +1075,25 @@ async function ccSaveKpiToDB(contadora, mes, scores) {
 
 // ─── CC Software Stats ───
 function ccGetSoftwareStats() {
-  const base = ccSOFTWARE_CLIENTES.filter(c => c.periodo === "2025");
+  // Base = clientes con fecha_entrada anterior a 2026
+  const base = ccSOFTWARE_CLIENTES.filter(c => c.fecha_entrada && c.fecha_entrada < '2026-01-01');
   const baseMonto = base.reduce((s,c) => s + c.monto, 0);
-  const mesesActivos = ["enero","febrero","marzo","abril"];
+  var mesesActivos = ["enero","febrero","marzo","abril","mayo"];
+  var MESES_MAP = {enero:'01',febrero:'02',marzo:'03',abril:'04',mayo:'05',junio:'06',julio:'07',agosto:'08',septiembre:'09',octubre:'10',noviembre:'11',diciembre:'12'};
   let acumClientes = base.length;
   let acumMonto = baseMonto;
   const rows = mesesActivos.map(m => {
-    const nuevos = ccSOFTWARE_CLIENTES.filter(c => c.periodo === m);
+    var prefix = '2026-' + MESES_MAP[m];
+    var nuevos = ccSOFTWARE_CLIENTES.filter(c => c.fecha_entrada && c.fecha_entrada.indexOf(prefix) === 0);
+    var churn = ccSOFTWARE_CLIENTES.filter(c => c.fecha_salida && c.fecha_salida.indexOf(prefix) === 0);
     const nuevosMonto = nuevos.reduce((s,c) => s + c.monto, 0);
+    const churnMonto = churn.reduce((s,c) => s + c.monto, 0);
     const prevTotal = acumClientes;
-    acumClientes += nuevos.length;
-    acumMonto += nuevosMonto;
-    const neto = nuevos.length;
+    acumClientes += nuevos.length - churn.length;
+    acumMonto += nuevosMonto - churnMonto;
+    const neto = nuevos.length - churn.length;
     const pct = prevTotal > 0 ? (neto / prevTotal * 100) : 0;
-    return { mes: m, total: acumClientes, nuevos: nuevos, churn: [], neto, pct, monto: acumMonto };
+    return { mes: m, total: acumClientes, nuevos: nuevos, churn: churn, neto, pct, monto: acumMonto };
   });
   return { base, baseMonto, baseCount: base.length, rows };
 }
@@ -1603,8 +1614,9 @@ function ccRenderSoftware(el) {
 
   const groups = {};
   ccSOFTWARE_CLIENTES.forEach(c => {
-    if (!groups[c.licencia]) groups[c.licencia] = [];
-    groups[c.licencia].push(c);
+    var lic = c.licencia || 'Sin asignar';
+    if (!groups[lic]) groups[lic] = [];
+    groups[lic].push(c);
   });
   const LICENCIA_ORDER = ['Punto de Venta','Starter','Starter + FE','Basic','Basic + FE','Standard','Standard + FE','Premium + FE','Nomina','Manufactura'];
   const groupKeys = Object.keys(groups).sort((a,b) => {
@@ -1683,7 +1695,12 @@ function ccRenderSoftware(el) {
           '<div class="contadora-detail" id="' + groupId + '">' +
             '<table class="detail-table"><tr><th>Cliente</th><th>Monto</th><th>Desde</th></tr>' +
             clientes.map(c => {
-              const desde = c.periodo === '2025' ? '2025' : c.periodo.charAt(0).toUpperCase() + c.periodo.slice(1) + ' 2026';
+              var desde = '—';
+              if (c.fecha_entrada) {
+                var parts = c.fecha_entrada.split('-');
+                var mesNames = ['','Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+                desde = mesNames[parseInt(parts[1])] + ' ' + parts[0];
+              }
               return '<tr><td><strong>' + c.n + '</strong></td><td>US$ ' + c.monto + '</td><td>' + desde + '</td></tr>';
             }).join('') +
             '</table>' +

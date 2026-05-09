@@ -814,24 +814,36 @@ async function loadDashboardData() {
     (resAsig.data || []).forEach(function(a) { contaTxAdm += (parseFloat(a.adm) || 0); });
   } catch(e) { console.error('Dashboard clientes:', e); }
 
-  // 2) Clientes software
+  // 2) Clientes software (lee de clientes_software, tabla unificada)
   var softTotal = 0, softPrev = 0, softBase = 0, softNuevosMes = [];
   try {
-    var res2 = await sb.from('software_clientes').select('*');
+    var res2 = await sb.from('clientes_software').select('*');
     var softData = res2.data || [];
-    var nuevosHasta = 0, nuevosHastaPrev = 0;
+    var MESES_MAP_DASH = {enero:'01',febrero:'02',marzo:'03',abril:'04',mayo:'05',junio:'06',julio:'07',agosto:'08',septiembre:'09',octubre:'10',noviembre:'11',diciembre:'12'};
+    var curPrefix = '2026-' + MESES_MAP_DASH[currentMes];
+    var curLastDay = new Date(2026, mesIdx + 1, 0);
+    var curLastStr = '2026-' + String(mesIdx + 1).padStart(2, '0') + '-' + String(curLastDay.getDate()).padStart(2, '0');
+    var prevLastDay = mesIdx > 0 ? new Date(2026, mesIdx, 0) : new Date(2025, 12, 0);
+    var prevLastStr = mesIdx > 0
+      ? '2026-' + String(mesIdx).padStart(2, '0') + '-' + String(prevLastDay.getDate()).padStart(2, '0')
+      : '2025-12-31';
     softData.forEach(function(c) {
-      if (c.periodo === '2025') { softBase++; }
-      else {
-        var idx = MESES_DASH.indexOf(c.periodo);
-        if (idx >= 0 && idx <= mesIdx) nuevosHasta++;
-        if (idx >= 0 && idx < mesIdx) nuevosHastaPrev++;
-        if (c.periodo === currentMes) softNuevosMes.push(c.cliente);
-      }
+      var fe = c.fecha_entrada || '';
+      var fs = c.fecha_salida || '';
+      // Base = entrada antes de 2026
+      if (fe && fe < '2026-01-01') softBase++;
+      // Nuevos del mes actual
+      if (fe && fe.indexOf(curPrefix) === 0) softNuevosMes.push(c.nombre);
+      // Total actual: entró antes o durante este mes Y no salió antes del fin del mes
+      var enteredCur = !fe || fe <= curLastStr;
+      var notExitedCur = !fs || fs > curLastStr;
+      if (enteredCur && notExitedCur && c.activo !== false) softTotal++;
+      // Total mes anterior
+      var enteredPrev = !fe || fe <= prevLastStr;
+      var notExitedPrev = !fs || fs > prevLastStr;
+      if (enteredPrev && notExitedPrev && c.activo !== false) softPrev++;
     });
-    softTotal = softBase + nuevosHasta;
-    softPrev = softBase + nuevosHastaPrev;
-  } catch(e) { console.error('Dashboard software_clientes:', e); }
+  } catch(e) { console.error('Dashboard clientes_software:', e); }
 
   // 3) Leads y ROAS del mes actual
   var totalLeads = 0, cierres = 0, vendido = 0, cotizado = 0, ejecutado = 0;
