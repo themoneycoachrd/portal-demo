@@ -1353,6 +1353,24 @@ function ccRenderContent() {
 // ─── Servicios tab ───
 var ccServFiltro = null; // null = todos, o 'Contabilidad completa', 'Solo impuestos', 'Solo supervisión'
 var ccServMes = MESES[new Date().getMonth()]; // mes actual para tab Servicios
+var ccSwMes = MESES[new Date().getMonth()]; // mes actual para tab Software
+var ccSwFiltro = null; // null = todos, o tipo de licencia
+
+function ccSwGetActivosMes(mesKey) {
+  var mesIdx = MESES.indexOf(mesKey);
+  var lastDay = new Date(2026, mesIdx + 1, 0);
+  var lastDayStr = '2026-' + String(mesIdx + 1).padStart(2, '0') + '-' + String(lastDay.getDate()).padStart(2, '0');
+  return ccSOFTWARE_CLIENTES.filter(function(c) {
+    var entered = !c.fecha_entrada || c.fecha_entrada <= lastDayStr;
+    var notLeft = !c.fecha_salida || c.fecha_salida > lastDayStr;
+    return entered && notLeft;
+  });
+}
+
+function ccSwFilter(tipo) {
+  ccSwFiltro = (ccSwFiltro === tipo) ? null : tipo;
+  ccRenderContent();
+}
 
 function ccServGetActivosMes(mesKey) {
   var mesIdx = MESES.indexOf(mesKey);
@@ -1671,94 +1689,144 @@ function ccRenderImplementacion(el) {
 }
 
 function ccRenderSoftware(el) {
-  const stats = ccGetSoftwareStats();
-  const last = stats.rows[stats.rows.length - 1];
-  const totalNuevos = stats.rows.reduce((s,r) => s + r.nuevos.length, 0);
-  const totalChurn = stats.rows.reduce((s,r) => s + r.churn.length, 0);
-  const ytdPct = stats.baseCount > 0 ? ((last.total - stats.baseCount) / stats.baseCount * 100) : 0;
+  var currentMonthIdx = new Date().getMonth();
+  var swMesIdx = MESES.indexOf(ccSwMes);
 
-  // Filtrar solo clientes activos hoy (sin fecha_salida o fecha_salida futura)
-  const hoy = new Date().toISOString().slice(0, 10);
-  const swActuales = ccSOFTWARE_CLIENTES.filter(c => !c.fecha_salida || c.fecha_salida > hoy);
-  const groups = {};
-  swActuales.forEach(c => {
+  // Month tabs
+  var html = '<div class="nav-area" style="padding:12px 24px;background:var(--bg);border-bottom:1px solid var(--border);margin:-24px -24px 20px -24px">';
+  html += '<div class="month-tabs">';
+  MESES.forEach(function(m, i) {
+    if (i > currentMonthIdx) return;
+    html += '<button class="month-tab' + (m === ccSwMes ? ' active' : '') + '" onclick="ccSwMes=\'' + m + '\';ccRenderContent()">' + MESES_LABEL[i] + '</button>';
+  });
+  html += '</div></div>';
+
+  // Clientes activos en el mes seleccionado
+  var swActivos = ccSwGetActivosMes(ccSwMes);
+  var total = swActivos.length;
+
+  // Agrupar por licencia
+  var groups = {};
+  swActivos.forEach(function(c) {
     var lic = c.licencia || 'Sin asignar';
     if (!groups[lic]) groups[lic] = [];
     groups[lic].push(c);
   });
-  const LICENCIA_ORDER = ['POS','Starter','Starter + FE','Basic','Basic + FE','Standard','Standard + FE','Premium + FE','Nomina','Manufactura'];
-  const groupKeys = Object.keys(groups).sort((a,b) => {
-    const ia = LICENCIA_ORDER.indexOf(a); const ib = LICENCIA_ORDER.indexOf(b);
+  var LICENCIA_ORDER = ['POS','Starter','Starter + FE','Basic','Basic + FE','Basic + FE + POS','Standard','Standard + FE','Premium + FE','Nomina','Manufactura'];
+  var groupKeys = Object.keys(groups).sort(function(a,b) {
+    var ia = LICENCIA_ORDER.indexOf(a); var ib = LICENCIA_ORDER.indexOf(b);
     return (ia === -1 ? 99 : ia) - (ib === -1 ? 99 : ib);
   });
-  const LICENCIA_COLORS = {
+  var LICENCIA_COLORS = {
     'Basic + FE': '#4361ee', 'Basic': '#60a5fa', 'Starter + FE': '#10b981', 'Starter': '#34d399',
     'Standard + FE': '#8b5cf6', 'Standard': '#a78bfa', 'Premium + FE': '#f59e0b', 'Manufactura': '#ec4899',
-    'Nomina': '#f97316', 'POS': '#6366f1'
+    'Nomina': '#f97316', 'POS': '#6366f1', 'Basic + FE + POS': '#4361ee'
   };
 
-  let html = `
-    <div class="stats" style="grid-template-columns:repeat(5,1fr);">
-      <div class="stat"><div class="stat-label">Software actual</div><div class="stat-value">${last.total}</div><div class="stat-sub">Base 2026: ${stats.baseCount}</div></div>
-      <div class="stat"><div class="stat-label">Nuevos 2026</div><div class="stat-value stat-green">${totalNuevos}</div><div class="stat-sub">${stats.baseCount > 0 ? (totalNuevos / stats.baseCount * 100).toFixed(1) : 0}% crecimiento</div></div>
-      <div class="stat"><div class="stat-label">Churn 2026</div><div class="stat-value stat-red">${totalChurn}</div><div class="stat-sub">${stats.baseCount > 0 ? (totalChurn / stats.baseCount * 100).toFixed(1) : 0}% churn</div></div>
-      <div class="stat"><div class="stat-label">Crecimiento</div><div class="stat-value ${ytdPct >= 0 ? 'stat-green' : 'stat-red'}">${ytdPct >= 0 ? '+' : ''}${ytdPct.toFixed(1)}%</div><div class="stat-sub">${ytdPct >= 0 ? '+' : ''}${last.total - stats.baseCount} neto</div></div>
-      <div class="stat"><div class="stat-label">Monto mensual</div><div class="stat-value" style="color:var(--navy)">US$ ${last.monto.toLocaleString()}</div><div class="stat-sub">Base: US$ ${stats.baseMonto.toLocaleString()}</div></div>
-    </div>
-    <div class="card">
-      <h3>Resumen mensual</h3>
-      <div class="table-wrap"><table>
-        <tr><th>Mes</th><th>Inicio</th><th>Nuevos</th><th>Churn</th><th>Neto</th><th>Cierre</th><th>Crecimiento</th><th>Monto</th></tr>
-        ${stats.rows.map(r => {
-          const mi = MESES.indexOf(r.mes);
-          const pctStr = (r.pct >= 0 ? '+' : '') + r.pct.toFixed(1) + '%';
-          const pctColor = r.pct >= 0 ? 'var(--green)' : 'var(--red)';
-          const netoStr = (r.neto >= 0 ? '+' : '') + r.neto;
-          const netoColor = r.neto >= 0 ? 'var(--green)' : 'var(--red)';
-          const nuevosHtml = r.nuevos.length > 0
-            ? r.nuevos.map(c => '<span class="badge badge-new" style="margin:1px 2px">' + c.n + '</span>').join('')
-            : '—';
-          const churnHtml = r.churn.length > 0
-            ? r.churn.map(c => '<span class="badge badge-churn" style="margin:1px 2px">' + c.n + '</span>').join('')
-            : '—';
-          const detailId = 'sw-detail-' + r.mes;
-          const inicio = r.total - r.nuevos.length + r.churn.length;
-          return '<tr style="cursor:pointer" onclick="ccToggleSwDetail(\'' + r.mes + '\')">' +
-            '<td><strong>' + MESES_FULL[mi] + '</strong></td>' +
-            '<td>' + inicio + '</td>' +
-            '<td style="color:var(--green)">' + r.nuevos.length + '</td>' +
-            '<td style="color:var(--red)">' + r.churn.length + '</td>' +
-            '<td style="color:' + netoColor + '">' + netoStr + '</td>' +
-            '<td><strong>' + r.total + '</strong></td>' +
-            '<td style="color:' + pctColor + '">' + pctStr + '</td>' +
-            '<td>US$ ' + r.monto.toLocaleString() + '</td></tr>' +
-            '<tr id="' + detailId + '" style="display:none"><td colspan="8" style="padding:10px 14px;background:#f8fafc;border-bottom:2px solid var(--border)">' +
-              '<div style="display:flex;gap:20px;flex-wrap:wrap">' +
-                '<div><span style="font-size:11px;font-weight:700;color:var(--green);text-transform:uppercase;letter-spacing:0.3px">Entraron:</span><div style="margin-top:4px;display:flex;flex-wrap:wrap;gap:4px">' + nuevosHtml + '</div></div>' +
-                '<div><span style="font-size:11px;font-weight:700;color:var(--red);text-transform:uppercase;letter-spacing:0.3px">Salieron:</span><div style="margin-top:4px;display:flex;flex-wrap:wrap;gap:4px">' + churnHtml + '</div></div>' +
-              '</div>' +
-            '</td></tr>';
-        }).join('')}
-      </table></div>
-    </div>
-    <div class="card">
-      <div style="display:flex;align-items:center;justify-content:space-between;cursor:pointer" onclick="ccToggleSwLicTable()">
-        <h3 style="margin:0">Clientes por tipo de licencia</h3>
-        <span id="sw-lic-toggle" style="font-size:0.78rem;color:var(--muted)">▼ Mostrar</span>
-      </div>
-      <div id="sw-lic-table" style="display:none;margin-top:14px">
-        <div style="font-size:0.78rem;color:var(--muted);margin-bottom:8px">${swActuales.length} clientes activos</div>
-        <div class="table-wrap"><table>
-          <tr><th>Tipo de licencia</th><th>Cantidad</th><th>Clientes</th></tr>
-          ${groupKeys.map(lic => {
-            const clientes = groups[lic];
-            const nombres = clientes.map(c => c.n).sort((a,b) => a.localeCompare(b,'es')).join(', ');
-            return '<tr><td><strong>' + lic + '</strong></td><td style="text-align:center">' + clientes.length + '</td><td style="font-size:0.82rem">' + nombres + '</td></tr>';
-          }).join('')}
-        </table></div>
-      </div>
-    </div>
-  `;
+  // Stats cards con filtros por licencia
+  function swStatClass(key) { return ccSwFiltro === key ? 'stat cc-serv-stat active' : 'stat cc-serv-stat'; }
+
+  html += '<div class="stats" style="flex-wrap:wrap">';
+  html += '<div class="' + swStatClass(null) + '" onclick="ccSwFilter(null)" style="cursor:pointer">';
+  html += '<div class="stat-label">Total software</div><div class="stat-value">' + total + '</div>';
+  html += '<div class="stat-sub">' + MESES_FULL[swMesIdx] + ' 2026</div></div>';
+
+  groupKeys.forEach(function(lic) {
+    var clientes = groups[lic];
+    var color = LICENCIA_COLORS[lic] || '#7c8495';
+    html += '<div class="' + swStatClass(lic) + '" onclick="ccSwFilter(\'' + lic.replace(/'/g, "\\'") + '\')" style="cursor:pointer">';
+    html += '<div class="stat-label" style="font-size:10px">' + lic + '</div><div class="stat-value" style="color:' + color + '">' + clientes.length + '</div>';
+    html += '<div class="stat-sub">' + (total > 0 ? (clientes.length / total * 100).toFixed(0) : 0) + '%</div></div>';
+  });
+  html += '</div>';
+
+  // Resumen mensual (colapsable)
+  var stats = ccGetSoftwareStats();
+  html += '<div class="card" style="margin-bottom:16px">';
+  html += '<div style="display:flex;align-items:center;justify-content:space-between;cursor:pointer" onclick="document.getElementById(\'cc-sw-resumen\').style.display=document.getElementById(\'cc-sw-resumen\').style.display===\'none\'?\'\':\'none\';this.querySelector(\'span\').textContent=document.getElementById(\'cc-sw-resumen\').style.display===\'none\'?\'▼ Mostrar\':\'▲ Ocultar\'">';
+  html += '<h3 style="margin:0">Resumen mensual</h3>';
+  html += '<span style="font-size:0.78rem;color:var(--muted)">▼ Mostrar</span>';
+  html += '</div>';
+  html += '<div id="cc-sw-resumen" style="display:none;margin-top:14px">';
+  html += '<div class="table-wrap"><table>';
+  html += '<tr><th>Mes</th><th>Inicio</th><th>Nuevos</th><th>Churn</th><th>Neto</th><th>Cierre</th><th>Crecimiento</th><th>Monto</th></tr>';
+  stats.rows.forEach(function(r) {
+    var mi = MESES.indexOf(r.mes);
+    if (mi > currentMonthIdx) return;
+    var pctStr = (r.pct >= 0 ? '+' : '') + r.pct.toFixed(1) + '%';
+    var pctColor = r.pct >= 0 ? 'var(--green)' : 'var(--red)';
+    var netoStr = (r.neto >= 0 ? '+' : '') + r.neto;
+    var netoColor = r.neto >= 0 ? 'var(--green)' : 'var(--red)';
+    var inicio = r.total - r.nuevos.length + r.churn.length;
+    var isSel = r.mes === ccSwMes;
+    var nuevosHtml = r.nuevos.length > 0 ? r.nuevos.map(function(c) { return '<span class="badge badge-new" style="margin:1px 2px">' + c.n + '</span>'; }).join('') : '—';
+    var churnHtml = r.churn.length > 0 ? r.churn.map(function(c) { return '<span class="badge badge-churn" style="margin:1px 2px">' + c.n + '</span>'; }).join('') : '—';
+    var detailId = 'sw-detail-' + r.mes;
+    html += '<tr style="cursor:pointer;' + (isSel ? 'background:#f0f4ff;font-weight:600' : '') + '" onclick="ccToggleSwDetail(\'' + r.mes + '\')">';
+    html += '<td><strong>' + MESES_FULL[mi] + '</strong></td>';
+    html += '<td>' + inicio + '</td>';
+    html += '<td style="color:var(--green)">' + r.nuevos.length + '</td>';
+    html += '<td style="color:var(--red)">' + r.churn.length + '</td>';
+    html += '<td style="color:' + netoColor + '">' + netoStr + '</td>';
+    html += '<td><strong>' + r.total + '</strong></td>';
+    html += '<td style="color:' + pctColor + '">' + pctStr + '</td>';
+    html += '<td>US$ ' + r.monto.toLocaleString() + '</td></tr>';
+    html += '<tr id="' + detailId + '" style="display:none"><td colspan="8" style="padding:10px 14px;background:#f8fafc;border-bottom:2px solid var(--border)">';
+    html += '<div style="display:flex;gap:20px;flex-wrap:wrap">';
+    html += '<div><span style="font-size:11px;font-weight:700;color:var(--green);text-transform:uppercase;letter-spacing:0.3px">Entraron:</span><div style="margin-top:4px;display:flex;flex-wrap:wrap;gap:4px">' + nuevosHtml + '</div></div>';
+    html += '<div><span style="font-size:11px;font-weight:700;color:var(--red);text-transform:uppercase;letter-spacing:0.3px">Salieron:</span><div style="margin-top:4px;display:flex;flex-wrap:wrap;gap:4px">' + churnHtml + '</div></div>';
+    html += '</div></td></tr>';
+  });
+  html += '</table></div></div></div>';
+
+  // Listado de clientes del mes seleccionado
+  var lista = swActivos;
+  var titulo = 'Todos los clientes software';
+  if (ccSwFiltro) {
+    lista = groups[ccSwFiltro] || [];
+    titulo = ccSwFiltro;
+  }
+
+  lista.sort(function(a, b) {
+    var aLic = a.licencia || 'zzz';
+    var bLic = b.licencia || 'zzz';
+    var aOrd = LICENCIA_ORDER.indexOf(aLic); var bOrd = LICENCIA_ORDER.indexOf(bLic);
+    aOrd = aOrd === -1 ? 99 : aOrd; bOrd = bOrd === -1 ? 99 : bOrd;
+    if (aOrd !== bOrd) return aOrd - bOrd;
+    return (a.n || '').localeCompare(b.n || '', 'es');
+  });
+
+  html += '<div class="card">';
+  html += '<h3>' + titulo + ' (' + lista.length + ') — ' + MESES_FULL[swMesIdx] + ' 2026</h3>';
+  html += '<div class="table-wrap"><table>';
+  html += '<tr><th>#</th><th>Cliente</th><th>Licencia</th><th>Monto</th><th>Entrada</th></tr>';
+
+  var lastLic = null;
+  var counter = 0;
+  lista.forEach(function(c) {
+    var licKey = c.licencia || 'Sin asignar';
+    if (ccSwFiltro === null && licKey !== lastLic) {
+      html += '<tr style="background:#f1f5f9"><td colspan="5" style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--navy);padding:10px 12px">' + licKey + '</td></tr>';
+      lastLic = licKey;
+    }
+    counter++;
+    var color = LICENCIA_COLORS[licKey] || '#7c8495';
+    var desde = '—';
+    if (c.fecha_entrada) {
+      var parts = c.fecha_entrada.split('-');
+      var mesNames = ['','Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+      desde = mesNames[parseInt(parts[1])] + ' ' + parts[0];
+    }
+    html += '<tr>';
+    html += '<td>' + counter + '</td>';
+    html += '<td><strong>' + c.n + '</strong></td>';
+    html += '<td><span style="font-size:11px;font-weight:600;color:' + color + '">' + licKey + '</span></td>';
+    html += '<td>US$ ' + c.monto + '</td>';
+    html += '<td>' + desde + '</td>';
+    html += '</tr>';
+  });
+  html += '</table></div></div>';
+
   el.innerHTML = html;
 }
 
