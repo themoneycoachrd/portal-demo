@@ -754,7 +754,7 @@
           <option value="Premium + FE">Premium + FE</option>
           <option value="Nomina">Nómina</option>
           <option value="Manufactura">Manufactura</option>
-          <option value="Punto de Venta">Punto de Venta</option>
+          <option value="POS">POS</option>
         </select>
       </div>
       <div class="m-field">
@@ -1650,7 +1650,7 @@ function ccRenderSoftware(el) {
     if (!groups[lic]) groups[lic] = [];
     groups[lic].push(c);
   });
-  const LICENCIA_ORDER = ['Punto de Venta','Starter','Starter + FE','Basic','Basic + FE','Standard','Standard + FE','Premium + FE','Nomina','Manufactura'];
+  const LICENCIA_ORDER = ['POS','Starter','Starter + FE','Basic','Basic + FE','Standard','Standard + FE','Premium + FE','Nomina','Manufactura'];
   const groupKeys = Object.keys(groups).sort((a,b) => {
     const ia = LICENCIA_ORDER.indexOf(a); const ib = LICENCIA_ORDER.indexOf(b);
     return (ia === -1 ? 99 : ia) - (ib === -1 ? 99 : ib);
@@ -1658,7 +1658,7 @@ function ccRenderSoftware(el) {
   const LICENCIA_COLORS = {
     'Basic + FE': '#4361ee', 'Basic': '#60a5fa', 'Starter + FE': '#10b981', 'Starter': '#34d399',
     'Standard + FE': '#8b5cf6', 'Standard': '#a78bfa', 'Premium + FE': '#f59e0b', 'Manufactura': '#ec4899',
-    'Nomina': '#f97316', 'Punto de Venta': '#6366f1'
+    'Nomina': '#f97316', 'POS': '#6366f1'
   };
 
   let html = `
