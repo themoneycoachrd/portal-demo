@@ -573,9 +573,21 @@
           </select>
         </div>
         <div class="m-field">
+          <label>Transacciones contratadas</label>
+          <select id="cl-m-monto-adm">
+            <option value="">—</option>
+            <option value="50">0 a 50</option>
+            <option value="100">51 a 100</option>
+            <option value="150">101 a 150</option>
+            <option value="200">Más de 150</option>
+          </select>
+        </div>
+      </div>
+      <div class="m-row">
+        <div class="m-field">
           <label>Licencia Adm</label>
           <select id="cl-m-software">
-            <option value="">—</option>
+            <option value="">No aplica</option>
             <option value="Starter">Starter</option>
             <option value="Starter+FE">Starter+FE</option>
             <option value="Basic">Basic</option>
@@ -591,26 +603,19 @@
             <option value="Manufactura+FE">Manufactura+FE</option>
           </select>
         </div>
-      </div>
-      <div class="m-row">
         <div class="m-field">
-          <label>Transacciones contratadas</label>
-          <select id="cl-m-monto-adm">
-            <option value="">—</option>
-            <option value="50">0 a 50</option>
-            <option value="100">51 a 100</option>
-            <option value="150">101 a 150</option>
-            <option value="200">Más de 150</option>
+          <label>Servicio de implementación</label>
+          <select id="cl-m-servicio-impl">
+            <option value="">No aplica</option>
+            <option value="Implementación Adm">Implementación Adm</option>
+            <option value="Implementación Facturación Electrónica">Implementación Facturación Electrónica</option>
+            <option value="Implementación Adm + Facturación Electrónica">Implementación Adm + Facturación Electrónica</option>
           </select>
-        </div>
-        <div class="m-field">
-          <label>Servicio recurrente</label>
-          <input type="text" id="cl-m-servicio-recurrente" placeholder="Ej: Tax One">
         </div>
       </div>
       <div class="m-field">
-        <label>Servicio de implementación</label>
-        <input type="text" id="cl-m-servicio-impl" placeholder="Ej: Implementación Adm + FE">
+        <label>Servicio recurrente</label>
+        <input type="text" id="cl-m-servicio-recurrente" placeholder="Ej: Tax One">
       </div>
       <div class="m-row">
         <div class="m-field">
