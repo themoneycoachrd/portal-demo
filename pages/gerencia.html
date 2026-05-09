@@ -3302,10 +3302,10 @@ function bdRenderSoftware() {
     return (a.nombre || '').localeCompare(b.nombre || '', 'es');
   });
 
-  var colCount = userRole === 'admin' ? 8 : 7;
+  var colCount = userRole === 'admin' ? 9 : 8;
   h += '<table class="cl-table">';
   h += '<thead><tr>';
-  h += '<th style="width:36px">#</th><th>Cliente</th><th>RNC</th><th>Contacto</th><th>Monto</th><th>Entrada</th><th>Estado</th>';
+  h += '<th style="width:36px">#</th><th>Cliente</th><th>Licencia</th><th>RNC</th><th>Contacto</th><th>Monto</th><th>Entrada</th><th>Estado</th>';
   if (userRole === 'admin') h += '<th></th>';
   h += '</tr></thead><tbody>';
 
@@ -3322,6 +3322,7 @@ function bdRenderSoftware() {
     h += '<tr' + rowStyle + '>';
     h += '<td style="color:var(--muted);font-size:0.75rem">' + (idx + 1) + '</td>';
     h += '<td class="cl-name">' + esc(c.nombre) + '</td>';
+    h += '<td style="font-size:0.78rem">' + (c.tipo_licencia ? esc(c.tipo_licencia) : '<span style="color:var(--light)">—</span>') + '</td>';
     h += '<td style="font-size:0.8rem">' + (c.rnc ? esc(c.rnc) : '<span style="color:var(--light)">—</span>') + '</td>';
     h += '<td style="font-size:0.8rem">' + (c.contacto ? esc(c.contacto) : '<span style="color:var(--light)">—</span>') + '</td>';
     h += '<td style="font-size:0.8rem;font-weight:600">' + (c.monto_mensual ? 'US$ ' + c.monto_mensual.toLocaleString() : '<span style="color:var(--light)">—</span>') + '</td>';
