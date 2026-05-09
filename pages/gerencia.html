@@ -829,6 +829,20 @@
         </div>
       </div>
     </div>
+    <div class="m-row">
+      <div class="m-field">
+        <label>Descuento (%)</label>
+        <input type="number" id="sw-m-descuento-pct" min="0" max="100" placeholder="ej: 70">
+      </div>
+      <div class="m-field">
+        <label>Vence</label>
+        <input type="date" id="sw-m-descuento-vence">
+      </div>
+      <div class="m-field">
+        <label>Nota descuento</label>
+        <input type="text" id="sw-m-descuento-nota" placeholder="ej: Cupón 6 meses">
+      </div>
+    </div>
     <div class="m-field">
       <label>Notas</label>
       <textarea id="sw-m-notas" placeholder="Cualquier detalle relevante..."></textarea>
@@ -1054,13 +1068,11 @@ async function ccLoadSoftwareClientes() {
     monto: parseFloat(r.monto_mensual) || 0,
     fecha_entrada: r.fecha_entrada || null,
     fecha_salida: r.fecha_salida || null,
-    activo: r.activo !== false
+    activo: r.activo !== false,
+    descuento_pct: r.descuento_pct || null,
+    descuento_vence: r.descuento_vence || null,
+    descuento_nota: r.descuento_nota || null
   }));
-}
-
-async function ccLoadDescuentos() {
-  var { data } = await sb.from('facturacion_descuentos').select('*');
-  window.ccDescuentos = data || [];
 }
 
 async function ccLoadKpiFromDB() {
@@ -2260,99 +2272,47 @@ function ccRenderFacturacion(el) {
   html += '</tr>';
   html += '</table></div></div>';
 
-  // ─── DESCUENTOS ───
-  html += '<div class="section-header" style="font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--muted);margin:24px 0 12px">Descuentos activos</div>';
-  html += '<div class="card">';
+  // ─── DESCUENTOS (lee del cliente software) ───
+  var clientesConDescuento = swActivos.filter(function(c) {
+    if (!c.descuento_pct) return false;
+    // Si ya venció, no mostrar
+    if (c.descuento_vence && c.descuento_vence < lastDayStr) return false;
+    return true;
+  });
 
-  // Leer descuentos de los datos cargados
-  var descuentos = (window.ccDescuentos || []).filter(function(d) { return d.mes === ccFactMes || !d.mes; });
-  if (descuentos.length > 0) {
+  if (clientesConDescuento.length > 0) {
+    html += '<div class="section-header" style="font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--muted);margin:24px 0 12px">Descuentos activos</div>';
+    html += '<div class="card">';
     html += '<table style="width:100%;border-collapse:collapse;font-size:0.82rem">';
     html += '<tr>';
-    html += '<th style="text-align:left;' + thStyle + ';min-width:140px">Cliente</th>';
-    html += '<th style="text-align:left;' + thStyle + ';min-width:80px">Tipo</th>';
+    html += '<th style="text-align:left;' + thStyle + ';min-width:160px">Cliente</th>';
+    html += '<th style="text-align:left;' + thStyle + ';min-width:120px">Licencia</th>';
     html += '<th style="text-align:right;' + thStyle + ';min-width:80px">Descuento</th>';
     html += '<th style="text-align:right;' + thStyle + ';min-width:90px">Monto orig.</th>';
     html += '<th style="text-align:right;' + thStyle + ';min-width:90px">Monto real</th>';
-    html += '<th style="text-align:left;' + thStyle + ';min-width:120px">Nota</th>';
-    html += '<th style="text-align:left;' + thStyle + ';min-width:90px">Vence</th>';
-    html += '<th style="text-align:center;' + thStyle + ';min-width:50px"></th>';
+    html += '<th style="text-align:left;' + thStyle + ';min-width:140px">Nota</th>';
+    html += '<th style="text-align:left;' + thStyle + ';min-width:100px">Vence</th>';
     html += '</tr>';
-    descuentos.forEach(function(d, idx) {
-      var montoOrig = d.monto_original || 0;
-      var montoReal = Math.round(montoOrig * (1 - (d.porcentaje || 0) / 100));
-      var moneda = d.tipo === 'software' ? 'US$' : 'RD$';
+    clientesConDescuento.forEach(function(c) {
+      var precio = ccGetPrecioSoftware(c.licencia) || c.monto || 0;
+      var montoReal = Math.round(precio * (1 - c.descuento_pct / 100));
+      var venceProx = c.descuento_vence && c.descuento_vence <= '2026-' + String(mesIdx + 2).padStart(2, '0') + '-01';
       html += '<tr>';
-      html += '<td style="' + tdStyle + '"><strong>' + (d.cliente || '') + '</strong></td>';
-      html += '<td style="' + tdStyle + '"><span style="background:' + (d.tipo === 'software' ? '#ede9fe' : '#e0f2fe') + ';color:' + (d.tipo === 'software' ? 'var(--purple)' : 'var(--blue)') + ';padding:2px 8px;border-radius:8px;font-size:0.7rem;font-weight:600">' + (d.tipo === 'software' ? 'Software' : 'Outsourcing') + '</span></td>';
-      html += '<td style="' + tdStyle + ';text-align:right;font-weight:600;color:var(--green)">' + (d.porcentaje || 0) + '%</td>';
-      html += '<td style="' + tdStyle + ';text-align:right;text-decoration:line-through;color:var(--muted)">' + moneda + ' ' + montoOrig.toLocaleString() + '</td>';
-      html += '<td style="' + tdStyle + ';text-align:right;font-weight:700">' + moneda + ' ' + montoReal.toLocaleString() + '</td>';
-      html += '<td style="' + tdStyle + ';font-size:0.75rem">' + (d.nota || '') + '</td>';
-      html += '<td style="' + tdStyle + ';font-size:0.75rem;' + (d.vence && d.vence <= lastDayStr ? 'color:var(--red);font-weight:600' : '') + '">' + (d.vence || '—') + '</td>';
-      html += '<td style="' + tdStyle + ';text-align:center"><button onclick="ccEliminarDescuento(' + idx + ')" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:14px" title="Eliminar">✕</button></td>';
+      html += '<td style="' + tdStyle + '"><strong>' + (c.n || c.nombre || '') + '</strong></td>';
+      html += '<td style="' + tdStyle + '">' + (c.licencia || '—') + '</td>';
+      html += '<td style="' + tdStyle + ';text-align:right;font-weight:600;color:var(--green)">' + c.descuento_pct + '%</td>';
+      html += '<td style="' + tdStyle + ';text-align:right;text-decoration:line-through;color:var(--muted)">US$ ' + precio + '</td>';
+      html += '<td style="' + tdStyle + ';text-align:right;font-weight:700">US$ ' + montoReal + '</td>';
+      html += '<td style="' + tdStyle + ';font-size:0.75rem">' + (c.descuento_nota || '') + '</td>';
+      html += '<td style="' + tdStyle + ';font-size:0.75rem;' + (venceProx ? 'color:var(--red);font-weight:600' : '') + '">' + (c.descuento_vence || 'Indefinido') + '</td>';
       html += '</tr>';
     });
     html += '</table>';
-  } else {
-    html += '<p style="text-align:center;color:var(--muted);font-size:0.85rem;padding:8px 0">No hay descuentos activos este mes</p>';
+    html += '<p style="font-size:0.72rem;color:var(--muted);margin-top:10px">Los descuentos se editan desde el perfil del cliente en Base de Datos → Software</p>';
+    html += '</div>';
   }
 
-  // Botón para agregar descuento
-  html += '<div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border)">';
-  html += '<button onclick="ccMostrarFormDescuento()" style="background:var(--blue);color:white;border:none;padding:6px 14px;border-radius:6px;font-size:0.78rem;font-weight:600;cursor:pointer">+ Agregar descuento</button>';
-  html += '</div>';
-
-  // Form inline (oculto)
-  html += '<div id="fact-desc-form" style="display:none;margin-top:12px;padding:16px;background:#f8fafc;border-radius:8px;border:1px solid var(--border)">';
-  html += '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:10px">';
-  html += '<div><label style="font-size:0.7rem;font-weight:600;color:var(--muted);display:block;margin-bottom:4px">Cliente</label><input id="desc-cliente" style="width:100%;padding:6px 10px;border:1px solid var(--border);border-radius:6px;font-size:0.82rem" placeholder="Nombre del cliente"></div>';
-  html += '<div><label style="font-size:0.7rem;font-weight:600;color:var(--muted);display:block;margin-bottom:4px">Tipo</label><select id="desc-tipo" style="width:100%;padding:6px 10px;border:1px solid var(--border);border-radius:6px;font-size:0.82rem"><option value="outsourcing">Outsourcing</option><option value="software">Software</option></select></div>';
-  html += '<div><label style="font-size:0.7rem;font-weight:600;color:var(--muted);display:block;margin-bottom:4px">% Descuento</label><input id="desc-pct" type="number" min="1" max="100" style="width:100%;padding:6px 10px;border:1px solid var(--border);border-radius:6px;font-size:0.82rem" placeholder="ej: 20"></div>';
-  html += '</div>';
-  html += '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:12px">';
-  html += '<div><label style="font-size:0.7rem;font-weight:600;color:var(--muted);display:block;margin-bottom:4px">Monto original</label><input id="desc-monto" type="number" style="width:100%;padding:6px 10px;border:1px solid var(--border);border-radius:6px;font-size:0.82rem" placeholder="ej: 600"></div>';
-  html += '<div><label style="font-size:0.7rem;font-weight:600;color:var(--muted);display:block;margin-bottom:4px">Vence (fecha)</label><input id="desc-vence" type="date" style="width:100%;padding:6px 10px;border:1px solid var(--border);border-radius:6px;font-size:0.82rem"></div>';
-  html += '<div><label style="font-size:0.7rem;font-weight:600;color:var(--muted);display:block;margin-bottom:4px">Nota</label><input id="desc-nota" style="width:100%;padding:6px 10px;border:1px solid var(--border);border-radius:6px;font-size:0.82rem" placeholder="ej: Cupón primer mes"></div>';
-  html += '</div>';
-  html += '<div style="display:flex;gap:8px">';
-  html += '<button onclick="ccGuardarDescuento()" style="background:var(--green);color:white;border:none;padding:6px 14px;border-radius:6px;font-size:0.78rem;font-weight:600;cursor:pointer">Guardar</button>';
-  html += '<button onclick="document.getElementById(\'fact-desc-form\').style.display=\'none\'" style="background:white;color:var(--muted);border:1px solid var(--border);padding:6px 14px;border-radius:6px;font-size:0.78rem;font-weight:600;cursor:pointer">Cancelar</button>';
-  html += '</div>';
-  html += '</div>';
-
-  html += '</div>';
-
   el.innerHTML = html;
-}
-
-function ccMostrarFormDescuento() {
-  document.getElementById('fact-desc-form').style.display = 'block';
-}
-
-async function ccGuardarDescuento() {
-  var cliente = document.getElementById('desc-cliente').value.trim();
-  var tipo = document.getElementById('desc-tipo').value;
-  var pct = parseInt(document.getElementById('desc-pct').value) || 0;
-  var monto = parseFloat(document.getElementById('desc-monto').value) || 0;
-  var vence = document.getElementById('desc-vence').value || null;
-  var nota = document.getElementById('desc-nota').value.trim();
-  if (!cliente || !pct) { alert('Completa cliente y porcentaje'); return; }
-  var nuevo = { cliente: cliente, tipo: tipo, porcentaje: pct, monto_original: monto, vence: vence, nota: nota, mes: ccFactMes };
-  var { error } = await sb.from('facturacion_descuentos').insert(nuevo);
-  if (error) { alert('Error: ' + error.message); return; }
-  if (!window.ccDescuentos) window.ccDescuentos = [];
-  window.ccDescuentos.push(nuevo);
-  ccRenderContent();
-}
-
-async function ccEliminarDescuento(idx) {
-  var d = window.ccDescuentos[idx];
-  if (!d) return;
-  if (!confirm('¿Eliminar descuento de ' + d.cliente + '?')) return;
-  await sb.from('facturacion_descuentos').delete().eq('cliente', d.cliente).eq('mes', d.mes).eq('tipo', d.tipo);
-  window.ccDescuentos.splice(idx, 1);
-  ccRenderContent();
 }
 
 function ccRenderMonth(el, mes, d) {
@@ -3975,6 +3935,9 @@ function swOpenModal(editId) {
     document.getElementById('sw-m-fecha-salida').value = c.fecha_salida || '';
     document.getElementById('sw-m-motivo-salida').value = c.motivo_salida || '';
     document.getElementById('sw-m-nota-salida').value = c.nota_salida || '';
+    document.getElementById('sw-m-descuento-pct').value = c.descuento_pct || '';
+    document.getElementById('sw-m-descuento-vence').value = c.descuento_vence || '';
+    document.getElementById('sw-m-descuento-nota').value = c.descuento_nota || '';
     document.getElementById('sw-m-notas').value = c.notas || '';
     swModalActivo = c.activo !== false;
   } else {
@@ -3990,6 +3953,9 @@ function swOpenModal(editId) {
     document.getElementById('sw-m-fecha-salida').value = '';
     document.getElementById('sw-m-motivo-salida').value = '';
     document.getElementById('sw-m-nota-salida').value = '';
+    document.getElementById('sw-m-descuento-pct').value = '';
+    document.getElementById('sw-m-descuento-vence').value = '';
+    document.getElementById('sw-m-descuento-nota').value = '';
     document.getElementById('sw-m-notas').value = '';
     swModalActivo = true;
   }
@@ -4039,6 +4005,9 @@ async function swSaveClient() {
     activo: swModalActivo,
     motivo_salida: !swModalActivo ? (document.getElementById('sw-m-motivo-salida').value || null) : null,
     nota_salida: !swModalActivo ? (document.getElementById('sw-m-nota-salida').value.trim() || null) : null,
+    descuento_pct: parseInt(document.getElementById('sw-m-descuento-pct').value) || null,
+    descuento_vence: document.getElementById('sw-m-descuento-vence').value || null,
+    descuento_nota: document.getElementById('sw-m-descuento-nota').value.trim() || null,
     notas: document.getElementById('sw-m-notas').value.trim() || null
   };
 
@@ -4585,7 +4554,6 @@ async function showApp() {
     ccLoadData(),
     ccLoadImplementaciones(),
     ccLoadSoftwareClientes(),
-    ccLoadDescuentos(),
     ccLoadKpiFromDB(),
     ctdLoadContadoras(),
     bdLoadAll()
