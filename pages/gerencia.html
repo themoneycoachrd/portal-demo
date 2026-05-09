@@ -160,36 +160,6 @@
   .impl-timeline span { font-size:10px; color:var(--light); }
   @media (max-width:600px) { .impl-grid { grid-template-columns:repeat(2,1fr); } }
 
-  /* ─── Perfiles (CC) ─── */
-  .perfil-card { background:white; border-radius:12px; border:1px solid var(--border); margin-bottom:14px; overflow:hidden; }
-  .perfil-header { display:flex; align-items:center; justify-content:space-between; padding:16px 20px; cursor:pointer; transition:background 0.15s; }
-  .perfil-header:hover { background:#fafbfc; }
-  .perfil-header.expanded { background:#f1f5f9; border-bottom:1px solid var(--border); }
-  .perfil-name { font-size:15px; font-weight:700; }
-  .perfil-status { padding:3px 10px; border-radius:8px; font-size:11px; font-weight:600; }
-  .perfil-arrow { font-size:16px; color:var(--light); transition:transform 0.2s; }
-  .perfil-arrow.open { transform:rotate(180deg); }
-  .perfil-body { padding:0; max-height:0; overflow:hidden; transition:max-height 0.4s ease, padding 0.4s ease; }
-  .perfil-body.open { max-height:1200px; padding:20px; }
-  .perfil-section { margin-bottom:16px; }
-  .perfil-section-title { font-size:11px; text-transform:uppercase; letter-spacing:0.5px; color:var(--light); font-weight:700; margin-bottom:8px; }
-  .perfil-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
-  @media (max-width:600px) { .perfil-grid { grid-template-columns:1fr; } }
-  .perfil-field { background:#f8fafc; border-radius:8px; padding:10px 14px; }
-  .perfil-field-label { font-size:10px; text-transform:uppercase; letter-spacing:0.3px; color:var(--light); font-weight:600; margin-bottom:3px; }
-  .perfil-field-value { font-size:14px; font-weight:600; color:var(--text); }
-  .perfil-field-input { width:100%; border:1px solid var(--border); border-radius:6px; padding:6px 10px; font-size:13px; font-family:inherit; background:white; }
-  .perfil-field-input:focus { outline:none; border-color:var(--blue); }
-  .perfil-actions { display:flex; gap:8px; margin-top:10px; }
-  .perfil-btn { padding:8px 16px; border-radius:8px; font-size:12px; font-weight:600; cursor:pointer; border:1px solid var(--border); background:white; color:var(--muted); transition:all 0.15s; }
-  .perfil-btn:hover { background:#f1f5f9; }
-  .perfil-btn-primary { background:var(--navy); color:white; border-color:var(--navy); }
-  .perfil-btn-primary:hover { background:var(--navy-mid); }
-  .perfil-btn-danger { color:var(--red); border-color:#fecaca; }
-  .perfil-btn-danger:hover { background:#fef2f2; }
-  .perfil-empty { text-align:center; padding:40px 20px; color:var(--light); }
-  .perfil-empty p { font-size:14px; margin-bottom:16px; }
-
   /* ─── CTD: Month tabs (pill style) ─── */
   .month-tabs { display:flex; gap:4px; flex-wrap:wrap; margin-bottom:16px; }
   .month-tab { padding:6px 14px; border-radius:8px; cursor:pointer; font-size:0.85rem; font-weight:500; background:var(--card); border:1px solid var(--border); color:var(--muted); transition:all 0.2s; }
@@ -629,6 +599,46 @@
         <input type="date" id="cl-m-inicio-fiscal">
       </div>
     </div>
+    <div style="border-top:1px solid var(--border);margin:12px 0;padding-top:12px">
+      <div style="font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--muted);margin-bottom:10px">Servicio contratado</div>
+      <div class="m-row">
+        <div class="m-field">
+          <label>Software</label>
+          <input type="text" id="cl-m-software" placeholder="Ej: Adm Basic + FE">
+        </div>
+        <div class="m-field">
+          <label>Servicio recurrente</label>
+          <input type="text" id="cl-m-servicio-recurrente" placeholder="Ej: Tax One">
+        </div>
+      </div>
+      <div class="m-field">
+        <label>Servicio de implementación</label>
+        <input type="text" id="cl-m-servicio-impl" placeholder="Ej: Implementación Adm + FE">
+      </div>
+      <div class="m-row">
+        <div class="m-field">
+          <label>Inicio implementación</label>
+          <input type="date" id="cl-m-fecha-inicio-impl">
+        </div>
+        <div class="m-field">
+          <label>Fin esperado implementación</label>
+          <input type="date" id="cl-m-fecha-fin-impl">
+        </div>
+      </div>
+    </div>
+    <div style="border-top:1px solid var(--border);margin:12px 0;padding-top:12px">
+      <div style="font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--muted);margin-bottom:10px">Empresa</div>
+      <div class="m-row">
+        <div class="m-field">
+          <label>Tipo de empresa</label>
+          <input type="text" id="cl-m-tipo-empresa" placeholder="Ej: Comercializadora, servicios profesionales">
+        </div>
+        <div class="m-field">
+          <label>Estado depto. contabilidad</label>
+          <input type="text" id="cl-m-estado-contabilidad" placeholder="Ej: No tiene / Tiene contador interno">
+        </div>
+      </div>
+    </div>
     <div class="m-field">
       <label>Notas</label>
       <textarea id="cl-m-notas" placeholder="Cualquier detalle relevante..."></textarea>
@@ -883,16 +893,12 @@ let ccIMPLEMENTACIONES = [];
 let ccSOLO_IMPLEMENTACION = [];
 let ccIMPLEMENTACIONES_RIESGO = [];
 let ccSOFTWARE_CLIENTES = [];
-let ccPERFILES = [];
 let ccKPI_DATA = {};
 
 let ccActiveMainTab = "dashboard";
 let ccActiveSubTab = null;
 let ccCharts = [];
 var ccAllClientes = [];
-
-let ccPerfilOpen = {};
-let ccPerfilEditing = {};
 
 // ─── CC Supabase Data Loading ───
 // Helpers para calcular mes a partir de fecha
@@ -1023,49 +1029,6 @@ async function ccLoadSoftwareClientes() {
     fecha_salida: r.fecha_salida || null,
     activo: r.activo !== false
   }));
-}
-
-async function ccLoadPerfilesFromDB() {
-  const { data } = await sb.from('perfiles_clientes').select('*');
-  ccPERFILES = (data || []).map(r => ({
-    _id: r.id, _nombre: r.nombre,
-    nombre_empresa: r.nombre_empresa || '', rnc: r.rnc || '', tipo_empresa: r.tipo_empresa || '',
-    contacto: r.contacto || '', telefono: r.telefono || '', email: r.email || '',
-    software: r.software || '', servicio_impl: r.servicio_impl || '', servicio_recurrente: r.servicio_recurrente || '',
-    inicio_impl: r.inicio_impl || '', inicio_fiscal: r.inicio_fiscal || '',
-    estado_contabilidad: r.estado_contabilidad || '', contadora_asignada: r.contadora_asignada || '', notas: r.notas || ''
-  }));
-}
-
-async function ccSavePerfilToDB(perfil) {
-  if (perfil._id) {
-    await sb.from('perfiles_clientes').update({
-      nombre: perfil._nombre, nombre_empresa: perfil.nombre_empresa,
-      rnc: perfil.rnc, tipo_empresa: perfil.tipo_empresa,
-      contacto: perfil.contacto, telefono: perfil.telefono, email: perfil.email,
-      software: perfil.software, servicio_impl: perfil.servicio_impl,
-      servicio_recurrente: perfil.servicio_recurrente, inicio_impl: perfil.inicio_impl,
-      inicio_fiscal: perfil.inicio_fiscal, estado_contabilidad: perfil.estado_contabilidad,
-      contadora_asignada: perfil.contadora_asignada, notas: perfil.notas
-    }).eq('id', perfil._id);
-  }
-}
-
-async function ccInsertPerfilToDB(perfil) {
-  const { data } = await sb.from('perfiles_clientes').insert({
-    nombre: perfil._nombre, nombre_empresa: perfil.nombre_empresa || '',
-    rnc: perfil.rnc || '', tipo_empresa: perfil.tipo_empresa || '',
-    contacto: perfil.contacto || '', telefono: perfil.telefono || '', email: perfil.email || '',
-    software: perfil.software || '', servicio_impl: perfil.servicio_impl || '',
-    servicio_recurrente: perfil.servicio_recurrente || '', inicio_impl: perfil.inicio_impl || '',
-    inicio_fiscal: perfil.inicio_fiscal || '', estado_contabilidad: perfil.estado_contabilidad || '',
-    contadora_asignada: perfil.contadora_asignada || '', notas: perfil.notas || ''
-  }).select();
-  return data && data[0] ? data[0].id : null;
-}
-
-async function ccDeletePerfilFromDB(id) {
-  await sb.from('perfiles_clientes').delete().eq('id', id);
 }
 
 async function ccLoadKpiFromDB() {
@@ -2068,271 +2031,6 @@ function ccRenderMonth(el, mes, d) {
   }));
 }
 
-// ─── CC Perfiles ───
-const ccPERFIL_FIELDS = [
-  {section:'Servicio Contratado', fields:[
-    {id:'software', label:'Software', placeholder:'Ej: Adm Basic + FE'},
-    {id:'servicio_impl', label:'Servicio de Implementacion', placeholder:'Ej: Implementacion ADM + FE'},
-    {id:'servicio_recurrente', label:'Servicio Recurrente', placeholder:'Ej: Tax One'}
-  ]},
-  {section:'Fechas', fields:[
-    {id:'inicio_impl', label:'Inicio de Implementacion', placeholder:'Ej: 1ro al 30 mayo'},
-    {id:'inicio_fiscal', label:'Inicio de Responsabilidades Fiscales', placeholder:'Ej: 1ro junio'}
-  ]},
-  {section:'Generales de la Empresa', fields:[
-    {id:'nombre_empresa', label:'Nombre de la Empresa', placeholder:'Ej: Centro Adorartes SRL (RST)'},
-    {id:'rnc', label:'RNC', placeholder:'Ej: 132-04965-9'},
-    {id:'tipo_empresa', label:'Tipo de Empresa', placeholder:'Ej: Liderazgo y capacitacion'},
-    {id:'contacto', label:'Contacto Principal', placeholder:'Nombre del contacto'},
-    {id:'telefono', label:'Telefono', placeholder:'Numero de contacto'},
-    {id:'email', label:'Email', placeholder:'Correo electronico'},
-    {id:'estado_contabilidad', label:'Estado del Depto. de Contabilidad', placeholder:'Ej: No tiene / Tiene contador interno'}
-  ]},
-  {section:'Asignacion Interna', fields:[
-    {id:'contadora_asignada', label:'Contadora Asignada', placeholder:'Nombre de la contadora'},
-    {id:'notas', label:'Notas', placeholder:'Notas adicionales sobre el cliente'}
-  ]}
-];
-
-function ccTogglePerfil(idx) {
-  ccPerfilOpen[idx] = !ccPerfilOpen[idx];
-  ccRenderPerfiles(document.getElementById('cc-content'));
-}
-
-function ccStartEditPerfil(idx) {
-  ccPerfilEditing[idx] = true;
-  ccRenderPerfiles(document.getElementById('cc-content'));
-}
-
-function ccCancelEditPerfil(idx) {
-  delete ccPerfilEditing[idx];
-  ccRenderPerfiles(document.getElementById('cc-content'));
-}
-
-async function ccSavePerfil(idx) {
-  ccPERFIL_FIELDS.forEach(sec => {
-    sec.fields.forEach(f => {
-      const input = document.getElementById('pf-'+idx+'-'+f.id);
-      if (input) ccPERFILES[idx][f.id] = input.value.trim();
-    });
-  });
-  await ccSavePerfilToDB(ccPERFILES[idx]);
-  delete ccPerfilEditing[idx];
-  ccRenderPerfiles(document.getElementById('cc-content'));
-}
-
-async function ccAddPerfil() {
-  const nombre = prompt('Nombre del cliente:');
-  if (!nombre || !nombre.trim()) return;
-  const nuevo = { _nombre: nombre.trim() };
-  ccPERFIL_FIELDS.forEach(sec => sec.fields.forEach(f => { nuevo[f.id] = ''; }));
-  const newId = await ccInsertPerfilToDB(nuevo);
-  nuevo._id = newId;
-  ccPERFILES.push(nuevo);
-  const idx = ccPERFILES.length - 1;
-  ccPerfilOpen[idx] = true;
-  ccPerfilEditing[idx] = true;
-  ccRenderPerfiles(document.getElementById('cc-content'));
-}
-
-async function ccDeletePerfil(idx) {
-  if (!confirm('Seguro que quieres eliminar este perfil?')) return;
-  const perfil = ccPERFILES[idx];
-  if (perfil._id) {
-    await ccDeletePerfilFromDB(perfil._id);
-  }
-  ccPERFILES.splice(idx, 1);
-  ccPerfilOpen = {};
-  ccPerfilEditing = {};
-  ccRenderPerfiles(document.getElementById('cc-content'));
-}
-
-function ccGetPerfilCompleteness(p) {
-  let total = 0, filled = 0;
-  ccPERFIL_FIELDS.forEach(sec => sec.fields.forEach(f => {
-    total++;
-    if (p[f.id] && p[f.id].trim()) filled++;
-  }));
-  return { total, filled, pct: total > 0 ? Math.round(filled/total*100) : 0 };
-}
-
-function ccParseFiscalOrder(str) {
-  if (!str) return 9999;
-  var s = str.toLowerCase();
-  var meses = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
-  for (var i = 0; i < meses.length; i++) {
-    if (s.indexOf(meses[i]) !== -1) return i;
-  }
-  return 9999;
-}
-
-function ccRenderPerfiles(el) {
-  const perfiles = ccPERFILES;
-  const indices = perfiles.map((p, i) => i);
-  indices.sort((a, b) => ccParseFiscalOrder(perfiles[a].inicio_fiscal) - ccParseFiscalOrder(perfiles[b].inicio_fiscal));
-  let html = '';
-
-  html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">';
-  html += '<div><div style="font-size:16px;font-weight:800">Fichas de Clientes</div><div style="font-size:12px;color:var(--muted)">Perfil de cada cliente con servicio contratado, fechas y datos generales</div></div>';
-  html += '<button class="perfil-btn perfil-btn-primary" onclick="ccAddPerfil()">+ Nuevo cliente</button>';
-  html += '</div>';
-
-  if (perfiles.length === 0) {
-    html += '<div class="perfil-empty"><p>No hay perfiles creados todavia.</p><button class="perfil-btn perfil-btn-primary" onclick="ccAddPerfil()">Crear primer perfil</button></div>';
-    el.innerHTML = html;
-    return;
-  }
-
-  indices.forEach(idx => {
-    const p = perfiles[idx];
-    const isOpen = ccPerfilOpen[idx] || false;
-    const isEdit = ccPerfilEditing[idx] || false;
-    const comp = ccGetPerfilCompleteness(p);
-    const statusColor = comp.pct === 100 ? 'var(--green)' : comp.pct > 50 ? 'var(--amber)' : 'var(--light)';
-    const statusLabel = comp.pct === 100 ? 'Completo' : comp.filled + '/' + comp.total;
-
-    html += '<div class="perfil-card">';
-    html += '<div class="perfil-header '+(isOpen?'expanded':'')+'" onclick="ccTogglePerfil('+idx+')">';
-    html += '<div style="flex:1">';
-    html += '<div class="perfil-name">'+(p.nombre_empresa||p._nombre||'Sin nombre')+'</div>';
-    html += '</div>';
-    html += '<div style="display:flex;align-items:center;gap:10px">';
-    if (p.inicio_fiscal) {
-      html += '<div class="impl-item" style="padding:6px 12px"><div class="impl-item-label">Primer mes fiscal</div><div class="impl-item-value" style="color:var(--navy)">'+p.inicio_fiscal+'</div></div>';
-    }
-    html += '<span class="perfil-arrow '+(isOpen?'open':'')+'">▼</span>';
-    html += '</div>';
-    html += '</div>';
-
-    html += '<div class="perfil-body '+(isOpen?'open':'')+'">';
-
-    ccPERFIL_FIELDS.forEach(sec => {
-      html += '<div class="perfil-section">';
-      html += '<div class="perfil-section-title">'+sec.section+'</div>';
-      html += '<div class="perfil-grid">';
-      sec.fields.forEach(f => {
-        const val = p[f.id] || '';
-        html += '<div class="perfil-field">';
-        html += '<div class="perfil-field-label">'+f.label+'</div>';
-        if (isEdit) {
-          html += '<input class="perfil-field-input" id="pf-'+idx+'-'+f.id+'" value="'+val.replace(/"/g,'&quot;')+'" placeholder="'+f.placeholder+'">';
-        } else {
-          html += '<div class="perfil-field-value">'+(val || '<span style="color:var(--light);font-weight:400">—</span>')+'</div>';
-        }
-        html += '</div>';
-      });
-      html += '</div></div>';
-    });
-
-    html += '<div class="perfil-actions">';
-    if (isEdit) {
-      html += '<button class="perfil-btn perfil-btn-primary" onclick="event.stopPropagation();ccSavePerfil('+idx+')">Guardar</button>';
-      html += '<button class="perfil-btn" onclick="event.stopPropagation();ccCancelEditPerfil('+idx+')">Cancelar</button>';
-      html += '<button class="perfil-btn perfil-btn-danger" style="margin-left:auto" onclick="event.stopPropagation();ccDeletePerfil('+idx+')">Eliminar</button>';
-    } else {
-      html += '<button class="perfil-btn" onclick="event.stopPropagation();ccStartEditPerfil('+idx+')">Editar</button>';
-    }
-    html += '</div>';
-
-    html += '</div></div>';
-  });
-
-  el.innerHTML = html;
-}
-
-
-// ─── BD Perfil modal (abrir perfil desde tabla outsourcing) ───
-function bdOpenPerfil(clienteNombre) {
-  // Buscar perfil existente por nombre
-  var idx = -1;
-  for (var i = 0; i < ccPERFILES.length; i++) {
-    var p = ccPERFILES[i];
-    var pName = (p.nombre_empresa || p._nombre || '').toLowerCase();
-    if (pName === clienteNombre.toLowerCase()) { idx = i; break; }
-  }
-  if (idx === -1) {
-    // Crear perfil nuevo para este cliente
-    var nuevo = { _nombre: clienteNombre };
-    ccPERFIL_FIELDS.forEach(function(sec) { sec.fields.forEach(function(f) { nuevo[f.id] = ''; }); });
-    ccInsertPerfilToDB(nuevo).then(function(newId) {
-      nuevo._id = newId;
-      ccPERFILES.push(nuevo);
-      var newIdx = ccPERFILES.length - 1;
-      ccPerfilEditing[newIdx] = true;
-      bdRenderPerfilModal(newIdx);
-    });
-    return;
-  }
-  ccPerfilEditing[idx] = true;
-  bdRenderPerfilModal(idx);
-}
-
-function bdRenderPerfilModal(idx) {
-  var p = ccPERFILES[idx];
-  var html = '<div id="bd-perfil-overlay" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px" onclick="if(event.target===this)bdClosePerfilModal()">';
-  html += '<div style="background:white;border-radius:14px;max-width:700px;width:100%;max-height:90vh;overflow-y:auto;padding:28px;position:relative">';
-  html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">';
-  html += '<div style="font-size:16px;font-weight:800">' + esc(p.nombre_empresa || p._nombre || 'Perfil') + '</div>';
-  html += '<button style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--muted)" onclick="bdClosePerfilModal()">✕</button>';
-  html += '</div>';
-
-  ccPERFIL_FIELDS.forEach(function(sec) {
-    html += '<div class="perfil-section">';
-    html += '<div class="perfil-section-title">' + sec.section + '</div>';
-    html += '<div class="perfil-grid">';
-    sec.fields.forEach(function(f) {
-      var val = p[f.id] || '';
-      html += '<div class="perfil-field">';
-      html += '<div class="perfil-field-label">' + f.label + '</div>';
-      html += '<input class="perfil-field-input" id="bdpf-' + idx + '-' + f.id + '" value="' + val.replace(/"/g,'&quot;') + '" placeholder="' + f.placeholder + '">';
-      html += '</div>';
-    });
-    html += '</div></div>';
-  });
-
-  html += '<div style="display:flex;gap:10px;margin-top:20px">';
-  html += '<button class="perfil-btn perfil-btn-primary" onclick="bdSavePerfilModal(' + idx + ')">Guardar</button>';
-  html += '<button class="perfil-btn" onclick="bdClosePerfilModal()">Cancelar</button>';
-  html += '<button class="perfil-btn perfil-btn-danger" style="margin-left:auto" onclick="bdDeletePerfilModal(' + idx + ')">Eliminar</button>';
-  html += '</div>';
-
-  html += '</div></div>';
-  var overlay = document.createElement('div');
-  overlay.innerHTML = html;
-  document.body.appendChild(overlay.firstChild);
-}
-
-function bdClosePerfilModal() {
-  var overlay = document.getElementById('bd-perfil-overlay');
-  if (overlay) overlay.remove();
-}
-
-async function bdSavePerfilModal(idx) {
-  ccPERFIL_FIELDS.forEach(function(sec) {
-    sec.fields.forEach(function(f) {
-      var input = document.getElementById('bdpf-' + idx + '-' + f.id);
-      if (input) ccPERFILES[idx][f.id] = input.value.trim();
-    });
-  });
-  await ccSavePerfilToDB(ccPERFILES[idx]);
-  delete ccPerfilEditing[idx];
-  bdClosePerfilModal();
-  showToast('Perfil guardado');
-}
-
-async function bdDeletePerfilModal(idx) {
-  if (!confirm('Seguro que quieres eliminar este perfil?')) return;
-  var perfil = ccPERFILES[idx];
-  if (perfil._id) {
-    await sb.from('perfiles_clientes').delete().eq('id', perfil._id);
-  }
-  ccPERFILES.splice(idx, 1);
-  ccPerfilOpen = {};
-  ccPerfilEditing = {};
-  bdClosePerfilModal();
-  showToast('Perfil eliminado');
-}
-
 // ══════════════════════════════════════════════════════════════
 // ██  CONTROL DE CONTADORAS (CTD) MODULE
 // ══════════════════════════════════════════════════════════════
@@ -3265,7 +2963,6 @@ function bdRenderClientes() {
     if (userRole === 'admin') {
       h += '<td style="white-space:nowrap">';
       h += '<button style="padding:4px 10px;border:1px solid var(--border);border-radius:6px;background:white;font-size:0.75rem;cursor:pointer;color:var(--muted)" onclick="clEditClient(\'' + c.id + '\')">Editar</button> ';
-      h += '<button style="padding:4px 8px;border:1px solid var(--border);border-radius:6px;background:white;font-size:0.75rem;cursor:pointer;color:var(--blue)" onclick="bdOpenPerfil(\'' + (c.nombre||'').replace(/'/g,"\\'") + '\')" title="Ver/editar perfil">📋</button> ';
       h += '<button style="padding:4px 8px;border:1px solid var(--border);border-radius:6px;background:white;font-size:0.75rem;cursor:pointer;color:var(--muted)" onclick="clShowHistory(\'' + c.id + '\',\'' + (c.nombre||'').replace(/'/g,"\\'") + '\')" title="Historial de contadoras">&#128337;</button>';
       h += '</td>';
     }
@@ -3383,6 +3080,13 @@ function clOpenModal(editId) {
     document.getElementById('cl-m-contadora-imp').value = c.contadora_impuestos || '';
     document.getElementById('cl-m-fecha-entrada').value = c.fecha_entrada || '';
     document.getElementById('cl-m-inicio-fiscal').value = c.inicio_responsabilidad_fiscal || '';
+    document.getElementById('cl-m-software').value = c.software || '';
+    document.getElementById('cl-m-servicio-recurrente').value = c.servicio_recurrente || '';
+    document.getElementById('cl-m-servicio-impl').value = c.servicio_impl || '';
+    document.getElementById('cl-m-fecha-inicio-impl').value = c.fecha_inicio_impl || '';
+    document.getElementById('cl-m-fecha-fin-impl').value = c.fecha_fin_impl || '';
+    document.getElementById('cl-m-tipo-empresa').value = c.tipo_empresa || '';
+    document.getElementById('cl-m-estado-contabilidad').value = c.estado_contabilidad || '';
     document.getElementById('cl-m-notas').value = c.notas || '';
     // Listeners para detectar cambio de contadora
     document.getElementById('cl-m-contadora-contab').onchange = clCheckContadoraChanged;
@@ -3409,6 +3113,13 @@ function clOpenModal(editId) {
     document.getElementById('cl-m-contadora-imp').value = '';
     document.getElementById('cl-m-fecha-entrada').value = '';
     document.getElementById('cl-m-inicio-fiscal').value = '';
+    document.getElementById('cl-m-software').value = '';
+    document.getElementById('cl-m-servicio-recurrente').value = '';
+    document.getElementById('cl-m-servicio-impl').value = '';
+    document.getElementById('cl-m-fecha-inicio-impl').value = '';
+    document.getElementById('cl-m-fecha-fin-impl').value = '';
+    document.getElementById('cl-m-tipo-empresa').value = '';
+    document.getElementById('cl-m-estado-contabilidad').value = '';
     document.getElementById('cl-m-notas').value = '';
     document.getElementById('cl-m-contadora-contab').onchange = null;
     document.getElementById('cl-m-contadora-imp').onchange = null;
@@ -3501,6 +3212,13 @@ async function clSaveClient() {
     motivo_salida: !clModalActivo ? (document.getElementById('cl-m-motivo-salida').value || null) : null,
     nota_salida: !clModalActivo ? (document.getElementById('cl-m-nota-salida').value.trim() || null) : null,
     inicio_responsabilidad_fiscal: document.getElementById('cl-m-inicio-fiscal').value || null,
+    software: document.getElementById('cl-m-software').value.trim() || null,
+    servicio_recurrente: document.getElementById('cl-m-servicio-recurrente').value.trim() || null,
+    servicio_impl: document.getElementById('cl-m-servicio-impl').value.trim() || null,
+    fecha_inicio_impl: document.getElementById('cl-m-fecha-inicio-impl').value || null,
+    fecha_fin_impl: document.getElementById('cl-m-fecha-fin-impl').value || null,
+    tipo_empresa: document.getElementById('cl-m-tipo-empresa').value.trim() || null,
+    estado_contabilidad: document.getElementById('cl-m-estado-contabilidad').value.trim() || null,
     notas: document.getElementById('cl-m-notas').value.trim() || null
   };
 
@@ -4399,7 +4117,6 @@ async function showApp() {
     ccLoadData(),
     ccLoadImplementaciones(),
     ccLoadSoftwareClientes(),
-    ccLoadPerfilesFromDB(),
     ccLoadKpiFromDB(),
     ctdLoadContadoras(),
     bdLoadAll()
