@@ -1368,7 +1368,8 @@ function ccSwGetActivosMes(mesKey) {
 }
 
 function ccSwFilter(tipo) {
-  ccSwFiltro = (ccSwFiltro === tipo) ? null : tipo;
+  if (tipo === null) { ccSwFiltro = null; }
+  else { ccSwFiltro = (ccSwFiltro === tipo) ? null : tipo; }
   ccRenderContent();
 }
 
@@ -1705,40 +1706,34 @@ function ccRenderSoftware(el) {
   var swActivos = ccSwGetActivosMes(ccSwMes);
   var total = swActivos.length;
 
-  // Agrupar por licencia
-  var groups = {};
-  swActivos.forEach(function(c) {
-    var lic = c.licencia || 'Sin asignar';
-    if (!groups[lic]) groups[lic] = [];
-    groups[lic].push(c);
+  // Calcular nuevos y churn del mes
+  var mesPrefix = '2026-' + String(swMesIdx + 1).padStart(2, '0');
+  var ccSwNuevos = ccSOFTWARE_CLIENTES.filter(function(c) {
+    return c.fecha_entrada && c.fecha_entrada.indexOf(mesPrefix) === 0;
   });
-  var LICENCIA_ORDER = ['POS','Starter','Starter + FE','Basic','Basic + FE','Basic + FE + POS','Standard','Standard + FE','Premium + FE','Nomina','Manufactura'];
-  var groupKeys = Object.keys(groups).sort(function(a,b) {
-    var ia = LICENCIA_ORDER.indexOf(a); var ib = LICENCIA_ORDER.indexOf(b);
-    return (ia === -1 ? 99 : ia) - (ib === -1 ? 99 : ib);
+  var ccSwChurn = ccSOFTWARE_CLIENTES.filter(function(c) {
+    return c.fecha_salida && c.fecha_salida.indexOf(mesPrefix) === 0;
   });
-  var LICENCIA_COLORS = {
-    'Basic + FE': '#4361ee', 'Basic': '#60a5fa', 'Starter + FE': '#10b981', 'Starter': '#34d399',
-    'Standard + FE': '#8b5cf6', 'Standard': '#a78bfa', 'Premium + FE': '#f59e0b', 'Manufactura': '#ec4899',
-    'Nomina': '#f97316', 'POS': '#6366f1', 'Basic + FE + POS': '#4361ee'
-  };
+  var ccSwInicio = total - ccSwNuevos.length + ccSwChurn.length;
 
-  // Stats cards con filtros por licencia
-  function swStatClass(key) { return ccSwFiltro === key ? 'stat cc-serv-stat active' : 'stat cc-serv-stat'; }
-
-  html += '<div class="stats" style="flex-wrap:wrap">';
-  html += '<div class="' + swStatClass(null) + '" onclick="ccSwFilter(null)" style="cursor:pointer">';
-  html += '<div class="stat-label">Total software</div><div class="stat-value">' + total + '</div>';
-  html += '<div class="stat-sub">' + MESES_FULL[swMesIdx] + ' 2026</div></div>';
-
-  groupKeys.forEach(function(lic) {
-    var clientes = groups[lic];
-    var color = LICENCIA_COLORS[lic] || '#7c8495';
-    html += '<div class="' + swStatClass(lic) + '" onclick="ccSwFilter(\'' + lic.replace(/'/g, "\\'") + '\')" style="cursor:pointer">';
-    html += '<div class="stat-label" style="font-size:10px">' + lic + '</div><div class="stat-value" style="color:' + color + '">' + clientes.length + '</div>';
-    html += '<div class="stat-sub">' + (total > 0 ? (clientes.length / total * 100).toFixed(0) : 0) + '%</div></div>';
-  });
+  // Stats cards: Inicio / Nuevos / Churn / Cierre
+  html += '<div class="bd-summary">';
+  html += '<div class="bd-summary-item' + (ccSwFiltro === 'inicio' ? ' bd-summary-active' : '') + '" style="cursor:pointer;border:2px solid ' + (ccSwFiltro === 'inicio' ? 'var(--navy)' : 'transparent') + ';border-radius:10px" onclick="ccSwFilter(\'inicio\')"><div class="bd-summary-count">' + ccSwInicio + '</div><div class="bd-summary-label">Inicio</div></div>';
+  html += '<div class="bd-summary-item' + (ccSwFiltro === 'nuevos' ? ' bd-summary-active' : '') + '" style="cursor:pointer;border:2px solid ' + (ccSwFiltro === 'nuevos' ? 'var(--green)' : 'transparent') + ';border-radius:10px" onclick="ccSwFilter(\'nuevos\')"><div class="bd-summary-count" style="color:var(--green)">' + ccSwNuevos.length + '</div><div class="bd-summary-label">Nuevos</div></div>';
+  html += '<div class="bd-summary-item' + (ccSwFiltro === 'churn' ? ' bd-summary-active' : '') + '" style="cursor:pointer;border:2px solid ' + (ccSwFiltro === 'churn' ? 'var(--red)' : 'transparent') + ';border-radius:10px" onclick="ccSwFilter(\'churn\')"><div class="bd-summary-count" style="color:var(--red)">' + ccSwChurn.length + '</div><div class="bd-summary-label">Churn</div></div>';
+  html += '<div class="bd-summary-item' + (ccSwFiltro === 'cierre' ? ' bd-summary-active' : '') + '" style="cursor:pointer;border:2px solid ' + (ccSwFiltro === 'cierre' ? 'var(--navy)' : 'transparent') + ';border-radius:10px" onclick="ccSwFilter(\'cierre\')"><div class="bd-summary-count" style="font-weight:700">' + total + '</div><div class="bd-summary-label">Cierre</div></div>';
   html += '</div>';
+
+  // Filter indicator
+  if (ccSwFiltro) {
+    var fLabels = {inicio:'Mostrando clientes al inicio de ' + MESES_FULL[swMesIdx], nuevos:'Mostrando nuevos de ' + MESES_FULL[swMesIdx], churn:'Mostrando churn de ' + MESES_FULL[swMesIdx], cierre:'Mostrando clientes al cierre de ' + MESES_FULL[swMesIdx]};
+    var fColors = {inicio:'var(--navy)', nuevos:'var(--green)', churn:'var(--red)', cierre:'var(--navy)'};
+    var fBgs = {inicio:'#f0f4ff', nuevos:'#ecfdf5', churn:'#fef2f2', cierre:'#f0f4ff'};
+    html += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;padding:8px 12px;background:' + fBgs[ccSwFiltro] + ';border-radius:8px;font-size:0.8rem;color:' + fColors[ccSwFiltro] + ';font-weight:500">';
+    html += '<span>' + fLabels[ccSwFiltro] + '</span>';
+    html += '<button style="margin-left:auto;padding:3px 10px;border-radius:5px;border:1px solid ' + fColors[ccSwFiltro] + ';background:white;font-size:0.72rem;cursor:pointer;color:' + fColors[ccSwFiltro] + '" onclick="ccSwFilter(null)">Ver todos</button>';
+    html += '</div>';
+  }
 
   // Resumen mensual (colapsable)
   var stats = ccGetSoftwareStats();
@@ -1782,18 +1777,31 @@ function ccRenderSoftware(el) {
   // Listado de clientes del mes seleccionado
   var lista = swActivos;
   var titulo = 'Todos los clientes software';
-  if (ccSwFiltro) {
-    lista = groups[ccSwFiltro] || [];
-    titulo = ccSwFiltro;
+  if (ccSwFiltro === 'nuevos') {
+    lista = ccSwNuevos;
+    titulo = 'Nuevos en ' + MESES_FULL[swMesIdx];
+  } else if (ccSwFiltro === 'churn') {
+    lista = ccSwChurn;
+    titulo = 'Churn de ' + MESES_FULL[swMesIdx];
+  } else if (ccSwFiltro === 'inicio') {
+    // Clientes activos al inicio del mes = activos del mes anterior
+    if (swMesIdx > 0) {
+      lista = ccSwGetActivosMes(MESES[swMesIdx - 1]);
+    } else {
+      // Enero: activos pre-2026
+      lista = ccSOFTWARE_CLIENTES.filter(function(c) {
+        var entered = !c.fecha_entrada || c.fecha_entrada < '2026-01-01';
+        var notLeft = !c.fecha_salida || c.fecha_salida >= '2026-01-01';
+        return entered && notLeft;
+      });
+    }
+    titulo = 'Clientes al inicio de ' + MESES_FULL[swMesIdx];
+  } else if (ccSwFiltro === 'cierre') {
+    titulo = 'Clientes al cierre de ' + MESES_FULL[swMesIdx];
   }
 
   lista.sort(function(a, b) {
-    var aLic = a.licencia || 'zzz';
-    var bLic = b.licencia || 'zzz';
-    var aOrd = LICENCIA_ORDER.indexOf(aLic); var bOrd = LICENCIA_ORDER.indexOf(bLic);
-    aOrd = aOrd === -1 ? 99 : aOrd; bOrd = bOrd === -1 ? 99 : bOrd;
-    if (aOrd !== bOrd) return aOrd - bOrd;
-    return (a.n || '').localeCompare(b.n || '', 'es');
+    return ((a.n || a.nombre || '')).localeCompare((b.n || b.nombre || ''), 'es');
   });
 
   html += '<div class="card">';
@@ -1801,27 +1809,22 @@ function ccRenderSoftware(el) {
   html += '<div class="table-wrap"><table>';
   html += '<tr><th>#</th><th>Cliente</th><th>Licencia</th><th>Monto</th><th>Entrada</th></tr>';
 
-  var lastLic = null;
   var counter = 0;
   lista.forEach(function(c) {
     var licKey = c.licencia || 'Sin asignar';
-    if (ccSwFiltro === null && licKey !== lastLic) {
-      html += '<tr style="background:#f1f5f9"><td colspan="5" style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--navy);padding:10px 12px">' + licKey + '</td></tr>';
-      lastLic = licKey;
-    }
     counter++;
-    var color = LICENCIA_COLORS[licKey] || '#7c8495';
     var desde = '—';
-    if (c.fecha_entrada) {
-      var parts = c.fecha_entrada.split('-');
+    var fe = c.fecha_entrada;
+    if (fe) {
+      var parts = fe.split('-');
       var mesNames = ['','Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
       desde = mesNames[parseInt(parts[1])] + ' ' + parts[0];
     }
     html += '<tr>';
     html += '<td>' + counter + '</td>';
-    html += '<td><strong>' + c.n + '</strong></td>';
-    html += '<td><span style="font-size:11px;font-weight:600;color:' + color + '">' + licKey + '</span></td>';
-    html += '<td>US$ ' + c.monto + '</td>';
+    html += '<td><strong>' + (c.n || c.nombre || '') + '</strong></td>';
+    html += '<td><span style="font-size:11px;font-weight:600;color:#7c8495">' + licKey + '</span></td>';
+    html += '<td>US$ ' + (c.monto || c.monto_mensual || 0) + '</td>';
     html += '<td>' + desde + '</td>';
     html += '</tr>';
   });
@@ -3420,17 +3423,21 @@ function bdRenderSoftware() {
   var swInicioMes = swActivosMes.length - swNuevosMes.length + swChurnMes.length;
 
   h += '<div class="bd-summary">';
-  h += '<div class="bd-summary-item"><div class="bd-summary-count">' + swInicioMes + '</div><div class="bd-summary-label">Inicio</div></div>';
+  h += '<div class="bd-summary-item' + (swFilter === 'inicio' ? ' bd-summary-active' : '') + '" style="cursor:pointer;border:2px solid ' + (swFilter === 'inicio' ? 'var(--navy)' : 'transparent') + ';border-radius:10px" onclick="swSetFilter(\'inicio\')"><div class="bd-summary-count">' + swInicioMes + '</div><div class="bd-summary-label">Inicio</div></div>';
   h += '<div class="bd-summary-item' + (swFilter === 'nuevos' ? ' bd-summary-active' : '') + '" style="cursor:pointer;border:2px solid ' + (swFilter === 'nuevos' ? 'var(--green)' : 'transparent') + ';border-radius:10px" onclick="swSetFilter(\'nuevos\')"><div class="bd-summary-count" style="color:var(--green)">' + swNuevosMes.length + '</div><div class="bd-summary-label">Nuevos</div></div>';
   h += '<div class="bd-summary-item' + (swFilter === 'churn' ? ' bd-summary-active' : '') + '" style="cursor:pointer;border:2px solid ' + (swFilter === 'churn' ? 'var(--red)' : 'transparent') + ';border-radius:10px" onclick="swSetFilter(\'churn\')"><div class="bd-summary-count" style="color:var(--red)">' + swChurnMes.length + '</div><div class="bd-summary-label">Churn</div></div>';
-  h += '<div class="bd-summary-item"><div class="bd-summary-count" style="font-weight:700">' + swActivosMes.length + '</div><div class="bd-summary-label">Cierre</div></div>';
+  h += '<div class="bd-summary-item' + (swFilter === 'cierre' ? ' bd-summary-active' : '') + '" style="cursor:pointer;border:2px solid ' + (swFilter === 'cierre' ? 'var(--navy)' : 'transparent') + ';border-radius:10px" onclick="swSetFilter(\'cierre\')"><div class="bd-summary-count" style="font-weight:700">' + swActivosMes.length + '</div><div class="bd-summary-label">Cierre</div></div>';
   h += '<div class="bd-summary-item"><div class="bd-summary-count" style="font-size:1rem">US$ ' + facturacionMes.toLocaleString() + '</div><div class="bd-summary-label">Facturación</div></div>';
   h += '</div>';
   // Filter indicator
   if (swFilter !== 'todos') {
-    var filterLabel = swFilter === 'nuevos' ? 'Mostrando solo nuevos de ' + bdSwMes : 'Mostrando churn de ' + bdSwMes;
-    var filterColor = swFilter === 'nuevos' ? 'var(--green)' : 'var(--red)';
-    h += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;padding:8px 12px;background:' + (swFilter === 'nuevos' ? '#ecfdf5' : '#fef2f2') + ';border-radius:8px;font-size:0.8rem;color:' + filterColor + ';font-weight:500">';
+    var fLabelsB = {inicio:'Mostrando clientes al inicio de ' + bdSwMes, nuevos:'Mostrando solo nuevos de ' + bdSwMes, churn:'Mostrando churn de ' + bdSwMes, cierre:'Mostrando clientes al cierre de ' + bdSwMes};
+    var fColorsB = {inicio:'var(--navy)', nuevos:'var(--green)', churn:'var(--red)', cierre:'var(--navy)'};
+    var fBgsB = {inicio:'#f0f4ff', nuevos:'#ecfdf5', churn:'#fef2f2', cierre:'#f0f4ff'};
+    var filterLabel = fLabelsB[swFilter] || '';
+    var filterColor = fColorsB[swFilter] || 'var(--navy)';
+    var filterBg = fBgsB[swFilter] || '#f0f4ff';
+    h += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;padding:8px 12px;background:' + filterBg + ';border-radius:8px;font-size:0.8rem;color:' + filterColor + ';font-weight:500">';
     h += '<span>' + filterLabel + '</span>';
     h += '<button style="margin-left:auto;padding:3px 10px;border-radius:5px;border:1px solid ' + filterColor + ';background:white;font-size:0.72rem;cursor:pointer;color:' + filterColor + '" onclick="swSetFilter(\'todos\')">Ver todos</button>';
     h += '</div>';
@@ -3443,12 +3450,26 @@ function bdRenderSoftware() {
   }
   h += '</div>';
 
-  // Aplicar filtro nuevos/churn
+  // Aplicar filtro
   var filtered = allSwForMes;
   if (swFilter === 'nuevos') {
     filtered = swNuevosMes;
   } else if (swFilter === 'churn') {
     filtered = swChurnMes;
+  } else if (swFilter === 'inicio') {
+    // Clientes activos al inicio = activos mes anterior
+    if (swMesIdx > 0) {
+      var prevMes = BD_MESES[swMesIdx - 1];
+      filtered = swGetClientesForMes(prevMes);
+    } else {
+      filtered = bdSoftwareClientes.filter(function(c) {
+        var entered = !c.fecha_entrada || c.fecha_entrada < '2026-01-01';
+        var notLeft = !c.fecha_salida || c.fecha_salida >= '2026-01-01';
+        return entered && notLeft;
+      });
+    }
+  } else if (swFilter === 'cierre') {
+    filtered = swActivosMes;
   }
   if (swSearch) {
     var q = swSearch.toLowerCase();
