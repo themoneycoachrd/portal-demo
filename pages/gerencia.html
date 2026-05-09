@@ -2068,17 +2068,29 @@ function ccRenderFacturacion(el) {
     return s + (p || c.monto || 0);
   }, 0);
 
+  // Facturación perdida (outsourcing churn)
+  var outPerdidoServicio = 0;
+  var outPerdidoSoftware = 0;
+  outChurn.forEach(function(c) {
+    var ps = ccGetPrecioOutsourcing(c);
+    if (ps && ps !== 'cotizar') outPerdidoServicio += ps;
+    var pl = ccGetPrecioSoftware(c.software);
+    if (pl) outPerdidoSoftware += pl;
+  });
+
   // ─── STATS ───
   var totalFacturas = outActivos.length + swActivos.length;
   var totalAgregados = outNuevos.length + swNuevos.length;
   var totalQuitados = outChurn.length + swChurn.length;
+  var totalNuevoRD = outNuevoServicio;
+  var totalNuevoUS = outNuevoSoftware + swNuevoMonto;
 
   html += '<div class="stats">';
   html += '<div class="stat"><div class="stat-label">Facturas del mes</div><div class="stat-value">' + totalFacturas + '</div><div class="stat-sub">' + MESES_FULL[mesIdx] + ' 2026</div></div>';
   html += '<div class="stat"><div class="stat-label">Agregar</div><div class="stat-value stat-green">' + totalAgregados + '</div><div class="stat-sub">Facturas nuevas</div></div>';
   html += '<div class="stat"><div class="stat-label">Quitar</div><div class="stat-value stat-red">' + totalQuitados + '</div><div class="stat-sub">Facturas a eliminar</div></div>';
-  html += '<div class="stat"><div class="stat-label">Nuevo servicio</div><div class="stat-value" style="color:var(--blue)">RD$ ' + outNuevoServicio.toLocaleString() + '</div><div class="stat-sub">Outsourcing agregado</div></div>';
-  html += '<div class="stat"><div class="stat-label">Nuevo software</div><div class="stat-value" style="color:var(--purple)">US$ ' + (outNuevoSoftware + swNuevoMonto).toLocaleString() + '</div><div class="stat-sub">Licencias agregadas</div></div>';
+  html += '<div class="stat"><div class="stat-label">Nuevo servicio</div><div class="stat-value" style="color:var(--blue)">RD$ ' + totalNuevoRD.toLocaleString() + '</div><div class="stat-sub">' + (totalNuevoUS > 0 ? '+ US$ ' + totalNuevoUS.toLocaleString() + ' software' : 'Outsourcing + software') + '</div></div>';
+  html += '<div class="stat"><div class="stat-label">Facturación perdida</div><div class="stat-value" style="color:var(--red)">RD$ ' + outPerdidoServicio.toLocaleString() + '</div><div class="stat-sub">' + (outPerdidoSoftware > 0 ? '+ US$ ' + outPerdidoSoftware.toLocaleString() + ' software' : 'Outsourcing perdido') + '</div></div>';
   html += '</div>';
 
   // ─── OUTSOURCING SECTION ───
@@ -2217,13 +2229,13 @@ function ccRenderFacturacion(el) {
     swNuevos.forEach(function(c) {
       var precio = ccGetPrecioSoftware(c.licencia) || c.monto || 0;
       var tieneDesc = c.descuento_pct && (!c.descuento_vence || c.descuento_vence >= lastDayStr);
-      var montoReal = tieneDesc ? +(precio * (1 - c.descuento_pct / 100)).toFixed(1) : null;
+      var montoReal = tieneDesc ? +(precio * (1 - c.descuento_pct / 100)).toFixed(1) : precio;
       html += '<tr>';
       html += '<td style="' + tdStyle + '"><strong>' + (c.n || c.nombre || '') + '</strong></td>';
       html += '<td style="' + tdStyle + '">' + (c.licencia || '—') + '</td>';
       html += '<td style="' + tdStyle + ';text-align:right;font-weight:600' + (tieneDesc ? ';text-decoration:line-through;color:var(--muted)' : '') + '">US$ ' + precio + '</td>';
       html += '<td style="' + tdStyle + ';text-align:right;color:var(--green);font-weight:600">' + (tieneDesc ? c.descuento_pct + '%' : '') + '</td>';
-      html += '<td style="' + tdStyle + ';text-align:right;font-weight:700">' + (tieneDesc ? 'US$ ' + montoReal : '') + '</td>';
+      html += '<td style="' + tdStyle + ';text-align:right;font-weight:700">US$ ' + montoReal + '</td>';
       html += '<td style="' + tdStyle + ';font-size:0.75rem">' + (tieneDesc && c.descuento_nota ? c.descuento_nota + (c.descuento_vence ? ' · vence ' + c.descuento_vence : '') : '') + '</td>';
       html += '<td style="' + tdStyle + ';text-align:center"><span style="background:#ecfdf5;color:var(--green);padding:2px 10px;border-radius:10px;font-size:0.72rem;font-weight:600">Agregar</span></td>';
       html += '</tr>';
@@ -2231,13 +2243,13 @@ function ccRenderFacturacion(el) {
     swChurn.forEach(function(c) {
       var precio = ccGetPrecioSoftware(c.licencia) || c.monto || 0;
       var tieneDesc = c.descuento_pct && (!c.descuento_vence || c.descuento_vence >= lastDayStr);
-      var montoReal = tieneDesc ? +(precio * (1 - c.descuento_pct / 100)).toFixed(1) : null;
+      var montoReal = tieneDesc ? +(precio * (1 - c.descuento_pct / 100)).toFixed(1) : precio;
       html += '<tr>';
       html += '<td style="' + tdStyle + '"><strong>' + (c.n || c.nombre || '') + '</strong></td>';
       html += '<td style="' + tdStyle + '">' + (c.licencia || '—') + '</td>';
       html += '<td style="' + tdStyle + ';text-align:right;font-weight:600' + (tieneDesc ? ';text-decoration:line-through;color:var(--muted)' : '') + '">US$ ' + precio + '</td>';
       html += '<td style="' + tdStyle + ';text-align:right;color:var(--green);font-weight:600">' + (tieneDesc ? c.descuento_pct + '%' : '') + '</td>';
-      html += '<td style="' + tdStyle + ';text-align:right;font-weight:700">' + (tieneDesc ? 'US$ ' + montoReal : '') + '</td>';
+      html += '<td style="' + tdStyle + ';text-align:right;font-weight:700">US$ ' + montoReal + '</td>';
       html += '<td style="' + tdStyle + ';font-size:0.75rem">' + (tieneDesc && c.descuento_nota ? c.descuento_nota + (c.descuento_vence ? ' · vence ' + c.descuento_vence : '') : '') + '</td>';
       html += '<td style="' + tdStyle + ';text-align:center"><span style="background:#fef2f2;color:var(--red);padding:2px 10px;border-radius:10px;font-size:0.72rem;font-weight:600">Quitar</span></td>';
       html += '</tr>';
@@ -2281,7 +2293,7 @@ function ccRenderFacturacion(el) {
     html += '<td style="padding:6px 10px;border-bottom:1px solid #f3f4f6">' + (c.licencia || '—') + '</td>';
     html += '<td style="padding:6px 10px;border-bottom:1px solid #f3f4f6;text-align:right;font-weight:600' + (tieneDesc ? ';text-decoration:line-through;color:var(--muted)' : '') + '">US$ ' + precio + '</td>';
     html += '<td style="padding:6px 10px;border-bottom:1px solid #f3f4f6;text-align:right;color:var(--green);font-weight:600">' + (tieneDesc ? c.descuento_pct + '%' : '') + '</td>';
-    html += '<td style="padding:6px 10px;border-bottom:1px solid #f3f4f6;text-align:right;font-weight:700">' + (tieneDesc ? 'US$ ' + montoReal : '') + '</td>';
+    html += '<td style="padding:6px 10px;border-bottom:1px solid #f3f4f6;text-align:right;font-weight:700">US$ ' + montoReal + '</td>';
     html += '<td style="padding:6px 10px;border-bottom:1px solid #f3f4f6;font-size:0.72rem">' + (tieneDesc && c.descuento_nota ? c.descuento_nota + (c.descuento_vence ? ' · vence ' + c.descuento_vence : '') : '') + '</td>';
     html += '</tr>';
   });
@@ -2290,13 +2302,14 @@ function ccRenderFacturacion(el) {
   html += '<td colspan="3" style="padding:8px 10px;border-top:2px solid var(--border);text-align:right;font-size:0.72rem;text-transform:uppercase;color:var(--muted)">Total</td>';
   if (swGranTotal !== swGranTotalReal) {
     html += '<td style="padding:8px 10px;border-top:2px solid var(--border);text-align:right;text-decoration:line-through;color:var(--muted)">US$ ' + swGranTotal.toLocaleString() + '</td>';
-    html += '<td style="padding:8px 10px;border-top:2px solid var(--border);text-align:right"></td>';
-    html += '<td style="padding:8px 10px;border-top:2px solid var(--border);text-align:right">US$ ' + swGranTotalReal.toLocaleString(undefined, {minimumFractionDigits: 0, maximumFractionDigits: 1}) + '</td>';
     html += '<td style="padding:8px 10px;border-top:2px solid var(--border)"></td>';
   } else {
-    html += '<td style="padding:8px 10px;border-top:2px solid var(--border);text-align:right">US$ ' + swGranTotal.toLocaleString() + '</td>';
-    html += '<td colspan="3" style="padding:8px 10px;border-top:2px solid var(--border)"></td>';
+    html += '<td style="padding:8px 10px;border-top:2px solid var(--border)"></td>';
+    html += '<td style="padding:8px 10px;border-top:2px solid var(--border)"></td>';
   }
+  var realStr = swGranTotalReal % 1 === 0 ? swGranTotalReal.toLocaleString() : swGranTotalReal.toLocaleString(undefined, {minimumFractionDigits:1, maximumFractionDigits:1});
+  html += '<td style="padding:8px 10px;border-top:2px solid var(--border);text-align:right">US$ ' + realStr + '</td>';
+  html += '<td style="padding:8px 10px;border-top:2px solid var(--border)"></td>';
   html += '</tr>';
   html += '</table></div></div>';
 
