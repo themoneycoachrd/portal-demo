@@ -1234,6 +1234,10 @@ function ccToggleSwDetail(mes) {
   const detail = document.getElementById('sw-detail-' + mes);
   if (detail) detail.style.display = detail.style.display === 'none' ? '' : 'none';
 }
+function ccToggleServDetail(mes) {
+  const detail = document.getElementById('serv-detail-' + mes);
+  if (detail) detail.style.display = detail.style.display === 'none' ? '' : 'none';
+}
 
 function ccToggleSwLicTable() {
   var tbl = document.getElementById('sw-lic-table');
@@ -1310,7 +1314,7 @@ function ccRenderMainTabs() {
   const el = document.getElementById("ccMainTabs");
   const tabs = [
     {id:'dashboard', label:'Dashboard'},
-    {id:'servicios', label:'Clientes'},
+    {id:'servicios', label:'Outsourcing'},
     {id:'software', label:'Software'},
     {id:'implementacion', label:'Implementaciones'}
   ];
@@ -1439,7 +1443,7 @@ function ccRenderServicios(el) {
   html += '</div>';
 
   // Resumen mensual (movimiento mes a mes)
-  var ccServBase = ccAllClientes.filter(function(c) { return c.fecha_entrada && c.fecha_entrada < '2026-01-01'; });
+  var ccServBase = ccAllClientes.filter(function(c) { return !c.fecha_entrada || c.fecha_entrada < '2026-01-01'; });
   var ccServAcum = ccServBase.length;
   var MESES_MAP_SERV = {enero:'01',febrero:'02',marzo:'03',abril:'04',mayo:'05',junio:'06',julio:'07',agosto:'08',septiembre:'09',octubre:'10',noviembre:'11',diciembre:'12'};
   html += '<div class="card" style="margin-bottom:16px">';
@@ -1464,7 +1468,10 @@ function ccRenderServicios(el) {
     var pctStr = (pct >= 0 ? '+' : '') + pct.toFixed(1) + '%';
     var pctColor = pct >= 0 ? 'var(--green)' : 'var(--red)';
     var isSel = m === ccServMes;
-    html += '<tr style="cursor:pointer;' + (isSel ? 'background:#f0f4ff;font-weight:600' : '') + '" onclick="ccServMes=\'' + m + '\';ccRenderContent()">';
+    var nuevosHtml = mNuevos.length > 0 ? mNuevos.map(function(c) { return '<span class="badge badge-new" style="margin:1px 2px">' + esc(c.nombre) + '</span>'; }).join('') : '—';
+    var churnHtml = mChurn.length > 0 ? mChurn.map(function(c) { return '<span class="badge badge-churn" style="margin:1px 2px">' + esc(c.nombre) + '</span>'; }).join('') : '—';
+    var detailId = 'serv-detail-' + m;
+    html += '<tr style="cursor:pointer;' + (isSel ? 'background:#f0f4ff;font-weight:600' : '') + '" onclick="ccToggleServDetail(\'' + m + '\')">';
     html += '<td><strong>' + MESES_FULL[i] + '</strong></td>';
     html += '<td>' + inicio + '</td>';
     html += '<td style="color:var(--green)">' + mNuevos.length + '</td>';
@@ -1473,6 +1480,11 @@ function ccRenderServicios(el) {
     html += '<td><strong>' + ccServAcum + '</strong></td>';
     html += '<td style="color:' + pctColor + '">' + pctStr + '</td>';
     html += '</tr>';
+    html += '<tr id="' + detailId + '" style="display:none"><td colspan="7" style="padding:10px 14px;background:#f8fafc;border-bottom:2px solid var(--border)">';
+    html += '<div style="display:flex;gap:20px;flex-wrap:wrap">';
+    html += '<div><span style="font-size:11px;font-weight:700;color:var(--green);text-transform:uppercase;letter-spacing:0.3px">Entraron:</span><div style="margin-top:4px;display:flex;flex-wrap:wrap;gap:4px">' + nuevosHtml + '</div></div>';
+    html += '<div><span style="font-size:11px;font-weight:700;color:var(--red);text-transform:uppercase;letter-spacing:0.3px">Salieron:</span><div style="margin-top:4px;display:flex;flex-wrap:wrap;gap:4px">' + churnHtml + '</div></div>';
+    html += '</div></td></tr>';
   });
   html += '</table></div></div></div>';
 
