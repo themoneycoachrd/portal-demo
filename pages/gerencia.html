@@ -582,6 +582,27 @@
         </div>
       </div>
     </div>
+    <div class="m-field hidden" id="cl-m-salida-motivo-wrap">
+      <div class="m-row">
+        <div class="m-field">
+          <label>Motivo de salida</label>
+          <select id="cl-m-motivo-salida">
+            <option value="">—</option>
+            <option value="Cambio a otra firma">Cambio a otra firma</option>
+            <option value="Cierre de empresa">Cierre de empresa</option>
+            <option value="Reduccion de costos">Reducción de costos</option>
+            <option value="Insatisfaccion con el servicio">Insatisfacción con el servicio</option>
+            <option value="No pago">No pago</option>
+            <option value="Internalizacion">Internalización</option>
+            <option value="Otro">Otro</option>
+          </select>
+        </div>
+        <div class="m-field">
+          <label>Nota de salida</label>
+          <input type="text" id="cl-m-nota-salida" placeholder="Detalles adicionales...">
+        </div>
+      </div>
+    </div>
     <div class="m-row">
       <div class="m-field">
         <label style="margin-bottom:4px">Contabilidad</label>
@@ -676,6 +697,91 @@
     <div class="modal-buttons">
       <button class="btn-modal-cancel" onclick="bdContCloseModal()">Cancelar</button>
       <button class="btn-modal-save" id="bd-cont-m-save" onclick="bdContSave()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Nuevo/Editar Cliente Software -->
+<div class="modal-overlay hidden" id="sw-modal-overlay" onclick="if(event.target===this)swCloseModal()">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 id="sw-modal-title">Nuevo cliente software</h3>
+      <button class="modal-close" onclick="swCloseModal()" title="Cerrar">✕</button>
+    </div>
+    <div class="m-row">
+      <div class="m-field">
+        <label>Nombre del cliente *</label>
+        <input type="text" id="sw-m-nombre" placeholder="Nombre completo o razón social">
+        <div class="m-error" id="sw-m-nombre-err">Campo obligatorio</div>
+      </div>
+      <div class="m-field">
+        <label>RNC</label>
+        <input type="text" id="sw-m-rnc" placeholder="000-00000-0">
+      </div>
+    </div>
+    <div class="m-row">
+      <div class="m-field">
+        <label>Contacto principal</label>
+        <input type="text" id="sw-m-contacto" placeholder="Nombre del contacto">
+      </div>
+      <div class="m-field">
+        <label>Email</label>
+        <input type="email" id="sw-m-email" placeholder="correo@ejemplo.com">
+      </div>
+    </div>
+    <div class="m-row">
+      <div class="m-field">
+        <label>Teléfono</label>
+        <input type="text" id="sw-m-telefono" placeholder="809-000-0000">
+      </div>
+      <div class="m-field">
+        <label>Monto mensual (RD$)</label>
+        <input type="number" id="sw-m-monto" placeholder="Ej: 3500">
+      </div>
+    </div>
+    <div class="m-row">
+      <div class="m-field">
+        <label>Fecha de entrada</label>
+        <input type="date" id="sw-m-fecha-entrada">
+      </div>
+      <div class="m-field">
+        <label>Estado</label>
+        <div style="display:flex;align-items:center;gap:10px;margin-top:4px">
+          <button type="button" id="sw-m-activo-btn" onclick="swToggleActivo()" style="padding:6px 16px;border-radius:20px;font-size:0.82rem;font-weight:600;cursor:pointer;border:1px solid var(--border);transition:all 0.15s">Activo</button>
+          <div id="sw-m-salida-wrap" style="flex:1;display:none">
+            <label style="font-size:0.75rem;color:var(--muted)">Fecha de salida</label>
+            <input type="date" id="sw-m-fecha-salida">
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="m-field hidden" id="sw-m-motivo-wrap">
+      <div class="m-row">
+        <div class="m-field">
+          <label>Motivo de salida</label>
+          <select id="sw-m-motivo-salida">
+            <option value="">—</option>
+            <option value="Cambio a otro software">Cambio a otro software</option>
+            <option value="Cierre de empresa">Cierre de empresa</option>
+            <option value="Reduccion de costos">Reducción de costos</option>
+            <option value="Insatisfaccion con el servicio">Insatisfacción con el servicio</option>
+            <option value="No pago">No pago</option>
+            <option value="Otro">Otro</option>
+          </select>
+        </div>
+        <div class="m-field">
+          <label>Nota de salida</label>
+          <input type="text" id="sw-m-nota-salida" placeholder="Detalles adicionales...">
+        </div>
+      </div>
+    </div>
+    <div class="m-field">
+      <label>Notas</label>
+      <textarea id="sw-m-notas" placeholder="Cualquier detalle relevante..."></textarea>
+    </div>
+    <div class="modal-buttons">
+      <button class="btn-modal-cancel" onclick="swCloseModal()">Cancelar</button>
+      <button class="btn-modal-save" id="sw-m-save" onclick="swSaveClient()">Guardar</button>
     </div>
   </div>
 </div>
@@ -2509,9 +2615,12 @@ var bdActiveSubTab = 'clientes';
 var bdClientes = [];
 var bdContadoras = [];
 var bdAsignaciones = [];
+var bdSoftwareClientes = [];
+var bdPendientes = [];
 var bdAsigMes = 'abril';
 var bdClMes = 'abril';
 var bdContMes = 'abril';
+var bdSwMes = 'mayo';
 var bdAsigDirty = false; // track unsaved changes in assignments
 var bdAsigEdits = {}; // { rowIdx: { contadora, serv, adm } }
 var bdTokens = []; // portal client tokens
@@ -2519,6 +2628,9 @@ var bdTokens = []; // portal client tokens
 var clSearch = '';
 var clEditingId = null;
 var bdContEditingId = null;
+var swSearch = '';
+var swEditingId = null;
+var swModalActivo = true;
 
 const BD_MESES = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
 const BD_MESES_SHORT = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
@@ -2548,15 +2660,30 @@ async function bdLoadTokens() {
   bdTokens = data || [];
 }
 
+async function bdLoadSoftware() {
+  var { data, error } = await sb.from('clientes_software').select('*').order('nombre');
+  if (error) { console.warn('Tabla clientes_software no disponible:', error.message); bdSoftwareClientes = []; return; }
+  bdSoftwareClientes = data || [];
+}
+
+async function bdLoadPendientes() {
+  var { data, error } = await sb.from('clientes_pendientes').select('*').eq('estado', 'pendiente').order('fecha_cierre', { ascending: false });
+  if (error) { console.warn('Tabla clientes_pendientes no disponible:', error.message); bdPendientes = []; return; }
+  bdPendientes = data || [];
+}
+
 async function bdLoadAll() {
-  await Promise.all([bdLoadClientes(), bdLoadContadoras(), bdLoadAsignaciones(), bdLoadTokens()]);
+  await Promise.all([bdLoadClientes(), bdLoadContadoras(), bdLoadAsignaciones(), bdLoadTokens(), bdLoadSoftware(), bdLoadPendientes()]);
 }
 
 // ─── BD Sub-tabs ───
 function bdRenderSubTabs() {
   var el = document.getElementById('bdSubTabs');
+  var pendRec = bdPendientes.filter(function(p) { return p.destino === 'recurrente'; }).length;
+  var pendSw = bdPendientes.filter(function(p) { return p.destino === 'software'; }).length;
   var tabs = [
-    { id:'clientes', label:'Clientes' },
+    { id:'clientes', label:'Clientes' + (pendRec ? ' <span style="background:var(--amber);color:white;font-size:10px;padding:1px 6px;border-radius:10px;margin-left:4px">' + pendRec + '</span>' : '') },
+    { id:'software', label:'Clientes Software' + (pendSw ? ' <span style="background:var(--amber);color:white;font-size:10px;padding:1px 6px;border-radius:10px;margin-left:4px">' + pendSw + '</span>' : '') },
     { id:'asignaciones', label:'Asignaciones' },
     { id:'contadoras', label:'Contadores' },
     { id:'links', label:'Links Portal' }
@@ -2584,6 +2711,7 @@ function bdRenderAll() {
 
 function bdRenderContent() {
   if (bdActiveSubTab === 'clientes') bdRenderClientes();
+  else if (bdActiveSubTab === 'software') bdRenderSoftware();
   else if (bdActiveSubTab === 'contadoras') bdRenderContadoras();
   else if (bdActiveSubTab === 'asignaciones') bdRenderAsignaciones();
   else if (bdActiveSubTab === 'links') bdRenderLinks();
@@ -2618,6 +2746,21 @@ function bdSwitchClMes(mes) {
 function bdRenderClientes() {
   var el = document.getElementById('bd-content');
   var h = '';
+
+  // Pendientes alert (recurrentes)
+  var pendRec = bdPendientes.filter(function(p) { return p.destino === 'recurrente'; });
+  if (pendRec.length > 0) {
+    h += '<div style="background:#fef3c7;border:1px solid #f59e0b;border-radius:10px;padding:14px 18px;margin-bottom:16px;display:flex;align-items:center;gap:12px">';
+    h += '<span style="font-size:1.2rem">⚠️</span>';
+    h += '<div><span style="font-weight:600;font-size:0.85rem;color:#92400e">' + pendRec.length + ' cliente' + (pendRec.length > 1 ? 's' : '') + ' pendiente' + (pendRec.length > 1 ? 's' : '') + ' de crear</span>';
+    h += '<div style="font-size:0.78rem;color:#a16207;margin-top:2px">';
+    pendRec.forEach(function(p, i) {
+      h += (i > 0 ? ', ' : '') + '<b>' + esc(p.lead_nombre) + '</b> (' + (p.mes_cierre || '') + ')';
+    });
+    h += '</div></div>';
+    h += '<button style="margin-left:auto;padding:5px 12px;border-radius:6px;font-size:0.75rem;font-weight:600;cursor:pointer;border:1px solid #f59e0b;background:white;color:#92400e" onclick="clCreateFromPendiente()">Crear</button>';
+    h += '</div>';
+  }
 
   // Month pills
   h += '<div class="bd-month-pills">';
@@ -2721,7 +2864,8 @@ function bdRenderClientes() {
     h += '<td style="font-size:0.8rem">' + (c.monto_adm || '<span style="color:var(--light)">—</span>') + '</td>';
     if (isInactivo) {
       var salida = c.fecha_salida ? c.fecha_salida.split('-').reverse().join('/') : '';
-      h += '<td><span class="cl-badge-inactivo">Inactivo</span>' + (salida ? '<div style="font-size:0.7rem;color:var(--muted);margin-top:2px">Salida: ' + salida + '</div>' : '') + '</td>';
+      var motivoTxt = c.motivo_salida ? ' · ' + esc(c.motivo_salida) : '';
+      h += '<td><span class="cl-badge-inactivo">Inactivo</span>' + (salida ? '<div style="font-size:0.7rem;color:var(--muted);margin-top:2px">Salida: ' + salida + motivoTxt + '</div>' : '') + '</td>';
     } else {
       h += '<td><span class="cl-badge-activo">Activo</span></td>';
     }
@@ -2765,18 +2909,21 @@ var clModalActivo = true;
 function clRenderActivoBtn() {
   var btn = document.getElementById('cl-m-activo-btn');
   var salidaWrap = document.getElementById('cl-m-salida-wrap');
+  var motivoWrap = document.getElementById('cl-m-salida-motivo-wrap');
   if (clModalActivo) {
     btn.textContent = 'Activo';
     btn.style.background = 'var(--green)';
     btn.style.color = 'white';
     btn.style.borderColor = 'var(--green)';
     salidaWrap.style.display = 'none';
+    motivoWrap.classList.add('hidden');
   } else {
     btn.textContent = 'Inactivo';
     btn.style.background = 'var(--red)';
     btn.style.color = 'white';
     btn.style.borderColor = 'var(--red)';
     salidaWrap.style.display = 'block';
+    motivoWrap.classList.remove('hidden');
   }
 }
 
@@ -2832,6 +2979,8 @@ function clOpenModal(editId) {
     document.getElementById('cl-m-tipo-servicio').value = c.tipo_servicio || '';
     document.getElementById('cl-m-monto-adm').value = c.monto_adm || '';
     document.getElementById('cl-m-fecha-salida').value = c.fecha_salida || '';
+    document.getElementById('cl-m-motivo-salida').value = c.motivo_salida || '';
+    document.getElementById('cl-m-nota-salida').value = c.nota_salida || '';
     clModalActivo = c.activo !== false;
     clRenderActivoBtn();
     document.getElementById('cl-m-resp-contab').checked = c.responsabilidad_contabilidad !== false;
@@ -2856,6 +3005,8 @@ function clOpenModal(editId) {
     document.getElementById('cl-m-tipo-servicio').value = '';
     document.getElementById('cl-m-monto-adm').value = '';
     document.getElementById('cl-m-fecha-salida').value = '';
+    document.getElementById('cl-m-motivo-salida').value = '';
+    document.getElementById('cl-m-nota-salida').value = '';
     clModalActivo = true;
     clRenderActivoBtn();
     document.getElementById('cl-m-resp-contab').checked = true;
@@ -2953,6 +3104,8 @@ async function clSaveClient() {
     fecha_entrada: document.getElementById('cl-m-fecha-entrada').value || null,
     fecha_salida: document.getElementById('cl-m-fecha-salida').value || null,
     activo: clModalActivo,
+    motivo_salida: !clModalActivo ? (document.getElementById('cl-m-motivo-salida').value || null) : null,
+    nota_salida: !clModalActivo ? (document.getElementById('cl-m-nota-salida').value.trim() || null) : null,
     inicio_responsabilidad_fiscal: document.getElementById('cl-m-inicio-fiscal').value || null,
     notas: document.getElementById('cl-m-notas').value.trim() || null
   };
@@ -2992,6 +3145,317 @@ async function clSaveClient() {
   await bdLoadClientes();
   bdRenderClientes();
   gerShowToast(wasEditing ? 'Cliente actualizado' : 'Cliente agregado');
+}
+
+var clPendienteId = null;
+
+function clCreateFromPendiente() {
+  var pend = bdPendientes.find(function(p) { return p.destino === 'recurrente'; });
+  if (!pend) return;
+  clPendienteId = pend.id;
+  clOpenModal();
+  document.getElementById('cl-m-nombre').value = pend.lead_nombre || pend.lead_empresa || '';
+}
+
+// Wrap clSaveClient to resolve pendiente after successful save
+var _clSaveClientOrig = clSaveClient;
+clSaveClient = async function() {
+  var pendId = clPendienteId;
+  var modalBefore = document.getElementById('cl-modal-overlay').classList.contains('hidden');
+  await _clSaveClientOrig();
+  var modalAfter = document.getElementById('cl-modal-overlay').classList.contains('hidden');
+  // Si el modal se cerró, el save fue exitoso
+  if (pendId && !modalBefore && modalAfter) {
+    await sb.from('clientes_pendientes').update({ estado: 'creado' }).eq('id', pendId);
+    clPendienteId = null;
+    await bdLoadPendientes();
+    bdRenderSubTabs();
+    bdRenderClientes();
+  }
+};
+
+// ═══════════════════════════════════════════
+// BD SUB-TAB: CLIENTES SOFTWARE
+// ═══════════════════════════════════════════
+
+function bdSwitchSwMes(mes) {
+  bdSwMes = mes;
+  bdRenderSoftware();
+}
+
+function swGetClientesForMes(mes) {
+  var mesIdx = BD_MESES.indexOf(mes);
+  var lastDay = new Date(2026, mesIdx + 1, 0);
+  var lastDayStr = '2026-' + String(mesIdx + 1).padStart(2, '0') + '-' + String(lastDay.getDate()).padStart(2, '0');
+  return bdSoftwareClientes.filter(function(c) {
+    var entered = !c.fecha_entrada || c.fecha_entrada <= lastDayStr;
+    var notExited = !c.fecha_salida || c.fecha_salida > lastDayStr;
+    return entered && notExited && c.activo !== false;
+  });
+}
+
+function bdRenderSoftware() {
+  var el = document.getElementById('bd-content');
+  var h = '';
+
+  // Pendientes alert
+  var pendSw = bdPendientes.filter(function(p) { return p.destino === 'software'; });
+  if (pendSw.length > 0) {
+    h += '<div style="background:#fef3c7;border:1px solid #f59e0b;border-radius:10px;padding:14px 18px;margin-bottom:16px;display:flex;align-items:center;gap:12px">';
+    h += '<span style="font-size:1.2rem">⚠️</span>';
+    h += '<div><span style="font-weight:600;font-size:0.85rem;color:#92400e">' + pendSw.length + ' cliente' + (pendSw.length > 1 ? 's' : '') + ' pendiente' + (pendSw.length > 1 ? 's' : '') + ' de crear</span>';
+    h += '<div style="font-size:0.78rem;color:#a16207;margin-top:2px">';
+    pendSw.forEach(function(p, i) {
+      h += (i > 0 ? ', ' : '') + '<b>' + esc(p.lead_nombre) + '</b> (' + (p.mes_cierre || '') + ')';
+    });
+    h += '</div></div>';
+    h += '<button style="margin-left:auto;padding:5px 12px;border-radius:6px;font-size:0.75rem;font-weight:600;cursor:pointer;border:1px solid #f59e0b;background:white;color:#92400e" onclick="swCreateFromPendiente()">Crear</button>';
+    h += '</div>';
+  }
+
+  // Month pills
+  h += '<div class="bd-month-pills">';
+  BD_MESES.forEach(function(m, i) {
+    h += '<button class="bd-month-pill ' + (bdSwMes === m ? 'active' : '') + '" onclick="bdSwitchSwMes(\'' + m + '\')">' + BD_MESES_SHORT[i] + '</button>';
+  });
+  h += '</div>';
+
+  var swActivosMes = swGetClientesForMes(bdSwMes);
+  var swMesIdx = BD_MESES.indexOf(bdSwMes);
+  var swLastDayObj = new Date(2026, swMesIdx + 1, 0);
+  var swLastDayStr = '2026-' + String(swMesIdx + 1).padStart(2, '0') + '-' + String(swLastDayObj.getDate()).padStart(2, '0');
+  var swInactivosMes = bdSoftwareClientes.filter(function(c) {
+    if (swActivosMes.indexOf(c) >= 0) return false;
+    var entered = !c.fecha_entrada || c.fecha_entrada <= swLastDayStr;
+    return entered;
+  });
+  var allSwForMes = swActivosMes.concat(swInactivosMes);
+
+  // Calcular facturación mensual total
+  var facturacionMes = swActivosMes.reduce(function(sum, c) { return sum + (c.monto_mensual || 0); }, 0);
+
+  h += '<div class="bd-summary">';
+  h += '<div class="bd-summary-item"><div class="bd-summary-count">' + swActivosMes.length + '</div><div class="bd-summary-label">Activos</div></div>';
+  h += '<div class="bd-summary-item"><div class="bd-summary-count">' + swInactivosMes.length + '</div><div class="bd-summary-label">Inactivos</div></div>';
+  h += '<div class="bd-summary-item"><div class="bd-summary-count">' + allSwForMes.length + '</div><div class="bd-summary-label">Total</div></div>';
+  h += '<div class="bd-summary-item"><div class="bd-summary-count" style="font-size:1rem">RD$ ' + facturacionMes.toLocaleString() + '</div><div class="bd-summary-label">Facturación mensual</div></div>';
+  h += '</div>';
+
+  h += '<div class="cl-toolbar">';
+  h += '<input class="cl-search" type="text" placeholder="Buscar cliente software..." value="' + esc(swSearch) + '" oninput="swSearch=this.value;bdRenderSoftware()">';
+  if (userRole === 'admin') {
+    h += '<button class="btn-add" onclick="swOpenModal()">+ Nuevo cliente</button>';
+  }
+  h += '</div>';
+
+  var filtered = allSwForMes;
+  if (swSearch) {
+    var q = swSearch.toLowerCase();
+    filtered = allSwForMes.filter(function(c) {
+      return (c.nombre || '').toLowerCase().indexOf(q) >= 0
+        || (c.rnc || '').toLowerCase().indexOf(q) >= 0
+        || (c.contacto || '').toLowerCase().indexOf(q) >= 0;
+    });
+  }
+
+  if (filtered.length === 0) {
+    if (bdSoftwareClientes.length === 0) {
+      h += '<div class="cl-empty"><div class="emoji">💻</div><p>No hay clientes de software registrados.</p>';
+      if (userRole === 'admin') h += '<p style="font-size:0.82rem">Usa el botón de arriba para agregar el primero.</p>';
+      h += '</div>';
+    } else {
+      h += '<div class="cl-empty"><p>No se encontraron resultados para "' + esc(swSearch) + '"</p></div>';
+    }
+    el.innerHTML = h;
+    return;
+  }
+
+  // Ordenar: activos primero (alfabético), inactivos al final
+  filtered.sort(function(a, b) {
+    var aActivo = swActivosMes.indexOf(a) >= 0 ? 0 : 1;
+    var bActivo = swActivosMes.indexOf(b) >= 0 ? 0 : 1;
+    if (aActivo !== bActivo) return aActivo - bActivo;
+    return (a.nombre || '').localeCompare(b.nombre || '', 'es');
+  });
+
+  var colCount = userRole === 'admin' ? 8 : 7;
+  h += '<table class="cl-table">';
+  h += '<thead><tr>';
+  h += '<th style="width:36px">#</th><th>Cliente</th><th>RNC</th><th>Contacto</th><th>Monto</th><th>Entrada</th><th>Estado</th>';
+  if (userRole === 'admin') h += '<th></th>';
+  h += '</tr></thead><tbody>';
+
+  var lastGroup = null;
+  filtered.forEach(function(c, idx) {
+    var isInactivo = swActivosMes.indexOf(c) < 0;
+    var groupKey = isInactivo ? '__inactivo' : '__activos';
+    if (groupKey !== lastGroup) {
+      var groupLabel = groupKey === '__activos' ? 'Activos' : 'Inactivos';
+      h += '<tr style="background:#f1f5f9"><td colspan="' + colCount + '" style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--navy);padding:10px 12px">' + groupLabel + '</td></tr>';
+      lastGroup = groupKey;
+    }
+    var rowStyle = isInactivo ? ' style="opacity:0.55"' : '';
+    h += '<tr' + rowStyle + '>';
+    h += '<td style="color:var(--muted);font-size:0.75rem">' + (idx + 1) + '</td>';
+    h += '<td class="cl-name">' + esc(c.nombre) + '</td>';
+    h += '<td style="font-size:0.8rem">' + (c.rnc ? esc(c.rnc) : '<span style="color:var(--light)">—</span>') + '</td>';
+    h += '<td style="font-size:0.8rem">' + (c.contacto ? esc(c.contacto) : '<span style="color:var(--light)">—</span>') + '</td>';
+    h += '<td style="font-size:0.8rem;font-weight:600">' + (c.monto_mensual ? 'RD$ ' + c.monto_mensual.toLocaleString() : '<span style="color:var(--light)">—</span>') + '</td>';
+    h += '<td style="font-size:0.78rem">' + (c.fecha_entrada ? c.fecha_entrada.split('-').reverse().join('/') : '<span style="color:var(--light)">—</span>') + '</td>';
+    if (isInactivo) {
+      var salida = c.fecha_salida ? c.fecha_salida.split('-').reverse().join('/') : '';
+      h += '<td><span class="cl-badge-inactivo">Inactivo</span>' + (salida ? '<div style="font-size:0.7rem;color:var(--muted);margin-top:2px">Salida: ' + salida + '</div>' : '') + '</td>';
+    } else {
+      h += '<td><span class="cl-badge-activo">Activo</span></td>';
+    }
+    if (userRole === 'admin') {
+      h += '<td><button style="padding:4px 10px;border:1px solid var(--border);border-radius:6px;background:white;font-size:0.75rem;cursor:pointer;color:var(--muted)" onclick="swEditClient(\'' + c.id + '\')">Editar</button></td>';
+    }
+    h += '</tr>';
+  });
+
+  h += '</tbody></table>';
+  el.innerHTML = h;
+}
+
+// ─── Software modal functions ───
+
+function swToggleActivo() {
+  swModalActivo = !swModalActivo;
+  swRenderActivoBtn();
+}
+
+function swRenderActivoBtn() {
+  var btn = document.getElementById('sw-m-activo-btn');
+  var wrap = document.getElementById('sw-m-salida-wrap');
+  var motiWrapper = document.getElementById('sw-m-motivo-wrap');
+  if (swModalActivo) {
+    btn.textContent = 'Activo';
+    btn.style.background = 'var(--green)';
+    btn.style.color = 'white';
+    btn.style.borderColor = 'var(--green)';
+    wrap.style.display = 'none';
+    motiWrapper.classList.add('hidden');
+  } else {
+    btn.textContent = 'Inactivo';
+    btn.style.background = 'var(--red)';
+    btn.style.color = 'white';
+    btn.style.borderColor = 'var(--red)';
+    wrap.style.display = 'block';
+    motiWrapper.classList.remove('hidden');
+  }
+}
+
+function swOpenModal(editId) {
+  swEditingId = editId || null;
+  if (swEditingId) {
+    var c = bdSoftwareClientes.find(function(x) { return x.id === swEditingId; });
+    if (!c) return;
+    document.getElementById('sw-modal-title').textContent = 'Editar cliente software';
+    document.getElementById('sw-m-nombre').value = c.nombre || '';
+    document.getElementById('sw-m-rnc').value = c.rnc || '';
+    document.getElementById('sw-m-contacto').value = c.contacto || '';
+    document.getElementById('sw-m-email').value = c.email || '';
+    document.getElementById('sw-m-telefono').value = c.telefono || '';
+    document.getElementById('sw-m-monto').value = c.monto_mensual || '';
+    document.getElementById('sw-m-fecha-entrada').value = c.fecha_entrada || '';
+    document.getElementById('sw-m-fecha-salida').value = c.fecha_salida || '';
+    document.getElementById('sw-m-motivo-salida').value = c.motivo_salida || '';
+    document.getElementById('sw-m-nota-salida').value = c.nota_salida || '';
+    document.getElementById('sw-m-notas').value = c.notas || '';
+    swModalActivo = c.activo !== false;
+  } else {
+    document.getElementById('sw-modal-title').textContent = 'Nuevo cliente software';
+    document.getElementById('sw-m-nombre').value = '';
+    document.getElementById('sw-m-rnc').value = '';
+    document.getElementById('sw-m-contacto').value = '';
+    document.getElementById('sw-m-email').value = '';
+    document.getElementById('sw-m-telefono').value = '';
+    document.getElementById('sw-m-monto').value = '';
+    document.getElementById('sw-m-fecha-entrada').value = '';
+    document.getElementById('sw-m-fecha-salida').value = '';
+    document.getElementById('sw-m-motivo-salida').value = '';
+    document.getElementById('sw-m-nota-salida').value = '';
+    document.getElementById('sw-m-notas').value = '';
+    swModalActivo = true;
+  }
+  swRenderActivoBtn();
+  document.getElementById('sw-m-nombre-err').style.display = 'none';
+  document.getElementById('sw-modal-overlay').classList.remove('hidden');
+}
+
+function swEditClient(id) { swOpenModal(id); }
+
+function swCloseModal() {
+  document.getElementById('sw-modal-overlay').classList.add('hidden');
+  swEditingId = null;
+}
+
+async function swSaveClient() {
+  var nombre = document.getElementById('sw-m-nombre').value.trim();
+  if (!nombre) {
+    document.getElementById('sw-m-nombre-err').style.display = 'block';
+    return;
+  }
+  document.getElementById('sw-m-nombre-err').style.display = 'none';
+
+  var montoVal = document.getElementById('sw-m-monto').value;
+  var record = {
+    nombre: nombre,
+    rnc: document.getElementById('sw-m-rnc').value.trim() || null,
+    contacto: document.getElementById('sw-m-contacto').value.trim() || null,
+    email: document.getElementById('sw-m-email').value.trim() || null,
+    telefono: document.getElementById('sw-m-telefono').value.trim() || null,
+    monto_mensual: montoVal ? parseInt(montoVal) : null,
+    fecha_entrada: document.getElementById('sw-m-fecha-entrada').value || null,
+    fecha_salida: document.getElementById('sw-m-fecha-salida').value || null,
+    activo: swModalActivo,
+    motivo_salida: !swModalActivo ? (document.getElementById('sw-m-motivo-salida').value || null) : null,
+    nota_salida: !swModalActivo ? (document.getElementById('sw-m-nota-salida').value.trim() || null) : null,
+    notas: document.getElementById('sw-m-notas').value.trim() || null
+  };
+
+  var btn = document.getElementById('sw-m-save');
+  btn.disabled = true; btn.textContent = 'Guardando...';
+
+  var result;
+  if (swEditingId) {
+    result = await sb.from('clientes_software').update(record).eq('id', swEditingId);
+  } else {
+    result = await sb.from('clientes_software').insert(record);
+  }
+
+  if (result.error) {
+    btn.disabled = false; btn.textContent = 'Guardar';
+    gerShowToast('Error: ' + result.error.message, 'error');
+    console.error(result.error);
+    return;
+  }
+
+  btn.disabled = false; btn.textContent = 'Guardar';
+  var wasEditing = !!swEditingId;
+
+  // Si venía de un pendiente, marcarlo como creado
+  if (swPendienteId && !wasEditing) {
+    await sb.from('clientes_pendientes').update({ estado: 'creado' }).eq('id', swPendienteId);
+    swPendienteId = null;
+    await bdLoadPendientes();
+  }
+
+  swCloseModal();
+  await bdLoadSoftware();
+  bdRenderSoftware();
+  gerShowToast(wasEditing ? 'Cliente software actualizado' : 'Cliente software agregado');
+}
+
+var swPendienteId = null;
+
+function swCreateFromPendiente() {
+  var pend = bdPendientes.find(function(p) { return p.destino === 'software'; });
+  if (!pend) return;
+  swPendienteId = pend.id;
+  swOpenModal();
+  document.getElementById('sw-m-nombre').value = pend.lead_nombre || pend.lead_empresa || '';
 }
 
 // ═══════════════════════════════════════════
@@ -3490,6 +3954,7 @@ async function showApp() {
   var mesConDatos = bdAsignaciones.filter(function(a) { return a.mes === curMes; });
   bdAsigMes = mesConDatos.length > 0 ? curMes : (bdAsignaciones.length > 0 ? bdAsignaciones[bdAsignaciones.length - 1].mes : curMes);
   bdClMes = curMes;
+  bdSwMes = curMes;
   bdContMes = curMes;
 
   // Render

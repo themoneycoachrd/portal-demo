@@ -529,7 +529,7 @@ const FUNNEL_COLORS = {
 
 const TEMP_DISPLAY = { 'Caliente': 'Caliente', 'Tibio': 'Tibio', 'Frio': 'Fr\u00edo' };
 
-const CATEGORIAS = ['ADM', 'Implementacion', 'Facturacion Electronica', 'Servicios Recurrentes'];
+const CATEGORIAS = ['Adm', 'Implementacion', 'Facturacion Electronica', 'Servicios Recurrentes'];
 function parseCats(str) { return (str || '').split(',').map(s => s.trim()).filter(Boolean); }
 function renderCatBadges(str) {
   var cats = parseCats(str);
@@ -651,6 +651,7 @@ async function dbInsertLead(mes, lead) {
 // Actualizar un lead existente
 async function dbUpdateLead(lead) {
   if (!lead._id) return;
+  var prevFunnel = lead._prevFunnel || '';
   await sb.from('leads').update({
     nombre: lead.n, tipo: lead.t || '', empresa: lead.e || '',
     temperatura: lead.temp || 'Tibio', demo: lead.demo || null,
@@ -660,6 +661,43 @@ async function dbUpdateLead(lead) {
     notas: lead.notas || '',
     categoria: lead.categoria || ''
   }).eq('id', lead._id);
+  // Puente comercial → Base de Datos: crear pendiente si se cierra como Ganado
+  if (lead.f === 'Cerrado Ganado' && prevFunnel !== 'Cerrado Ganado') {
+    await dbCreatePendienteFromLead(lead);
+  }
+  delete lead._prevFunnel;
+}
+
+async function dbCreatePendienteFromLead(lead) {
+  var cats = (lead.categoria || '').split(',').map(s => s.trim()).filter(Boolean);
+  var hasAdm = cats.indexOf('Adm') >= 0;
+  var hasRecurrente = cats.indexOf('Servicios Recurrentes') >= 0;
+  // Si solo tiene FE sin Adm, no crear pendiente (servicio puntual)
+  var hasFE = cats.indexOf('Facturacion Electronica') >= 0;
+  if (!hasAdm && !hasRecurrente) return; // Solo FE o sin categoría = no genera tarea
+
+  var vendido = (lead.impl || 0) + (lead.fe || 0) + (lead.serv || 0) + (lead.soft || 0);
+  var destinos = [];
+  if (hasAdm) destinos.push('software');
+  if (hasRecurrente) destinos.push('recurrente');
+
+  for (var i = 0; i < destinos.length; i++) {
+    // Verificar que no exista ya un pendiente para este lead+destino
+    var { data: existing } = await sb.from('clientes_pendientes')
+      .select('id').eq('lead_nombre', lead.n || lead.e || '').eq('destino', destinos[i]).eq('estado', 'pendiente');
+    if (existing && existing.length > 0) continue;
+
+    await sb.from('clientes_pendientes').insert({
+      lead_nombre: lead.n || '',
+      lead_empresa: lead.e || '',
+      categorias: lead.categoria || '',
+      destino: destinos[i],
+      monto_vendido: vendido > 0 ? vendido : null,
+      mes_cierre: APP.currentMonth,
+      anio_cierre: 2026,
+      estado: 'pendiente'
+    });
+  }
 }
 
 // Eliminar un lead
@@ -1023,6 +1061,7 @@ function bindPipelineEvents() {
       const idx = parseInt(btn.dataset.idx);
       const editRow = btn.closest('.edit-row');
       const lead = APP.data.pipeline[APP.currentMonth][idx];
+      lead._prevFunnel = lead.f; // Guardar estado anterior para detectar cierre
       editRow.querySelectorAll('[data-field]').forEach(input => {
         const field = input.dataset.field;
         const val = input.value;
@@ -1413,7 +1452,7 @@ function renderMovimiento() {
   });
 
   // Colores por categoría
-  var catColors = { 'ADM': '#4361ee', 'Implementacion': '#10b981', 'Facturacion Electronica': '#f59e0b', 'Servicios Recurrentes': '#8b5cf6' };
+  var catColors = { 'Adm': '#4361ee', 'Implementacion': '#10b981', 'Facturacion Electronica': '#f59e0b', 'Servicios Recurrentes': '#8b5cf6' };
 
   let html = '';
 
