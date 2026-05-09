@@ -672,13 +672,14 @@ async function dbCreatePendienteFromLead(lead) {
   var cats = (lead.categoria || '').split(',').map(s => s.trim()).filter(Boolean);
   var hasAdm = cats.indexOf('Adm') >= 0;
   var hasRecurrente = cats.indexOf('Servicios Recurrentes') >= 0;
-  // Si solo tiene FE sin Adm, no crear pendiente (servicio puntual)
-  var hasFE = cats.indexOf('Facturacion Electronica') >= 0;
-  if (!hasAdm && !hasRecurrente) return; // Solo FE o sin categoría = no genera tarea
+  // Si solo tiene FE sin Adm ni Recurrente, no crear pendiente (servicio puntual)
+  if (!hasAdm && !hasRecurrente) return;
 
   var vendido = (lead.impl || 0) + (lead.fe || 0) + (lead.serv || 0) + (lead.soft || 0);
   var destinos = [];
-  if (hasAdm) destinos.push('software');
+  // Solo va a software si tiene Adm PERO NO tiene Servicios Recurrentes
+  // (recurrentes usan Adm como herramienta incluida, no como producto aparte)
+  if (hasAdm && !hasRecurrente) destinos.push('software');
   if (hasRecurrente) destinos.push('recurrente');
 
   for (var i = 0; i < destinos.length; i++) {

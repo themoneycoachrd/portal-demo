@@ -735,7 +735,7 @@
         <input type="text" id="sw-m-telefono" placeholder="809-000-0000">
       </div>
       <div class="m-field">
-        <label>Monto mensual (RD$)</label>
+        <label>Monto mensual (US$)</label>
         <input type="number" id="sw-m-monto" placeholder="Ej: 3500">
       </div>
     </div>
@@ -3238,7 +3238,7 @@ function bdRenderSoftware() {
   h += '<div class="bd-summary-item"><div class="bd-summary-count">' + swActivosMes.length + '</div><div class="bd-summary-label">Activos</div></div>';
   h += '<div class="bd-summary-item"><div class="bd-summary-count">' + swInactivosMes.length + '</div><div class="bd-summary-label">Inactivos</div></div>';
   h += '<div class="bd-summary-item"><div class="bd-summary-count">' + allSwForMes.length + '</div><div class="bd-summary-label">Total</div></div>';
-  h += '<div class="bd-summary-item"><div class="bd-summary-count" style="font-size:1rem">RD$ ' + facturacionMes.toLocaleString() + '</div><div class="bd-summary-label">Facturación mensual</div></div>';
+  h += '<div class="bd-summary-item"><div class="bd-summary-count" style="font-size:1rem">US$ ' + facturacionMes.toLocaleString() + '</div><div class="bd-summary-label">Facturación mensual</div></div>';
   h += '</div>';
 
   h += '<div class="cl-toolbar">';
@@ -3300,7 +3300,7 @@ function bdRenderSoftware() {
     h += '<td class="cl-name">' + esc(c.nombre) + '</td>';
     h += '<td style="font-size:0.8rem">' + (c.rnc ? esc(c.rnc) : '<span style="color:var(--light)">—</span>') + '</td>';
     h += '<td style="font-size:0.8rem">' + (c.contacto ? esc(c.contacto) : '<span style="color:var(--light)">—</span>') + '</td>';
-    h += '<td style="font-size:0.8rem;font-weight:600">' + (c.monto_mensual ? 'RD$ ' + c.monto_mensual.toLocaleString() : '<span style="color:var(--light)">—</span>') + '</td>';
+    h += '<td style="font-size:0.8rem;font-weight:600">' + (c.monto_mensual ? 'US$ ' + c.monto_mensual.toLocaleString() : '<span style="color:var(--light)">—</span>') + '</td>';
     h += '<td style="font-size:0.78rem">' + (c.fecha_entrada ? c.fecha_entrada.split('-').reverse().join('/') : '<span style="color:var(--light)">—</span>') + '</td>';
     if (isInactivo) {
       var salida = c.fecha_salida ? c.fecha_salida.split('-').reverse().join('/') : '';
@@ -3309,7 +3309,10 @@ function bdRenderSoftware() {
       h += '<td><span class="cl-badge-activo">Activo</span></td>';
     }
     if (userRole === 'admin') {
-      h += '<td><button style="padding:4px 10px;border:1px solid var(--border);border-radius:6px;background:white;font-size:0.75rem;cursor:pointer;color:var(--muted)" onclick="swEditClient(\'' + c.id + '\')">Editar</button></td>';
+      h += '<td style="white-space:nowrap">';
+      h += '<button style="padding:4px 10px;border:1px solid var(--border);border-radius:6px;background:white;font-size:0.75rem;cursor:pointer;color:var(--muted)" onclick="swEditClient(\'' + c.id + '\')">Editar</button> ';
+      h += '<button style="padding:4px 8px;border:1px solid var(--border);border-radius:6px;background:white;font-size:0.75rem;cursor:pointer;color:var(--red)" onclick="swDeleteClient(\'' + c.id + '\',\'' + esc(c.nombre).replace(/'/g,"\\'") + '\')">Eliminar</button>';
+      h += '</td>';
     }
     h += '</tr>';
   });
@@ -3385,6 +3388,18 @@ function swOpenModal(editId) {
 }
 
 function swEditClient(id) { swOpenModal(id); }
+
+async function swDeleteClient(id, nombre) {
+  if (!confirm('¿Eliminar el cliente software "' + nombre + '"? Esta acción no se puede deshacer.')) return;
+  var { error } = await sb.from('clientes_software').delete().eq('id', id);
+  if (error) {
+    gerShowToast('Error: ' + error.message, 'error');
+    return;
+  }
+  await bdLoadSoftware();
+  bdRenderSoftware();
+  gerShowToast('Cliente "' + nombre + '" eliminado');
+}
 
 function swCloseModal() {
   document.getElementById('sw-modal-overlay').classList.add('hidden');
