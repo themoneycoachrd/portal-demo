@@ -1058,6 +1058,11 @@ async function ccLoadSoftwareClientes() {
   }));
 }
 
+async function ccLoadDescuentos() {
+  var { data } = await sb.from('facturacion_descuentos').select('*');
+  window.ccDescuentos = data || [];
+}
+
 async function ccLoadKpiFromDB() {
   const { data } = await sb.from('kpi_scores').select('*').eq('anio', 2026);
   const kpi = {};
@@ -2009,10 +2014,26 @@ function ccRenderFacturacion(el) {
   var outChurn = ccAllClientes.filter(function(c) {
     return c.fecha_salida && c.fecha_salida.indexOf(mesPrefix) === 0;
   });
-  var outMontoTotal = outActivos.reduce(function(s, c) {
-    if (c.responsabilidad_contabilidad === false) return s;
-    return s + (parseInt(c.monto_adm) || 0);
-  }, 0);
+
+  // Calcular montos reales outsourcing
+  var outMontoServicio = 0;
+  var outMontoSoftware = 0;
+  outActivos.forEach(function(c) {
+    var ps = ccGetPrecioOutsourcing(c);
+    if (ps && ps !== 'cotizar') outMontoServicio += ps;
+    var pl = ccGetPrecioSoftware(c.software);
+    if (pl) outMontoSoftware += pl;
+  });
+
+  // Montos nuevos del mes (solo los que entran)
+  var outNuevoServicio = 0;
+  var outNuevoSoftware = 0;
+  outNuevos.forEach(function(c) {
+    var ps = ccGetPrecioOutsourcing(c);
+    if (ps && ps !== 'cotizar') outNuevoServicio += ps;
+    var pl = ccGetPrecioSoftware(c.software);
+    if (pl) outNuevoSoftware += pl;
+  });
 
   // ─── SOFTWARE: clientes activos, nuevos, churn del mes ───
   var swActivos = ccSOFTWARE_CLIENTES.filter(function(c) {
@@ -2026,7 +2047,14 @@ function ccRenderFacturacion(el) {
   var swChurn = ccSOFTWARE_CLIENTES.filter(function(c) {
     return c.fecha_salida && c.fecha_salida.indexOf(mesPrefix) === 0;
   });
-  var swMontoTotal = swActivos.reduce(function(s, c) { return s + (c.monto || 0); }, 0);
+  var swMontoTotal = swActivos.reduce(function(s, c) {
+    var p = ccGetPrecioSoftware(c.licencia);
+    return s + (p || c.monto || 0);
+  }, 0);
+  var swNuevoMonto = swNuevos.reduce(function(s, c) {
+    var p = ccGetPrecioSoftware(c.licencia);
+    return s + (p || c.monto || 0);
+  }, 0);
 
   // ─── STATS ───
   var totalFacturas = outActivos.length + swActivos.length;
@@ -2037,37 +2065,69 @@ function ccRenderFacturacion(el) {
   html += '<div class="stat"><div class="stat-label">Facturas del mes</div><div class="stat-value">' + totalFacturas + '</div><div class="stat-sub">' + MESES_FULL[mesIdx] + ' 2026</div></div>';
   html += '<div class="stat"><div class="stat-label">Agregar</div><div class="stat-value stat-green">' + totalAgregados + '</div><div class="stat-sub">Facturas nuevas</div></div>';
   html += '<div class="stat"><div class="stat-label">Quitar</div><div class="stat-value stat-red">' + totalQuitados + '</div><div class="stat-sub">Facturas a eliminar</div></div>';
-  html += '<div class="stat"><div class="stat-label">Monto total</div><div class="stat-value" style="color:var(--blue)">$' + (outMontoTotal + swMontoTotal).toLocaleString() + '</div><div class="stat-sub">Outsourcing + Software</div></div>';
+  html += '<div class="stat"><div class="stat-label">Nuevo servicio</div><div class="stat-value" style="color:var(--blue)">RD$ ' + outNuevoServicio.toLocaleString() + '</div><div class="stat-sub">Outsourcing agregado</div></div>';
+  html += '<div class="stat"><div class="stat-label">Nuevo software</div><div class="stat-value" style="color:var(--purple)">US$ ' + (outNuevoSoftware + swNuevoMonto).toLocaleString() + '</div><div class="stat-sub">Licencias agregadas</div></div>';
   html += '</div>';
 
   // ─── OUTSOURCING SECTION ───
   html += '<div class="section-header" style="font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--muted);margin:24px 0 12px">Outsourcing — ' + MESES_FULL[mesIdx] + '</div>';
 
+  // Tabla header style (reutilizable)
+  var thStyle = 'padding:8px 12px;border-bottom:1px solid var(--border);font-size:0.68rem;text-transform:uppercase;color:var(--muted);white-space:nowrap';
+  var tdStyle = 'padding:8px 12px;border-bottom:1px solid #f3f4f6';
+
   // Cambios del mes
   if (outNuevos.length > 0 || outChurn.length > 0) {
-    html += '<div class="card" style="margin-bottom:16px">';
+    html += '<div class="card" style="margin-bottom:16px;overflow-x:auto">';
     html += '<h3 style="margin-bottom:12px">Cambios del mes</h3>';
     html += '<table style="width:100%;border-collapse:collapse;font-size:0.82rem">';
-    html += '<tr><th style="text-align:left;padding:8px;border-bottom:1px solid var(--border);font-size:0.68rem;text-transform:uppercase;color:var(--muted)">Cliente</th><th style="text-align:left;padding:8px;border-bottom:1px solid var(--border);font-size:0.68rem;text-transform:uppercase;color:var(--muted)">Servicio</th><th style="text-align:right;padding:8px;border-bottom:1px solid var(--border);font-size:0.68rem;text-transform:uppercase;color:var(--muted)">Tx</th><th style="text-align:left;padding:8px;border-bottom:1px solid var(--border);font-size:0.68rem;text-transform:uppercase;color:var(--muted)">Licencia Adm</th><th style="text-align:right;padding:8px;border-bottom:1px solid var(--border);font-size:0.68rem;text-transform:uppercase;color:var(--muted)">Monto</th><th style="text-align:center;padding:8px;border-bottom:1px solid var(--border);font-size:0.68rem;text-transform:uppercase;color:var(--muted)">Acción</th></tr>';
+    html += '<tr>';
+    html += '<th style="text-align:left;' + thStyle + ';min-width:140px">Cliente</th>';
+    html += '<th style="text-align:left;' + thStyle + ';min-width:120px">Servicio</th>';
+    html += '<th style="text-align:right;' + thStyle + ';min-width:50px">Tx</th>';
+    html += '<th style="text-align:left;' + thStyle + ';min-width:100px">Licencia Adm</th>';
+    html += '<th style="text-align:right;' + thStyle + ';min-width:90px">Monto Serv.</th>';
+    html += '<th style="text-align:right;' + thStyle + ';min-width:90px">Monto Soft.</th>';
+    html += '<th style="text-align:right;' + thStyle + ';min-width:90px">Total</th>';
+    html += '<th style="text-align:center;' + thStyle + ';min-width:70px">Acción</th>';
+    html += '</tr>';
     outNuevos.forEach(function(c) {
-      var precio = ccGetPrecioOutsourcing(c);
-      var precioStr = precio === 'cotizar' ? 'Cotizar' : (precio ? ('RD$ ' + precio.toLocaleString()) : '—');
-      html += '<tr><td style="padding:8px;border-bottom:1px solid #f3f4f6"><strong>' + c.nombre + '</strong></td>';
-      html += '<td style="padding:8px;border-bottom:1px solid #f3f4f6">' + (c.tipo_servicio || '—') + '</td>';
-      html += '<td style="padding:8px;border-bottom:1px solid #f3f4f6;text-align:right">' + (c.monto_adm || 0) + '</td>';
-      html += '<td style="padding:8px;border-bottom:1px solid #f3f4f6">' + (c.software || '—') + '</td>';
-      html += '<td style="padding:8px;border-bottom:1px solid #f3f4f6;text-align:right;font-weight:600">' + precioStr + '</td>';
-      html += '<td style="padding:8px;border-bottom:1px solid #f3f4f6;text-align:center"><span style="background:#ecfdf5;color:var(--green);padding:2px 10px;border-radius:10px;font-size:0.72rem;font-weight:600">Agregar</span></td></tr>';
+      var pServ = ccGetPrecioOutsourcing(c);
+      var pSoft = ccGetPrecioSoftware(c.software);
+      var servStr = pServ === 'cotizar' ? 'Cotizar' : (pServ ? ('RD$ ' + pServ.toLocaleString()) : '—');
+      var softStr = pSoft ? ('US$ ' + pSoft) : '—';
+      var totalNum = ((pServ && pServ !== 'cotizar') ? pServ : 0);
+      var totalStr = totalNum > 0 ? ('RD$ ' + totalNum.toLocaleString()) : '—';
+      if (pSoft) totalStr += ' + US$ ' + pSoft;
+      html += '<tr>';
+      html += '<td style="' + tdStyle + '"><strong>' + c.nombre + '</strong></td>';
+      html += '<td style="' + tdStyle + '">' + (c.tipo_servicio || '—') + '</td>';
+      html += '<td style="' + tdStyle + ';text-align:right">' + (c.monto_adm || 0) + '</td>';
+      html += '<td style="' + tdStyle + '">' + (c.software || '—') + '</td>';
+      html += '<td style="' + tdStyle + ';text-align:right;font-weight:600">' + servStr + '</td>';
+      html += '<td style="' + tdStyle + ';text-align:right;font-weight:600">' + softStr + '</td>';
+      html += '<td style="' + tdStyle + ';text-align:right;font-weight:700">' + totalStr + '</td>';
+      html += '<td style="' + tdStyle + ';text-align:center"><span style="background:#ecfdf5;color:var(--green);padding:2px 10px;border-radius:10px;font-size:0.72rem;font-weight:600">Agregar</span></td>';
+      html += '</tr>';
     });
     outChurn.forEach(function(c) {
-      var precio = ccGetPrecioOutsourcing(c);
-      var precioStr = precio === 'cotizar' ? 'Cotizar' : (precio ? ('RD$ ' + precio.toLocaleString()) : '—');
-      html += '<tr><td style="padding:8px;border-bottom:1px solid #f3f4f6"><strong>' + c.nombre + '</strong></td>';
-      html += '<td style="padding:8px;border-bottom:1px solid #f3f4f6">' + (c.tipo_servicio || '—') + '</td>';
-      html += '<td style="padding:8px;border-bottom:1px solid #f3f4f6;text-align:right">' + (c.monto_adm || 0) + '</td>';
-      html += '<td style="padding:8px;border-bottom:1px solid #f3f4f6">' + (c.software || '—') + '</td>';
-      html += '<td style="padding:8px;border-bottom:1px solid #f3f4f6;text-align:right;font-weight:600">' + precioStr + '</td>';
-      html += '<td style="padding:8px;border-bottom:1px solid #f3f4f6;text-align:center"><span style="background:#fef2f2;color:var(--red);padding:2px 10px;border-radius:10px;font-size:0.72rem;font-weight:600">Quitar</span></td></tr>';
+      var pServ = ccGetPrecioOutsourcing(c);
+      var pSoft = ccGetPrecioSoftware(c.software);
+      var servStr = pServ === 'cotizar' ? 'Cotizar' : (pServ ? ('RD$ ' + pServ.toLocaleString()) : '—');
+      var softStr = pSoft ? ('US$ ' + pSoft) : '—';
+      var totalNum = ((pServ && pServ !== 'cotizar') ? pServ : 0);
+      var totalStr = totalNum > 0 ? ('RD$ ' + totalNum.toLocaleString()) : '—';
+      if (pSoft) totalStr += ' + US$ ' + pSoft;
+      html += '<tr>';
+      html += '<td style="' + tdStyle + '"><strong>' + c.nombre + '</strong></td>';
+      html += '<td style="' + tdStyle + '">' + (c.tipo_servicio || '—') + '</td>';
+      html += '<td style="' + tdStyle + ';text-align:right">' + (c.monto_adm || 0) + '</td>';
+      html += '<td style="' + tdStyle + '">' + (c.software || '—') + '</td>';
+      html += '<td style="' + tdStyle + ';text-align:right;font-weight:600">' + servStr + '</td>';
+      html += '<td style="' + tdStyle + ';text-align:right;font-weight:600">' + softStr + '</td>';
+      html += '<td style="' + tdStyle + ';text-align:right;font-weight:700">' + totalStr + '</td>';
+      html += '<td style="' + tdStyle + ';text-align:center"><span style="background:#fef2f2;color:var(--red);padding:2px 10px;border-radius:10px;font-size:0.72rem;font-weight:600">Quitar</span></td>';
+      html += '</tr>';
     });
     html += '</table></div>';
   } else {
@@ -2080,23 +2140,49 @@ function ccRenderFacturacion(el) {
   html += '<h3 style="margin:0">Facturas activas outsourcing</h3>';
   html += '<span style="font-size:0.78rem;color:var(--muted)">▼ Ver lista completa (' + outActivos.length + ')</span>';
   html += '</div>';
-  html += '<div id="fact-out-list" style="display:none;margin-top:12px">';
+  html += '<div id="fact-out-list" style="display:none;margin-top:12px;overflow-x:auto">';
   html += '<table style="width:100%;border-collapse:collapse;font-size:0.78rem">';
-  html += '<tr><th style="text-align:left;padding:6px 8px;border-bottom:1px solid var(--border);font-size:0.68rem;text-transform:uppercase;color:var(--muted)">#</th><th style="text-align:left;padding:6px 8px;border-bottom:1px solid var(--border);font-size:0.68rem;text-transform:uppercase;color:var(--muted)">Cliente</th><th style="text-align:left;padding:6px 8px;border-bottom:1px solid var(--border);font-size:0.68rem;text-transform:uppercase;color:var(--muted)">Servicio</th><th style="text-align:right;padding:6px 8px;border-bottom:1px solid var(--border);font-size:0.68rem;text-transform:uppercase;color:var(--muted)">Tx</th><th style="text-align:left;padding:6px 8px;border-bottom:1px solid var(--border);font-size:0.68rem;text-transform:uppercase;color:var(--muted)">Licencia Adm</th><th style="text-align:right;padding:6px 8px;border-bottom:1px solid var(--border);font-size:0.68rem;text-transform:uppercase;color:var(--muted)">Monto</th></tr>';
+  html += '<tr>';
+  html += '<th style="text-align:left;padding:6px 10px;border-bottom:1px solid var(--border);font-size:0.68rem;text-transform:uppercase;color:var(--muted);min-width:30px">#</th>';
+  html += '<th style="text-align:left;padding:6px 10px;border-bottom:1px solid var(--border);font-size:0.68rem;text-transform:uppercase;color:var(--muted);min-width:140px">Cliente</th>';
+  html += '<th style="text-align:left;padding:6px 10px;border-bottom:1px solid var(--border);font-size:0.68rem;text-transform:uppercase;color:var(--muted);min-width:120px">Servicio</th>';
+  html += '<th style="text-align:right;padding:6px 10px;border-bottom:1px solid var(--border);font-size:0.68rem;text-transform:uppercase;color:var(--muted);min-width:40px">Tx</th>';
+  html += '<th style="text-align:left;padding:6px 10px;border-bottom:1px solid var(--border);font-size:0.68rem;text-transform:uppercase;color:var(--muted);min-width:100px">Licencia Adm</th>';
+  html += '<th style="text-align:right;padding:6px 10px;border-bottom:1px solid var(--border);font-size:0.68rem;text-transform:uppercase;color:var(--muted);min-width:90px">Monto Serv.</th>';
+  html += '<th style="text-align:right;padding:6px 10px;border-bottom:1px solid var(--border);font-size:0.68rem;text-transform:uppercase;color:var(--muted);min-width:90px">Monto Soft.</th>';
+  html += '<th style="text-align:right;padding:6px 10px;border-bottom:1px solid var(--border);font-size:0.68rem;text-transform:uppercase;color:var(--muted);min-width:90px">Total</th>';
+  html += '</tr>';
   var outSorted = outActivos.slice().sort(function(a, b) { return (a.nombre || '').localeCompare(b.nombre || '', 'es'); });
+  var outGranTotalServ = 0, outGranTotalSoft = 0;
   outSorted.forEach(function(c, i) {
     var isNew = outNuevos.some(function(n) { return n.nombre === c.nombre; });
-    var precio = ccGetPrecioOutsourcing(c);
-    var precioStr = precio === 'cotizar' ? 'Cotizar' : (precio ? ('RD$ ' + precio.toLocaleString()) : '—');
+    var pServ = ccGetPrecioOutsourcing(c);
+    var pSoft = ccGetPrecioSoftware(c.software);
+    var servStr = pServ === 'cotizar' ? 'Cotizar' : (pServ ? ('RD$ ' + pServ.toLocaleString()) : '—');
+    var softStr = pSoft ? ('US$ ' + pSoft) : '—';
+    var totalNum = ((pServ && pServ !== 'cotizar') ? pServ : 0);
+    var totalStr = totalNum > 0 ? ('RD$ ' + totalNum.toLocaleString()) : '—';
+    if (pSoft) totalStr += ' + US$ ' + pSoft;
+    if (pServ && pServ !== 'cotizar') outGranTotalServ += pServ;
+    if (pSoft) outGranTotalSoft += pSoft;
     html += '<tr style="' + (isNew ? 'background:#f0fdf4' : '') + '">';
-    html += '<td style="padding:6px 8px;border-bottom:1px solid #f3f4f6">' + (i + 1) + '</td>';
-    html += '<td style="padding:6px 8px;border-bottom:1px solid #f3f4f6"><strong>' + c.nombre + '</strong>' + (isNew ? ' <span style="background:#ecfdf5;color:var(--green);padding:1px 6px;border-radius:8px;font-size:0.65rem;font-weight:600">nuevo</span>' : '') + '</td>';
-    html += '<td style="padding:6px 8px;border-bottom:1px solid #f3f4f6">' + (c.tipo_servicio || '—') + '</td>';
-    html += '<td style="padding:6px 8px;border-bottom:1px solid #f3f4f6;text-align:right">' + (c.monto_adm || 0) + '</td>';
-    html += '<td style="padding:6px 8px;border-bottom:1px solid #f3f4f6">' + (c.software || '—') + '</td>';
-    html += '<td style="padding:6px 8px;border-bottom:1px solid #f3f4f6;text-align:right;font-weight:600">' + precioStr + '</td>';
+    html += '<td style="padding:6px 10px;border-bottom:1px solid #f3f4f6">' + (i + 1) + '</td>';
+    html += '<td style="padding:6px 10px;border-bottom:1px solid #f3f4f6"><strong>' + c.nombre + '</strong>' + (isNew ? ' <span style="background:#ecfdf5;color:var(--green);padding:1px 6px;border-radius:8px;font-size:0.65rem;font-weight:600">nuevo</span>' : '') + '</td>';
+    html += '<td style="padding:6px 10px;border-bottom:1px solid #f3f4f6">' + (c.tipo_servicio || '—') + '</td>';
+    html += '<td style="padding:6px 10px;border-bottom:1px solid #f3f4f6;text-align:right">' + (c.monto_adm || 0) + '</td>';
+    html += '<td style="padding:6px 10px;border-bottom:1px solid #f3f4f6">' + (c.software || '—') + '</td>';
+    html += '<td style="padding:6px 10px;border-bottom:1px solid #f3f4f6;text-align:right;font-weight:600">' + servStr + '</td>';
+    html += '<td style="padding:6px 10px;border-bottom:1px solid #f3f4f6;text-align:right;font-weight:600">' + softStr + '</td>';
+    html += '<td style="padding:6px 10px;border-bottom:1px solid #f3f4f6;text-align:right;font-weight:700">' + totalStr + '</td>';
     html += '</tr>';
   });
+  // Fila de totales
+  html += '<tr style="background:#f8fafc;font-weight:700">';
+  html += '<td colspan="5" style="padding:8px 10px;border-top:2px solid var(--border);text-align:right;font-size:0.72rem;text-transform:uppercase;color:var(--muted)">Totales</td>';
+  html += '<td style="padding:8px 10px;border-top:2px solid var(--border);text-align:right">RD$ ' + outGranTotalServ.toLocaleString() + '</td>';
+  html += '<td style="padding:8px 10px;border-top:2px solid var(--border);text-align:right">US$ ' + outGranTotalSoft.toLocaleString() + '</td>';
+  html += '<td style="padding:8px 10px;border-top:2px solid var(--border);text-align:right"></td>';
+  html += '</tr>';
   html += '</table></div></div>';
 
   // ─── SOFTWARE SECTION ───
@@ -2107,22 +2193,31 @@ function ccRenderFacturacion(el) {
     html += '<div class="card" style="margin-bottom:16px">';
     html += '<h3 style="margin-bottom:12px">Cambios del mes</h3>';
     html += '<table style="width:100%;border-collapse:collapse;font-size:0.82rem">';
-    html += '<tr><th style="text-align:left;padding:8px;border-bottom:1px solid var(--border);font-size:0.68rem;text-transform:uppercase;color:var(--muted)">Cliente</th><th style="text-align:left;padding:8px;border-bottom:1px solid var(--border);font-size:0.68rem;text-transform:uppercase;color:var(--muted)">Licencia</th><th style="text-align:right;padding:8px;border-bottom:1px solid var(--border);font-size:0.68rem;text-transform:uppercase;color:var(--muted)">Monto</th><th style="text-align:center;padding:8px;border-bottom:1px solid var(--border);font-size:0.68rem;text-transform:uppercase;color:var(--muted)">Acción</th></tr>';
+    html += '<tr>';
+    html += '<th style="text-align:left;' + thStyle + ';min-width:160px">Cliente</th>';
+    html += '<th style="text-align:left;' + thStyle + ';min-width:120px">Licencia</th>';
+    html += '<th style="text-align:right;' + thStyle + ';min-width:90px">Monto</th>';
+    html += '<th style="text-align:center;' + thStyle + ';min-width:70px">Acción</th>';
+    html += '</tr>';
     swNuevos.forEach(function(c) {
       var precio = ccGetPrecioSoftware(c.licencia);
       var precioStr = precio ? ('US$ ' + precio) : ('US$ ' + (c.monto || 0));
-      html += '<tr><td style="padding:8px;border-bottom:1px solid #f3f4f6"><strong>' + (c.n || c.nombre || '') + '</strong></td>';
-      html += '<td style="padding:8px;border-bottom:1px solid #f3f4f6">' + (c.licencia || '—') + '</td>';
-      html += '<td style="padding:8px;border-bottom:1px solid #f3f4f6;text-align:right;font-weight:600">' + precioStr + '</td>';
-      html += '<td style="padding:8px;border-bottom:1px solid #f3f4f6;text-align:center"><span style="background:#ecfdf5;color:var(--green);padding:2px 10px;border-radius:10px;font-size:0.72rem;font-weight:600">Agregar</span></td></tr>';
+      html += '<tr>';
+      html += '<td style="' + tdStyle + '"><strong>' + (c.n || c.nombre || '') + '</strong></td>';
+      html += '<td style="' + tdStyle + '">' + (c.licencia || '—') + '</td>';
+      html += '<td style="' + tdStyle + ';text-align:right;font-weight:600">' + precioStr + '</td>';
+      html += '<td style="' + tdStyle + ';text-align:center"><span style="background:#ecfdf5;color:var(--green);padding:2px 10px;border-radius:10px;font-size:0.72rem;font-weight:600">Agregar</span></td>';
+      html += '</tr>';
     });
     swChurn.forEach(function(c) {
       var precio = ccGetPrecioSoftware(c.licencia);
       var precioStr = precio ? ('US$ ' + precio) : ('US$ ' + (c.monto || 0));
-      html += '<tr><td style="padding:8px;border-bottom:1px solid #f3f4f6"><strong>' + (c.n || c.nombre || '') + '</strong></td>';
-      html += '<td style="padding:8px;border-bottom:1px solid #f3f4f6">' + (c.licencia || '—') + '</td>';
-      html += '<td style="padding:8px;border-bottom:1px solid #f3f4f6;text-align:right;font-weight:600">' + precioStr + '</td>';
-      html += '<td style="padding:8px;border-bottom:1px solid #f3f4f6;text-align:center"><span style="background:#fef2f2;color:var(--red);padding:2px 10px;border-radius:10px;font-size:0.72rem;font-weight:600">Quitar</span></td></tr>';
+      html += '<tr>';
+      html += '<td style="' + tdStyle + '"><strong>' + (c.n || c.nombre || '') + '</strong></td>';
+      html += '<td style="' + tdStyle + '">' + (c.licencia || '—') + '</td>';
+      html += '<td style="' + tdStyle + ';text-align:right;font-weight:600">' + precioStr + '</td>';
+      html += '<td style="' + tdStyle + ';text-align:center"><span style="background:#fef2f2;color:var(--red);padding:2px 10px;border-radius:10px;font-size:0.72rem;font-weight:600">Quitar</span></td>';
+      html += '</tr>';
     });
     html += '</table></div>';
   } else {
@@ -2130,29 +2225,134 @@ function ccRenderFacturacion(el) {
   }
 
   // Lista completa software
-  html += '<div class="card">';
+  html += '<div class="card" style="margin-bottom:24px">';
   html += '<div style="display:flex;align-items:center;justify-content:space-between;cursor:pointer" onclick="document.getElementById(\'fact-sw-list\').style.display=document.getElementById(\'fact-sw-list\').style.display===\'none\'?\'\':\'none\';this.querySelector(\'span\').textContent=document.getElementById(\'fact-sw-list\').style.display===\'none\'?\'▼ Ver lista completa (' + swActivos.length + ')\':\'▲ Ocultar\'">';
   html += '<h3 style="margin:0">Facturas activas software</h3>';
   html += '<span style="font-size:0.78rem;color:var(--muted)">▼ Ver lista completa (' + swActivos.length + ')</span>';
   html += '</div>';
   html += '<div id="fact-sw-list" style="display:none;margin-top:12px">';
   html += '<table style="width:100%;border-collapse:collapse;font-size:0.78rem">';
-  html += '<tr><th style="text-align:left;padding:6px 8px;border-bottom:1px solid var(--border);font-size:0.68rem;text-transform:uppercase;color:var(--muted)">#</th><th style="text-align:left;padding:6px 8px;border-bottom:1px solid var(--border);font-size:0.68rem;text-transform:uppercase;color:var(--muted)">Cliente</th><th style="text-align:left;padding:6px 8px;border-bottom:1px solid var(--border);font-size:0.68rem;text-transform:uppercase;color:var(--muted)">Licencia</th><th style="text-align:right;padding:6px 8px;border-bottom:1px solid var(--border);font-size:0.68rem;text-transform:uppercase;color:var(--muted)">Monto</th></tr>';
+  html += '<tr>';
+  html += '<th style="text-align:left;padding:6px 10px;border-bottom:1px solid var(--border);font-size:0.68rem;text-transform:uppercase;color:var(--muted);min-width:30px">#</th>';
+  html += '<th style="text-align:left;padding:6px 10px;border-bottom:1px solid var(--border);font-size:0.68rem;text-transform:uppercase;color:var(--muted);min-width:160px">Cliente</th>';
+  html += '<th style="text-align:left;padding:6px 10px;border-bottom:1px solid var(--border);font-size:0.68rem;text-transform:uppercase;color:var(--muted);min-width:120px">Licencia</th>';
+  html += '<th style="text-align:right;padding:6px 10px;border-bottom:1px solid var(--border);font-size:0.68rem;text-transform:uppercase;color:var(--muted);min-width:90px">Monto</th>';
+  html += '</tr>';
   var swSorted = swActivos.slice().sort(function(a, b) { return (a.n || a.nombre || '').localeCompare(b.n || b.nombre || '', 'es'); });
+  var swGranTotal = 0;
   swSorted.forEach(function(c, i) {
     var isNew = swNuevos.some(function(n) { return (n.n || n.nombre) === (c.n || c.nombre); });
     var precio = ccGetPrecioSoftware(c.licencia);
-    var precioStr = precio ? ('US$ ' + precio) : ('US$ ' + (c.monto || 0));
+    var montoVal = precio || c.monto || 0;
+    swGranTotal += montoVal;
+    var precioStr = 'US$ ' + montoVal;
     html += '<tr style="' + (isNew ? 'background:#f0fdf4' : '') + '">';
-    html += '<td style="padding:6px 8px;border-bottom:1px solid #f3f4f6">' + (i + 1) + '</td>';
-    html += '<td style="padding:6px 8px;border-bottom:1px solid #f3f4f6"><strong>' + (c.n || c.nombre || '') + '</strong>' + (isNew ? ' <span style="background:#ecfdf5;color:var(--green);padding:1px 6px;border-radius:8px;font-size:0.65rem;font-weight:600">nuevo</span>' : '') + '</td>';
-    html += '<td style="padding:6px 8px;border-bottom:1px solid #f3f4f6">' + (c.licencia || '—') + '</td>';
-    html += '<td style="padding:6px 8px;border-bottom:1px solid #f3f4f6;text-align:right;font-weight:600">' + precioStr + '</td>';
+    html += '<td style="padding:6px 10px;border-bottom:1px solid #f3f4f6">' + (i + 1) + '</td>';
+    html += '<td style="padding:6px 10px;border-bottom:1px solid #f3f4f6"><strong>' + (c.n || c.nombre || '') + '</strong>' + (isNew ? ' <span style="background:#ecfdf5;color:var(--green);padding:1px 6px;border-radius:8px;font-size:0.65rem;font-weight:600">nuevo</span>' : '') + '</td>';
+    html += '<td style="padding:6px 10px;border-bottom:1px solid #f3f4f6">' + (c.licencia || '—') + '</td>';
+    html += '<td style="padding:6px 10px;border-bottom:1px solid #f3f4f6;text-align:right;font-weight:600">' + precioStr + '</td>';
     html += '</tr>';
   });
+  // Fila total software
+  html += '<tr style="background:#f8fafc;font-weight:700">';
+  html += '<td colspan="3" style="padding:8px 10px;border-top:2px solid var(--border);text-align:right;font-size:0.72rem;text-transform:uppercase;color:var(--muted)">Total</td>';
+  html += '<td style="padding:8px 10px;border-top:2px solid var(--border);text-align:right">US$ ' + swGranTotal.toLocaleString() + '</td>';
+  html += '</tr>';
   html += '</table></div></div>';
 
+  // ─── DESCUENTOS ───
+  html += '<div class="section-header" style="font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--muted);margin:24px 0 12px">Descuentos activos</div>';
+  html += '<div class="card">';
+
+  // Leer descuentos de los datos cargados
+  var descuentos = (window.ccDescuentos || []).filter(function(d) { return d.mes === ccFactMes || !d.mes; });
+  if (descuentos.length > 0) {
+    html += '<table style="width:100%;border-collapse:collapse;font-size:0.82rem">';
+    html += '<tr>';
+    html += '<th style="text-align:left;' + thStyle + ';min-width:140px">Cliente</th>';
+    html += '<th style="text-align:left;' + thStyle + ';min-width:80px">Tipo</th>';
+    html += '<th style="text-align:right;' + thStyle + ';min-width:80px">Descuento</th>';
+    html += '<th style="text-align:right;' + thStyle + ';min-width:90px">Monto orig.</th>';
+    html += '<th style="text-align:right;' + thStyle + ';min-width:90px">Monto real</th>';
+    html += '<th style="text-align:left;' + thStyle + ';min-width:120px">Nota</th>';
+    html += '<th style="text-align:left;' + thStyle + ';min-width:90px">Vence</th>';
+    html += '<th style="text-align:center;' + thStyle + ';min-width:50px"></th>';
+    html += '</tr>';
+    descuentos.forEach(function(d, idx) {
+      var montoOrig = d.monto_original || 0;
+      var montoReal = Math.round(montoOrig * (1 - (d.porcentaje || 0) / 100));
+      var moneda = d.tipo === 'software' ? 'US$' : 'RD$';
+      html += '<tr>';
+      html += '<td style="' + tdStyle + '"><strong>' + (d.cliente || '') + '</strong></td>';
+      html += '<td style="' + tdStyle + '"><span style="background:' + (d.tipo === 'software' ? '#ede9fe' : '#e0f2fe') + ';color:' + (d.tipo === 'software' ? 'var(--purple)' : 'var(--blue)') + ';padding:2px 8px;border-radius:8px;font-size:0.7rem;font-weight:600">' + (d.tipo === 'software' ? 'Software' : 'Outsourcing') + '</span></td>';
+      html += '<td style="' + tdStyle + ';text-align:right;font-weight:600;color:var(--green)">' + (d.porcentaje || 0) + '%</td>';
+      html += '<td style="' + tdStyle + ';text-align:right;text-decoration:line-through;color:var(--muted)">' + moneda + ' ' + montoOrig.toLocaleString() + '</td>';
+      html += '<td style="' + tdStyle + ';text-align:right;font-weight:700">' + moneda + ' ' + montoReal.toLocaleString() + '</td>';
+      html += '<td style="' + tdStyle + ';font-size:0.75rem">' + (d.nota || '') + '</td>';
+      html += '<td style="' + tdStyle + ';font-size:0.75rem;' + (d.vence && d.vence <= lastDayStr ? 'color:var(--red);font-weight:600' : '') + '">' + (d.vence || '—') + '</td>';
+      html += '<td style="' + tdStyle + ';text-align:center"><button onclick="ccEliminarDescuento(' + idx + ')" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:14px" title="Eliminar">✕</button></td>';
+      html += '</tr>';
+    });
+    html += '</table>';
+  } else {
+    html += '<p style="text-align:center;color:var(--muted);font-size:0.85rem;padding:8px 0">No hay descuentos activos este mes</p>';
+  }
+
+  // Botón para agregar descuento
+  html += '<div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border)">';
+  html += '<button onclick="ccMostrarFormDescuento()" style="background:var(--blue);color:white;border:none;padding:6px 14px;border-radius:6px;font-size:0.78rem;font-weight:600;cursor:pointer">+ Agregar descuento</button>';
+  html += '</div>';
+
+  // Form inline (oculto)
+  html += '<div id="fact-desc-form" style="display:none;margin-top:12px;padding:16px;background:#f8fafc;border-radius:8px;border:1px solid var(--border)">';
+  html += '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:10px">';
+  html += '<div><label style="font-size:0.7rem;font-weight:600;color:var(--muted);display:block;margin-bottom:4px">Cliente</label><input id="desc-cliente" style="width:100%;padding:6px 10px;border:1px solid var(--border);border-radius:6px;font-size:0.82rem" placeholder="Nombre del cliente"></div>';
+  html += '<div><label style="font-size:0.7rem;font-weight:600;color:var(--muted);display:block;margin-bottom:4px">Tipo</label><select id="desc-tipo" style="width:100%;padding:6px 10px;border:1px solid var(--border);border-radius:6px;font-size:0.82rem"><option value="outsourcing">Outsourcing</option><option value="software">Software</option></select></div>';
+  html += '<div><label style="font-size:0.7rem;font-weight:600;color:var(--muted);display:block;margin-bottom:4px">% Descuento</label><input id="desc-pct" type="number" min="1" max="100" style="width:100%;padding:6px 10px;border:1px solid var(--border);border-radius:6px;font-size:0.82rem" placeholder="ej: 20"></div>';
+  html += '</div>';
+  html += '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:12px">';
+  html += '<div><label style="font-size:0.7rem;font-weight:600;color:var(--muted);display:block;margin-bottom:4px">Monto original</label><input id="desc-monto" type="number" style="width:100%;padding:6px 10px;border:1px solid var(--border);border-radius:6px;font-size:0.82rem" placeholder="ej: 600"></div>';
+  html += '<div><label style="font-size:0.7rem;font-weight:600;color:var(--muted);display:block;margin-bottom:4px">Vence (fecha)</label><input id="desc-vence" type="date" style="width:100%;padding:6px 10px;border:1px solid var(--border);border-radius:6px;font-size:0.82rem"></div>';
+  html += '<div><label style="font-size:0.7rem;font-weight:600;color:var(--muted);display:block;margin-bottom:4px">Nota</label><input id="desc-nota" style="width:100%;padding:6px 10px;border:1px solid var(--border);border-radius:6px;font-size:0.82rem" placeholder="ej: Cupón primer mes"></div>';
+  html += '</div>';
+  html += '<div style="display:flex;gap:8px">';
+  html += '<button onclick="ccGuardarDescuento()" style="background:var(--green);color:white;border:none;padding:6px 14px;border-radius:6px;font-size:0.78rem;font-weight:600;cursor:pointer">Guardar</button>';
+  html += '<button onclick="document.getElementById(\'fact-desc-form\').style.display=\'none\'" style="background:white;color:var(--muted);border:1px solid var(--border);padding:6px 14px;border-radius:6px;font-size:0.78rem;font-weight:600;cursor:pointer">Cancelar</button>';
+  html += '</div>';
+  html += '</div>';
+
+  html += '</div>';
+
   el.innerHTML = html;
+}
+
+function ccMostrarFormDescuento() {
+  document.getElementById('fact-desc-form').style.display = 'block';
+}
+
+async function ccGuardarDescuento() {
+  var cliente = document.getElementById('desc-cliente').value.trim();
+  var tipo = document.getElementById('desc-tipo').value;
+  var pct = parseInt(document.getElementById('desc-pct').value) || 0;
+  var monto = parseFloat(document.getElementById('desc-monto').value) || 0;
+  var vence = document.getElementById('desc-vence').value || null;
+  var nota = document.getElementById('desc-nota').value.trim();
+  if (!cliente || !pct) { alert('Completa cliente y porcentaje'); return; }
+  var nuevo = { cliente: cliente, tipo: tipo, porcentaje: pct, monto_original: monto, vence: vence, nota: nota, mes: ccFactMes };
+  var { error } = await sb.from('facturacion_descuentos').insert(nuevo);
+  if (error) { alert('Error: ' + error.message); return; }
+  if (!window.ccDescuentos) window.ccDescuentos = [];
+  window.ccDescuentos.push(nuevo);
+  ccRenderContent();
+}
+
+async function ccEliminarDescuento(idx) {
+  var d = window.ccDescuentos[idx];
+  if (!d) return;
+  if (!confirm('¿Eliminar descuento de ' + d.cliente + '?')) return;
+  await sb.from('facturacion_descuentos').delete().eq('cliente', d.cliente).eq('mes', d.mes).eq('tipo', d.tipo);
+  window.ccDescuentos.splice(idx, 1);
+  ccRenderContent();
 }
 
 function ccRenderMonth(el, mes, d) {
@@ -4385,6 +4585,7 @@ async function showApp() {
     ccLoadData(),
     ccLoadImplementaciones(),
     ccLoadSoftwareClientes(),
+    ccLoadDescuentos(),
     ccLoadKpiFromDB(),
     ctdLoadContadoras(),
     bdLoadAll()
