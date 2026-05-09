@@ -63,6 +63,10 @@
   .stat-label { font-size:11px; text-transform:uppercase; letter-spacing:0.5px; color:var(--light); }
   .stat-value { font-size:28px; font-weight:800; margin-top:4px; }
   .stat-sub { font-size:11px; color:var(--light); margin-top:4px; }
+  .stats-sm .stat { padding:12px 14px; }
+  .stats-sm .stat-value { font-size:20px; }
+  .stats-sm .stat-label { font-size:10px; }
+  .stats-sm .stat-sub { font-size:10px; }
   .stat-green { color:var(--green); }
   .stat-red { color:var(--red); }
   .cc-serv-stat { transition:border-color 0.15s, box-shadow 0.15s; }
@@ -2064,8 +2068,9 @@ function ccRenderFacturacion(el) {
     return s + (p || c.monto || 0);
   }, 0);
   var swNuevoMonto = swNuevos.reduce(function(s, c) {
-    var p = ccGetPrecioSoftware(c.licencia);
-    return s + (p || c.monto || 0);
+    var p = ccGetPrecioSoftware(c.licencia) || c.monto || 0;
+    var tieneDesc = c.descuento_pct && (!c.descuento_vence || c.descuento_vence >= lastDayStr);
+    return s + (tieneDesc ? +(p * (1 - c.descuento_pct / 100)).toFixed(1) : p);
   }, 0);
 
   // Facturación perdida (outsourcing churn)
@@ -2085,11 +2090,12 @@ function ccRenderFacturacion(el) {
   var totalNuevoRD = outNuevoServicio;
   var totalNuevoUS = outNuevoSoftware + swNuevoMonto;
 
-  html += '<div class="stats">';
+  html += '<div class="stats stats-sm">';
   html += '<div class="stat"><div class="stat-label">Facturas del mes</div><div class="stat-value">' + totalFacturas + '</div><div class="stat-sub">' + MESES_FULL[mesIdx] + ' 2026</div></div>';
   html += '<div class="stat"><div class="stat-label">Agregar</div><div class="stat-value stat-green">' + totalAgregados + '</div><div class="stat-sub">Facturas nuevas</div></div>';
   html += '<div class="stat"><div class="stat-label">Quitar</div><div class="stat-value stat-red">' + totalQuitados + '</div><div class="stat-sub">Facturas a eliminar</div></div>';
-  html += '<div class="stat"><div class="stat-label">Nuevo servicio</div><div class="stat-value" style="color:var(--blue)">RD$ ' + totalNuevoRD.toLocaleString() + '</div><div class="stat-sub">' + (totalNuevoUS > 0 ? '+ US$ ' + totalNuevoUS.toLocaleString() + ' software' : 'Outsourcing + software') + '</div></div>';
+  html += '<div class="stat"><div class="stat-label">Nuevo servicio</div><div class="stat-value" style="color:var(--blue)">RD$ ' + totalNuevoRD.toLocaleString() + '</div><div class="stat-sub">Outsourcing</div></div>';
+  html += '<div class="stat"><div class="stat-label">Nuevo software</div><div class="stat-value" style="color:var(--blue)">US$ ' + swNuevoMonto.toLocaleString() + '</div><div class="stat-sub">Software del mes</div></div>';
   html += '<div class="stat"><div class="stat-label">Facturación perdida</div><div class="stat-value" style="color:var(--red)">RD$ ' + outPerdidoServicio.toLocaleString() + '</div><div class="stat-sub">' + (outPerdidoSoftware > 0 ? '+ US$ ' + outPerdidoSoftware.toLocaleString() + ' software' : 'Outsourcing perdido') + '</div></div>';
   html += '</div>';
 
