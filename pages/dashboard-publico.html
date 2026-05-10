@@ -93,14 +93,12 @@ function toggleDetail(id) {
 
 async function init() {
   // Load data
-  var [resC, resSw, resA] = await Promise.all([
+  var [resC, resSw] = await Promise.all([
     sb.from('clientes').select('nombre, fecha_entrada, fecha_salida, activo, monto_adm, responsabilidad_contabilidad'),
-    sb.from('clientes_software').select('*'),
-    sb.from('asignaciones').select('*').eq('anio', 2026)
+    sb.from('clientes_software').select('*')
   ]);
   var clientes = resC.data || [];
   var software = resSw.data || [];
-  var asignaciones = resA.data || [];
 
   var now = new Date();
   var currentMonth = now.getMonth(); // 0-based
@@ -176,13 +174,8 @@ async function init() {
     swData.push({ mes: m, total: swRunning, nuevos: nuevos.length, churn: churn.length, monto: monto, nuevosNames: nuevos.map(function(c){return c.nombre}), churnNames: churn.map(function(c){return c.nombre}) });
   }
 
-  // ─── TX DATA ───
-  var txByMonth = MESES.map(function() { return 0; });
-  asignaciones.forEach(function(a) {
-    if (!a.adm || !a.mes) return;
-    var idx = MESES.indexOf(a.mes.toLowerCase());
-    if (idx >= 0) txByMonth[idx] += parseInt(a.adm) || 0;
-  });
+  // ─── TX DATA (transacciones contratadas por mes, de outData.servTotal) ───
+  var txByMonth = outData.map(function(d) { return d.servTotal; });
 
   // ─── RENDER ───
   var last = outData[outData.length - 1] || { total:0, nuevos:0, churn:0 };
@@ -315,9 +308,9 @@ async function init() {
     options: { responsive:true, plugins:{legend:{display:false}}, scales:{y:{ticks:{callback:function(v){return v+'%'}}}} }
   });
 
-  // TX chart
-  var txLabels = MESES_LABEL.slice(0, currentMonth + 1);
-  var txValues = txByMonth.slice(0, currentMonth + 1);
+  // TX chart (transacciones contratadas)
+  var txLabels = outData.map(function(d){return MESES_LABEL[d.mes]});
+  var txValues = txByMonth;
 
   new Chart(document.getElementById('chartTx'), {
     type: 'line',
