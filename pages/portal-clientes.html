@@ -32,7 +32,7 @@ body { font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-se
 .month-tab:hover { background:#eef0f4; }
 .month-tab.active { background:var(--navy); color:white; border-color:var(--navy); }
 
-.content { padding:24px; max-width:1200px; margin:0 auto; }
+.content { padding:24px; max-width:1400px; margin:0 auto; }
 
 .dash-card { background:white; border-radius:12px; border:1px solid var(--border); padding:18px 20px; display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; }
 .dash-card-left { display:flex; align-items:center; gap:14px; }
@@ -138,6 +138,9 @@ body.embed .content { padding-top:12px; }
 .pm-table-compact { font-size:0.75rem; }
 .pm-table-compact th { font-size:0.62rem; white-space:nowrap; }
 .pm-table-compact td { padding:10px 12px !important; white-space:nowrap; }
+.pm-table-tight { font-size:0.7rem; }
+.pm-table-tight th { font-size:0.58rem; padding:8px 6px !important; white-space:nowrap; }
+.pm-table-tight td { padding:7px 6px !important; white-space:nowrap; }
 
 /* Dark panel header */
 .pm-panel-dark .pm-panel-hdr { background:var(--navy); color:white; border-bottom:none; }
@@ -1853,8 +1856,8 @@ function renderProyeccionDetail() {
 
   h += '<div class="pm-panel pm-panel-dark"><div class="pm-panel-hdr">';
   h += '<h3 style="text-transform:uppercase;font-size:0.78rem;letter-spacing:0.3px">Realidad hasta hoy</h3></div>';
-  h += '<div class="pm-panel-body" style="overflow-x:auto"><div style="display:inline-block;min-width:100%"><table class="pm-table-compact"><thead><tr>';
-  h += '<th>Mes</th><th class="pm-text-right">Ventas IT1</th><th class="pm-text-right">Costos Op.</th><th class="pm-text-right">Gastos</th><th class="pm-text-right">Ing./Gto. No Op.</th><th class="pm-text-right">Gtos. N/A</th>';
+  h += '<div class="pm-panel-body"><table class="pm-table-tight"><thead><tr>';
+  h += '<th>Mes</th><th class="pm-text-right">Ventas</th><th class="pm-text-right">Costos</th><th class="pm-text-right">Gastos</th><th class="pm-text-right">No Op.</th><th class="pm-text-right">G. N/A</th>';
   h += '</tr></thead><tbody>';
   pmEjecucion.forEach(function(e) {
     var eIF = (e.ingreso_no_operacional || 0) - (e.gasto_no_operacional || 0);
@@ -1873,12 +1876,12 @@ function renderProyeccionDetail() {
   h += '<td class="pm-text-right">' + pmFormatMoneyShort(totalGNA) + '</td></tr>';
   h += '</tbody></table>';
   h += '<div class="pm-ganancia"><span>Ganancia / Pérdida</span><span class="pm-amount" style="color:' + (gananciaNeta >= 0 ? 'var(--green)' : 'var(--red)') + '">$' + pmFormatMoney(gananciaNeta) + '</span></div>';
-  h += '</div></div></div>';
+  h += '</div></div>';
 
   h += '<div class="pm-panel pm-panel-dark"><div class="pm-panel-hdr">';
   h += '<h3 style="text-transform:uppercase;font-size:0.78rem;letter-spacing:0.3px">Proyección a fin de año (promedios)</h3></div>';
-  h += '<div class="pm-panel-body" style="overflow-x:auto"><div style="display:inline-block;min-width:100%"><table class="pm-table-compact"><thead><tr>';
-  h += '<th>Mes</th><th class="pm-text-right">Ventas IT1</th><th class="pm-text-right">Costos Op.</th><th class="pm-text-right">Gastos</th><th class="pm-text-right">Ing./Gto. No Op.</th><th class="pm-text-right">Gtos. N/A</th>';
+  h += '<div class="pm-panel-body"><table class="pm-table-tight"><thead><tr>';
+  h += '<th>Mes</th><th class="pm-text-right">Ventas</th><th class="pm-text-right">Costos</th><th class="pm-text-right">Gastos</th><th class="pm-text-right">No Op.</th><th class="pm-text-right">G. N/A</th>';
   h += '</tr></thead><tbody>';
   var avgIF = avgINO - avgGNO;
   for (var m = 1; m <= 12; m++) {
@@ -1908,7 +1911,7 @@ function renderProyeccionDetail() {
   h += '<td class="pm-text-right">' + pmFormatMoneyShort(projGNA) + '</td></tr>';
   h += '</tbody></table>';
   h += '<div class="pm-ganancia"><span>Ganancia / Pérdida (Proyectada)</span><span class="pm-amount" style="color:' + (projGanancia >= 0 ? 'var(--green)' : 'var(--red)') + '">$' + pmFormatMoney(projGanancia) + '</span></div>';
-  h += '</div></div></div></div>';
+  h += '</div></div></div>';
 
   h += '<div class="pm-dual">';
 
