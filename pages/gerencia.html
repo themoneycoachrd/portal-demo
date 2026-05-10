@@ -1979,7 +1979,7 @@ function ccRenderSoftware(el) {
 // ─── Facturación tab ───
 var ccFactMes = MESES[new Date().getMonth()];
 
-// Tabla de precios outsourcing (DOP) por tipo_servicio + monto_adm (transacciones)
+// Tabla de precios outsourcing (USD) por tipo_servicio + monto_adm (transacciones)
 var PRECIOS_OUTSOURCING = {
   'Solo impuestos': {50: 400, 100: 600, 150: 800},
   'Contabilidad completa': {50: 600, 100: 750, 150: 1000}
@@ -2080,30 +2080,32 @@ function ccRenderFacturacion(el) {
     return s + (tieneDesc ? +(p * (1 - c.descuento_pct / 100)).toFixed(1) : p);
   }, 0);
 
-  // Facturación perdida (outsourcing churn)
+  // Facturación perdida
   var outPerdidoServicio = 0;
-  var outPerdidoSoftware = 0;
   outChurn.forEach(function(c) {
     var ps = ccGetPrecioOutsourcing(c);
     if (ps && ps !== 'cotizar') outPerdidoServicio += ps;
-    var pl = ccGetPrecioSoftware(c.software);
-    if (pl) outPerdidoSoftware += pl;
+  });
+  var swPerdidoSoftware = 0;
+  swChurn.forEach(function(c) {
+    var p = ccGetPrecioSoftware(c.licencia) || c.monto || 0;
+    swPerdidoSoftware += p;
   });
 
   // ─── STATS ───
   var totalFacturas = outActivos.length + swActivos.length;
   var totalAgregados = outNuevos.length + swNuevos.length;
   var totalQuitados = outChurn.length + swChurn.length;
-  var totalNuevoRD = outNuevoServicio;
-  var totalNuevoUS = outNuevoSoftware + swNuevoMonto;
+  var totalNuevoServ = outNuevoServicio;
 
   html += '<div class="stats stats-sm">';
   html += '<div class="stat"><div class="stat-label">Facturas del mes</div><div class="stat-value">' + totalFacturas + '</div><div class="stat-sub">' + MESES_FULL[mesIdx] + ' 2026</div></div>';
   html += '<div class="stat"><div class="stat-label">Agregar</div><div class="stat-value stat-green">' + totalAgregados + '</div><div class="stat-sub">Facturas nuevas</div></div>';
   html += '<div class="stat"><div class="stat-label">Quitar</div><div class="stat-value stat-red">' + totalQuitados + '</div><div class="stat-sub">Facturas a eliminar</div></div>';
-  html += '<div class="stat"><div class="stat-label">Nuevo servicio</div><div class="stat-value" style="color:var(--blue)">RD$ ' + totalNuevoRD.toLocaleString() + '</div><div class="stat-sub">Outsourcing</div></div>';
+  html += '<div class="stat"><div class="stat-label">Nuevo servicio</div><div class="stat-value" style="color:var(--blue)">US$ ' + totalNuevoServ.toLocaleString() + '</div><div class="stat-sub">Outsourcing</div></div>';
   html += '<div class="stat"><div class="stat-label">Nuevo software</div><div class="stat-value" style="color:var(--blue)">US$ ' + swNuevoMonto.toLocaleString() + '</div><div class="stat-sub">Software del mes</div></div>';
-  html += '<div class="stat"><div class="stat-label">Facturación perdida</div><div class="stat-value" style="color:var(--red)">RD$ ' + outPerdidoServicio.toLocaleString() + '</div><div class="stat-sub">' + (outPerdidoSoftware > 0 ? '+ US$ ' + outPerdidoSoftware.toLocaleString() + ' software' : 'Outsourcing perdido') + '</div></div>';
+  html += '<div class="stat"><div class="stat-label">Perdido servicio</div><div class="stat-value" style="color:var(--red)">US$ ' + outPerdidoServicio.toLocaleString() + '</div><div class="stat-sub">Outsourcing</div></div>';
+  html += '<div class="stat"><div class="stat-label">Perdido software</div><div class="stat-value" style="color:var(--red)">US$ ' + swPerdidoSoftware.toLocaleString() + '</div><div class="stat-sub">Software</div></div>';
   html += '</div>';
 
   // ─── OUTSOURCING SECTION ───
@@ -2131,10 +2133,10 @@ function ccRenderFacturacion(el) {
     outNuevos.forEach(function(c) {
       var pServ = ccGetPrecioOutsourcing(c);
       var pSoft = ccGetPrecioSoftware(c.software);
-      var servStr = pServ === 'cotizar' ? 'Cotizar' : (pServ ? ('RD$ ' + pServ.toLocaleString()) : '—');
+      var servStr = pServ === 'cotizar' ? 'Cotizar' : (pServ ? ('US$ ' + pServ.toLocaleString()) : '—');
       var softStr = pSoft ? ('US$ ' + pSoft) : '—';
       var totalNum = ((pServ && pServ !== 'cotizar') ? pServ : 0);
-      var totalStr = totalNum > 0 ? ('RD$ ' + totalNum.toLocaleString()) : '—';
+      var totalStr = totalNum > 0 ? ('US$ ' + totalNum.toLocaleString()) : '—';
       if (pSoft) totalStr += ' + US$ ' + pSoft;
       html += '<tr>';
       html += '<td style="' + tdStyle + '"><strong>' + c.nombre + '</strong></td>';
@@ -2150,10 +2152,10 @@ function ccRenderFacturacion(el) {
     outChurn.forEach(function(c) {
       var pServ = ccGetPrecioOutsourcing(c);
       var pSoft = ccGetPrecioSoftware(c.software);
-      var servStr = pServ === 'cotizar' ? 'Cotizar' : (pServ ? ('RD$ ' + pServ.toLocaleString()) : '—');
+      var servStr = pServ === 'cotizar' ? 'Cotizar' : (pServ ? ('US$ ' + pServ.toLocaleString()) : '—');
       var softStr = pSoft ? ('US$ ' + pSoft) : '—';
       var totalNum = ((pServ && pServ !== 'cotizar') ? pServ : 0);
-      var totalStr = totalNum > 0 ? ('RD$ ' + totalNum.toLocaleString()) : '—';
+      var totalStr = totalNum > 0 ? ('US$ ' + totalNum.toLocaleString()) : '—';
       if (pSoft) totalStr += ' + US$ ' + pSoft;
       html += '<tr>';
       html += '<td style="' + tdStyle + '"><strong>' + c.nombre + '</strong></td>';
@@ -2195,10 +2197,10 @@ function ccRenderFacturacion(el) {
     var isNew = outNuevos.some(function(n) { return n.nombre === c.nombre; });
     var pServ = ccGetPrecioOutsourcing(c);
     var pSoft = ccGetPrecioSoftware(c.software);
-    var servStr = pServ === 'cotizar' ? 'Cotizar' : (pServ ? ('RD$ ' + pServ.toLocaleString()) : '—');
+    var servStr = pServ === 'cotizar' ? 'Cotizar' : (pServ ? ('US$ ' + pServ.toLocaleString()) : '—');
     var softStr = pSoft ? ('US$ ' + pSoft) : '—';
     var totalNum = ((pServ && pServ !== 'cotizar') ? pServ : 0);
-    var totalStr = totalNum > 0 ? ('RD$ ' + totalNum.toLocaleString()) : '—';
+    var totalStr = totalNum > 0 ? ('US$ ' + totalNum.toLocaleString()) : '—';
     if (pSoft) totalStr += ' + US$ ' + pSoft;
     if (pServ && pServ !== 'cotizar') outGranTotalServ += pServ;
     if (pSoft) outGranTotalSoft += pSoft;
@@ -2216,7 +2218,7 @@ function ccRenderFacturacion(el) {
   // Fila de totales
   html += '<tr style="background:#f8fafc;font-weight:700">';
   html += '<td colspan="5" style="padding:8px 10px;border-top:2px solid var(--border);text-align:right;font-size:0.72rem;text-transform:uppercase;color:var(--muted)">Totales</td>';
-  html += '<td style="padding:8px 10px;border-top:2px solid var(--border);text-align:right">RD$ ' + outGranTotalServ.toLocaleString() + '</td>';
+  html += '<td style="padding:8px 10px;border-top:2px solid var(--border);text-align:right">US$ ' + outGranTotalServ.toLocaleString() + '</td>';
   html += '<td style="padding:8px 10px;border-top:2px solid var(--border);text-align:right">US$ ' + outGranTotalSoft.toLocaleString() + '</td>';
   html += '<td style="padding:8px 10px;border-top:2px solid var(--border);text-align:right"></td>';
   html += '</tr>';
