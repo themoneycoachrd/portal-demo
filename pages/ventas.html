@@ -1475,7 +1475,7 @@ function renderMovimiento() {
     var isActive = APP.movCatFilter === c;
     var border = isActive ? '2px solid ' + color : '1px solid var(--border)';
     var bg = isActive ? color + '10' : '';
-    html += '<div class="stat-card mov-cat-filter" data-cat="' + c + '" style="cursor:pointer;border:' + border + ';' + (bg ? 'background:' + bg : '') + '"><div class="label">' + c + '</div><div class="value" style="color:' + color + '">' + countByCat[c] + '</div></div>';
+    html += '<div class="stat-card mov-cat-filter" data-cat="' + c + '" style="cursor:pointer;border:' + border + ';' + (bg ? 'background:' + bg : '') + '"><div class="label" style="text-transform:none">' + c + '</div><div class="value" style="color:' + color + '">' + countByCat[c] + '</div></div>';
   });
   html += '</div>';
 
@@ -1493,7 +1493,7 @@ function renderMovimiento() {
   });
   CATEGORIAS.forEach(c => {
     var color = catColors[c] || 'var(--navy)';
-    html += '<div class="stat-card"><div class="label">' + c + '</div><div class="value" style="color:' + color + '">' + acumByCat[c] + '</div></div>';
+    html += '<div class="stat-card"><div class="label" style="text-transform:none">' + c + '</div><div class="value" style="color:' + color + '">' + acumByCat[c] + '</div></div>';
   });
   html += '</div>';
 
