@@ -557,6 +557,13 @@
           <input type="text" id="cl-m-nota-salida" placeholder="Detalles adicionales...">
         </div>
       </div>
+      <div id="cl-m-quedaadm-wrap" style="display:none;margin-top:10px;padding:10px 14px;background:#fffbeb;border:1px solid #fde68a;border-radius:8px">
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:0.82rem;font-weight:600;color:var(--navy)">
+          <input type="checkbox" id="cl-m-queda-adm" onchange="clToggleQuedaAdm()">
+          Se queda con Adm
+        </label>
+        <div id="cl-m-quedaadm-info" style="display:none;margin-top:6px;font-size:0.75rem;color:var(--muted)"></div>
+      </div>
     </div>
     <div class="m-field">
       <label>Notas</label>
@@ -3415,6 +3422,7 @@ function clRenderActivoBtn() {
   var btn = document.getElementById('cl-m-activo-btn');
   var salidaWrap = document.getElementById('cl-m-salida-wrap');
   var motivoWrap = document.getElementById('cl-m-salida-motivo-wrap');
+  var quedaWrap = document.getElementById('cl-m-quedaadm-wrap');
   if (clModalActivo) {
     btn.textContent = 'Activo';
     btn.style.background = 'var(--green)';
@@ -3422,6 +3430,9 @@ function clRenderActivoBtn() {
     btn.style.borderColor = 'var(--green)';
     salidaWrap.style.display = 'none';
     motivoWrap.classList.add('hidden');
+    quedaWrap.style.display = 'none';
+    document.getElementById('cl-m-queda-adm').checked = false;
+    document.getElementById('cl-m-quedaadm-info').style.display = 'none';
   } else {
     btn.textContent = 'Inactivo';
     btn.style.background = 'var(--red)';
@@ -3429,6 +3440,22 @@ function clRenderActivoBtn() {
     btn.style.borderColor = 'var(--red)';
     salidaWrap.style.display = 'block';
     motivoWrap.classList.remove('hidden');
+    // Mostrar checkbox "Se queda con Adm" solo si tiene licencia
+    var softVal = document.getElementById('cl-m-software').value;
+    quedaWrap.style.display = softVal ? 'block' : 'none';
+  }
+}
+
+function clToggleQuedaAdm() {
+  var checked = document.getElementById('cl-m-queda-adm').checked;
+  var infoEl = document.getElementById('cl-m-quedaadm-info');
+  if (checked) {
+    var lic = document.getElementById('cl-m-software').value;
+    var precio = PRECIOS_SOFTWARE[lic] || 0;
+    infoEl.innerHTML = 'Se creará en Software: <b>' + lic + '</b> — US$' + precio + '/mes';
+    infoEl.style.display = 'block';
+  } else {
+    infoEl.style.display = 'none';
   }
 }
 
@@ -3660,11 +3687,40 @@ async function clSaveClient() {
       .limit(2);
   }
 
+  // Si se inactivó y marcó "Se queda con Adm", crear registro en clientes_software
+  if (!clModalActivo && document.getElementById('cl-m-queda-adm').checked) {
+    var swLic = document.getElementById('cl-m-software').value;
+    var swPrecio = PRECIOS_SOFTWARE[swLic] || 0;
+    var swNombre = record.nombre;
+    // Verificar si ya existe en clientes_software
+    var existCheck = await sb.from('clientes_software').select('id').ilike('nombre', swNombre).limit(1);
+    if (!existCheck.data || existCheck.data.length === 0) {
+      var swRecord = {
+        nombre: swNombre,
+        rnc: record.rnc,
+        contacto: record.contacto,
+        email: record.email,
+        telefono: record.telefono,
+        tipo_licencia: swLic,
+        monto_mensual: swPrecio,
+        fecha_entrada: record.fecha_salida || new Date().toISOString().slice(0, 10),
+        activo: true
+      };
+      var swRes = await sb.from('clientes_software').insert(swRecord);
+      if (swRes.error) {
+        console.error('Error creando registro software:', swRes.error);
+      } else {
+        gerShowToast('Registro creado en Software: ' + swLic, 'success');
+      }
+    }
+  }
+
   btn.disabled = false; btn.textContent = 'Guardar';
 
   var wasEditing = !!clEditingId;
   clCloseModal();
   await bdLoadClientes();
+  if (bdSoftwareClientes) { var swReload = await sb.from('clientes_software').select('*'); bdSoftwareClientes = swReload.data || []; }
   bdRenderClientes();
   gerShowToast(wasEditing ? 'Cliente actualizado' : 'Cliente agregado');
 }
