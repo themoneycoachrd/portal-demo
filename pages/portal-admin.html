@@ -722,7 +722,7 @@ function pmPctColor(pct, invert) {
     return 'var(--red)';
   }
   if (pct >= 90) return 'var(--green)';
-  if (pct >= 66) return 'var(--amber)';
+  if (pct > 65) return 'var(--amber)';
   return 'var(--red)';
 }
 
@@ -1758,10 +1758,10 @@ function renderPresupuestoDetail() {
   h += '<td class="pm-text-center">' + (metaGNA ? '<span class="pm-sem-dot ' + semGNA + '"><span class="pm-dot"></span></span>' : '') + '</td></tr>';
 
   var ejGanancia = ejResOp + ejIF - ejGNA;
-  var ejGanColor = ejGanancia >= 0 ? '#4ade80' : '#f87171';
   var metaGanMesEj = metaResOpMesEj + metaIFNeto - pmGetMetaMensual('gastos_no_admitidos');
   var pctGanEj = metaGanMesEj ? (ejGanancia / metaGanMesEj * 100) : 0;
-  var pctGanEjColor = (ejGanancia >= 0 && pctGanEj >= 100) ? '#4ade80' : '#f87171';
+  var ejGanColor = pmPctColor(pctGanEj, false);
+  var pctGanEjColor = ejGanColor;
   h += '<tr class="pm-row-total pm-row-ganancia"><td class="pm-text-right pm-font-bold" style="color:' + ejGanColor + '">$' + pmFormatMoney(ejGanancia) + '</td>';
   h += '<td class="pm-text-center" style="font-weight:600"><span style="color:' + pctGanEjColor + '">' + pctGanEj.toFixed(0) + '%</span></td>';
   h += '<td class="pm-text-center"></td></tr>';
@@ -1871,11 +1871,10 @@ function renderPresupuestoDetail() {
     var iF = ej ? ((ej.ingreso_no_operacional || 0) - (ej.gasto_no_operacional || 0)) : 0;
     var gna = ej ? (ej.gastos_no_admitidos || 0) : 0;
     var gan = v - c - g + iF - gna;
-    var color = gan >= 0 ? '#4ade80' : '#f87171';
     var pctGan = metaGanMes ? (gan / metaGanMes * 100) : 0;
-    var pctGanColor = (gan >= 0 && pctGan >= 100) ? '#4ade80' : '#f87171';
-    h += '<td class="pm-text-right" style="color:' + color + '">' + pmFormatMoney(gan) + '</td>';
-    h += '<td class="pm-text-right" style="border-right:' + (m < qRange[2] ? '2px solid var(--border)' : 'none') + '"><span style="color:' + pctGanColor + ';font-weight:600">' + pctGan.toFixed(0) + '%</span></td>';
+    var ganColor = pmPctColor(pctGan, false);
+    h += '<td class="pm-text-right" style="color:' + ganColor + '">' + pmFormatMoney(gan) + '</td>';
+    h += '<td class="pm-text-right" style="border-right:' + (m < qRange[2] ? '2px solid var(--border)' : 'none') + '"><span style="color:' + ganColor + ';font-weight:600">' + pctGan.toFixed(0) + '%</span></td>';
   });
   h += '</tr>';
 
@@ -1968,8 +1967,8 @@ function renderPresupuestoDetail() {
   var qGanancia = qResOp + qTotalIF - qTotalGNA;
   var qMetaGan = qMetaResOp + qMetaIF - (pmGetMetaMensual('gastos_no_admitidos') * 3);
   var qPctGan = qMetaGan ? (qGanancia / qMetaGan * 100) : 0;
-  var qGanColor = qGanancia >= 0 ? 'var(--green)' : 'var(--red)';
-  var qPctGanColor = (qGanancia >= 0 && qPctGan >= 100) ? '#4ade80' : '#f87171';
+  var qGanColor = pmPctColor(qPctGan, false);
+  var qPctGanColor = qGanColor;
   h += '<div class="pm-ganancia"><span>Ganancia/Pérdida ' + qLabels[quarter - 1] + '</span><span class="pm-amount" style="color:' + qGanColor + '">$' + pmFormatMoney(qGanancia) + ' <span style="font-size:0.78rem;color:' + qPctGanColor + '">(' + qPctGan.toFixed(0) + '% de meta)</span></span></div>';
   h += '</div></div>';
 
@@ -2311,7 +2310,7 @@ function renderProyeccionDetail() {
       h += '<td class="pm-text-right">' + pmFormatMoneyShort(rIF) + '</td>';
       h += '<td class="pm-text-right">' + pmFormatMoneyShort(realRow.gastos_no_admitidos) + '</td></tr>';
     } else {
-      h += '<tr style="background:#fffbeb;color:#92400e"><td>' + MESES_FULL[m - 1] + '</td>';
+      h += '<tr style="background:#fffbeb"><td>' + MESES_FULL[m - 1] + '</td>';
       h += '<td class="pm-text-right">' + pmFormatMoneyShort(avgV) + '</td>';
       h += '<td class="pm-text-right">' + pmFormatMoneyShort(avgCO) + '</td>';
       h += '<td class="pm-text-right">' + pmFormatMoneyShort(avgG) + '</td>';
