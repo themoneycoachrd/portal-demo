@@ -2301,11 +2301,17 @@ function renderProyeccionDetail() {
   h += '</tr></thead><tbody>';
   var avgIF = avgINO - avgGNO;
   for (var m = 1; m <= 12; m++) {
-    var isActual = pmEjecucion.some(function(e) { return e.mes === m; });
-    if (isActual) {
-      h += '<tr class="pm-actual"><td>' + MESES_FULL[m - 1] + '</td><td class="pm-text-right">&ndash;</td><td class="pm-text-right">&ndash;</td><td class="pm-text-right">&ndash;</td><td class="pm-text-right">&ndash;</td><td class="pm-text-right">&ndash;</td></tr>';
+    var realRow = pmEjecucion.find(function(e) { return e.mes === m; });
+    if (realRow) {
+      var rIF = (realRow.ingreso_no_operacional || 0) - (realRow.gasto_no_operacional || 0);
+      h += '<tr><td>' + MESES_FULL[m - 1] + '</td>';
+      h += '<td class="pm-text-right">' + pmFormatMoneyShort(realRow.ventas_it1) + '</td>';
+      h += '<td class="pm-text-right">' + pmFormatMoneyShort(realRow.costos_operativos) + '</td>';
+      h += '<td class="pm-text-right">' + pmFormatMoneyShort(realRow.gastos) + '</td>';
+      h += '<td class="pm-text-right">' + pmFormatMoneyShort(rIF) + '</td>';
+      h += '<td class="pm-text-right">' + pmFormatMoneyShort(realRow.gastos_no_admitidos) + '</td></tr>';
     } else {
-      h += '<tr class="pm-projected"><td>' + MESES_FULL[m - 1] + '</td>';
+      h += '<tr style="color:#d97706"><td>' + MESES_FULL[m - 1] + '</td>';
       h += '<td class="pm-text-right">' + pmFormatMoneyShort(avgV) + '</td>';
       h += '<td class="pm-text-right">' + pmFormatMoneyShort(avgCO) + '</td>';
       h += '<td class="pm-text-right">' + pmFormatMoneyShort(avgG) + '</td>';
