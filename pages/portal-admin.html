@@ -2284,7 +2284,7 @@ function renderProyeccionDetail() {
     h += '<td class="pm-text-right">' + pmFormatMoneyShort(eIF) + '</td>';
     h += '<td class="pm-text-right">' + pmFormatMoneyShort(e.gastos_no_admitidos) + '</td></tr>';
   });
-  h += '<tr class="pm-row-total"><td class="pm-font-bold">Totales</td>';
+  h += '<tr style="border-top:2px solid var(--border);font-weight:700"><td class="pm-font-bold">Totales</td>';
   h += '<td class="pm-text-right">' + pmFormatMoneyShort(totalV) + '</td>';
   h += '<td class="pm-text-right">' + pmFormatMoneyShort(totalCO) + '</td>';
   h += '<td class="pm-text-right">' + pmFormatMoneyShort(totalG) + '</td>';
@@ -2311,7 +2311,7 @@ function renderProyeccionDetail() {
       h += '<td class="pm-text-right">' + pmFormatMoneyShort(rIF) + '</td>';
       h += '<td class="pm-text-right">' + pmFormatMoneyShort(realRow.gastos_no_admitidos) + '</td></tr>';
     } else {
-      h += '<tr style="color:#d97706"><td>' + MESES_FULL[m - 1] + '</td>';
+      h += '<tr style="background:#fffbeb;color:#92400e"><td>' + MESES_FULL[m - 1] + '</td>';
       h += '<td class="pm-text-right">' + pmFormatMoneyShort(avgV) + '</td>';
       h += '<td class="pm-text-right">' + pmFormatMoneyShort(avgCO) + '</td>';
       h += '<td class="pm-text-right">' + pmFormatMoneyShort(avgG) + '</td>';
