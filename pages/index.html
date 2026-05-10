@@ -1203,12 +1203,8 @@ async function handleLogin() {
   }
 
   await loadUserProfile();
-  if (realRole === 'admin') {
-    document.getElementById('login-screen').style.display = 'none';
-    showRolePicker();
-  } else {
-    showApp();
-  }
+  document.getElementById('login-screen').style.display = 'none';
+  showApp();
 }
 
 async function handleLogout() {
@@ -1373,12 +1369,7 @@ async function init() {
   const { data: { session } } = await sb.auth.getSession();
   if (session) {
     await loadUserProfile();
-    if (realRole === 'admin') {
-      document.getElementById('login-screen').style.display = 'none';
-      showRolePicker();
-    } else {
-      showApp();
-    }
+    showApp();
   }
 }
 
