@@ -530,7 +530,8 @@ const FUNNEL_COLORS = {
 const TEMP_DISPLAY = { 'Caliente': 'Caliente', 'Tibio': 'Tibio', 'Frio': 'Fr\u00edo' };
 
 const CATEGORIAS = ['Adm', 'Implementacion', 'Facturacion Electronica', 'Servicios Recurrentes'];
-function parseCats(str) { return (str || '').split(',').map(s => s.trim()).filter(Boolean); }
+const CAT_NORMALIZE = { 'adm': 'Adm', 'ADM': 'Adm', 'implementacion': 'Implementacion', 'facturacion electronica': 'Facturacion Electronica', 'servicios recurrentes': 'Servicios Recurrentes' };
+function parseCats(str) { return (str || '').split(',').map(s => { var t = s.trim(); return CAT_NORMALIZE[t] || CAT_NORMALIZE[t.toLowerCase()] || t; }).filter(Boolean); }
 function renderCatBadges(str) {
   var cats = parseCats(str);
   if (!cats.length) return '-';
@@ -763,6 +764,7 @@ let APP = {
   editingRoas: null, // {month, field}
   charts: {},
   movMonth: null, // mes seleccionado en tab Movimiento
+  movCatFilter: null, // categoría seleccionada como filtro en Movimiento
   userRole: null,  // 'admin', 'comercial', 'contadores', etc.
   userName: ''
 };
@@ -1470,7 +1472,10 @@ function renderMovimiento() {
   html += '<div class="stats-grid" style="grid-template-columns:repeat(' + CATEGORIAS.length + ',1fr);margin-bottom:24px">';
   CATEGORIAS.forEach(c => {
     var color = catColors[c] || 'var(--navy)';
-    html += '<div class="stat-card"><div class="label">' + c + '</div><div class="value" style="color:' + color + '">' + countByCat[c] + '</div></div>';
+    var isActive = APP.movCatFilter === c;
+    var border = isActive ? '2px solid ' + color : '1px solid var(--border)';
+    var bg = isActive ? color + '10' : '';
+    html += '<div class="stat-card mov-cat-filter" data-cat="' + c + '" style="cursor:pointer;border:' + border + ';' + (bg ? 'background:' + bg : '') + '"><div class="label">' + c + '</div><div class="value" style="color:' + color + '">' + countByCat[c] + '</div></div>';
   });
   html += '</div>';
 
@@ -1492,9 +1497,16 @@ function renderMovimiento() {
   });
   html += '</div>';
 
-  // Tabla detalle del mes
-  if (ganados.length > 0) {
-    html += '<div class="card"><h3 style="font-size:0.95rem;margin-bottom:12px">Detalle — ' + MONTH_LABELS[MONTHS.indexOf(APP.movMonth)] + '</h3>';
+  // Tabla detalle del mes (filtrada por categoría si hay filtro activo)
+  var ganadosFiltrados = ganados;
+  if (APP.movCatFilter) {
+    ganadosFiltrados = ganados.filter(l => parseCats(l.categoria).indexOf(APP.movCatFilter) >= 0);
+  }
+  var tituloDetalle = 'Detalle — ' + MONTH_LABELS[MONTHS.indexOf(APP.movMonth)];
+  if (APP.movCatFilter) tituloDetalle += ' <span style="color:' + (catColors[APP.movCatFilter] || 'var(--navy)') + '">(' + APP.movCatFilter + ')</span>';
+
+  if (ganadosFiltrados.length > 0) {
+    html += '<div class="card"><h3 style="font-size:0.95rem;margin-bottom:12px">' + tituloDetalle + '</h3>';
     html += '<div class="table-wrapper"><table style="width:100%;border-collapse:collapse;font-size:0.85rem">';
     html += '<thead><tr><th style="text-align:left;padding:8px;font-size:0.75rem;text-transform:uppercase;color:var(--muted);border-bottom:2px solid var(--border)">#</th>';
     html += '<th style="text-align:left;padding:8px;font-size:0.75rem;text-transform:uppercase;color:var(--muted);border-bottom:2px solid var(--border)">Cliente</th>';
@@ -1503,7 +1515,7 @@ function renderMovimiento() {
     html += '<th style="text-align:right;padding:8px;font-size:0.75rem;text-transform:uppercase;color:var(--muted);border-bottom:2px solid var(--border)">Monto Vendido</th>';
     html += '</tr></thead><tbody>';
     var includeSoft = MONTHS.indexOf(APP.movMonth) >= 2;
-    ganados.forEach((l, i) => {
+    ganadosFiltrados.forEach((l, i) => {
       var vendido = leadVendido(l, includeSoft);
       html += '<tr style="border-bottom:1px solid var(--border)">';
       html += '<td style="padding:8px">' + (i + 1) + '</td>';
@@ -1515,7 +1527,10 @@ function renderMovimiento() {
     });
     html += '</tbody></table></div></div>';
   } else {
-    html += '<div class="card" style="text-align:center;color:var(--muted);padding:40px">No hay clientes cerrados en ' + MONTH_LABELS[MONTHS.indexOf(APP.movMonth)] + '</div>';
+    var msgVacio = APP.movCatFilter
+      ? 'No hay clientes de ' + APP.movCatFilter + ' en ' + MONTH_LABELS[MONTHS.indexOf(APP.movMonth)]
+      : 'No hay clientes cerrados en ' + MONTH_LABELS[MONTHS.indexOf(APP.movMonth)];
+    html += '<div class="card" style="text-align:center;color:var(--muted);padding:40px">' + msgVacio + '</div>';
   }
 
   // Sin categoría warning
@@ -1531,6 +1546,15 @@ function renderMovimiento() {
   container.querySelectorAll('.mov-month').forEach(btn => {
     btn.onclick = () => {
       APP.movMonth = btn.dataset.movMonth;
+      APP.movCatFilter = null;
+      renderMovimiento();
+    };
+  });
+
+  // Bind category filter pills
+  container.querySelectorAll('.mov-cat-filter').forEach(card => {
+    card.onclick = () => {
+      APP.movCatFilter = APP.movCatFilter === card.dataset.cat ? null : card.dataset.cat;
       renderMovimiento();
     };
   });
