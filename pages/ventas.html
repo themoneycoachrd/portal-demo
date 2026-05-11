@@ -324,6 +324,145 @@ tr.expanded { background: #f0f9ff; }
 .roas-save-btn:hover { background: #3451c7; }
 .roas-save-btn.saved { background: var(--green); pointer-events: none; }
 
+/* ==================== CHECKLIST COMERCIAL ==================== */
+.chk-summary-stats {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 8px;
+  margin-bottom: 20px;
+}
+.chk-summary-stat {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px 8px;
+  text-align: center;
+}
+.chk-summary-stat .label { font-size: 0.68rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.3px; }
+.chk-summary-stat .value { font-size: 1.2rem; font-weight: 700; margin-top: 2px; }
+
+.chk-client-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 12px;
+  margin-bottom: 20px;
+}
+.chk-client-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 14px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.chk-client-card:hover { border-color: var(--blue); box-shadow: 0 2px 8px rgba(59,130,246,0.08); }
+.chk-client-card .name { font-weight: 700; font-size: 0.9rem; margin-bottom: 2px; }
+.chk-client-card .sub { font-size: 0.75rem; color: var(--muted); margin-bottom: 8px; }
+.chk-client-card .bar-wrap { display: flex; align-items: center; gap: 8px; }
+.chk-client-card .bar { flex: 1; height: 6px; background: #e2e8f0; border-radius: 3px; overflow: hidden; }
+.chk-client-card .bar-fill { height: 100%; border-radius: 3px; transition: width 0.3s; }
+.chk-client-card .pct { font-size: 0.8rem; font-weight: 700; min-width: 36px; text-align: right; }
+.chk-client-card .count { font-size: 0.72rem; color: var(--muted); margin-top: 4px; }
+
+.chk-detail-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.chk-detail-back {
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 6px 12px;
+  font-size: 0.85rem;
+  cursor: pointer;
+  color: var(--muted);
+}
+.chk-detail-back:hover { background: #f1f5f9; }
+.chk-detail-title { font-size: 1.1rem; font-weight: 700; }
+.chk-detail-sub { font-size: 0.8rem; color: var(--muted); }
+
+.chk-progress-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 20px;
+  padding: 12px 16px;
+  background: #f8fafc;
+  border-radius: 8px;
+}
+.chk-progress-row .pr-bar { flex: 1; height: 8px; background: #e2e8f0; border-radius: 4px; overflow: hidden; }
+.chk-progress-row .pr-fill { height: 100%; border-radius: 4px; }
+.chk-progress-row .pr-pct { font-size: 0.95rem; font-weight: 700; }
+.chk-progress-row .pr-count { font-size: 0.82rem; color: var(--muted); }
+
+.chk-table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+.chk-table th {
+  text-align: left;
+  padding: 8px;
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  color: var(--muted);
+  border-bottom: 2px solid var(--border);
+}
+.chk-table th.center { text-align: center; }
+.chk-table td { padding: 8px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+.chk-table td.center { text-align: center; }
+.chk-table tr:hover { background: #fafbfc; }
+.chk-table .group-row td {
+  background: #f1f5f9;
+  font-weight: 700;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  color: var(--navy);
+  padding: 6px 8px;
+}
+.chk-table .row-done td { opacity: 0.5; }
+
+.chk-toggle-group { display: inline-flex; border-radius: 6px; overflow: hidden; border: 1px solid var(--border); }
+.chk-toggle-opt {
+  padding: 4px 10px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  background: white;
+  color: var(--muted);
+  transition: all 0.15s;
+}
+.chk-toggle-opt.active-yes { background: var(--green); color: white; }
+.chk-toggle-opt.active-no { background: var(--red); color: white; }
+
+.chk-persona-pills {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 16px;
+}
+.chk-persona-pill {
+  padding: 6px 14px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 0.82rem;
+  font-weight: 600;
+  background: var(--card);
+  border: 1px solid var(--border);
+  color: var(--muted);
+  transition: all 0.2s;
+}
+.chk-persona-pill:hover { border-color: var(--blue); color: var(--blue); }
+.chk-persona-pill.active { background: var(--navy); color: white; border-color: var(--navy); }
+
+.chk-save-bar {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+
 /* ==================== MISC ==================== */
 .empty-state {
   text-align: center;
@@ -499,11 +638,13 @@ body.embed .footer { display: none !important; }
   <button class="main-tab active" data-tab="roas">ROAS</button>
   <button class="main-tab" data-tab="pipeline">Pipeline</button>
   <button class="main-tab" data-tab="movimiento" id="tab-btn-movimiento" style="display:none">Movimiento</button>
+  <button class="main-tab" data-tab="checklist-com" id="tab-btn-checklist-com" style="display:none">Checklist</button>
 </div>
 
 <div id="tab-roas" class="container"></div>
 <div id="tab-pipeline" class="container hidden"></div>
 <div id="tab-movimiento" class="container hidden"></div>
+<div id="tab-checklist-com" class="container hidden"></div>
 
 <div class="footer">Conectado a Supabase — los datos se guardan en la nube.</div>
 
@@ -665,6 +806,7 @@ async function dbUpdateLead(lead) {
   // Puente comercial → Base de Datos: crear pendiente si se cierra como Ganado
   if (lead.f === 'Cerrado Ganado' && prevFunnel !== 'Cerrado Ganado') {
     await dbCreatePendienteFromLead(lead);
+    await dbCreateChecklistFromLead(lead);
   }
   delete lead._prevFunnel;
 }
@@ -700,6 +842,20 @@ async function dbCreatePendienteFromLead(lead) {
       estado: 'pendiente'
     });
   }
+}
+
+// Crear checklist comercial al cerrar lead como ganado
+async function dbCreateChecklistFromLead(lead) {
+  if (!lead._id) return;
+  // Verificar que no exista ya un checklist para este lead
+  var existing = APP.chkData.find(r => r.lead_id === lead._id);
+  if (existing) return;
+  // Determinar responsable basándose en el usuario actual
+  var responsable = APP.userName || 'Felix';
+  if (responsable.toLowerCase().indexOf('naomi') >= 0) responsable = 'Naomi';
+  else responsable = 'Felix';
+  var row = await createChecklistComercial(lead._id, lead.n || lead.e || '', lead.e || '', responsable, APP.currentMonth);
+  if (row) console.log('Checklist comercial creado para:', lead.n);
 }
 
 // Eliminar un lead
@@ -766,15 +922,23 @@ let APP = {
   movMonth: null, // mes seleccionado en tab Movimiento
   movCatFilter: null, // categoría seleccionada como filtro en Movimiento
   userRole: null,  // 'admin', 'comercial', 'contadores', etc.
-  userName: ''
+  userName: '',
+  // Checklist comercial
+  chkMonth: null,
+  chkPersona: 'Todos',
+  chkData: [],        // rows from checklist_comercial
+  chkSelected: null,  // id del checklist seleccionado para ver detalle
+  chkDirty: {}        // cambios sin guardar {id: {field: value}}
 };
 
 // ==================== COMPONENTS ====================
 
 function renderMainTabs() {
-  // Mostrar tab Movimiento solo para admin
+  // Mostrar tabs según rol
   const btnMov = document.getElementById('tab-btn-movimiento');
   if (btnMov) btnMov.style.display = (APP.userRole !== 'comercial') ? '' : 'none';
+  const btnChk = document.getElementById('tab-btn-checklist-com');
+  if (btnChk) btnChk.style.display = (APP.userRole !== 'comercial') ? '' : 'none';
 
   document.querySelectorAll('.main-tab').forEach(tab => {
     if (tab.style.display === 'none') return;
@@ -788,6 +952,7 @@ function renderMainTabs() {
   document.getElementById('tab-pipeline').classList.toggle('hidden', APP.activeTab !== 'pipeline');
   document.getElementById('tab-roas').classList.toggle('hidden', APP.activeTab !== 'roas');
   document.getElementById('tab-movimiento').classList.toggle('hidden', APP.activeTab !== 'movimiento');
+  document.getElementById('tab-checklist-com').classList.toggle('hidden', APP.activeTab !== 'checklist-com');
 }
 
 function renderPipeline() {
@@ -1560,6 +1725,263 @@ function renderMovimiento() {
   });
 }
 
+// ==================== CHECKLIST COMERCIAL ====================
+
+const CHK_ITEMS = [
+  { id: 'lead_cerrado', label: 'Lead marcado como "cerrado/ganado" en Portal', group: 'Cierre' },
+  { id: 'comprobante_recibido', label: 'Comprobante de pago recibido del cliente', group: 'Cierre' },
+  { id: 'comprobante_reenviado', label: 'Comprobante reenviado a Esmeralda para verificación', group: 'Cierre' },
+  { id: 'comprobante_correo_aparte', label: '↳ Correo aparte (no necesita espera)', group: 'Cierre', sub: true },
+  { id: 'esmeralda_confirmo', label: 'Esmeralda confirmó que el pago llegó a la cuenta', group: 'Cierre' },
+  { id: 'trello_creado', label: 'Tarjeta de Trello creada con información completa', group: 'Implementación' },
+  { id: 'trello_primera_semana', label: '↳ Si primera semana, confirmar con Claudia', group: 'Implementación', sub: true },
+  { id: 'correo_nuevo_cliente', label: 'Correo de nuevo cliente enviado via HubSpot a Esmeralda, Claudia y Lisette', group: 'Implementación' },
+  { id: 'supervision_firma', label: 'Proceso de supervisión de firma de contrato', group: 'Contrato' },
+  { id: 'espera_firma', label: 'Espera a firma del contrato', group: 'Contrato' },
+  { id: 'espera_firma_seguimiento', label: '↳ 1-2 días max, seguimiento WhatsApp', group: 'Contrato', sub: true },
+  { id: 'correo_onboarding', label: 'Correo de Onboarding enviado', group: 'Post-firma' },
+  { id: 'correo_onboarding_post_firma', label: '↳ Luego de firmar contrato', group: 'Post-firma', sub: true },
+  { id: 'encuesta_satisfaccion', label: 'Correo con encuesta de satisfacción del proceso comercial', group: 'Post-firma' }
+];
+
+const CHK_GROUPS = ['Cierre', 'Implementación', 'Contrato', 'Post-firma'];
+const CHK_PERSONAS = ['Felix', 'Naomi'];
+
+function chkGetProgress(row) {
+  var data = row.data || {};
+  var total = CHK_ITEMS.length;
+  var done = 0;
+  CHK_ITEMS.forEach(function(item) {
+    if (data[item.id]) done++;
+  });
+  var pct = total > 0 ? Math.round(done / total * 100) : 0;
+  return { done: done, total: total, pct: pct };
+}
+
+async function loadChecklistComercial() {
+  var { data, error } = await sb.from('checklist_comercial').select('*').eq('anio', 2026);
+  if (error) { console.error('Error cargando checklist comercial:', error); return; }
+  APP.chkData = data || [];
+}
+
+async function saveChecklistComercial(id, newData) {
+  var { error } = await sb.from('checklist_comercial').update({ data: newData }).eq('id', id);
+  if (error) { console.error('Error guardando checklist comercial:', error); return false; }
+  // Actualizar local
+  var row = APP.chkData.find(r => r.id === id);
+  if (row) row.data = newData;
+  return true;
+}
+
+async function createChecklistComercial(leadId, cliente, empresa, responsable, mes) {
+  var payload = {
+    lead_id: leadId || null,
+    cliente: cliente,
+    empresa: empresa || '',
+    responsable: responsable,
+    mes: mes,
+    anio: 2026,
+    data: {}
+  };
+  // Si es lead cerrado, marcar el primer item
+  if (leadId) payload.data = { lead_cerrado: true };
+  var { data, error } = await sb.from('checklist_comercial').insert(payload).select();
+  if (error) { console.error('Error creando checklist comercial:', error); return null; }
+  if (data && data[0]) {
+    APP.chkData.push(data[0]);
+    return data[0];
+  }
+  return null;
+}
+
+function renderChecklistComercial() {
+  var container = document.getElementById('tab-checklist-com');
+  if (!APP.chkMonth) APP.chkMonth = APP.currentMonth;
+
+  // Si hay un checklist seleccionado, mostrar detalle
+  if (APP.chkSelected) {
+    renderChecklistComercialDetail(container);
+    return;
+  }
+
+  // Filtrar por mes y persona
+  var filtered = APP.chkData.filter(r => r.mes === APP.chkMonth);
+  if (APP.chkPersona !== 'Todos') {
+    filtered = filtered.filter(r => r.responsable === APP.chkPersona);
+  }
+
+  // Summary stats
+  var total = filtered.length;
+  var completados = filtered.filter(r => chkGetProgress(r).pct === 100).length;
+  var enProgreso = filtered.filter(r => { var p = chkGetProgress(r).pct; return p > 0 && p < 100; }).length;
+  var sinIniciar = filtered.filter(r => chkGetProgress(r).pct === 0).length;
+  var avgPct = total > 0 ? Math.round(filtered.reduce((s, r) => s + chkGetProgress(r).pct, 0) / total) : 0;
+
+  var html = '';
+
+  // Month pills
+  html += '<div class="month-tabs" style="margin-bottom:12px">';
+  MONTHS.forEach((m, i) => {
+    var count = APP.chkData.filter(r => r.mes === m).length;
+    html += '<button class="month-tab chk-month-pill' + (m === APP.chkMonth ? ' active' : '') + '" data-chk-month="' + m + '" style="' + (count === 0 ? 'opacity:0.4' : '') + '">' + MONTH_LABELS[i] + '</button>';
+  });
+  html += '</div>';
+
+  // Persona pills
+  html += '<div class="chk-persona-pills">';
+  html += '<button class="chk-persona-pill' + (APP.chkPersona === 'Todos' ? ' active' : '') + '" data-chk-persona="Todos">Todos</button>';
+  CHK_PERSONAS.forEach(p => {
+    html += '<button class="chk-persona-pill' + (APP.chkPersona === p ? ' active' : '') + '" data-chk-persona="' + p + '">' + p + '</button>';
+  });
+  html += '</div>';
+
+  // Summary
+  html += '<div class="chk-summary-stats">';
+  html += '<div class="chk-summary-stat"><div class="label">Clientes</div><div class="value">' + total + '</div></div>';
+  html += '<div class="chk-summary-stat"><div class="label">Completados</div><div class="value" style="color:var(--green)">' + completados + '</div></div>';
+  html += '<div class="chk-summary-stat"><div class="label">En progreso</div><div class="value" style="color:var(--amber)">' + enProgreso + '</div></div>';
+  html += '<div class="chk-summary-stat"><div class="label">Sin iniciar</div><div class="value" style="color:var(--red)">' + sinIniciar + '</div></div>';
+  html += '<div class="chk-summary-stat"><div class="label">Avance</div><div class="value" style="color:' + (avgPct >= 80 ? 'var(--green)' : avgPct >= 40 ? 'var(--amber)' : 'var(--red)') + '">' + avgPct + '%</div></div>';
+  html += '</div>';
+
+  // Client cards
+  if (filtered.length > 0) {
+    html += '<div class="chk-client-grid">';
+    filtered.forEach(r => {
+      var prog = chkGetProgress(r);
+      var barColor = prog.pct === 100 ? 'var(--green)' : prog.pct > 0 ? 'var(--amber)' : '#e2e8f0';
+      html += '<div class="chk-client-card" data-chk-id="' + r.id + '">';
+      html += '<div class="name">' + r.cliente + '</div>';
+      html += '<div class="sub">' + r.responsable + (r.empresa ? ' · ' + r.empresa : '') + '</div>';
+      html += '<div class="bar-wrap"><div class="bar"><div class="bar-fill" style="width:' + prog.pct + '%;background:' + barColor + '"></div></div>';
+      html += '<div class="pct" style="color:' + barColor + '">' + prog.pct + '%</div></div>';
+      html += '<div class="count">' + prog.done + ' de ' + prog.total + ' tareas</div>';
+      html += '</div>';
+    });
+    html += '</div>';
+  } else {
+    html += '<div class="card" style="text-align:center;color:var(--muted);padding:40px">No hay checklists en ' + MONTH_LABELS[MONTHS.indexOf(APP.chkMonth)] + '</div>';
+  }
+
+  // Botón crear manual
+  html += '<button class="btn-add" id="btn-crear-checklist">+ Nuevo checklist</button>';
+
+  container.innerHTML = html;
+
+  // Binds
+  container.querySelectorAll('.chk-month-pill').forEach(btn => {
+    btn.onclick = () => { APP.chkMonth = btn.dataset.chkMonth; renderChecklistComercial(); };
+  });
+  container.querySelectorAll('.chk-persona-pill').forEach(btn => {
+    btn.onclick = () => { APP.chkPersona = btn.dataset.chkPersona; renderChecklistComercial(); };
+  });
+  container.querySelectorAll('.chk-client-card').forEach(card => {
+    card.onclick = () => { APP.chkSelected = parseInt(card.dataset.chkId); renderChecklistComercial(); };
+  });
+  document.getElementById('btn-crear-checklist').onclick = () => { showCrearChecklistModal(); };
+}
+
+function renderChecklistComercialDetail(container) {
+  var row = APP.chkData.find(r => r.id === APP.chkSelected);
+  if (!row) { APP.chkSelected = null; renderChecklistComercial(); return; }
+
+  var prog = chkGetProgress(row);
+  var barColor = prog.pct === 100 ? 'var(--green)' : prog.pct > 0 ? 'var(--amber)' : '#e2e8f0';
+  var data = row.data || {};
+
+  var html = '';
+
+  // Header
+  html += '<div class="chk-detail-header">';
+  html += '<button class="chk-detail-back" id="chk-back-btn">&#8592; Volver</button>';
+  html += '<div><div class="chk-detail-title">' + row.cliente + '</div>';
+  html += '<div class="chk-detail-sub">' + row.responsable + ' · ' + MONTH_LABELS[MONTHS.indexOf(row.mes)] + ' 2026' + (row.empresa ? ' · ' + row.empresa : '') + '</div></div>';
+  html += '</div>';
+
+  // Progress bar
+  html += '<div class="chk-progress-row">';
+  html += '<div class="pr-count">' + prog.done + ' de ' + prog.total + '</div>';
+  html += '<div class="pr-bar"><div class="pr-fill" style="width:' + prog.pct + '%;background:' + barColor + '"></div></div>';
+  html += '<div class="pr-pct" style="color:' + barColor + '">' + prog.pct + '%</div>';
+  html += '</div>';
+
+  // Table
+  html += '<div style="overflow-x:auto"><table class="chk-table"><thead><tr>';
+  html += '<th style="width:30px">#</th>';
+  html += '<th>Tarea</th>';
+  html += '<th style="width:100px" class="center">Estado</th>';
+  html += '</tr></thead><tbody>';
+
+  var currentGroup = '';
+  var taskNum = 0;
+  CHK_ITEMS.forEach(item => {
+    // Group header
+    if (item.group !== currentGroup) {
+      currentGroup = item.group;
+      html += '<tr class="group-row"><td colspan="3">' + currentGroup + '</td></tr>';
+    }
+    taskNum++;
+    var isDone = !!data[item.id];
+    var rowClass = isDone ? 'row-done' : '';
+    var labelStyle = item.sub ? 'padding-left:20px;font-size:0.78rem;color:var(--muted)' : 'font-weight:600;font-size:0.8rem';
+
+    html += '<tr class="' + rowClass + '">';
+    html += '<td style="color:var(--light);font-size:11px">' + taskNum + '</td>';
+    html += '<td style="' + labelStyle + '">' + item.label + '</td>';
+    html += '<td class="center"><div class="chk-toggle-group">';
+    html += '<button class="chk-toggle-opt ' + (isDone ? 'active-yes' : '') + '" data-chk-item="' + item.id + '" data-chk-val="true">Si</button>';
+    html += '<button class="chk-toggle-opt ' + (!isDone ? 'active-no' : '') + '" data-chk-item="' + item.id + '" data-chk-val="false">No</button>';
+    html += '</div></td>';
+    html += '</tr>';
+  });
+
+  html += '</tbody></table></div>';
+
+  // Save bar
+  html += '<div class="chk-save-bar"><button class="btn btn-primary" id="chk-btn-save">Guardar cambios</button></div>';
+
+  container.innerHTML = html;
+
+  // Binds
+  document.getElementById('chk-back-btn').onclick = () => { APP.chkSelected = null; renderChecklistComercial(); };
+
+  container.querySelectorAll('.chk-toggle-opt').forEach(btn => {
+    btn.onclick = () => {
+      var itemId = btn.dataset.chkItem;
+      var val = btn.dataset.chkVal === 'true';
+      // Update local data
+      if (!row.data) row.data = {};
+      row.data[itemId] = val;
+      renderChecklistComercialDetail(container);
+    };
+  });
+
+  document.getElementById('chk-btn-save').onclick = async () => {
+    var btn = document.getElementById('chk-btn-save');
+    btn.textContent = 'Guardando...';
+    btn.disabled = true;
+    var ok = await saveChecklistComercial(row.id, row.data || {});
+    btn.textContent = ok ? 'Guardado ✓' : 'Error al guardar';
+    btn.disabled = false;
+    setTimeout(() => { btn.textContent = 'Guardar cambios'; }, 1500);
+  };
+}
+
+function showCrearChecklistModal() {
+  // Simple prompt-based creation
+  var cliente = prompt('Nombre del cliente:');
+  if (!cliente) return;
+  var empresa = prompt('Empresa (opcional):', '');
+  var responsable = prompt('Responsable (Felix o Naomi):', 'Felix');
+  if (!responsable || CHK_PERSONAS.indexOf(responsable) < 0) {
+    if (responsable && responsable.toLowerCase() === 'naomi') responsable = 'Naomi';
+    else responsable = 'Felix';
+  }
+  createChecklistComercial(null, cliente, empresa || '', responsable, APP.chkMonth).then(row => {
+    if (row) renderChecklistComercial();
+  });
+}
+
 // ==================== MAIN APP ====================
 
 function renderApp() {
@@ -1567,6 +1989,8 @@ function renderApp() {
     renderPipeline();
   } else if (APP.activeTab === 'movimiento') {
     renderMovimiento();
+  } else if (APP.activeTab === 'checklist-com') {
+    renderChecklistComercial();
   } else {
     renderROAS();
   }
@@ -1642,6 +2066,7 @@ function showApp() {
 
 async function startApp() {
   APP.data = await loadData();
+  await loadChecklistComercial();
   MONTHS.forEach(m => {
     if (!APP.data.pipeline[m]) APP.data.pipeline[m] = [];
     if (!APP.data.roas[m]) APP.data.roas[m] = { leads:0, presupuesto:0, ejecutado:0, cierres:0, vendido:0, cotizado:0, cpa:0, retorno:0, roas:0 };
