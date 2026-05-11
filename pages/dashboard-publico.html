@@ -54,18 +54,17 @@ body {
 .tv-card-title { font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:0.5px; color:var(--light); margin-bottom:10px; }
 
 /* Chart with Y axis and grid */
-.chart-wrap { position:relative; flex:1; min-height:0; display:flex; }
-.chart-yaxis { display:flex; flex-direction:column; justify-content:space-between; align-items:flex-end; padding-right:10px; width:36px; flex-shrink:0; padding-bottom:28px; }
+.chart-wrap { flex:1; min-height:0; display:flex; }
+.chart-yaxis { display:flex; flex-direction:column; justify-content:space-between; align-items:flex-end; padding-right:10px; width:36px; flex-shrink:0; }
 .chart-yaxis span { font-size:12px; font-weight:600; color:var(--light); line-height:1; }
-.chart-area { flex:1; position:relative; display:flex; flex-direction:column; padding-bottom:28px; }
-.chart-grid { flex:1; position:relative; }
+.chart-body { flex:1; display:flex; flex-direction:column; }
+.chart-grid { flex:1; position:relative; min-height:0; }
 .chart-grid-line { position:absolute; left:0; right:0; border-top:1px solid #eef0f4; }
-.chart-bars { position:absolute; bottom:0; left:0; right:0; top:0; display:flex; align-items:flex-end; justify-content:space-around; padding:0 8px; }
-.chart-bar-col { display:flex; flex-direction:column; align-items:center; flex:1; max-width:80px; }
+.chart-bar-slot { position:absolute; bottom:0; display:flex; flex-direction:column; align-items:center; }
 .chart-bar-val { font-size:14px; font-weight:700; color:var(--navy); margin-bottom:4px; }
-.chart-bar { width:60%; border-radius:6px 6px 0 0; min-height:3px; }
-.chart-labels { display:flex; justify-content:space-around; padding:6px 8px 0; }
-.chart-labels span { font-size:13px; font-weight:600; color:var(--muted); flex:1; max-width:80px; text-align:center; }
+.chart-bar-inner { width:48px; border-radius:6px 6px 0 0; min-height:3px; }
+.chart-labels { display:flex; padding:8px 0 0; }
+.chart-label-item { text-align:center; font-size:13px; font-weight:600; color:var(--muted); position:absolute; }
 
 /* Client list */
 .tv-list-card { background:white; border:1px solid var(--border); border-radius:12px; padding:10px 16px; flex:0.8; min-height:0; overflow:hidden; display:flex; flex-direction:column; }
@@ -270,7 +269,8 @@ async function init() {
   // ─── Chart helper with Y axis and grid ───
   function renderChart(data, maxVal, color) {
     var show = data.length > 6 ? data.slice(data.length - 6) : data;
-    // Calculate nice Y axis ticks
+    var n = show.length;
+    // Nice Y axis
     var minVal = Math.min.apply(null, show.map(function(d){return d.total}));
     var yMin = Math.max(0, minVal - 2);
     var yMax = maxVal + 1;
@@ -283,30 +283,35 @@ async function init() {
     for (var t = yMin; t <= yMax; t += step) ticks.push(t);
 
     var h = '<div class="chart-wrap">';
-    // Y axis labels
+    // Y axis
     h += '<div class="chart-yaxis">';
     for (var i = ticks.length - 1; i >= 0; i--) {
       h += '<span>' + ticks[i] + '</span>';
     }
     h += '</div>';
-    // Chart area
-    h += '<div class="chart-area"><div class="chart-grid">';
+    // Body: grid + bars positioned absolutely, labels below
+    h += '<div class="chart-body"><div class="chart-grid">';
     // Grid lines
     for (var i = 0; i < ticks.length; i++) {
       var pos = (1 - (ticks[i] - yMin) / (yMax - yMin)) * 100;
       h += '<div class="chart-grid-line" style="top:' + pos + '%"></div>';
     }
-    // Bars
-    h += '<div class="chart-bars">';
-    for (var i = 0; i < show.length; i++) {
-      var pct = ((show[i].total - yMin) / (yMax - yMin)) * 100;
-      h += '<div class="chart-bar-col"><span class="chart-bar-val">' + show[i].total + '</span><div class="chart-bar" style="height:' + pct + '%;background:' + color + '"></div></div>';
+    // Bars: each positioned at a fraction of the width
+    var barW = 48;
+    for (var i = 0; i < n; i++) {
+      var leftPct = ((i + 0.5) / n) * 100;
+      var heightPct = ((show[i].total - yMin) / (yMax - yMin)) * 100;
+      h += '<div class="chart-bar-slot" style="left:' + leftPct + '%;height:calc(' + heightPct + '% + 24px);transform:translateX(-50%)">';
+      h += '<span class="chart-bar-val">' + show[i].total + '</span>';
+      h += '<div class="chart-bar-inner" style="flex:1;background:' + color + '"></div>';
+      h += '</div>';
     }
-    h += '</div></div>';
-    // X labels
-    h += '<div class="chart-labels">';
-    for (var i = 0; i < show.length; i++) {
-      h += '<span>' + MESES_LABEL[show[i].mes] + '</span>';
+    h += '</div>';
+    // X labels row
+    h += '<div style="position:relative;height:24px;flex-shrink:0">';
+    for (var i = 0; i < n; i++) {
+      var leftPct = ((i + 0.5) / n) * 100;
+      h += '<span class="chart-label-item" style="left:' + leftPct + '%;transform:translateX(-50%)">' + MESES_LABEL[show[i].mes] + '</span>';
     }
     h += '</div></div></div>';
     return h;
