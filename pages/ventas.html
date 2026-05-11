@@ -806,6 +806,14 @@ async function dbUpdateLead(lead) {
     categoria: lead.categoria || '',
     responsable: lead.resp || null
   }).eq('id', lead._id);
+  // Sincronizar responsable con checklist asociado
+  if (lead.resp) {
+    var chk = APP.chkData.find(r => r.lead_id === lead._id);
+    if (chk && chk.responsable !== lead.resp) {
+      await sb.from('checklist_comercial').update({ responsable: lead.resp }).eq('id', chk.id);
+      chk.responsable = lead.resp;
+    }
+  }
   // Puente comercial → Base de Datos: crear pendiente si se cierra como Ganado
   if (lead.f === 'Cerrado Ganado' && prevFunnel !== 'Cerrado Ganado') {
     await dbCreatePendienteFromLead(lead);
