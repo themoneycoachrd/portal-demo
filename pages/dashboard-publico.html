@@ -53,35 +53,34 @@ body {
 .tv-card { background:white; border:1px solid var(--border); border-radius:12px; padding:14px 20px; flex-shrink:0; }
 .tv-card-title { font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:0.5px; color:var(--light); margin-bottom:10px; }
 
-/* Vertical bars */
-.vbar-wrap { display:flex; align-items:flex-end; gap:6px; height:90px; }
+/* Vertical bars — taller now that tables are gone */
+.vbar-wrap { display:flex; align-items:flex-end; gap:8px; height:150px; }
 .vbar-col { flex:1; display:flex; flex-direction:column; align-items:center; gap:4px; height:100%; justify-content:flex-end; }
-.vbar-val { font-size:13px; font-weight:700; color:var(--navy); }
-.vbar-bar { width:100%; border-radius:5px 5px 0 0; min-height:4px; }
-.vbar-label { font-size:11px; font-weight:600; color:var(--muted); }
-
-/* Tables */
-.tv-tbl { width:100%; border-collapse:collapse; font-size:15px; }
-.tv-tbl th { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.3px; color:var(--light); padding:6px 8px; text-align:center; border-bottom:1px solid var(--border); }
-.tv-tbl th:first-child { text-align:left; }
-.tv-tbl td { padding:6px 8px; text-align:center; border-bottom:1px solid #f3f4f6; }
-.tv-tbl td:first-child { text-align:left; color:var(--muted); font-weight:600; }
-.tv-tbl .tg { color:var(--green); font-weight:600; }
-.tv-tbl .tr { color:var(--red); font-weight:600; }
-.tv-tbl .tb { font-weight:800; }
+.vbar-val { font-size:15px; font-weight:700; color:var(--navy); }
+.vbar-bar { width:100%; border-radius:6px 6px 0 0; min-height:4px; }
+.vbar-label { font-size:13px; font-weight:600; color:var(--muted); }
 
 /* Client list */
 .tv-list-card { background:white; border:1px solid var(--border); border-radius:12px; padding:14px 20px; flex:1; min-height:0; overflow:hidden; display:flex; flex-direction:column; }
 .tv-list { flex:1; overflow:hidden; }
-.cli-row { display:flex; align-items:center; padding:7px 0; border-bottom:1px solid #f3f4f6; }
+.cli-row { display:flex; align-items:center; padding:8px 0; border-bottom:1px solid #f3f4f6; }
 .cli-row:last-child { border-bottom:none; }
-.cli-badge { font-size:11px; font-weight:700; text-transform:uppercase; padding:3px 10px; border-radius:8px; margin-right:12px; flex-shrink:0; }
+.cli-col-badge { width:80px; flex-shrink:0; }
+.cli-col-name { flex:1; min-width:0; }
+.cli-col-tag { width:140px; flex-shrink:0; text-align:left; }
+.cli-col-tx { width:70px; flex-shrink:0; text-align:right; }
+.cli-col-date { width:70px; flex-shrink:0; text-align:right; }
+.cli-badge { font-size:11px; font-weight:700; text-transform:uppercase; padding:3px 10px; border-radius:8px; display:inline-block; }
 .badge-new-out { background:#ecfdf5; color:var(--green); }
 .badge-new-sw { background:#f5f3ff; color:var(--purple); }
 .badge-churn { background:#fef2f2; color:var(--red); }
-.cli-name { font-size:15px; font-weight:600; color:var(--navy); flex:1; min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-.cli-tag { font-size:11px; color:var(--muted); font-weight:500; flex-shrink:0; margin-left:8px; }
-.cli-date { font-size:13px; color:var(--light); flex-shrink:0; margin-left:10px; }
+.cli-name { font-size:15px; font-weight:600; color:var(--navy); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.cli-star { color:var(--amber); margin-left:6px; }
+.cli-tag { font-size:12px; color:var(--muted); font-weight:500; }
+.cli-tx { font-size:12px; color:var(--muted); font-weight:600; }
+.cli-date { font-size:13px; color:var(--light); }
+.cli-header { display:flex; align-items:center; padding:0 0 6px; border-bottom:1px solid var(--border); margin-bottom:2px; }
+.cli-header span { font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.3px; color:var(--light); }
 
 /* Loading */
 .loading { text-align:center; padding:80px 20px; color:var(--muted); font-size:0.9rem; }
@@ -116,6 +115,13 @@ function fmtDate(dateStr) {
   if (!dateStr) return '';
   var parts = dateStr.split('-');
   return parseInt(parts[2]) + ' ' + MESES_LABEL[parseInt(parts[1])-1];
+}
+
+function isCurrentMonth(dateStr) {
+  if (!dateStr) return false;
+  var now = new Date();
+  var d = new Date(dateStr + 'T00:00:00');
+  return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
 }
 
 async function init() {
@@ -255,7 +261,6 @@ async function init() {
   swMovimientos.sort(function(a,b) { return (b.fecha||'').localeCompare(a.fecha||''); });
 
   // ─── Vertical bars helper ───
-  // Show last 6 months max to keep bars wide enough
   function renderVBars(data, maxVal, color) {
     var show = data.length > 6 ? data.slice(data.length - 6) : data;
     var h = '<div class="vbar-wrap">';
@@ -282,8 +287,8 @@ async function init() {
   // Pills
   html += '<div class="tv-pills">';
   html += '<div class="tv-pill"><div class="tv-pill-label">Clientes</div><div class="tv-pill-value t-navy">' + last.total + '</div><div class="tv-pill-sub">' + MESES_LABEL[currentMonth] + ' 2026</div></div>';
-  html += '<div class="tv-pill"><div class="tv-pill-label">Nuevos</div><div class="tv-pill-value t-green">' + totalNuevos + '</div><div class="tv-pill-sub">' + nuevoPct + '% crec.</div></div>';
-  html += '<div class="tv-pill"><div class="tv-pill-label">Churn</div><div class="tv-pill-value t-red">' + totalChurn + '</div><div class="tv-pill-sub">' + churnPct + '% churn</div></div>';
+  html += '<div class="tv-pill"><div class="tv-pill-label">Nuevos 2026</div><div class="tv-pill-value t-green">' + totalNuevos + '</div><div class="tv-pill-sub">' + nuevoPct + '% crec.</div></div>';
+  html += '<div class="tv-pill"><div class="tv-pill-label">Churn 2026</div><div class="tv-pill-value t-red">' + totalChurn + '</div><div class="tv-pill-sub">' + churnPct + '% churn</div></div>';
   html += '<div class="tv-pill"><div class="tv-pill-label">Crecimiento</div><div class="tv-pill-value ' + crecClass + '">' + crecSign + crecPct.toFixed(1) + '%</div><div class="tv-pill-sub">' + crecSign + crecNeto + ' neto</div></div>';
   html += '</div>';
 
@@ -292,36 +297,28 @@ async function init() {
   html += renderVBars(outData, outMax, 'var(--blue)');
   html += '</div>';
 
-  // Table
-  html += '<div class="tv-card"><div class="tv-card-title">Resumen mensual</div><table class="tv-tbl">';
-  html += '<thead><tr><th>Mes</th><th>Inicio</th><th>Nuevos</th><th>Churn</th><th>Neto</th><th>Cierre</th><th>%</th></tr></thead><tbody>';
-  var runBase = baseLine;
-  for (var i = 0; i < outData.length; i++) {
-    var d = outData[i];
-    var inicio = runBase;
-    var neto = d.nuevos - d.churn;
-    var pct = inicio > 0 ? ((neto / inicio) * 100).toFixed(1) : '0.0';
-    html += '<tr><td>' + MESES_LABEL[d.mes] + '</td><td>' + inicio + '</td><td class="tg">' + d.nuevos + '</td><td class="tr">' + d.churn + '</td><td>' + (neto>=0?'+':'') + neto + '</td><td class="tb">' + d.total + '</td><td>' + (neto>=0?'+':'') + pct + '%</td></tr>';
-    runBase = d.total;
-  }
-  html += '</tbody></table></div>';
-
   // Client list outsourcing
-  html += '<div class="tv-list-card"><div class="tv-card-title">Clientes y salidas</div><div class="tv-list">';
+  html += '<div class="tv-list-card"><div class="tv-card-title">Clientes y salidas</div>';
+  // Column headers
+  html += '<div class="cli-header"><span class="cli-col-badge"></span><span class="cli-col-name">Nombre</span><span class="cli-col-tag">Servicio</span><span class="cli-col-tx">TX</span><span class="cli-col-date">Fecha</span></div>';
+  html += '<div class="tv-list">';
   if (outMovimientos.length === 0) {
-    html += '<div style="padding:8px 0;color:var(--light);font-size:13px">Sin movimientos</div>';
+    html += '<div style="padding:12px 0;color:var(--light);font-size:13px">Sin movimientos</div>';
   } else {
     for (var i = 0; i < outMovimientos.length; i++) {
       var m = outMovimientos[i];
       var badgeClass = m.tipo === 'nuevo' ? 'badge-new-out' : 'badge-churn';
       var badgeText = m.tipo === 'nuevo' ? 'Nuevo' : 'Baja';
-      var tipoLabel = TIPO_LABEL[m.ts] || m.ts || '';
-      var txLabel = m.tx ? (m.tx + ' tx') : '';
-      var tagParts = [tipoLabel, txLabel].filter(Boolean);
-      var tag = tagParts.length ? tagParts.join(' · ') : '';
-      html += '<div class="cli-row"><span class="cli-badge ' + badgeClass + '">' + badgeText + '</span><span class="cli-name">' + m.nombre + '</span>';
-      if (tag) html += '<span class="cli-tag">' + tag + '</span>';
-      html += '<span class="cli-date">' + fmtDate(m.fecha) + '</span></div>';
+      var tipoLabel = TIPO_LABEL[m.ts] || m.ts || '—';
+      var txLabel = m.tx ? m.tx : '—';
+      var star = (m.tipo === 'nuevo' && isCurrentMonth(m.fecha)) ? '<span class="cli-star">&#9733;</span>' : '';
+      html += '<div class="cli-row">';
+      html += '<div class="cli-col-badge"><span class="cli-badge ' + badgeClass + '">' + badgeText + '</span></div>';
+      html += '<div class="cli-col-name"><span class="cli-name">' + m.nombre + star + '</span></div>';
+      html += '<div class="cli-col-tag"><span class="cli-tag">' + tipoLabel + '</span></div>';
+      html += '<div class="cli-col-tx"><span class="cli-tx">' + txLabel + '</span></div>';
+      html += '<div class="cli-col-date"><span class="cli-date">' + fmtDate(m.fecha) + '</span></div>';
+      html += '</div>';
     }
   }
   html += '</div></div>';
@@ -335,8 +332,8 @@ async function init() {
   // Pills
   html += '<div class="tv-pills">';
   html += '<div class="tv-pill"><div class="tv-pill-label">Clientes</div><div class="tv-pill-value t-purple">' + swLast.total + '</div><div class="tv-pill-sub">' + MESES_LABEL[currentMonth] + ' 2026</div></div>';
-  html += '<div class="tv-pill"><div class="tv-pill-label">Nuevos</div><div class="tv-pill-value t-green">' + swTotalNuevos + '</div><div class="tv-pill-sub">' + swNuevoPct + '% crec.</div></div>';
-  html += '<div class="tv-pill"><div class="tv-pill-label">Churn</div><div class="tv-pill-value t-red">' + swTotalChurn + '</div><div class="tv-pill-sub">' + swChurnPct + '% churn</div></div>';
+  html += '<div class="tv-pill"><div class="tv-pill-label">Nuevos 2026</div><div class="tv-pill-value t-green">' + swTotalNuevos + '</div><div class="tv-pill-sub">' + swNuevoPct + '% crec.</div></div>';
+  html += '<div class="tv-pill"><div class="tv-pill-label">Churn 2026</div><div class="tv-pill-value t-red">' + swTotalChurn + '</div><div class="tv-pill-sub">' + swChurnPct + '% churn</div></div>';
   html += '<div class="tv-pill"><div class="tv-pill-label">Crecimiento</div><div class="tv-pill-value ' + swCrecClass + '">' + swCrecSign + swCrecPct.toFixed(1) + '%</div><div class="tv-pill-sub">' + swCrecSign + swCrecNeto + ' neto</div></div>';
   html += '</div>';
 
@@ -345,32 +342,25 @@ async function init() {
   html += renderVBars(swData, swMax, 'var(--purple)');
   html += '</div>';
 
-  // Table
-  html += '<div class="tv-card"><div class="tv-card-title">Resumen mensual</div><table class="tv-tbl">';
-  html += '<thead><tr><th>Mes</th><th>Inicio</th><th>Nuevos</th><th>Churn</th><th>Neto</th><th>Cierre</th><th>%</th></tr></thead><tbody>';
-  var swRunBase = baseCount;
-  for (var i = 0; i < swData.length; i++) {
-    var d = swData[i];
-    var inicio = swRunBase;
-    var neto = d.nuevos - d.churn;
-    var pct = inicio > 0 ? ((neto / inicio) * 100).toFixed(1) : '0.0';
-    html += '<tr><td>' + MESES_LABEL[d.mes] + '</td><td>' + inicio + '</td><td class="tg">' + d.nuevos + '</td><td class="tr">' + d.churn + '</td><td>' + (neto>=0?'+':'') + neto + '</td><td class="tb">' + d.total + '</td><td>' + (neto>=0?'+':'') + pct + '%</td></tr>';
-    swRunBase = d.total;
-  }
-  html += '</tbody></table></div>';
-
   // Client list software
-  html += '<div class="tv-list-card"><div class="tv-card-title">Clientes y salidas</div><div class="tv-list">';
+  html += '<div class="tv-list-card"><div class="tv-card-title">Clientes y salidas</div>';
+  // Column headers
+  html += '<div class="cli-header"><span class="cli-col-badge"></span><span class="cli-col-name">Nombre</span><span class="cli-col-tag">Licencia</span><span class="cli-col-date">Fecha</span></div>';
+  html += '<div class="tv-list">';
   if (swMovimientos.length === 0) {
-    html += '<div style="padding:8px 0;color:var(--light);font-size:13px">Sin movimientos</div>';
+    html += '<div style="padding:12px 0;color:var(--light);font-size:13px">Sin movimientos</div>';
   } else {
     for (var i = 0; i < swMovimientos.length; i++) {
       var m = swMovimientos[i];
       var badgeClass = m.tipo === 'nuevo' ? 'badge-new-sw' : 'badge-churn';
       var badgeText = m.tipo === 'nuevo' ? 'Nuevo' : 'Baja';
-      html += '<div class="cli-row"><span class="cli-badge ' + badgeClass + '">' + badgeText + '</span><span class="cli-name">' + m.nombre + '</span>';
-      if (m.lic) html += '<span class="cli-tag">' + m.lic + '</span>';
-      html += '<span class="cli-date">' + fmtDate(m.fecha) + '</span></div>';
+      var star = (m.tipo === 'nuevo' && isCurrentMonth(m.fecha)) ? '<span class="cli-star">&#9733;</span>' : '';
+      html += '<div class="cli-row">';
+      html += '<div class="cli-col-badge"><span class="cli-badge ' + badgeClass + '">' + badgeText + '</span></div>';
+      html += '<div class="cli-col-name"><span class="cli-name">' + m.nombre + star + '</span></div>';
+      html += '<div class="cli-col-tag"><span class="cli-tag">' + (m.lic || '—') + '</span></div>';
+      html += '<div class="cli-col-date"><span class="cli-date">' + fmtDate(m.fecha) + '</span></div>';
+      html += '</div>';
     }
   }
   html += '</div></div>';
