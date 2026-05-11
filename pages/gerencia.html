@@ -1837,7 +1837,7 @@ function ccRenderSoftware(el) {
 
   // Stats cards: Total / Inicio / Nuevos / Churn / Cierre (mismo estilo que Outsourcing)
   html += '<div class="stats">';
-  html += '<div class="stat"><div class="stat-label">Total clientes</div><div class="stat-value">' + ccSOFTWARE_CLIENTES.filter(function(c){return c.activo!==false}).length + '</div><div class="stat-sub">En cartera software</div></div>';
+  html += '<div class="stat" style="cursor:pointer;border:2px solid ' + (ccSwFiltro === 'total' ? 'var(--navy)' : 'transparent') + '" onclick="ccSwFilter(\'total\')"><div class="stat-label">Total clientes</div><div class="stat-value">' + total + '</div><div class="stat-sub">' + MESES_FULL[swMesIdx] + '</div></div>';
   html += '<div class="stat" style="cursor:pointer;border:2px solid ' + (ccSwFiltro === 'inicio' ? 'var(--blue)' : 'transparent') + '" onclick="ccSwFilter(\'inicio\')"><div class="stat-label">Inicio</div><div class="stat-value" style="color:var(--blue)">' + ccSwInicio + '</div><div class="stat-sub">' + MESES_FULL[swMesIdx] + '</div></div>';
   html += '<div class="stat" style="cursor:pointer;border:2px solid ' + (ccSwFiltro === 'nuevos' ? 'var(--green)' : 'transparent') + '" onclick="ccSwFilter(\'nuevos\')"><div class="stat-label">Nuevos</div><div class="stat-value stat-green">' + ccSwNuevos.length + '</div><div class="stat-sub">' + MESES_FULL[swMesIdx] + '</div></div>';
   html += '<div class="stat" style="cursor:pointer;border:2px solid ' + (ccSwFiltro === 'churn' ? 'var(--red)' : 'transparent') + '" onclick="ccSwFilter(\'churn\')"><div class="stat-label">Churn</div><div class="stat-value stat-red">' + ccSwChurn.length + '</div><div class="stat-sub">' + MESES_FULL[swMesIdx] + '</div></div>';
@@ -1846,9 +1846,9 @@ function ccRenderSoftware(el) {
 
   // Filter indicator
   if (ccSwFiltro) {
-    var fLabels = {inicio:'Mostrando clientes al inicio de ' + MESES_FULL[swMesIdx], nuevos:'Mostrando nuevos de ' + MESES_FULL[swMesIdx], churn:'Mostrando churn de ' + MESES_FULL[swMesIdx], cierre:'Mostrando clientes al cierre de ' + MESES_FULL[swMesIdx]};
-    var fColors = {inicio:'var(--navy)', nuevos:'var(--green)', churn:'var(--red)', cierre:'var(--navy)'};
-    var fBgs = {inicio:'#f0f4ff', nuevos:'#ecfdf5', churn:'#fef2f2', cierre:'#f0f4ff'};
+    var fLabels = {total:'Todos los clientes de ' + MESES_FULL[swMesIdx], inicio:'Mostrando clientes al inicio de ' + MESES_FULL[swMesIdx], nuevos:'Mostrando nuevos de ' + MESES_FULL[swMesIdx], churn:'Mostrando churn de ' + MESES_FULL[swMesIdx], cierre:'Mostrando clientes al cierre de ' + MESES_FULL[swMesIdx]};
+    var fColors = {total:'var(--navy)', inicio:'var(--navy)', nuevos:'var(--green)', churn:'var(--red)', cierre:'var(--navy)'};
+    var fBgs = {total:'#f0f4ff', inicio:'#f0f4ff', nuevos:'#ecfdf5', churn:'#fef2f2', cierre:'#f0f4ff'};
     html += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;padding:8px 12px;background:' + fBgs[ccSwFiltro] + ';border-radius:8px;font-size:0.8rem;color:' + fColors[ccSwFiltro] + ';font-weight:500">';
     html += '<span>' + fLabels[ccSwFiltro] + '</span>';
     html += '<button style="margin-left:auto;padding:3px 10px;border-radius:5px;border:1px solid ' + fColors[ccSwFiltro] + ';background:white;font-size:0.72rem;cursor:pointer;color:' + fColors[ccSwFiltro] + '" onclick="ccSwFilter(null)">Ver todos</button>';
@@ -1939,15 +1939,11 @@ function ccRenderSoftware(el) {
     titulo = 'Clientes al inicio de ' + MESES_FULL[swMesIdx];
   } else if (ccSwFiltro === 'cierre') {
     titulo = 'Clientes al cierre de ' + MESES_FULL[swMesIdx];
+  } else if (ccSwFiltro === 'total') {
+    titulo = 'Todos los clientes de ' + MESES_FULL[swMesIdx];
   }
 
-  var licSortOrder = ['Start','Start+FE','Basic','Basic+FE','Basic+FE+POS','Standard','Standard+FE','Premium','Premium+FE','Premium+Nómina','Premium+Nómina+FE','Manufactura','Manufactura+FE','Sin asignar'];
   lista.sort(function(a, b) {
-    var licA = a.licencia || 'Sin asignar';
-    var licB = b.licencia || 'Sin asignar';
-    var idxA = licSortOrder.indexOf(licA); if (idxA === -1) idxA = 99;
-    var idxB = licSortOrder.indexOf(licB); if (idxB === -1) idxB = 99;
-    if (idxA !== idxB) return idxA - idxB;
     return ((a.n || a.nombre || '')).localeCompare((b.n || b.nombre || ''), 'es');
   });
 
