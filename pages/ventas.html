@@ -938,7 +938,7 @@ function renderMainTabs() {
   const btnMov = document.getElementById('tab-btn-movimiento');
   if (btnMov) btnMov.style.display = (APP.userRole !== 'comercial') ? '' : 'none';
   const btnChk = document.getElementById('tab-btn-checklist-com');
-  if (btnChk) btnChk.style.display = (APP.userRole !== 'comercial') ? '' : 'none';
+  if (btnChk) btnChk.style.display = (APP.userRole === 'admin' || APP.userRole === 'comercial') ? '' : 'none';
 
   document.querySelectorAll('.main-tab').forEach(tab => {
     if (tab.style.display === 'none') return;

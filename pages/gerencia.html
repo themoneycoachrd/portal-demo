@@ -893,11 +893,15 @@ let gerMainTab = 'clientes';
 
 function renderGerMainTabs() {
   const el = document.getElementById('mainTabs');
-  el.innerHTML = [
+  var tabs = [
     { id:'clientes', label:'Clientes' },
     { id:'contadoras', label:'Contadoras' },
     { id:'basedatos', label:'Base de Datos' }
-  ].map(t => '<button class="main-tab ' + (gerMainTab === t.id ? 'active' : '') + '" onclick="switchGerTab(\'' + t.id + '\')">' + t.label + '</button>').join('');
+  ];
+  if (userRole === 'comercial') {
+    tabs = tabs.filter(t => t.id !== 'contadoras');
+  }
+  el.innerHTML = tabs.map(t => '<button class="main-tab ' + (gerMainTab === t.id ? 'active' : '') + '" onclick="switchGerTab(\'' + t.id + '\')">' + t.label + '</button>').join('');
 }
 
 function switchGerTab(tab) {
@@ -3137,6 +3141,16 @@ async function bdLoadPendientes() {
   bdPendientes = data || [];
 }
 
+async function bdDismissPendientes(destino) {
+  var pends = bdPendientes.filter(function(p) { return p.destino === destino; });
+  if (!pends.length) return;
+  for (var i = 0; i < pends.length; i++) {
+    await sb.from('clientes_pendientes').update({ estado: 'desestimado' }).eq('id', pends[i].id);
+  }
+  await bdLoadPendientes();
+  bdRenderAll();
+}
+
 async function bdLoadAll() {
   await Promise.all([bdLoadClientes(), bdLoadContadoras(), bdLoadAsignaciones(), bdLoadTokens(), bdLoadSoftware(), bdLoadPendientes()]);
 }
@@ -3231,7 +3245,10 @@ function bdRenderClientes() {
       h += (i > 0 ? ', ' : '') + '<b>' + esc(p.lead_nombre) + '</b> (' + (p.mes_cierre || '') + ')';
     });
     h += '</div></div>';
-    h += '<button style="margin-left:auto;padding:5px 12px;border-radius:6px;font-size:0.75rem;font-weight:600;cursor:pointer;border:1px solid #f59e0b;background:white;color:#92400e" onclick="clCreateFromPendiente()">Crear</button>';
+    h += '<div style="margin-left:auto;display:flex;gap:6px">';
+    h += '<button style="padding:5px 12px;border-radius:6px;font-size:0.75rem;font-weight:600;cursor:pointer;border:1px solid var(--border);background:white;color:var(--muted)" onclick="bdDismissPendientes(\'recurrente\')">Desestimar</button>';
+    h += '<button style="padding:5px 12px;border-radius:6px;font-size:0.75rem;font-weight:600;cursor:pointer;border:1px solid #f59e0b;background:white;color:#92400e" onclick="clCreateFromPendiente()">Crear</button>';
+    h += '</div>';
     h += '</div>';
   }
 
@@ -3790,7 +3807,10 @@ function bdRenderSoftware() {
       h += (i > 0 ? ', ' : '') + '<b>' + esc(p.lead_nombre) + '</b> (' + (p.mes_cierre || '') + ')';
     });
     h += '</div></div>';
-    h += '<button style="margin-left:auto;padding:5px 12px;border-radius:6px;font-size:0.75rem;font-weight:600;cursor:pointer;border:1px solid #f59e0b;background:white;color:#92400e" onclick="swCreateFromPendiente()">Crear</button>';
+    h += '<div style="margin-left:auto;display:flex;gap:6px">';
+    h += '<button style="padding:5px 12px;border-radius:6px;font-size:0.75rem;font-weight:600;cursor:pointer;border:1px solid var(--border);background:white;color:var(--muted)" onclick="bdDismissPendientes(\'software\')">Desestimar</button>';
+    h += '<button style="padding:5px 12px;border-radius:6px;font-size:0.75rem;font-weight:600;cursor:pointer;border:1px solid #f59e0b;background:white;color:#92400e" onclick="swCreateFromPendiente()">Crear</button>';
+    h += '</div>';
     h += '</div>';
   }
 
