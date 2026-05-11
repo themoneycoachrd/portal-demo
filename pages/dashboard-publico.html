@@ -26,62 +26,61 @@ body {
   color: var(--navy);
 }
 
-.tv { display:flex; flex-direction:column; height:100vh; padding:16px 22px; gap:12px; }
+.tv { display:flex; flex-direction:column; height:100vh; padding:14px 20px; }
 
 /* Header */
-.tv-header { display:flex; justify-content:space-between; align-items:center; flex-shrink:0; }
-.tv-logo { font-size:14px; font-weight:700; color:var(--navy); letter-spacing:0.5px; }
+.tv-header { display:flex; justify-content:space-between; align-items:center; flex-shrink:0; margin-bottom:12px; }
+.tv-logo { font-size:14px; font-weight:700; color:var(--navy); }
 .tv-date { font-size:11px; color:var(--light); }
 
-/* Sections (pills) */
-.tv-sections { display:grid; grid-template-columns:1fr 1fr; gap:20px; flex-shrink:0; }
-.tv-section-label { font-size:9px; font-weight:700; text-transform:uppercase; letter-spacing:0.8px; color:var(--muted); margin-bottom:6px; }
-.tv-pills { display:grid; grid-template-columns:repeat(4, 1fr); gap:6px; }
-.tv-pill { background:white; border:1px solid var(--border); border-radius:10px; padding:10px 10px 8px; text-align:center; }
-.tv-pill-label { font-size:8px; font-weight:600; text-transform:uppercase; letter-spacing:0.4px; color:var(--muted); margin-bottom:2px; }
-.tv-pill-value { font-size:22px; font-weight:800; line-height:1.2; }
-.tv-pill-sub { font-size:8px; color:var(--light); margin-top:1px; }
+/* Two columns */
+.tv-cols { display:grid; grid-template-columns:1fr 1fr; gap:18px; flex:1; min-height:0; }
+.tv-col { display:flex; flex-direction:column; gap:8px; min-height:0; }
+.tv-col-label { font-size:9px; font-weight:700; text-transform:uppercase; letter-spacing:0.8px; color:var(--muted); padding-bottom:4px; border-bottom:2px solid var(--border); flex-shrink:0; }
+
+/* Pills */
+.tv-pills { display:grid; grid-template-columns:repeat(4, 1fr); gap:6px; flex-shrink:0; }
+.tv-pill { background:white; border:1px solid var(--border); border-radius:8px; padding:8px 6px; text-align:center; }
+.tv-pill-label { font-size:7px; font-weight:600; text-transform:uppercase; letter-spacing:0.3px; color:var(--light); margin-bottom:1px; }
+.tv-pill-value { font-size:19px; font-weight:800; line-height:1.2; }
+.tv-pill-sub { font-size:7px; color:var(--light); margin-top:1px; }
 .t-green { color:var(--green); }
 .t-red { color:var(--red); }
 .t-navy { color:var(--navy); }
 .t-purple { color:var(--purple); }
-.t-blue { color:var(--blue); }
 
-/* Middle row: bars + tables */
-.tv-mid { display:grid; grid-template-columns:1fr 1fr; gap:14px; flex-shrink:0; }
-.tv-card { background:white; border:1px solid var(--border); border-radius:10px; padding:10px 14px; }
-.tv-card-title { font-size:9px; font-weight:700; text-transform:uppercase; letter-spacing:0.5px; color:var(--muted); margin-bottom:6px; }
+/* Cards */
+.tv-card { background:white; border:1px solid var(--border); border-radius:8px; padding:8px 12px; flex-shrink:0; }
+.tv-card-title { font-size:8px; font-weight:700; text-transform:uppercase; letter-spacing:0.4px; color:var(--light); margin-bottom:5px; }
 
-/* Horizontal bars */
-.bar-row { display:flex; align-items:center; gap:6px; margin-bottom:3px; }
-.bar-label { font-size:9px; color:var(--muted); width:24px; text-align:right; flex-shrink:0; font-weight:600; }
-.bar-track { flex:1; height:14px; background:var(--bg); border-radius:4px; overflow:hidden; }
-.bar-fill { height:100%; border-radius:4px; }
-.bar-val { font-size:10px; font-weight:700; color:var(--navy); width:24px; flex-shrink:0; }
+/* Bars */
+.bar-row { display:flex; align-items:center; gap:5px; margin-bottom:2px; }
+.bar-label { font-size:8px; color:var(--muted); width:22px; text-align:right; flex-shrink:0; font-weight:600; }
+.bar-track { flex:1; height:11px; background:var(--bg); border-radius:3px; overflow:hidden; }
+.bar-fill { height:100%; border-radius:3px; }
+.bar-val { font-size:9px; font-weight:700; color:var(--navy); width:22px; flex-shrink:0; }
 
 /* Tables */
-.tv-tbl { width:100%; border-collapse:collapse; font-size:11px; }
-.tv-tbl th { font-size:8px; font-weight:700; text-transform:uppercase; letter-spacing:0.3px; color:var(--light); padding:4px 5px; text-align:center; border-bottom:1px solid var(--border); }
+.tv-tbl { width:100%; border-collapse:collapse; font-size:10px; }
+.tv-tbl th { font-size:7px; font-weight:700; text-transform:uppercase; letter-spacing:0.2px; color:var(--light); padding:3px 4px; text-align:center; border-bottom:1px solid var(--border); }
 .tv-tbl th:first-child { text-align:left; }
-.tv-tbl td { padding:4px 5px; text-align:center; border-bottom:1px solid #f3f4f6; color:var(--navy); }
+.tv-tbl td { padding:3px 4px; text-align:center; border-bottom:1px solid #f3f4f6; }
 .tv-tbl td:first-child { text-align:left; color:var(--muted); font-weight:600; }
 .tv-tbl .tg { color:var(--green); font-weight:600; }
 .tv-tbl .tr { color:var(--red); font-weight:600; }
 .tv-tbl .tb { font-weight:800; }
 
-/* Bottom row: últimos clientes */
-.tv-bottom { display:grid; grid-template-columns:1fr 1fr; gap:14px; flex:1; min-height:0; }
-.tv-list-wrap { background:white; border:1px solid var(--border); border-radius:10px; padding:10px 14px; display:flex; flex-direction:column; overflow:hidden; }
+/* Client list */
+.tv-list-card { background:white; border:1px solid var(--border); border-radius:8px; padding:8px 12px; flex:1; min-height:0; overflow:hidden; display:flex; flex-direction:column; }
 .tv-list { flex:1; overflow:hidden; }
-.client-row { display:flex; align-items:center; padding:6px 0; border-bottom:1px solid #f3f4f6; }
-.client-row:last-child { border-bottom:none; }
-.client-badge { font-size:8px; font-weight:700; text-transform:uppercase; padding:2px 8px; border-radius:8px; flex-shrink:0; margin-right:10px; }
-.badge-new { background:#ecfdf5; color:var(--green); }
+.cli-row { display:flex; align-items:center; padding:4px 0; border-bottom:1px solid #f3f4f6; }
+.cli-row:last-child { border-bottom:none; }
+.cli-badge { font-size:7px; font-weight:700; text-transform:uppercase; padding:2px 7px; border-radius:6px; margin-right:8px; flex-shrink:0; }
+.badge-new-out { background:#ecfdf5; color:var(--green); }
+.badge-new-sw { background:#f5f3ff; color:var(--purple); }
 .badge-churn { background:#fef2f2; color:var(--red); }
-.badge-sw { background:#f5f3ff; color:var(--purple); }
-.client-name { font-size:12px; font-weight:600; color:var(--navy); flex:1; }
-.client-date { font-size:10px; color:var(--light); flex-shrink:0; }
-.client-tipo { font-size:9px; color:var(--muted); margin-left:8px; flex-shrink:0; font-weight:600; }
+.cli-name { font-size:11px; font-weight:600; color:var(--navy); flex:1; }
+.cli-date { font-size:9px; color:var(--light); flex-shrink:0; }
 
 /* Loading */
 .loading { text-align:center; padding:80px 20px; color:var(--muted); font-size:0.9rem; }
@@ -201,7 +200,7 @@ async function init() {
     });
   }
 
-  // ─── CÁLCULOS RESUMEN ───
+  // ─── CÁLCULOS ───
   var last = outData[outData.length - 1] || { total:0, nuevos:0, churn:0 };
   var totalNuevos = outData.reduce(function(s,d){return s+d.nuevos},0);
   var totalChurn = outData.reduce(function(s,d){return s+d.churn},0);
@@ -225,35 +224,32 @@ async function init() {
   var outMax = Math.max.apply(null, outData.map(function(d){return d.total})) || 1;
   var swMax = Math.max.apply(null, swData.map(function(d){return d.total})) || 1;
 
-  // ─── ÚLTIMOS CLIENTES (movimientos recientes) ───
-  var movimientos = [];
-  // Outsourcing nuevos y churn
+  // ─── MOVIMIENTOS POR LÍNEA ───
+  var outMovimientos = [];
   for (var i = 0; i < outData.length; i++) {
     for (var j = 0; j < outData[i].nuevosNames.length; j++) {
       var c = outData[i].nuevosNames[j];
-      movimientos.push({ nombre:c.n, fecha:c.f, tipo:'nuevo', linea:'Outsourcing' });
+      outMovimientos.push({ nombre:c.n, fecha:c.f, tipo:'nuevo' });
     }
     for (var j = 0; j < outData[i].churnNames.length; j++) {
       var c = outData[i].churnNames[j];
-      movimientos.push({ nombre:c.n, fecha:c.f, tipo:'churn', linea:'Outsourcing' });
+      outMovimientos.push({ nombre:c.n, fecha:c.f, tipo:'churn' });
     }
   }
-  // Software nuevos y churn
+  outMovimientos.sort(function(a,b) { return (b.fecha||'').localeCompare(a.fecha||''); });
+
+  var swMovimientos = [];
   for (var i = 0; i < swData.length; i++) {
     for (var j = 0; j < swData[i].nuevosNames.length; j++) {
       var c = swData[i].nuevosNames[j];
-      movimientos.push({ nombre:c.n, fecha:c.f, tipo:'nuevo', linea:'Software' });
+      swMovimientos.push({ nombre:c.n, fecha:c.f, tipo:'nuevo' });
     }
     for (var j = 0; j < swData[i].churnNames.length; j++) {
       var c = swData[i].churnNames[j];
-      movimientos.push({ nombre:c.n, fecha:c.f, tipo:'churn', linea:'Software' });
+      swMovimientos.push({ nombre:c.n, fecha:c.f, tipo:'churn' });
     }
   }
-  // Ordenar por fecha más reciente primero
-  movimientos.sort(function(a,b) { return (b.fecha||'').localeCompare(a.fecha||''); });
-
-  var nuevosRecientes = movimientos.filter(function(m){return m.tipo === 'nuevo'});
-  var churnRecientes = movimientos.filter(function(m){return m.tipo === 'churn'});
+  swMovimientos.sort(function(a,b) { return (b.fecha||'').localeCompare(a.fecha||''); });
 
   // ─── RENDER ───
   var html = '';
@@ -261,43 +257,30 @@ async function init() {
   // Header
   html += '<div class="tv-header"><span class="tv-logo">Account One</span><span class="tv-date">' + todayStr() + '</span></div>';
 
+  html += '<div class="tv-cols">';
+
+  // ═══ COLUMNA OUTSOURCING ═══
+  html += '<div class="tv-col">';
+  html += '<div class="tv-col-label" style="border-color:var(--blue)">Outsourcing</div>';
+
   // Pills
-  html += '<div class="tv-sections">';
-  html += '<div><div class="tv-section-label">Outsourcing</div><div class="tv-pills">';
+  html += '<div class="tv-pills">';
   html += '<div class="tv-pill"><div class="tv-pill-label">Clientes</div><div class="tv-pill-value t-navy">' + last.total + '</div><div class="tv-pill-sub">' + MESES_LABEL[currentMonth] + ' 2026</div></div>';
-  html += '<div class="tv-pill"><div class="tv-pill-label">Nuevos</div><div class="tv-pill-value t-green">' + totalNuevos + '</div><div class="tv-pill-sub">' + nuevoPct + '% crecimiento</div></div>';
+  html += '<div class="tv-pill"><div class="tv-pill-label">Nuevos</div><div class="tv-pill-value t-green">' + totalNuevos + '</div><div class="tv-pill-sub">' + nuevoPct + '% crec.</div></div>';
   html += '<div class="tv-pill"><div class="tv-pill-label">Churn</div><div class="tv-pill-value t-red">' + totalChurn + '</div><div class="tv-pill-sub">' + churnPct + '% churn</div></div>';
   html += '<div class="tv-pill"><div class="tv-pill-label">Crecimiento</div><div class="tv-pill-value ' + crecClass + '">' + crecSign + crecPct.toFixed(1) + '%</div><div class="tv-pill-sub">' + crecSign + crecNeto + ' neto</div></div>';
-  html += '</div></div>';
-  html += '<div><div class="tv-section-label">Software</div><div class="tv-pills">';
-  html += '<div class="tv-pill"><div class="tv-pill-label">Clientes</div><div class="tv-pill-value t-purple">' + swLast.total + '</div><div class="tv-pill-sub">' + MESES_LABEL[currentMonth] + ' 2026</div></div>';
-  html += '<div class="tv-pill"><div class="tv-pill-label">Nuevos</div><div class="tv-pill-value t-green">' + swTotalNuevos + '</div><div class="tv-pill-sub">' + swNuevoPct + '% crecimiento</div></div>';
-  html += '<div class="tv-pill"><div class="tv-pill-label">Churn</div><div class="tv-pill-value t-red">' + swTotalChurn + '</div><div class="tv-pill-sub">' + swChurnPct + '% churn</div></div>';
-  html += '<div class="tv-pill"><div class="tv-pill-label">Crecimiento</div><div class="tv-pill-value ' + swCrecClass + '">' + swCrecSign + swCrecPct.toFixed(1) + '%</div><div class="tv-pill-sub">' + swCrecSign + swCrecNeto + ' neto</div></div>';
-  html += '</div></div>';
   html += '</div>';
 
-  // Evolution bars + Summary tables (2x2 grid)
-  html += '<div class="tv-mid">';
-
-  // Outsourcing bars
-  html += '<div class="tv-card"><div class="tv-card-title">Evolución outsourcing</div>';
+  // Bars
+  html += '<div class="tv-card"><div class="tv-card-title">Evolución</div>';
   for (var i = 0; i < outData.length; i++) {
     var pct = (outData[i].total / outMax * 100).toFixed(0);
     html += '<div class="bar-row"><span class="bar-label">' + MESES_LABEL[outData[i].mes] + '</span><div class="bar-track"><div class="bar-fill" style="width:' + pct + '%;background:var(--blue)"></div></div><span class="bar-val">' + outData[i].total + '</span></div>';
   }
   html += '</div>';
 
-  // Software bars
-  html += '<div class="tv-card"><div class="tv-card-title">Evolución software</div>';
-  for (var i = 0; i < swData.length; i++) {
-    var pct = (swData[i].total / swMax * 100).toFixed(0);
-    html += '<div class="bar-row"><span class="bar-label">' + MESES_LABEL[swData[i].mes] + '</span><div class="bar-track"><div class="bar-fill" style="width:' + pct + '%;background:var(--purple)"></div></div><span class="bar-val">' + swData[i].total + '</span></div>';
-  }
-  html += '</div>';
-
-  // Outsourcing table
-  html += '<div class="tv-card"><div class="tv-card-title">Resumen mensual outsourcing</div><table class="tv-tbl">';
+  // Table
+  html += '<div class="tv-card"><div class="tv-card-title">Resumen mensual</div><table class="tv-tbl">';
   html += '<thead><tr><th>Mes</th><th>Inicio</th><th>Nuevos</th><th>Churn</th><th>Neto</th><th>Cierre</th><th>%</th></tr></thead><tbody>';
   var runBase = baseLine;
   for (var i = 0; i < outData.length; i++) {
@@ -310,8 +293,44 @@ async function init() {
   }
   html += '</tbody></table></div>';
 
-  // Software table
-  html += '<div class="tv-card"><div class="tv-card-title">Resumen mensual software</div><table class="tv-tbl">';
+  // Client list
+  html += '<div class="tv-list-card"><div class="tv-card-title">Clientes y salidas</div><div class="tv-list">';
+  if (outMovimientos.length === 0) {
+    html += '<div style="padding:8px 0;color:var(--light);font-size:10px">Sin movimientos</div>';
+  } else {
+    for (var i = 0; i < outMovimientos.length; i++) {
+      var m = outMovimientos[i];
+      var badgeClass = m.tipo === 'nuevo' ? 'badge-new-out' : 'badge-churn';
+      var badgeText = m.tipo === 'nuevo' ? 'Nuevo' : 'Baja';
+      html += '<div class="cli-row"><span class="cli-badge ' + badgeClass + '">' + badgeText + '</span><span class="cli-name">' + m.nombre + '</span><span class="cli-date">' + fmtDate(m.fecha) + '</span></div>';
+    }
+  }
+  html += '</div></div>';
+
+  html += '</div>';
+
+  // ═══ COLUMNA SOFTWARE ═══
+  html += '<div class="tv-col">';
+  html += '<div class="tv-col-label" style="border-color:var(--purple)">Software</div>';
+
+  // Pills
+  html += '<div class="tv-pills">';
+  html += '<div class="tv-pill"><div class="tv-pill-label">Clientes</div><div class="tv-pill-value t-purple">' + swLast.total + '</div><div class="tv-pill-sub">' + MESES_LABEL[currentMonth] + ' 2026</div></div>';
+  html += '<div class="tv-pill"><div class="tv-pill-label">Nuevos</div><div class="tv-pill-value t-green">' + swTotalNuevos + '</div><div class="tv-pill-sub">' + swNuevoPct + '% crec.</div></div>';
+  html += '<div class="tv-pill"><div class="tv-pill-label">Churn</div><div class="tv-pill-value t-red">' + swTotalChurn + '</div><div class="tv-pill-sub">' + swChurnPct + '% churn</div></div>';
+  html += '<div class="tv-pill"><div class="tv-pill-label">Crecimiento</div><div class="tv-pill-value ' + swCrecClass + '">' + swCrecSign + swCrecPct.toFixed(1) + '%</div><div class="tv-pill-sub">' + swCrecSign + swCrecNeto + ' neto</div></div>';
+  html += '</div>';
+
+  // Bars
+  html += '<div class="tv-card"><div class="tv-card-title">Evolución</div>';
+  for (var i = 0; i < swData.length; i++) {
+    var pct = (swData[i].total / swMax * 100).toFixed(0);
+    html += '<div class="bar-row"><span class="bar-label">' + MESES_LABEL[swData[i].mes] + '</span><div class="bar-track"><div class="bar-fill" style="width:' + pct + '%;background:var(--purple)"></div></div><span class="bar-val">' + swData[i].total + '</span></div>';
+  }
+  html += '</div>';
+
+  // Table
+  html += '<div class="tv-card"><div class="tv-card-title">Resumen mensual</div><table class="tv-tbl">';
   html += '<thead><tr><th>Mes</th><th>Inicio</th><th>Nuevos</th><th>Churn</th><th>Neto</th><th>Cierre</th><th>%</th><th>Monto</th></tr></thead><tbody>';
   var swRunBase = baseCount;
   for (var i = 0; i < swData.length; i++) {
@@ -323,43 +342,22 @@ async function init() {
     swRunBase = d.total;
   }
   html += '</tbody></table></div>';
+
+  // Client list
+  html += '<div class="tv-list-card"><div class="tv-card-title">Clientes y salidas</div><div class="tv-list">';
+  if (swMovimientos.length === 0) {
+    html += '<div style="padding:8px 0;color:var(--light);font-size:10px">Sin movimientos</div>';
+  } else {
+    for (var i = 0; i < swMovimientos.length; i++) {
+      var m = swMovimientos[i];
+      var badgeClass = m.tipo === 'nuevo' ? 'badge-new-sw' : 'badge-churn';
+      var badgeText = m.tipo === 'nuevo' ? 'Nuevo' : 'Baja';
+      html += '<div class="cli-row"><span class="cli-badge ' + badgeClass + '">' + badgeText + '</span><span class="cli-name">' + m.nombre + '</span><span class="cli-date">' + fmtDate(m.fecha) + '</span></div>';
+    }
+  }
+  html += '</div></div>';
+
   html += '</div>';
-
-  // Bottom: últimos clientes
-  html += '<div class="tv-bottom">';
-
-  // Nuevos clientes
-  html += '<div class="tv-list-wrap"><div class="tv-card-title">Clientes nuevos en 2026</div><div class="tv-list">';
-  if (nuevosRecientes.length === 0) {
-    html += '<div style="padding:12px 0;color:var(--light);font-size:11px">Sin movimientos</div>';
-  } else {
-    for (var i = 0; i < nuevosRecientes.length; i++) {
-      var m = nuevosRecientes[i];
-      var badgeClass = m.linea === 'Software' ? 'badge-sw' : 'badge-new';
-      html += '<div class="client-row">';
-      html += '<span class="client-badge ' + badgeClass + '">' + (m.linea === 'Software' ? 'SW' : 'OUT') + '</span>';
-      html += '<span class="client-name">' + m.nombre + '</span>';
-      html += '<span class="client-date">' + fmtDate(m.fecha) + '</span>';
-      html += '</div>';
-    }
-  }
-  html += '</div></div>';
-
-  // Churn
-  html += '<div class="tv-list-wrap"><div class="tv-card-title">Bajas en 2026</div><div class="tv-list">';
-  if (churnRecientes.length === 0) {
-    html += '<div style="padding:12px 0;color:var(--light);font-size:11px">Sin bajas</div>';
-  } else {
-    for (var i = 0; i < churnRecientes.length; i++) {
-      var m = churnRecientes[i];
-      html += '<div class="client-row">';
-      html += '<span class="client-badge badge-churn">' + (m.linea === 'Software' ? 'SW' : 'OUT') + '</span>';
-      html += '<span class="client-name">' + m.nombre + '</span>';
-      html += '<span class="client-date">' + fmtDate(m.fecha) + '</span>';
-      html += '</div>';
-    }
-  }
-  html += '</div></div>';
 
   html += '</div>';
 
