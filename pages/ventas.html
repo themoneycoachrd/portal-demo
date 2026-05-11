@@ -869,8 +869,10 @@ async function dbCreateChecklistFromLead(lead) {
 
 // Eliminar un lead
 async function dbDeleteLead(lead) {
-  if (!lead._id) return;
-  await sb.from('leads').delete().eq('id', lead._id);
+  if (!lead._id) return false;
+  var { error } = await sb.from('leads').delete().eq('id', lead._id);
+  if (error) { console.error('Error eliminando lead:', error); return false; }
+  return true;
 }
 
 // Actualizar o crear ROAS de un mes (upsert por mes+anio)
@@ -1265,6 +1267,18 @@ function bindPipelineEvents() {
       const checkedCats = [];
       editRow.querySelectorAll('[data-cat]').forEach(cb => { if (cb.checked) checkedCats.push(cb.dataset.cat); });
       lead.categoria = checkedCats.join(',');
+      // Si la fecha demo apunta a otro mes, mover el lead
+      if (lead.demo) {
+        var demoDate = new Date(lead.demo + 'T00:00:00');
+        var demoMes = MONTHS[demoDate.getMonth()];
+        if (demoMes && demoMes !== APP.currentMonth && demoDate.getFullYear() === 2026) {
+          // Mover: quitar del mes actual, agregar al mes destino, actualizar mes en Supabase
+          APP.data.pipeline[APP.currentMonth].splice(idx, 1);
+          if (!APP.data.pipeline[demoMes]) APP.data.pipeline[demoMes] = [];
+          APP.data.pipeline[demoMes].push(lead);
+          sb.from('leads').update({ mes: demoMes }).eq('id', lead._id);
+        }
+      }
       dbUpdateLead(lead); // Guardar en Supabase
       syncRoasFromPipeline();
       APP.expandedRow = -1;
@@ -1273,12 +1287,13 @@ function bindPipelineEvents() {
   });
 
   document.querySelectorAll('[data-action="delete"]').forEach(btn => {
-    btn.onclick = (e) => {
+    btn.onclick = async (e) => {
       e.stopPropagation();
       const idx = parseInt(btn.dataset.idx);
       if (confirm('Eliminar este lead?')) {
         const lead = APP.data.pipeline[APP.currentMonth][idx];
-        dbDeleteLead(lead); // Borrar de Supabase
+        var ok = await dbDeleteLead(lead);
+        if (!ok) { alert('No se pudo eliminar el lead. Intenta de nuevo.'); return; }
         APP.data.pipeline[APP.currentMonth].splice(idx, 1);
         syncRoasFromPipeline();
         APP.expandedRow = -1;
