@@ -53,12 +53,12 @@ body {
 .tv-card { background:white; border:1px solid var(--border); border-radius:12px; padding:14px 20px; flex-shrink:0; }
 .tv-card-title { font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:0.5px; color:var(--light); margin-bottom:10px; }
 
-/* Bars */
-.bar-row { display:flex; align-items:center; gap:10px; margin-bottom:6px; }
-.bar-label { font-size:14px; color:var(--muted); width:32px; text-align:right; flex-shrink:0; font-weight:600; }
-.bar-track { flex:1; height:20px; background:var(--bg); border-radius:5px; overflow:hidden; }
-.bar-fill { height:100%; border-radius:5px; }
-.bar-val { font-size:15px; font-weight:700; color:var(--navy); width:32px; flex-shrink:0; }
+/* Vertical bars */
+.vbar-wrap { display:flex; align-items:flex-end; gap:6px; height:90px; }
+.vbar-col { flex:1; display:flex; flex-direction:column; align-items:center; gap:4px; height:100%; justify-content:flex-end; }
+.vbar-val { font-size:13px; font-weight:700; color:var(--navy); }
+.vbar-bar { width:100%; border-radius:5px 5px 0 0; min-height:4px; }
+.vbar-label { font-size:11px; font-weight:600; color:var(--muted); }
 
 /* Tables */
 .tv-tbl { width:100%; border-collapse:collapse; font-size:15px; }
@@ -73,14 +73,15 @@ body {
 /* Client list */
 .tv-list-card { background:white; border:1px solid var(--border); border-radius:12px; padding:14px 20px; flex:1; min-height:0; overflow:hidden; display:flex; flex-direction:column; }
 .tv-list { flex:1; overflow:hidden; }
-.cli-row { display:flex; align-items:center; padding:8px 0; border-bottom:1px solid #f3f4f6; }
+.cli-row { display:flex; align-items:center; padding:7px 0; border-bottom:1px solid #f3f4f6; }
 .cli-row:last-child { border-bottom:none; }
 .cli-badge { font-size:11px; font-weight:700; text-transform:uppercase; padding:3px 10px; border-radius:8px; margin-right:12px; flex-shrink:0; }
 .badge-new-out { background:#ecfdf5; color:var(--green); }
 .badge-new-sw { background:#f5f3ff; color:var(--purple); }
 .badge-churn { background:#fef2f2; color:var(--red); }
-.cli-name { font-size:15px; font-weight:600; color:var(--navy); flex:1; }
-.cli-date { font-size:13px; color:var(--light); flex-shrink:0; }
+.cli-name { font-size:15px; font-weight:600; color:var(--navy); flex:1; min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.cli-tag { font-size:11px; color:var(--muted); font-weight:500; flex-shrink:0; margin-left:8px; }
+.cli-date { font-size:13px; color:var(--light); flex-shrink:0; margin-left:10px; }
 
 /* Loading */
 .loading { text-align:center; padding:80px 20px; color:var(--muted); font-size:0.9rem; }
@@ -99,14 +100,16 @@ var sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 var MESES_LABEL = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
 
+var TIPO_LABEL = {
+  'Contabilidad completa': 'Contabilidad',
+  'Solo impuestos': 'Tax One',
+  'Solo supervisión': 'Supervisión',
+  'Bookkeeping': 'Bookkeeping'
+};
+
 function todayStr() {
   var d = new Date();
   return d.getDate() + ' ' + ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'][d.getMonth()] + ' ' + d.getFullYear();
-}
-
-function fmtMoney(n) {
-  if (n >= 1000) return '$' + Math.round(n/1000) + 'k';
-  return '$' + n.toLocaleString();
 }
 
 function fmtDate(dateStr) {
@@ -117,8 +120,8 @@ function fmtDate(dateStr) {
 
 async function init() {
   var [resC, resSw] = await Promise.all([
-    sb.from('clientes').select('nombre, fecha_entrada, fecha_salida, activo, monto_adm, responsabilidad_contabilidad'),
-    sb.from('clientes_software').select('*')
+    sb.from('clientes').select('nombre, fecha_entrada, fecha_salida, activo, monto_adm, responsabilidad_contabilidad, tipo_servicio'),
+    sb.from('clientes_software').select('nombre, fecha_entrada, fecha_salida, activo, monto_mensual, tipo_licencia')
   ]);
   var clientes = resC.data || [];
   var software = resSw.data || [];
@@ -155,8 +158,8 @@ async function init() {
     }, 0);
 
     outData.push({ mes:m, total:activos.length, nuevos:nuevos.length, churn:churn.length, servTotal:servTotal,
-      nuevosNames: nuevos.map(function(c){return {n:c.nombre, f:c.fecha_entrada}}),
-      churnNames: churn.map(function(c){return {n:c.nombre, f:c.fecha_salida}})
+      nuevosNames: nuevos.map(function(c){return {n:c.nombre, f:c.fecha_entrada, ts:c.tipo_servicio, tx:c.monto_adm}}),
+      churnNames: churn.map(function(c){return {n:c.nombre, f:c.fecha_salida, ts:c.tipo_servicio, tx:c.monto_adm}})
     });
   }
 
@@ -164,7 +167,7 @@ async function init() {
 
   // ─── SOFTWARE ───
   var swClientes = software.map(function(r) {
-    return { nombre:r.nombre, monto:parseFloat(r.monto_mensual)||0, fecha_entrada:r.fecha_entrada, fecha_salida:r.fecha_salida, activo:r.activo !== false };
+    return { nombre:r.nombre, monto:parseFloat(r.monto_mensual)||0, fecha_entrada:r.fecha_entrada, fecha_salida:r.fecha_salida, activo:r.activo !== false, licencia:r.tipo_licencia || '' };
   });
   var baseCount = swClientes.filter(function(c) { return c.fecha_entrada && c.fecha_entrada < '2026-01-01'; }).length;
 
@@ -195,8 +198,8 @@ async function init() {
     var monto = activosSw.reduce(function(sum, c) { return sum + c.monto; }, 0);
 
     swData.push({ mes:m, total:swRunning, nuevos:nuevos.length, churn:churn.length, monto:monto,
-      nuevosNames: nuevos.map(function(c){return {n:c.nombre, f:c.fecha_entrada}}),
-      churnNames: churn.map(function(c){return {n:c.nombre, f:c.fecha_salida}})
+      nuevosNames: nuevos.map(function(c){return {n:c.nombre, f:c.fecha_entrada, lic:c.licencia}}),
+      churnNames: churn.map(function(c){return {n:c.nombre, f:c.fecha_salida, lic:c.licencia}})
     });
   }
 
@@ -229,11 +232,11 @@ async function init() {
   for (var i = 0; i < outData.length; i++) {
     for (var j = 0; j < outData[i].nuevosNames.length; j++) {
       var c = outData[i].nuevosNames[j];
-      outMovimientos.push({ nombre:c.n, fecha:c.f, tipo:'nuevo' });
+      outMovimientos.push({ nombre:c.n, fecha:c.f, tipo:'nuevo', ts:c.ts, tx:c.tx });
     }
     for (var j = 0; j < outData[i].churnNames.length; j++) {
       var c = outData[i].churnNames[j];
-      outMovimientos.push({ nombre:c.n, fecha:c.f, tipo:'churn' });
+      outMovimientos.push({ nombre:c.n, fecha:c.f, tipo:'churn', ts:c.ts, tx:c.tx });
     }
   }
   outMovimientos.sort(function(a,b) { return (b.fecha||'').localeCompare(a.fecha||''); });
@@ -242,14 +245,27 @@ async function init() {
   for (var i = 0; i < swData.length; i++) {
     for (var j = 0; j < swData[i].nuevosNames.length; j++) {
       var c = swData[i].nuevosNames[j];
-      swMovimientos.push({ nombre:c.n, fecha:c.f, tipo:'nuevo' });
+      swMovimientos.push({ nombre:c.n, fecha:c.f, tipo:'nuevo', lic:c.lic });
     }
     for (var j = 0; j < swData[i].churnNames.length; j++) {
       var c = swData[i].churnNames[j];
-      swMovimientos.push({ nombre:c.n, fecha:c.f, tipo:'churn' });
+      swMovimientos.push({ nombre:c.n, fecha:c.f, tipo:'churn', lic:c.lic });
     }
   }
   swMovimientos.sort(function(a,b) { return (b.fecha||'').localeCompare(a.fecha||''); });
+
+  // ─── Vertical bars helper ───
+  // Show last 6 months max to keep bars wide enough
+  function renderVBars(data, maxVal, color) {
+    var show = data.length > 6 ? data.slice(data.length - 6) : data;
+    var h = '<div class="vbar-wrap">';
+    for (var i = 0; i < show.length; i++) {
+      var pct = Math.round(show[i].total / maxVal * 100);
+      h += '<div class="vbar-col"><span class="vbar-val">' + show[i].total + '</span><div class="vbar-bar" style="height:' + pct + '%;background:' + color + '"></div><span class="vbar-label">' + MESES_LABEL[show[i].mes] + '</span></div>';
+    }
+    h += '</div>';
+    return h;
+  }
 
   // ─── RENDER ───
   var html = '';
@@ -271,12 +287,9 @@ async function init() {
   html += '<div class="tv-pill"><div class="tv-pill-label">Crecimiento</div><div class="tv-pill-value ' + crecClass + '">' + crecSign + crecPct.toFixed(1) + '%</div><div class="tv-pill-sub">' + crecSign + crecNeto + ' neto</div></div>';
   html += '</div>';
 
-  // Bars
+  // Vertical Bars
   html += '<div class="tv-card"><div class="tv-card-title">Evolución</div>';
-  for (var i = 0; i < outData.length; i++) {
-    var pct = (outData[i].total / outMax * 100).toFixed(0);
-    html += '<div class="bar-row"><span class="bar-label">' + MESES_LABEL[outData[i].mes] + '</span><div class="bar-track"><div class="bar-fill" style="width:' + pct + '%;background:var(--blue)"></div></div><span class="bar-val">' + outData[i].total + '</span></div>';
-  }
+  html += renderVBars(outData, outMax, 'var(--blue)');
   html += '</div>';
 
   // Table
@@ -293,16 +306,22 @@ async function init() {
   }
   html += '</tbody></table></div>';
 
-  // Client list
+  // Client list outsourcing
   html += '<div class="tv-list-card"><div class="tv-card-title">Clientes y salidas</div><div class="tv-list">';
   if (outMovimientos.length === 0) {
-    html += '<div style="padding:8px 0;color:var(--light);font-size:10px">Sin movimientos</div>';
+    html += '<div style="padding:8px 0;color:var(--light);font-size:13px">Sin movimientos</div>';
   } else {
     for (var i = 0; i < outMovimientos.length; i++) {
       var m = outMovimientos[i];
       var badgeClass = m.tipo === 'nuevo' ? 'badge-new-out' : 'badge-churn';
       var badgeText = m.tipo === 'nuevo' ? 'Nuevo' : 'Baja';
-      html += '<div class="cli-row"><span class="cli-badge ' + badgeClass + '">' + badgeText + '</span><span class="cli-name">' + m.nombre + '</span><span class="cli-date">' + fmtDate(m.fecha) + '</span></div>';
+      var tipoLabel = TIPO_LABEL[m.ts] || m.ts || '';
+      var txLabel = m.tx ? (m.tx + ' tx') : '';
+      var tagParts = [tipoLabel, txLabel].filter(Boolean);
+      var tag = tagParts.length ? tagParts.join(' · ') : '';
+      html += '<div class="cli-row"><span class="cli-badge ' + badgeClass + '">' + badgeText + '</span><span class="cli-name">' + m.nombre + '</span>';
+      if (tag) html += '<span class="cli-tag">' + tag + '</span>';
+      html += '<span class="cli-date">' + fmtDate(m.fecha) + '</span></div>';
     }
   }
   html += '</div></div>';
@@ -321,12 +340,9 @@ async function init() {
   html += '<div class="tv-pill"><div class="tv-pill-label">Crecimiento</div><div class="tv-pill-value ' + swCrecClass + '">' + swCrecSign + swCrecPct.toFixed(1) + '%</div><div class="tv-pill-sub">' + swCrecSign + swCrecNeto + ' neto</div></div>';
   html += '</div>';
 
-  // Bars
+  // Vertical Bars
   html += '<div class="tv-card"><div class="tv-card-title">Evolución</div>';
-  for (var i = 0; i < swData.length; i++) {
-    var pct = (swData[i].total / swMax * 100).toFixed(0);
-    html += '<div class="bar-row"><span class="bar-label">' + MESES_LABEL[swData[i].mes] + '</span><div class="bar-track"><div class="bar-fill" style="width:' + pct + '%;background:var(--purple)"></div></div><span class="bar-val">' + swData[i].total + '</span></div>';
-  }
+  html += renderVBars(swData, swMax, 'var(--purple)');
   html += '</div>';
 
   // Table
@@ -343,16 +359,18 @@ async function init() {
   }
   html += '</tbody></table></div>';
 
-  // Client list
+  // Client list software
   html += '<div class="tv-list-card"><div class="tv-card-title">Clientes y salidas</div><div class="tv-list">';
   if (swMovimientos.length === 0) {
-    html += '<div style="padding:8px 0;color:var(--light);font-size:10px">Sin movimientos</div>';
+    html += '<div style="padding:8px 0;color:var(--light);font-size:13px">Sin movimientos</div>';
   } else {
     for (var i = 0; i < swMovimientos.length; i++) {
       var m = swMovimientos[i];
       var badgeClass = m.tipo === 'nuevo' ? 'badge-new-sw' : 'badge-churn';
       var badgeText = m.tipo === 'nuevo' ? 'Nuevo' : 'Baja';
-      html += '<div class="cli-row"><span class="cli-badge ' + badgeClass + '">' + badgeText + '</span><span class="cli-name">' + m.nombre + '</span><span class="cli-date">' + fmtDate(m.fecha) + '</span></div>';
+      html += '<div class="cli-row"><span class="cli-badge ' + badgeClass + '">' + badgeText + '</span><span class="cli-name">' + m.nombre + '</span>';
+      if (m.lic) html += '<span class="cli-tag">' + m.lic + '</span>';
+      html += '<span class="cli-date">' + fmtDate(m.fecha) + '</span></div>';
     }
   }
   html += '</div></div>';
