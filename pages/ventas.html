@@ -850,10 +850,7 @@ async function dbCreateChecklistFromLead(lead) {
   // Verificar que no exista ya un checklist para este lead
   var existing = APP.chkData.find(r => r.lead_id === lead._id);
   if (existing) return;
-  // Determinar responsable basándose en el usuario actual
-  var responsable = APP.userName || 'Felix';
-  if (responsable.toLowerCase().indexOf('naomi') >= 0) responsable = 'Naomi';
-  else responsable = 'Felix';
+  var responsable = chkDetectResponsable();
   var row = await createChecklistComercial(lead._id, lead.n || lead.e || '', lead.e || '', responsable, APP.currentMonth);
   if (row) console.log('Checklist comercial creado para:', lead.n);
 }
@@ -2019,15 +2016,24 @@ function renderChecklistComercialDetail(container) {
   };
 }
 
+function chkDetectResponsable() {
+  var name = (APP.userName || '').toLowerCase();
+  for (var i = 0; i < CHK_PERSONAS.length; i++) {
+    if (name.indexOf(CHK_PERSONAS[i].toLowerCase()) >= 0) return CHK_PERSONAS[i];
+  }
+  return CHK_PERSONAS[0]; // fallback
+}
+
 function showCrearChecklistModal() {
-  // Simple prompt-based creation
   var cliente = prompt('Nombre del cliente:');
   if (!cliente) return;
   var empresa = prompt('Empresa (opcional):', '');
-  var responsable = prompt('Responsable (Felix o Naomi):', 'Felix');
+  var defaultResp = chkDetectResponsable();
+  var responsable = prompt('Responsable (Felix o Naomi):', defaultResp);
   if (!responsable || CHK_PERSONAS.indexOf(responsable) < 0) {
     if (responsable && responsable.toLowerCase() === 'naomi') responsable = 'Naomi';
-    else responsable = 'Felix';
+    else if (responsable && responsable.toLowerCase() === 'felix') responsable = 'Felix';
+    else responsable = defaultResp;
   }
   createChecklistComercial(null, cliente, empresa || '', responsable, APP.chkMonth).then(row => {
     if (row) renderChecklistComercial();
