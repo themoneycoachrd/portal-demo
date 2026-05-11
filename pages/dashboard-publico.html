@@ -41,7 +41,7 @@ body {
 /* Pills */
 .tv-pills { display:grid; grid-template-columns:repeat(4, 1fr); gap:10px; flex-shrink:0; }
 .tv-pill { background:white; border:1px solid var(--border); border-radius:12px; padding:14px 10px; text-align:center; }
-.tv-pill-label { font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:0.4px; color:var(--light); margin-bottom:2px; }
+.tv-pill-label { font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:0.4px; color:var(--navy); margin-bottom:2px; }
 .tv-pill-value { font-size:32px; font-weight:800; line-height:1.2; }
 .tv-pill-sub { font-size:11px; color:var(--light); margin-top:2px; }
 .t-green { color:var(--green); }
@@ -50,7 +50,7 @@ body {
 .t-purple { color:var(--purple); }
 
 /* Cards */
-.tv-card { background:white; border:1px solid var(--border); border-radius:12px; padding:14px 20px; flex:1.2; min-height:0; display:flex; flex-direction:column; }
+.tv-card { background:white; border:1px solid var(--border); border-radius:12px; padding:14px 20px; flex:0.9; min-height:0; display:flex; flex-direction:column; }
 .tv-card-title { font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:0.5px; color:var(--light); margin-bottom:10px; }
 
 /* Chart with Y axis and grid */
@@ -67,7 +67,7 @@ body {
 .chart-label-item { text-align:center; font-size:13px; font-weight:600; color:var(--muted); position:absolute; }
 
 /* Client list */
-.tv-list-card { background:white; border:1px solid var(--border); border-radius:12px; padding:10px 16px; flex:0.8; min-height:0; overflow:hidden; display:flex; flex-direction:column; }
+.tv-list-card { background:white; border:1px solid var(--border); border-radius:12px; padding:10px 16px; flex:1.1; min-height:0; overflow:hidden; display:flex; flex-direction:column; }
 .tv-list { flex:1; overflow:hidden; }
 .cli-row { display:flex; align-items:center; padding:8px 0; border-bottom:1px solid #f3f4f6; }
 .cli-row:last-child { border-bottom:none; }
@@ -80,13 +80,13 @@ body {
 .badge-new-out { background:#ecfdf5; color:var(--green); }
 .badge-new-sw { background:#f5f3ff; color:var(--purple); }
 .badge-churn { background:#fef2f2; color:var(--red); }
-.cli-name { font-size:15px; font-weight:600; color:var(--navy); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.cli-name { font-size:20px; font-weight:600; color:var(--navy); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .cli-star { color:var(--amber); margin-left:6px; }
 .cli-tag { font-size:12px; color:var(--muted); font-weight:500; }
 .cli-tx { font-size:12px; color:var(--muted); font-weight:600; }
 .cli-date { font-size:13px; color:var(--light); }
 .cli-header { display:flex; align-items:center; padding:0 0 6px; border-bottom:1px solid var(--border); margin-bottom:2px; }
-.cli-header span { font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.3px; color:var(--light); }
+.cli-header span { font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:0.3px; color:var(--navy); }
 
 /* Loading */
 .loading { text-align:center; padding:80px 20px; color:var(--muted); font-size:0.9rem; }
@@ -343,7 +343,7 @@ async function init() {
   html += '</div>';
 
   // Client list outsourcing
-  html += '<div class="tv-list-card"><div class="tv-card-title">Clientes y salidas</div>';
+  html += '<div class="tv-list-card"><div class="tv-card-title">Clientes y Churn</div>';
   // Column headers
   html += '<div class="cli-header"><span class="cli-col-badge"></span><span class="cli-col-name">Nombre</span><span class="cli-col-tag">Servicio</span><span class="cli-col-tx">TX</span><span class="cli-col-date">Fecha</span></div>';
   html += '<div class="tv-list">';
@@ -388,7 +388,7 @@ async function init() {
   html += '</div>';
 
   // Client list software
-  html += '<div class="tv-list-card"><div class="tv-card-title">Clientes y salidas</div>';
+  html += '<div class="tv-list-card"><div class="tv-card-title">Clientes y Churn</div>';
   // Column headers
   html += '<div class="cli-header"><span class="cli-col-badge"></span><span class="cli-col-name">Nombre</span><span class="cli-col-tag">Licencia</span><span class="cli-col-date">Fecha</span></div>';
   html += '<div class="tv-list">';
