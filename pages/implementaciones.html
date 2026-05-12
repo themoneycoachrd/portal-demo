@@ -7,14 +7,23 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 :root {
-  --navy: #1a2332; --navy-mid: #2a3a4e; --blue: #4361ee; --green: #10b981;
-  --red: #ef4444; --amber: #f59e0b; --purple: #8b5cf6;
-  --bg: #f4f6f9; --card: #ffffff; --border: #e8ecf1;
-  --text: #1a2332; --muted: #7c8495; --light: #a3aab8;
+  --navy: #1a2332;
+  --navy-mid: #2a3a4e;
+  --blue: #4361ee;
+  --green: #10b981;
+  --red: #ef4444;
+  --amber: #f59e0b;
+  --purple: #8b5cf6;
+  --pink: #ec4899;
+  --bg: #f4f6f9;
+  --card: #ffffff;
+  --border: #e8ecf1;
+  --text: #1a2332;
+  --muted: #7c8495;
+  --light: #a3aab8;
 }
 * { margin:0; padding:0; box-sizing:border-box; }
 body { font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif; background:var(--bg); color:var(--text); line-height:1.5; }
-.hidden { display:none !important; }
 
 /* ─── Login ─── */
 .login-overlay { position:fixed; top:0; left:0; right:0; bottom:0; background:var(--bg); display:flex; align-items:center; justify-content:center; z-index:1000; }
@@ -38,69 +47,120 @@ body { font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-se
 .user-bar { display:flex; align-items:center; gap:12px; }
 .user-bar .user-name { font-size:0.8rem; opacity:0.9; background:rgba(255,255,255,0.15); padding:4px 12px; border-radius:20px; }
 .btn-logout { font-size:0.75rem; padding:4px 12px; background:rgba(255,255,255,0.15); color:white; border:1px solid rgba(255,255,255,0.3); border-radius:6px; cursor:pointer; }
+.btn-logout:hover { background:rgba(255,255,255,0.25); }
 
 /* ─── Breadcrumb ─── */
 .breadcrumb-bar { display:flex; align-items:center; gap:6px; padding:10px 24px; background:white; border-bottom:1px solid var(--border); font-size:13px; }
-.breadcrumb-bar a { color:var(--muted); text-decoration:none; font-weight:500; }
+.breadcrumb-bar a { color:var(--muted); text-decoration:none; font-weight:500; cursor:pointer; }
 .breadcrumb-bar a:hover { color:var(--navy); text-decoration:underline; }
 .breadcrumb-bar .sep { color:var(--light); font-size:11px; }
 .breadcrumb-bar .current { color:var(--text); font-weight:600; }
 
+/* ─── Main tabs ─── */
+.main-tabs { display:flex; background:var(--card); border-bottom:2px solid var(--border); }
+.main-tab { padding:12px 24px; cursor:pointer; font-weight:600; font-size:0.9rem; color:var(--muted); border-bottom:3px solid transparent; transition:all 0.15s; background:none; border-top:none; border-left:none; border-right:none; font-family:inherit; }
+.main-tab:hover { color:var(--text); }
+.main-tab.active { color:var(--navy); border-bottom-color:var(--navy); }
+
+/* ─── Nav area (implementadora pills) ─── */
+.nav-area { padding:12px 24px; background:var(--bg); border-bottom:1px solid var(--border); }
+.contadora-pills { display:flex; gap:4px; flex-wrap:wrap; }
+.contadora-pill { padding:5px 14px; border-radius:20px; font-size:0.78rem; font-weight:600; cursor:pointer; border:1px solid var(--border); background:white; color:var(--muted); transition:all 0.12s; font-family:inherit; }
+.contadora-pill:hover { background:#eef0f4; }
+.contadora-pill.active { background:var(--navy); color:white; border-color:var(--navy); }
+
 /* ─── Content ─── */
-.content { padding:24px; max-width:1200px; margin:0 auto; }
+.content { padding:24px; max-width:1100px; margin:0 auto; }
 
-/* ─── Main Tabs ─── */
-.main-tabs { display:flex; gap:0; margin:0 24px; border-bottom:2px solid var(--border); }
-.main-tab { padding:10px 24px; font-size:0.9rem; font-weight:600; color:var(--muted); cursor:pointer; border:none; background:none; border-bottom:2px solid transparent; margin-bottom:-2px; transition:all 0.2s; }
-.main-tab:hover { color:var(--navy); }
-.main-tab.active { color:var(--navy); border-bottom-color:var(--blue); }
+/* ─── Summary stats ─── */
+.summary-stats { display:grid; grid-template-columns:repeat(auto-fit, minmax(130px,1fr)); gap:12px; margin-bottom:20px; }
+.summary-stat { background:white; border-radius:12px; padding:16px; border:1px solid var(--border); text-align:center; }
+.summary-stat-label { font-size:0.65rem; text-transform:uppercase; letter-spacing:0.5px; color:var(--light); font-weight:600; }
+.summary-stat-value { font-size:1.6rem; font-weight:800; margin-top:4px; }
 
-/* ─── Month Tabs ─── */
-.month-tabs { display:flex; gap:4px; flex-wrap:wrap; margin-bottom:16px; }
-.month-tab { padding:6px 14px; border-radius:8px; cursor:pointer; font-size:0.85rem; font-weight:500; background:var(--card); border:1px solid var(--border); color:var(--muted); transition:all 0.2s; }
-.month-tab:hover { border-color:var(--blue); color:var(--blue); }
-.month-tab.active { background:var(--navy); color:white; border-color:var(--navy); }
+/* ─── Client table ─── */
+.ck-client-table { width:100%; border-collapse:collapse; background:var(--card); border-radius:12px; overflow:hidden; border:1px solid var(--border); }
+.ck-client-table th { background:#f8f9fb; padding:10px 14px; text-align:left; font-size:0.68rem; text-transform:uppercase; letter-spacing:0.05em; color:var(--muted); font-weight:700; border-bottom:1px solid var(--border); }
+.ck-client-table td { padding:10px 14px; font-size:0.82rem; border-bottom:1px solid #f0f2f5; }
+.ck-client-table tr:hover td { background:#fafbfc; cursor:pointer; }
+.ck-client-table tr:last-child td { border-bottom:none; }
+.ck-table-name { font-weight:700; color:var(--navy); }
+.ck-table-contadora { font-size:0.75rem; color:var(--light); }
+.ck-progress-bar { width:100px; height:8px; background:#eef0f4; border-radius:4px; overflow:hidden; display:inline-block; vertical-align:middle; margin-right:6px; }
+.ck-progress-fill { height:100%; border-radius:4px; }
+.ck-progress-text { font-size:0.75rem; color:var(--muted); }
+.ck-status-badge { display:inline-block; padding:3px 10px; border-radius:12px; font-size:0.72rem; font-weight:600; }
+.ck-status-completo { background:#d1fae5; color:#065f46; }
+.ck-status-progreso { background:#dbeafe; color:#1e40af; }
+.ck-status-pendiente { background:#f3f4f6; color:#6b7280; }
 
-/* ─── Table ─── */
-.impl-table { width:100%; border-collapse:collapse; background:var(--card); border-radius:12px; overflow:hidden; border:1px solid var(--border); }
-.impl-table th { background:#f8f9fb; padding:10px 12px; text-align:left; font-size:0.68rem; text-transform:uppercase; letter-spacing:0.05em; color:var(--muted); font-weight:700; border-bottom:1px solid var(--border); }
-.impl-table td { padding:10px 12px; font-size:0.82rem; border-bottom:1px solid #f0f2f5; vertical-align:middle; }
-.impl-table tr:hover td { background:#fafbfc; }
-.impl-table tr:last-child td { border-bottom:none; }
-.impl-table .client-name { font-weight:600; color:var(--navy); }
+/* ─── Detail view ─── */
+.detail-header { display:flex; align-items:center; gap:12px; margin-bottom:16px; }
+.detail-back { padding:6px 14px; border-radius:8px; font-size:12px; font-weight:600; cursor:pointer; border:1px solid var(--border); background:white; color:var(--muted); font-family:inherit; }
+.detail-back:hover { background:#eef0f4; }
+.detail-title { font-size:18px; font-weight:800; }
+.detail-sub { font-size:12px; color:var(--muted); }
 
-/* ─── Status Select ─── */
-.status-select { padding:5px 10px; border:1px solid var(--border); border-radius:8px; font-size:0.8rem; font-family:inherit; background:white; cursor:pointer; min-width:120px; }
-.status-select:focus { outline:none; border-color:var(--blue); box-shadow:0 0 0 3px rgba(67,97,238,0.1); }
+.progress-row { display:flex; align-items:center; gap:12px; margin-bottom:16px; background:white; border-radius:10px; padding:14px 18px; border:1px solid var(--border); }
+.progress-row .pr-count { font-size:14px; font-weight:700; min-width:90px; }
+.progress-row .pr-bar { flex:1; height:10px; background:#f1f5f9; border-radius:5px; overflow:hidden; }
+.progress-row .pr-fill { height:100%; border-radius:5px; transition:width 0.3s; }
+.progress-row .pr-pct { font-size:13px; font-weight:700; min-width:40px; text-align:right; }
 
-/* ─── Semáforo ─── */
-.semaforo { display:inline-block; width:12px; height:12px; border-radius:50%; }
-.semaforo.verde { background:var(--green); }
-.semaforo.amarillo { background:var(--amber); }
-.semaforo.rojo { background:var(--red); }
-.semaforo.gris { background:var(--light); }
+/* ─── Checklist table ─── */
+.check-table { width:100%; border-collapse:collapse; font-size:0.82rem; background:white; border-radius:12px; overflow:hidden; border:1px solid var(--border); }
+.check-table th { text-align:left; padding:10px 12px; font-size:0.65rem; text-transform:uppercase; letter-spacing:0.3px; color:var(--muted); border-bottom:2px solid var(--border); background:#f8fafc; }
+.check-table th.center { text-align:center; }
+.check-table td { padding:8px 12px; border-bottom:1px solid #f1f5f9; vertical-align:middle; }
+.check-table td.center { text-align:center; }
+.check-table tr:hover td { background:#fafbfc; }
+.check-table tr.row-done td { background:#f0fdf4; }
+.check-table tr.group-row td { background:#f0f2f5; font-weight:700; font-size:0.72rem; color:var(--navy); text-transform:uppercase; letter-spacing:0.4px; border-bottom:2px solid var(--border); padding:6px 12px; }
+
+/* ─── Toggle group ─── */
+.toggle-group { display:flex; gap:0; }
+.toggle-opt { padding:5px 14px; font-size:11px; font-weight:600; cursor:pointer; border:1px solid var(--border); background:white; color:var(--muted); transition:all 0.15s; font-family:inherit; }
+.toggle-opt:first-child { border-radius:6px 0 0 6px; }
+.toggle-opt:last-child { border-radius:0 6px 6px 0; border-left:none; }
+.toggle-opt:not(:first-child) { border-left:none; }
+.toggle-opt.active-yes { background:#ecfdf5; color:#065f46; border-color:#a7f3d0; }
+.toggle-opt.active-no { background:#fef2f2; color:#991b1b; border-color:#fecaca; }
+.toggle-opt.active-na { background:#f5f3ff; color:#5b21b6; border-color:#c4b5fd; }
+
+/* ─── Status text (read-only) ─── */
+.status-label { font-size:0.78rem; font-weight:600; }
+.status-label.st-yes { color:#065f46; }
+.status-label.st-no { color:#991b1b; }
+.status-label.st-na { color:#5b21b6; }
 
 /* ─── Buttons ─── */
-.btn-add { display:inline-flex; align-items:center; gap:6px; padding:9px 18px; background:var(--blue); color:white; border:none; border-radius:10px; font-size:0.82rem; font-weight:600; cursor:pointer; margin-bottom:16px; }
-.btn-add:hover { background:#3451d1; }
+.btn { padding:8px 18px; border-radius:8px; font-size:0.82rem; font-weight:600; cursor:pointer; border:none; font-family:inherit; transition:all 0.12s; }
+.btn-primary { background:var(--navy); color:white; }
+.btn-primary:hover { background:var(--navy-mid); }
+.btn-primary:disabled { opacity:0.6; cursor:not-allowed; }
+.btn-outline { background:white; color:var(--navy); border:1px solid var(--border); }
+.btn-outline:hover { background:#f0f2f5; border-color:var(--navy); }
+.save-bar { display:flex; gap:8px; margin-top:16px; padding-top:16px; border-top:1px solid var(--border); }
+
+/* ─── Add button ─── */
+.add-bar { display:flex; justify-content:flex-end; margin-bottom:12px; }
+.btn-add { display:inline-flex; align-items:center; gap:6px; padding:8px 16px; border-radius:8px; font-size:0.82rem; font-weight:600; cursor:pointer; border:1px solid var(--border); background:white; color:var(--navy); font-family:inherit; transition:all 0.12s; }
+.btn-add:hover { background:#f0f2f5; border-color:var(--navy); }
 
 /* ─── Modal ─── */
-.modal-overlay { position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.4); z-index:500; display:flex; align-items:center; justify-content:center; }
-.modal { background:white; border-radius:16px; padding:28px; width:100%; max-width:500px; box-shadow:0 8px 40px rgba(0,0,0,0.15); }
-.modal h3 { font-size:1.1rem; color:var(--navy); margin-bottom:20px; }
-.modal .field { margin-bottom:14px; }
-.modal .field label { display:block; font-size:0.78rem; font-weight:600; color:var(--muted); margin-bottom:5px; }
-.modal .field input,
-.modal .field select { width:100%; padding:9px 12px; border:1px solid var(--border); border-radius:10px; font-size:0.85rem; font-family:inherit; background:#fafbfc; }
-.modal .field input:focus,
-.modal .field select:focus { outline:none; border-color:var(--blue); box-shadow:0 0 0 3px rgba(67,97,238,0.1); background:white; }
-.modal .field .error-hint { color:var(--red); font-size:0.75rem; margin-top:4px; display:none; }
-.modal-buttons { display:flex; justify-content:flex-end; gap:10px; margin-top:20px; }
-.btn-modal-cancel { padding:9px 18px; background:#f3f4f6; color:var(--muted); border:none; border-radius:10px; font-size:0.82rem; font-weight:600; cursor:pointer; }
-.btn-modal-cancel:hover { background:#e5e7eb; color:var(--text); }
-.btn-modal-save { padding:9px 18px; background:var(--blue); color:white; border:none; border-radius:10px; font-size:0.82rem; font-weight:600; cursor:pointer; }
-.btn-modal-save:hover { background:#3451d1; }
-.btn-modal-save:disabled { opacity:0.5; cursor:not-allowed; }
+.modal-overlay { position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.4); z-index:9000; display:flex; align-items:center; justify-content:center; }
+.modal-box { background:white; border-radius:12px; padding:24px; width:90%; max-width:420px; box-shadow:0 8px 32px rgba(0,0,0,0.18); }
+.modal-box h3 { font-size:14px; font-weight:700; margin-bottom:16px; }
+.modal-box .field { margin-bottom:14px; }
+.modal-box .field label { display:block; font-size:0.78rem; font-weight:600; color:var(--muted); margin-bottom:6px; }
+.modal-box .field input,
+.modal-box .field select { width:100%; padding:10px 14px; border:1px solid var(--border); border-radius:10px; font-size:0.9rem; font-family:inherit; background:#fafbfc; }
+.modal-box .field input:focus,
+.modal-box .field select:focus { outline:none; border-color:var(--blue); box-shadow:0 0 0 3px rgba(67,97,238,0.1); background:white; }
+.modal-btns { display:flex; gap:8px; justify-content:flex-end; margin-top:16px; }
+.modal-btns button { padding:8px 16px; border-radius:8px; font-size:12px; font-weight:600; cursor:pointer; font-family:inherit; border:1px solid var(--border); }
+.modal-btns .btn-cancel { background:white; color:var(--muted); }
+.modal-btns .btn-save { background:var(--blue); color:white; border-color:var(--blue); }
 
 /* ─── Toast ─── */
 .toast { position:fixed; bottom:24px; right:24px; padding:12px 20px; border-radius:10px; font-size:0.82rem; font-weight:600; color:white; z-index:600; opacity:0; transform:translateY(10px); transition:all 0.3s; pointer-events:none; }
@@ -108,160 +168,114 @@ body { font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-se
 .toast.success { background:var(--green); }
 .toast.error { background:var(--red); }
 
-/* ─── Empty State ─── */
-.empty-state { text-align:center; padding:60px 20px; color:var(--muted); }
-.empty-state .emoji { font-size:2.5rem; margin-bottom:12px; }
-.empty-state p { font-size:0.9rem; margin-bottom:16px; }
+/* ─── Proximamente ─── */
+.coming-soon { text-align:center; padding:60px 20px; }
+.coming-soon h2 { font-size:1.2rem; color:var(--muted); margin-bottom:8px; }
+.coming-soon p { font-size:0.85rem; color:var(--light); }
 
-/* ─── Embed ─── */
-body.embed .login-overlay,
-body.embed .header,
+.hidden { display:none; }
+.empty { text-align:center; padding:40px; color:var(--light); font-size:0.88rem; }
+.footer { text-align:center; font-size:0.75rem; color:var(--light); padding:20px; }
+
+body.embed .login-overlay { display:none !important; }
+body.embed .header { display:none !important; }
 body.embed .breadcrumb-bar { display:none !important; }
-body.embed .content { padding-top:12px; }
+body.embed #app-wrapper { display:block !important; }
+body.embed .footer { display:none !important; }
 
-/* ─── Footer ─── */
-.footer { text-align:center; padding:20px; font-size:0.75rem; color:var(--light); }
+/* ─── Mobile responsive ─── */
+@media (max-width:640px) {
+  .header { padding:14px 16px; }
+  .header h1 { font-size:1.1rem; }
+  .header p { font-size:0.75rem; }
+  .header-inner { flex-wrap:wrap; gap:8px; }
+  .user-bar { width:100%; justify-content:flex-end; }
+  .breadcrumb-bar { padding:8px 16px; font-size:11px; }
+  .main-tabs { overflow-x:auto; -webkit-overflow-scrolling:touch; }
+  .main-tab { padding:10px 16px; font-size:0.82rem; white-space:nowrap; }
+  .nav-area { padding:10px 16px; }
+  .contadora-pills { gap:3px; }
+  .contadora-pill { padding:4px 10px; font-size:0.72rem; }
+  .content { padding:16px; }
+  .summary-stats { grid-template-columns:repeat(2, 1fr); gap:8px; }
+  .summary-stat { padding:10px 8px; }
+  .summary-stat-label { font-size:0.58rem; }
+  .summary-stat-value { font-size:1.2rem; }
+  .ck-client-table { font-size:0.75rem; }
+  .ck-client-table th { padding:8px 8px; font-size:0.6rem; }
+  .ck-client-table td { padding:8px 8px; }
+  .ck-progress-bar { width:60px; }
+  .detail-header { flex-wrap:wrap; gap:8px; }
+  .detail-title { font-size:15px; }
+  .progress-row { flex-wrap:wrap; padding:12px 14px; gap:8px; }
+  .progress-row .pr-count { min-width:auto; font-size:13px; }
+  .check-table { display:block; overflow-x:auto; -webkit-overflow-scrolling:touch; }
+  .check-table th, .check-table td { white-space:nowrap; padding:6px 8px; font-size:0.75rem; }
+  .check-table th { font-size:0.58rem; }
+  .toggle-opt { padding:4px 10px; font-size:10px; }
+  .save-bar { flex-wrap:wrap; }
+}
 
-/* ─── Date column ─── */
-.date-cell { white-space:nowrap; font-size:0.8rem; color:var(--text); }
-.date-cell.empty { color:var(--light); font-style:italic; }
+@media (max-width:380px) {
+  .summary-stats { grid-template-columns:repeat(2, 1fr); }
+  .header h1 { font-size:1rem; }
+}
 </style>
 </head>
 <body>
 
-<!-- Login -->
-<div class="login-overlay" id="loginOverlay">
+<!-- LOGIN -->
+<div class="login-overlay" id="login-screen">
   <div class="login-box">
-    <h2>Implementaciones</h2>
-    <p class="subtitle">Account One</p>
+    <h2>Account One</h2>
+    <p class="subtitle">Inicia sesion para continuar</p>
     <div class="field">
-      <label>Correo</label>
-      <input type="email" id="loginEmail" placeholder="tu@accountone.do">
+      <label>Email</label>
+      <input type="email" id="login-email" placeholder="tu@accountone.do">
     </div>
     <div class="field">
-      <label>Contraseña</label>
-      <input type="password" id="loginPass" placeholder="••••••••" onkeydown="if(event.key==='Enter')doLogin()">
+      <label>Contrasena</label>
+      <input type="password" id="login-password" placeholder="••••••••">
     </div>
-    <button class="login-btn" onclick="doLogin()">Entrar</button>
-    <div class="login-error" id="loginError"></div>
+    <button class="login-btn" id="btn-login" onclick="handleLogin()">Entrar</button>
+    <div class="login-error" id="login-error"></div>
   </div>
 </div>
 
-<!-- Toast -->
-<div class="toast" id="toast"></div>
+<!-- APP -->
+<div id="app-wrapper" class="hidden">
 
-<!-- App -->
-<div id="app" style="display:none">
-
-<div class="header" id="headerBar">
+<div class="header">
   <div class="header-inner">
-    <div><h1>Implementaciones</h1><p>Control de implementaciones y facturación electrónica</p></div>
+    <div>
+      <h1>Implementaciones</h1>
+      <p>Account One — 2026</p>
+    </div>
     <div class="user-bar">
-      <span class="user-name" id="userName"></span>
-      <button class="btn-logout" onclick="doLogout()">Salir</button>
+      <span class="user-name" id="user-display-name"></span>
+      <button class="btn-logout" onclick="handleLogout()">Salir</button>
     </div>
   </div>
 </div>
 
-<div class="breadcrumb-bar" id="breadcrumb">
-  <a href="index.html">Inicio</a>
+<div class="breadcrumb-bar">
+  <a href="index.html">Account One</a>
   <span class="sep">›</span>
   <span class="current">Implementaciones</span>
 </div>
 
-<div class="main-tabs" id="mainTabs"></div>
-
-<div id="ic-area">
-  <div class="content" id="ic-content"></div>
+<div class="main-tabs" id="mainTabs">
+  <button class="main-tab active" onclick="switchMainTab('fe')">Checklist FE</button>
+  <button class="main-tab" onclick="switchMainTab('adm')">Checklist Adm</button>
 </div>
 
-<div id="fe-area" class="hidden">
-  <div class="content" id="fe-content"></div>
-</div>
-
+<div id="navArea"></div>
+<div class="content" id="content"></div>
 <div class="footer">Conectado a Supabase — los datos se guardan en la nube.</div>
-</div><!-- /app -->
 
-<!-- Modal IC -->
-<div class="modal-overlay hidden" id="ic-modal-overlay" onclick="if(event.target===this)icCloseModal()">
-  <div class="modal">
-    <h3>Agregar cliente — Implementación</h3>
-    <div class="field">
-      <label>Cliente *</label>
-      <input type="text" id="ic-m-cliente" placeholder="Nombre del cliente">
-      <div class="error-hint" id="ic-m-cliente-err">Campo obligatorio</div>
-    </div>
-    <div class="field">
-      <label>Contadora asignada</label>
-      <select id="ic-m-contadora"><option value="">Sin asignar</option></select>
-    </div>
-    <div class="field">
-      <label>Fecha de inicio</label>
-      <input type="date" id="ic-m-fecha-inicio">
-    </div>
-    <div class="field">
-      <label>Fecha de fin</label>
-      <input type="date" id="ic-m-fecha-fin">
-    </div>
-    <div class="field">
-      <label>Primer mes de responsabilidad</label>
-      <input type="date" id="ic-m-primer-mes">
-    </div>
-    <div class="field">
-      <label>Estatus *</label>
-      <select id="ic-m-estatus">
-        <option value="">— Seleccionar —</option>
-        <option value="Kick-off">Kick-off</option>
-        <option value="Sesión 2">Sesión 2</option>
-        <option value="Sesión 3">Sesión 3</option>
-        <option value="Sesión 4">Sesión 4</option>
-        <option value="Sesión 5">Sesión 5</option>
-        <option value="Go Live">Go Live</option>
-      </select>
-      <div class="error-hint" id="ic-m-estatus-err">Campo obligatorio</div>
-    </div>
-    <div class="modal-buttons">
-      <button class="btn-modal-cancel" onclick="icCloseModal()">Cancelar</button>
-      <button class="btn-modal-save" id="ic-m-save" onclick="icSaveNew()">Guardar</button>
-    </div>
-  </div>
 </div>
 
-<!-- Modal FE -->
-<div class="modal-overlay hidden" id="fe-modal-overlay" onclick="if(event.target===this)feCloseModal()">
-  <div class="modal">
-    <h3>Agregar cliente — Facturación Electrónica</h3>
-    <div class="field">
-      <label>Cliente *</label>
-      <input type="text" id="fe-m-cliente" placeholder="Nombre del cliente">
-      <div class="error-hint" id="fe-m-cliente-err">Campo obligatorio</div>
-    </div>
-    <div class="field">
-      <label>Contadora asignada</label>
-      <select id="fe-m-contadora"><option value="">Sin asignar</option></select>
-    </div>
-    <div class="field">
-      <label>Fecha estimada de Go Live</label>
-      <input type="date" id="fe-m-go-live">
-    </div>
-    <div class="field">
-      <label>Estatus *</label>
-      <select id="fe-m-estatus">
-        <option value="">— Seleccionar —</option>
-        <option value="Correo de requisitos iniciales">Correo de requisitos iniciales</option>
-        <option value="Portal de creación de firma virtual personal">Portal de creación de firma virtual personal</option>
-        <option value="Delegación de firma virtual personal">Delegación de firma virtual personal</option>
-        <option value="Configuración en Adm Cloud">Configuración en Adm Cloud</option>
-        <option value="Go Live">Go Live</option>
-      </select>
-      <div class="error-hint" id="fe-m-estatus-err">Campo obligatorio</div>
-    </div>
-    <div class="modal-buttons">
-      <button class="btn-modal-cancel" onclick="feCloseModal()">Cancelar</button>
-      <button class="btn-modal-save" id="fe-m-save" onclick="feSaveNew()">Guardar</button>
-    </div>
-  </div>
-</div>
+<div class="toast" id="toast"></div>
 
 <script>
 // ==================== CONFIG ====================
@@ -269,470 +283,502 @@ var SUPABASE_URL = 'https://ouetusstqvpyjeycfdio.supabase.co';
 var SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im91ZXR1c3N0cXZweWpleWNmZGlvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY2NDcwNzksImV4cCI6MjA5MjIyMzA3OX0.Bsys947JLGEuf3zdBF2GPFdbJVJtaZdC4YEmyBU5Bow';
 var sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-var MESES_LABEL = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+// ==================== DATA ====================
+var IMPLEMENTADORAS = ['Claudia Carrion', 'Lisete Peña'];
 
-var IC_ESTATUS = ['Kick-off','Sesión 2','Sesión 3','Sesión 4','Sesión 5','Go Live'];
-var FE_ESTATUS = [
-  'Correo de requisitos iniciales',
-  'Portal de creación de firma virtual personal',
-  'Delegación de firma virtual personal',
-  'Configuración en Adm Cloud',
-  'Go Live'
+var FE_ITEMS = [
+  // Esmeralda (Servicio)
+  { id: 'paso_1', n: 1, label: 'Confirmar pago', responsable: 'Esmeralda', grupo: 'Servicio' },
+  { id: 'paso_2', n: 2, label: 'Enviar acuerdo de servicios', responsable: 'Esmeralda', grupo: 'Servicio' },
+  { id: 'paso_3', n: 3, label: 'Confirmar firma de acuerdo de servicios', responsable: 'Esmeralda', grupo: 'Servicio' },
+  // Felix (Gerencia)
+  { id: 'paso_4', n: 4, label: 'Hacer cuenta Adm Cloud (Nombre debe match DGII)', responsable: 'Felix', grupo: 'Gerencia' },
+  { id: 'paso_5', n: 5, label: 'Crear certificacion en portal Polaris', responsable: 'Felix', grupo: 'Gerencia' },
+  // Implementadora
+  { id: 'paso_6', n: 6, label: 'Enviar correo con requerimientos iniciales (Ver Basecamp)', responsable: 'Implementadora', grupo: 'Implementacion' },
+  { id: 'paso_7', n: 7, label: 'Confirmar con cliente cuando pudiera comprar el p12', responsable: 'Implementadora', grupo: 'Implementacion' },
+  { id: 'paso_8', n: 8, label: 'Confirmar compra de Firma Electronica', responsable: 'Implementadora', grupo: 'Implementacion' },
+  { id: 'paso_9', n: 9, label: 'Recibir credenciales DGII, archivo .p12 y credenciales personales', responsable: 'Implementadora', grupo: 'Implementacion' },
+  { id: 'paso_10', n: 10, label: 'Crear portal de certificacion en DGII', responsable: 'Implementadora', grupo: 'Implementacion' },
+  { id: 'paso_11', n: 11, label: 'Pasos del 1 al 8 FE', responsable: 'Implementadora', grupo: 'Implementacion' },
+  { id: 'paso_12', n: 12, label: 'Espera 24 Horas', responsable: 'Implementadora', grupo: 'Implementacion' },
+  { id: 'paso_13', n: 13, label: 'Pasos del 9 al 15 FE', responsable: 'Implementadora', grupo: 'Implementacion' },
+  { id: 'paso_14', n: 14, label: 'Solicitar Delegacion Oficina Virtual Personal', responsable: 'Implementadora', grupo: 'Implementacion' },
+  { id: 'paso_15', n: 15, label: 'Configuracion Final en Adm', responsable: 'Implementadora', grupo: 'Implementacion' }
 ];
+
+var FE_GROUPS = [
+  { label: 'SERVICIO', responsable: 'Esmeralda', from: 0, to: 2 },
+  { label: 'GERENCIA', responsable: 'Felix', from: 3, to: 4 },
+  { label: 'IMPLEMENTACION', responsable: null, from: 5, to: 14 }
+];
+
+var TOTAL_STEPS = 15;
 
 // ==================== STATE ====================
 var userRole = null;
 var userName = '';
-var canEdit = false;
-var implMainTab = 'ic'; // 'ic' or 'fe'
+var saving = false;
+var mainTab = 'fe';
+var selectedImpl = 'Todas';
+var currentCliente = null;
+var allRows = [];
+var localEdits = {};
 
-// IC data
-var icData = [];
+// ==================== HELPERS ====================
+function todayStr() {
+  var h = new Date();
+  return h.getFullYear() + '-' + String(h.getMonth()+1).padStart(2,'0') + '-' + String(h.getDate()).padStart(2,'0');
+}
 
-// FE data
-var feData = [];
-var feSelectedMonth = null; // null = Todos
+function formatDateShort(dateStr) {
+  if (!dateStr) return '';
+  var d = new Date(dateStr + 'T12:00:00');
+  var dia = d.getDate();
+  var ms = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+  return dia + ' ' + ms[d.getMonth()];
+}
 
-// Contadoras list (for dropdowns)
-var contadorasList = [];
+function getBarColor(pct) {
+  return pct >= 100 ? 'var(--green)' : pct > 0 ? 'var(--amber)' : '#cbd5e1';
+}
 
-// ==================== UTILS ====================
-function esc(s) { return (s || '').replace(/'/g, "\\'"); }
+function esc(s) { return s ? s.replace(/'/g, "\\'") : ''; }
 
-function formatDate(d) {
-  if (!d) return '';
-  var parts = d.split('-');
-  if (parts.length !== 3) return d;
-  return parts[2] + '/' + parts[1] + '/' + parts[0];
+function canEdit() {
+  return userRole === 'admin' || userRole === 'implementaciones';
 }
 
 function showToast(msg, type) {
   var t = document.getElementById('toast');
   t.textContent = msg;
   t.className = 'toast ' + (type || 'success') + ' show';
-  setTimeout(function() { t.classList.remove('show'); }, 2500);
+  setTimeout(function() { t.className = 'toast'; }, 2500);
 }
 
-function feSemaforoClass(row) {
-  if (row.estatus === 'Go Live') return 'gris';
-  if (!row.fecha_go_live_estimada) return 'gris';
-  var now = new Date(); now.setHours(0,0,0,0);
-  var dl = new Date(row.fecha_go_live_estimada + 'T00:00:00');
-  var diff = Math.ceil((dl - now) / (1000*60*60*24));
-  if (diff < 0) return 'rojo';
-  if (diff <= 7) return 'amarillo';
-  return 'verde';
+function countDone(datos) {
+  var count = 0;
+  for (var i = 0; i < FE_ITEMS.length; i++) {
+    var val = datos[FE_ITEMS[i].id];
+    if (val && (val.done === true || val.done === 'na')) count++;
+  }
+  return count;
 }
 
-function getCurrentMonthIndex() {
-  return new Date().getMonth();
+function getStatusInfo(done, total) {
+  if (done >= total) return { label: 'Completado', css: 'ck-status-completo' };
+  if (done > 0) return { label: 'En progreso', css: 'ck-status-progreso' };
+  return { label: 'Sin iniciar', css: 'ck-status-pendiente' };
 }
 
 // ==================== AUTH ====================
-async function doLogin() {
-  var email = document.getElementById('loginEmail').value.trim();
-  var pass = document.getElementById('loginPass').value;
-  var errEl = document.getElementById('loginError');
-  errEl.style.display = 'none';
-  if (!email || !pass) { errEl.textContent = 'Completa ambos campos.'; errEl.style.display = 'block'; return; }
-  var btn = document.querySelector('.login-btn');
-  btn.disabled = true; btn.textContent = 'Entrando...';
-  var { error } = await sb.auth.signInWithPassword({ email: email, password: pass });
-  if (error) { errEl.textContent = error.message; errEl.style.display = 'block'; btn.disabled = false; btn.textContent = 'Entrar'; return; }
-  initApp();
+async function handleLogin() {
+  var email = document.getElementById('login-email').value.trim();
+  var pass = document.getElementById('login-password').value;
+  var errEl = document.getElementById('login-error');
+  var btn = document.getElementById('btn-login');
+  if (!email || !pass) { errEl.textContent = 'Completa ambos campos'; errEl.style.display = 'block'; return; }
+  btn.disabled = true;
+  var res = await sb.auth.signInWithPassword({ email: email, password: pass });
+  btn.disabled = false;
+  if (res.error) { errEl.textContent = res.error.message; errEl.style.display = 'block'; return; }
+  initApp(res.data.user);
 }
 
-async function doLogout() {
+async function handleLogout() {
   await sb.auth.signOut();
   location.reload();
 }
 
-// ==================== INIT ====================
-async function initApp() {
-  if (new URLSearchParams(location.search).get('embed') === '1') {
+async function checkSession() {
+  // Embed mode
+  if (window.location.search.indexOf('embed=1') !== -1) {
     document.body.classList.add('embed');
   }
-
-  var { data: { session } } = await sb.auth.getSession();
-  if (!session) return;
-
-  document.getElementById('loginOverlay').style.display = 'none';
-  document.getElementById('app').style.display = '';
-
-  // Profile
-  var { data: profile } = await sb.from('profiles').select('nombre, rol').eq('id', session.user.id).single();
-  if (profile) {
-    userRole = profile.rol;
-    userName = profile.nombre || session.user.email;
-  } else {
-    userRole = 'viewer';
-    userName = session.user.email;
+  var res = await sb.auth.getSession();
+  if (res.data.session) {
+    initApp(res.data.session.user);
   }
-  document.getElementById('userName').textContent = userName;
+}
 
-  // Check edit permission via grupos
-  canEdit = (userRole === 'admin');
-  if (!canEdit) {
-    var { data: ugs } = await sb.from('usuario_grupos').select('grupo_id, grupos(permisos)').eq('user_id', session.user.id);
-    if (ugs) {
-      ugs.forEach(function(ug) {
-        var p = ug.grupos && ug.grupos.permisos;
-        if (p && p.implementaciones && (p.implementaciones.edicion || p.implementaciones.adicion)) {
-          canEdit = true;
-        }
-      });
-    }
-  }
+async function initApp(user) {
+  document.getElementById('login-screen').style.display = 'none';
+  document.getElementById('app-wrapper').classList.remove('hidden');
 
-  // Load data in parallel
-  await Promise.all([loadContadoras(), loadICData(), loadFEData()]);
-  switchImplTab(implMainTab);
+  // Get role
+  var prof = await sb.from('profiles').select('role, full_name').eq('id', user.id).single();
+  userRole = (prof.data && prof.data.role) ? prof.data.role : 'viewer';
+  userName = (prof.data && prof.data.full_name) ? prof.data.full_name : user.email;
+  document.getElementById('user-display-name').textContent = userName;
+
+  await loadData();
+  render();
 }
 
 // ==================== DATA LOADING ====================
-async function loadContadoras() {
-  var { data } = await sb.from('contadoras').select('nombre,activa');
-  var names = {};
-  (data || []).forEach(function(r) { if (r.activa) names[r.nombre] = true; });
-  contadorasList = Object.keys(names).sort();
-
-  // Populate modal dropdowns
-  populateContadoraSelect('ic-m-contadora');
-  populateContadoraSelect('fe-m-contadora');
+async function loadData() {
+  var res = await sb.from('impl_checklist_fe').select('*');
+  allRows = res.data || [];
+  if (res.error) console.error('Error cargando impl_checklist_fe:', res.error);
 }
 
-function populateContadoraSelect(elId) {
-  var sel = document.getElementById(elId);
-  sel.innerHTML = '<option value="">Sin asignar</option>';
-  contadorasList.forEach(function(c) {
-    sel.innerHTML += '<option value="' + c + '">' + c + '</option>';
-  });
-}
-
-async function loadICData() {
-  var { data, error } = await sb.from('implementaciones_completas').select('*').order('cliente');
-  if (error) { console.error('Error cargando impl completas:', error); return; }
-  icData = data || [];
-}
-
-async function loadFEData() {
-  var { data, error } = await sb.from('implementaciones_fe').select('*').order('cliente');
-  if (error) { console.error('Error cargando impl FE:', error); return; }
-  feData = data || [];
+// ==================== MAIN TAB SWITCH ====================
+function switchMainTab(tab) {
+  mainTab = tab;
+  var btns = document.querySelectorAll('.main-tab');
+  btns[0].className = 'main-tab' + (tab === 'fe' ? ' active' : '');
+  btns[1].className = 'main-tab' + (tab === 'adm' ? ' active' : '');
+  currentCliente = null;
+  render();
 }
 
 // ==================== RENDER ====================
-function renderMainTabs() {
-  var tabs = [
-    { id: 'ic', label: 'Implementación Completa' },
-    { id: 'fe', label: 'Facturación Electrónica' }
-  ];
-  document.getElementById('mainTabs').innerHTML = tabs.map(function(t) {
-    return '<button class="main-tab ' + (implMainTab === t.id ? 'active' : '') + '" onclick="switchImplTab(\'' + t.id + '\')">' + t.label + '</button>';
-  }).join('');
-}
+function render() {
+  var navArea = document.getElementById('navArea');
+  var content = document.getElementById('content');
 
-function switchImplTab(tab) {
-  implMainTab = tab;
-  renderMainTabs();
-  if (tab === 'ic') {
-    document.getElementById('ic-area').classList.remove('hidden');
-    document.getElementById('fe-area').classList.add('hidden');
-    icRenderAll();
-  } else {
-    document.getElementById('ic-area').classList.add('hidden');
-    document.getElementById('fe-area').classList.remove('hidden');
-    feRenderAll();
-  }
-}
-
-// ==================== IC: IMPLEMENTACIÓN COMPLETA ====================
-function icRenderAll() {
-  var el = document.getElementById('ic-content');
-  var h = '';
-
-  // Add button
-  if (canEdit) {
-    h += '<button class="btn-add" onclick="icOpenModal()">+ Agregar cliente</button>';
-  }
-
-  if (icData.length === 0) {
-    h += '<div class="empty-state"><div class="emoji">🚀</div>';
-    h += '<p>No hay implementaciones registradas.</p>';
-    if (canEdit) h += '<p style="font-size:0.82rem">Usa el botón de arriba para agregar el primer cliente.</p>';
-    h += '</div>';
-    el.innerHTML = h;
+  if (mainTab === 'adm') {
+    navArea.innerHTML = '';
+    content.innerHTML = '<div class="coming-soon"><h2>Checklist Adm</h2><p>Proximamente</p></div>';
     return;
   }
 
-  icData.sort(function(a, b) { return (a.cliente || '').localeCompare(b.cliente || '', 'es'); });
-
-  h += '<table class="impl-table">';
-  h += '<thead><tr>';
-  h += '<th style="width:36px">#</th>';
-  h += '<th>Cliente</th>';
-  h += '<th>Contadora</th>';
-  h += '<th>Inicio</th>';
-  h += '<th>Fin</th>';
-  h += '<th>1er mes resp.</th>';
-  h += '<th>Estatus</th>';
-  h += '</tr></thead><tbody>';
-
-  icData.forEach(function(row, idx) {
-    h += '<tr>';
-    h += '<td style="color:var(--muted);font-size:0.75rem">' + (idx + 1) + '</td>';
-    h += '<td class="client-name">' + (row.cliente || '') + '</td>';
-    h += '<td>' + (row.contadora || '<span style="color:var(--light)">Sin asignar</span>') + '</td>';
-    h += '<td class="date-cell' + (!row.fecha_inicio ? ' empty' : '') + '">' + (formatDate(row.fecha_inicio) || '—') + '</td>';
-    h += '<td class="date-cell' + (!row.fecha_fin ? ' empty' : '') + '">' + (formatDate(row.fecha_fin) || '—') + '</td>';
-    h += '<td class="date-cell' + (!row.primer_mes_responsabilidad ? ' empty' : '') + '">' + (formatDate(row.primer_mes_responsabilidad) || '—') + '</td>';
-
-    // Status dropdown or badge
-    if (canEdit) {
-      h += '<td><select class="status-select" onchange="icUpdateEstatus(\'' + row.id + '\',this.value)">';
-      IC_ESTATUS.forEach(function(s) {
-        h += '<option value="' + s + '"' + (row.estatus === s ? ' selected' : '') + '>' + s + '</option>';
-      });
-      h += '</select></td>';
-    } else {
-      h += '<td><span style="font-weight:600;font-size:0.82rem">' + (row.estatus || '—') + '</span></td>';
-    }
-
-    h += '</tr>';
-  });
-
-  h += '</tbody></table>';
-  el.innerHTML = h;
-}
-
-async function icUpdateEstatus(id, estatus) {
-  var { error } = await sb.from('implementaciones_completas').update({ estatus: estatus }).eq('id', id);
-  if (error) { showToast('Error al actualizar', 'error'); console.error(error); return; }
-  // Update local data
-  icData.forEach(function(r) { if (r.id === id) r.estatus = estatus; });
-  showToast('Estatus actualizado');
-}
-
-// IC Modal
-function icOpenModal() {
-  document.getElementById('ic-m-cliente').value = '';
-  document.getElementById('ic-m-contadora').value = '';
-  document.getElementById('ic-m-fecha-inicio').value = '';
-  document.getElementById('ic-m-fecha-fin').value = '';
-  document.getElementById('ic-m-primer-mes').value = '';
-  document.getElementById('ic-m-estatus').value = '';
-  document.getElementById('ic-m-cliente-err').style.display = 'none';
-  document.getElementById('ic-m-estatus-err').style.display = 'none';
-  document.getElementById('ic-modal-overlay').classList.remove('hidden');
-}
-
-function icCloseModal() {
-  document.getElementById('ic-modal-overlay').classList.add('hidden');
-}
-
-async function icSaveNew() {
-  var cliente = document.getElementById('ic-m-cliente').value.trim();
-  var contadora = document.getElementById('ic-m-contadora').value || null;
-  var fechaInicio = document.getElementById('ic-m-fecha-inicio').value || null;
-  var fechaFin = document.getElementById('ic-m-fecha-fin').value || null;
-  var primerMes = document.getElementById('ic-m-primer-mes').value || null;
-  var estatus = document.getElementById('ic-m-estatus').value;
-
-  // Validations
-  var valid = true;
-  if (!cliente) {
-    document.getElementById('ic-m-cliente-err').style.display = 'block';
-    valid = false;
+  // FE tab
+  if (currentCliente) {
+    navArea.innerHTML = '';
+    renderDetail(content);
   } else {
-    document.getElementById('ic-m-cliente-err').style.display = 'none';
+    renderNav(navArea);
+    renderList(content);
   }
-  if (!estatus) {
-    document.getElementById('ic-m-estatus-err').style.display = 'block';
-    valid = false;
-  } else {
-    document.getElementById('ic-m-estatus-err').style.display = 'none';
-  }
-  if (!valid) return;
-
-  var btn = document.getElementById('ic-m-save');
-  btn.disabled = true; btn.textContent = 'Guardando...';
-
-  var { error } = await sb.from('implementaciones_completas').insert({
-    cliente: cliente,
-    contadora: contadora,
-    fecha_inicio: fechaInicio,
-    fecha_fin: fechaFin,
-    primer_mes_responsabilidad: primerMes,
-    estatus: estatus
-  });
-
-  btn.disabled = false; btn.textContent = 'Guardar';
-
-  if (error) { showToast('Error al guardar: ' + error.message, 'error'); console.error(error); return; }
-
-  icCloseModal();
-  await loadICData();
-  icRenderAll();
-  showToast('Cliente agregado');
 }
 
-// ==================== FE: FACTURACIÓN ELECTRÓNICA ====================
-function feRenderAll() {
-  var el = document.getElementById('fe-content');
-  var h = '';
+// ==================== NAV (implementadora pills) ====================
+function renderNav(el) {
+  var pills = ['Todas'].concat(IMPLEMENTADORAS);
+  var html = '<div class="nav-area"><div class="contadora-pills">';
+  for (var i = 0; i < pills.length; i++) {
+    var active = pills[i] === selectedImpl ? ' active' : '';
+    html += '<button class="contadora-pill' + active + '" onclick="selectImpl(\'' + esc(pills[i]) + '\')">' + pills[i] + '</button>';
+  }
+  html += '</div></div>';
+  el.innerHTML = html;
+}
 
-  // Month pills
-  h += '<div class="month-tabs">';
-  h += '<button class="month-tab' + (feSelectedMonth === null ? ' active' : '') + '" onclick="feSelectedMonth=null;feRenderAll()">Todos</button>';
-  MESES_LABEL.forEach(function(label, i) {
-    h += '<button class="month-tab' + (feSelectedMonth === i ? ' active' : '') + '" onclick="feSelectedMonth=' + i + ';feRenderAll()">' + label + '</button>';
-  });
-  h += '</div>';
+function selectImpl(name) {
+  selectedImpl = name;
+  render();
+}
+
+// ==================== LIST VIEW ====================
+function renderList(el) {
+  var filtered = getFilteredRows();
+  var totalClientes = filtered.length;
+  var completados = 0;
+  var enProgreso = 0;
+  var sinIniciar = 0;
+
+  for (var i = 0; i < filtered.length; i++) {
+    var datos = filtered[i].datos || {};
+    var done = countDone(datos);
+    if (done >= TOTAL_STEPS) completados++;
+    else if (done > 0) enProgreso++;
+    else sinIniciar++;
+  }
+
+  var html = '';
+
+  // Summary stats
+  html += '<div class="summary-stats">';
+  html += '<div class="summary-stat"><div class="summary-stat-label">Total clientes</div><div class="summary-stat-value" style="color:var(--navy)">' + totalClientes + '</div></div>';
+  html += '<div class="summary-stat"><div class="summary-stat-label">Completados</div><div class="summary-stat-value" style="color:var(--green)">' + completados + '</div></div>';
+  html += '<div class="summary-stat"><div class="summary-stat-label">En progreso</div><div class="summary-stat-value" style="color:var(--amber)">' + enProgreso + '</div></div>';
+  html += '<div class="summary-stat"><div class="summary-stat-label">Sin iniciar</div><div class="summary-stat-value" style="color:var(--muted)">' + sinIniciar + '</div></div>';
+  html += '</div>';
 
   // Add button
-  if (canEdit) {
-    h += '<button class="btn-add" onclick="feOpenModal()">+ Agregar cliente</button>';
+  if (canEdit()) {
+    html += '<div class="add-bar"><button class="btn-add" onclick="openAddModal()">+ Agregar cliente</button></div>';
   }
 
-  // Filter data by month
-  var filtered = feData;
-  if (feSelectedMonth !== null) {
-    filtered = feData.filter(function(row) {
-      if (!row.fecha_go_live_estimada) return false;
-      var m = parseInt(row.fecha_go_live_estimada.split('-')[1], 10) - 1;
-      return m === feSelectedMonth;
-    });
-  }
-
+  // Client table
   if (filtered.length === 0) {
-    h += '<div class="empty-state"><div class="emoji">⚡</div>';
-    h += '<p>No hay clientes de facturación electrónica' + (feSelectedMonth !== null ? ' para este mes' : '') + '.</p>';
-    if (canEdit) h += '<p style="font-size:0.82rem">Usa el botón de arriba para agregar el primer cliente.</p>';
-    h += '</div>';
-    el.innerHTML = h;
+    html += '<div class="empty">No hay clientes registrados.</div>';
+  } else {
+    html += '<table class="ck-client-table"><thead><tr>';
+    html += '<th>#</th><th>Cliente</th><th>Implementadora</th><th>Progreso</th><th>Estado</th>';
+    html += '</tr></thead><tbody>';
+
+    for (var j = 0; j < filtered.length; j++) {
+      var row = filtered[j];
+      var datos = row.datos || {};
+      var done = countDone(datos);
+      var pct = Math.round((done / TOTAL_STEPS) * 100);
+      var status = getStatusInfo(done, TOTAL_STEPS);
+
+      html += '<tr onclick="openDetail(\'' + esc(row.cliente) + '\')">';
+      html += '<td>' + (j + 1) + '</td>';
+      html += '<td><span class="ck-table-name">' + row.cliente + '</span></td>';
+      html += '<td><span class="ck-table-contadora">' + (row.implementadora || '') + '</span></td>';
+      html += '<td><span class="ck-progress-bar"><span class="ck-progress-fill" style="width:' + pct + '%;background:' + getBarColor(pct) + '"></span></span><span class="ck-progress-text">' + done + '/' + TOTAL_STEPS + '</span></td>';
+      html += '<td><span class="ck-status-badge ' + status.css + '">' + status.label + '</span></td>';
+      html += '</tr>';
+    }
+
+    html += '</tbody></table>';
+  }
+
+  el.innerHTML = html;
+}
+
+function getFilteredRows() {
+  var rows = allRows.slice();
+  if (selectedImpl !== 'Todas') {
+    rows = rows.filter(function(r) { return r.implementadora === selectedImpl; });
+  }
+  rows.sort(function(a, b) { return (a.cliente || '').localeCompare(b.cliente || ''); });
+  return rows;
+}
+
+// ==================== DETAIL VIEW ====================
+function openDetail(cliente) {
+  currentCliente = allRows.find(function(r) { return r.cliente === cliente; });
+  if (!currentCliente) return;
+  localEdits = {};
+  // Copy current datos into localEdits
+  var datos = currentCliente.datos || {};
+  for (var i = 0; i < FE_ITEMS.length; i++) {
+    var item = FE_ITEMS[i];
+    var val = datos[item.id];
+    if (val) {
+      localEdits[item.id] = { done: val.done, fecha: val.fecha || '' };
+    } else {
+      localEdits[item.id] = { done: false, fecha: '' };
+    }
+  }
+  render();
+}
+
+function closeDetail() {
+  currentCliente = null;
+  localEdits = {};
+  render();
+}
+
+function renderDetail(el) {
+  var row = currentCliente;
+  var datos = row.datos || {};
+  var done = countDone(localEdits);
+  var pct = Math.round((done / TOTAL_STEPS) * 100);
+  var implName = row.implementadora || 'Sin asignar';
+
+  var html = '';
+
+  // Header
+  html += '<div class="detail-header">';
+  html += '<button class="detail-back" onclick="closeDetail()">&larr; Volver al listado</button>';
+  html += '<div><div class="detail-title">' + row.cliente + '</div>';
+  html += '<div class="detail-sub">Implementadora: ' + implName + '</div></div>';
+  html += '</div>';
+
+  // Progress bar
+  html += '<div class="progress-row">';
+  html += '<span class="pr-count">' + done + ' / ' + TOTAL_STEPS + '</span>';
+  html += '<div class="pr-bar"><div class="pr-fill" style="width:' + pct + '%;background:' + getBarColor(pct) + '"></div></div>';
+  html += '<span class="pr-pct">' + pct + '%</span>';
+  html += '</div>';
+
+  // Checklist table
+  html += '<table class="check-table"><thead><tr>';
+  html += '<th>#</th><th>Tarea</th><th>Responsable</th><th class="center">Estado</th><th class="center">Fecha</th>';
+  html += '</tr></thead><tbody>';
+
+  var lastGroup = '';
+  for (var i = 0; i < FE_ITEMS.length; i++) {
+    var item = FE_ITEMS[i];
+    var groupKey = item.grupo;
+
+    // Group header
+    if (groupKey !== lastGroup) {
+      var grp = FE_GROUPS.find(function(g) { return g.label === groupKey.toUpperCase(); });
+      var groupLabel = groupKey.toUpperCase();
+      if (grp) {
+        var respLabel = grp.responsable ? grp.responsable : implName;
+        groupLabel += ' — ' + respLabel;
+      }
+      html += '<tr class="group-row"><td colspan="5">' + groupLabel + '</td></tr>';
+      lastGroup = groupKey;
+    }
+
+    var val = localEdits[item.id] || { done: false, fecha: '' };
+    var isDone = val.done === true || val.done === 'na';
+    var rowClass = isDone ? ' class="row-done"' : '';
+    var responsableLabel = item.responsable === 'Implementadora' ? implName : item.responsable;
+
+    html += '<tr' + rowClass + '>';
+    html += '<td>' + item.n + '</td>';
+    html += '<td>' + item.label + '</td>';
+    html += '<td>' + responsableLabel + '</td>';
+
+    // Estado column
+    html += '<td class="center">';
+    if (canEdit()) {
+      var yesActive = val.done === true ? ' active-yes' : '';
+      var noActive = val.done === false ? ' active-no' : '';
+      var naActive = val.done === 'na' ? ' active-na' : '';
+      html += '<div class="toggle-group">';
+      html += '<button class="toggle-opt' + yesActive + '" onclick="toggleItem(\'' + item.id + '\', true)">Si</button>';
+      html += '<button class="toggle-opt' + noActive + '" onclick="toggleItem(\'' + item.id + '\', false)">No</button>';
+      html += '<button class="toggle-opt' + naActive + '" onclick="toggleItem(\'' + item.id + '\', \'na\')">N/A</button>';
+      html += '</div>';
+    } else {
+      // Read-only labels
+      if (val.done === true) html += '<span class="status-label st-yes">Si</span>';
+      else if (val.done === 'na') html += '<span class="status-label st-na">N/A</span>';
+      else html += '<span class="status-label st-no">No</span>';
+    }
+    html += '</td>';
+
+    // Fecha column
+    html += '<td class="center">' + formatDateShort(val.fecha) + '</td>';
+
+    html += '</tr>';
+  }
+
+  html += '</tbody></table>';
+
+  // Save button
+  if (canEdit()) {
+    html += '<div class="save-bar">';
+    html += '<button class="btn btn-primary" id="btn-save" onclick="saveChecklist()">Guardar cambios</button>';
+    html += '</div>';
+  }
+
+  el.innerHTML = html;
+}
+
+// ==================== TOGGLE ITEM ====================
+function toggleItem(itemId, value) {
+  if (!canEdit() || saving) return;
+  var current = localEdits[itemId] || { done: false, fecha: '' };
+
+  // If clicking the already-active value, do nothing
+  if (current.done === value) return;
+
+  localEdits[itemId] = {
+    done: value,
+    fecha: (value === true || value === 'na') ? todayStr() : ''
+  };
+
+  // Re-render detail
+  renderDetail(document.getElementById('content'));
+}
+
+// ==================== SAVE ====================
+async function saveChecklist() {
+  if (saving || !currentCliente) return;
+  saving = true;
+  var btn = document.getElementById('btn-save');
+  if (btn) btn.disabled = true;
+
+  var newDatos = {};
+  for (var i = 0; i < FE_ITEMS.length; i++) {
+    var item = FE_ITEMS[i];
+    var val = localEdits[item.id] || { done: false, fecha: '' };
+    newDatos[item.id] = { done: val.done, fecha: val.fecha };
+  }
+
+  var res = await sb.from('impl_checklist_fe').upsert({
+    cliente: currentCliente.cliente,
+    implementadora: currentCliente.implementadora,
+    datos: newDatos,
+    updated_at: new Date().toISOString()
+  }, { onConflict: 'cliente' });
+
+  saving = false;
+  if (btn) btn.disabled = false;
+
+  if (res.error) {
+    showToast('Error al guardar: ' + res.error.message, 'error');
+    console.error(res.error);
     return;
   }
 
-  filtered.sort(function(a, b) { return (a.cliente || '').localeCompare(b.cliente || '', 'es'); });
+  // Update local data
+  currentCliente.datos = newDatos;
+  var idx = allRows.findIndex(function(r) { return r.cliente === currentCliente.cliente; });
+  if (idx >= 0) allRows[idx].datos = newDatos;
 
-  h += '<table class="impl-table">';
-  h += '<thead><tr>';
-  h += '<th style="width:36px">#</th>';
-  h += '<th>Cliente</th>';
-  h += '<th>Contadora</th>';
-  h += '<th>Go Live estimado</th>';
-  h += '<th style="text-align:center">Semáforo</th>';
-  h += '<th>Estatus</th>';
-  h += '</tr></thead><tbody>';
-
-  filtered.forEach(function(row, idx) {
-    var sem = feSemaforoClass(row);
-
-    h += '<tr>';
-    h += '<td style="color:var(--muted);font-size:0.75rem">' + (idx + 1) + '</td>';
-    h += '<td class="client-name">' + (row.cliente || '') + '</td>';
-    h += '<td>' + (row.contadora || '<span style="color:var(--light)">Sin asignar</span>') + '</td>';
-    h += '<td class="date-cell' + (!row.fecha_go_live_estimada ? ' empty' : '') + '">' + (formatDate(row.fecha_go_live_estimada) || '—') + '</td>';
-
-    // Semáforo
-    h += '<td style="text-align:center">';
-    if (row.estatus === 'Go Live') {
-      h += '<span style="color:var(--green);font-weight:700;font-size:1rem">✓</span>';
-    } else {
-      h += '<span class="semaforo ' + sem + '"></span>';
-    }
-    h += '</td>';
-
-    // Status dropdown or text
-    if (canEdit) {
-      h += '<td><select class="status-select" onchange="feUpdateEstatus(\'' + row.id + '\',this.value)">';
-      FE_ESTATUS.forEach(function(s) {
-        h += '<option value="' + s + '"' + (row.estatus === s ? ' selected' : '') + '>' + s + '</option>';
-      });
-      h += '</select></td>';
-    } else {
-      h += '<td><span style="font-weight:600;font-size:0.82rem">' + (row.estatus || '—') + '</span></td>';
-    }
-
-    h += '</tr>';
-  });
-
-  h += '</tbody></table>';
-  el.innerHTML = h;
+  showToast('Cambios guardados');
 }
 
-async function feUpdateEstatus(id, estatus) {
-  var { error } = await sb.from('implementaciones_fe').update({ estatus: estatus }).eq('id', id);
-  if (error) { showToast('Error al actualizar', 'error'); console.error(error); return; }
-  feData.forEach(function(r) { if (r.id === id) r.estatus = estatus; });
-  showToast('Estatus actualizado');
-  feRenderAll(); // re-render to update semáforo
-}
+// ==================== ADD CLIENT MODAL ====================
+function openAddModal() {
+  if (!canEdit()) return;
+  var overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.id = 'add-modal';
 
-// FE Modal
-function feOpenModal() {
-  document.getElementById('fe-m-cliente').value = '';
-  document.getElementById('fe-m-contadora').value = '';
-  document.getElementById('fe-m-go-live').value = '';
-  document.getElementById('fe-m-estatus').value = '';
-  document.getElementById('fe-m-cliente-err').style.display = 'none';
-  document.getElementById('fe-m-estatus-err').style.display = 'none';
-  document.getElementById('fe-modal-overlay').classList.remove('hidden');
-}
-
-function feCloseModal() {
-  document.getElementById('fe-modal-overlay').classList.add('hidden');
-}
-
-async function feSaveNew() {
-  var cliente = document.getElementById('fe-m-cliente').value.trim();
-  var contadora = document.getElementById('fe-m-contadora').value || null;
-  var goLive = document.getElementById('fe-m-go-live').value || null;
-  var estatus = document.getElementById('fe-m-estatus').value;
-
-  var valid = true;
-  if (!cliente) {
-    document.getElementById('fe-m-cliente-err').style.display = 'block';
-    valid = false;
-  } else {
-    document.getElementById('fe-m-cliente-err').style.display = 'none';
+  var optionsHtml = '<option value="">Seleccionar...</option>';
+  for (var i = 0; i < IMPLEMENTADORAS.length; i++) {
+    optionsHtml += '<option value="' + IMPLEMENTADORAS[i] + '">' + IMPLEMENTADORAS[i] + '</option>';
   }
-  if (!estatus) {
-    document.getElementById('fe-m-estatus-err').style.display = 'block';
-    valid = false;
-  } else {
-    document.getElementById('fe-m-estatus-err').style.display = 'none';
+
+  overlay.innerHTML = '<div class="modal-box">' +
+    '<h3>Agregar cliente</h3>' +
+    '<div class="field"><label>Cliente</label><input type="text" id="add-cliente" placeholder="Nombre del cliente"></div>' +
+    '<div class="field"><label>Implementadora</label><select id="add-impl">' + optionsHtml + '</select></div>' +
+    '<div class="modal-btns">' +
+    '<button class="btn-cancel" onclick="closeAddModal()">Cancelar</button>' +
+    '<button class="btn-save" onclick="saveNewClient()">Guardar</button>' +
+    '</div></div>';
+
+  document.body.appendChild(overlay);
+}
+
+function closeAddModal() {
+  var m = document.getElementById('add-modal');
+  if (m) m.remove();
+}
+
+async function saveNewClient() {
+  var cliente = document.getElementById('add-cliente').value.trim();
+  var impl = document.getElementById('add-impl').value;
+
+  if (!cliente) { showToast('Escribe el nombre del cliente', 'error'); return; }
+  if (!impl) { showToast('Selecciona una implementadora', 'error'); return; }
+
+  // Check duplicate
+  var exists = allRows.find(function(r) { return r.cliente.toLowerCase() === cliente.toLowerCase(); });
+  if (exists) { showToast('Ese cliente ya existe', 'error'); return; }
+
+  // Build empty datos
+  var datos = {};
+  for (var i = 0; i < FE_ITEMS.length; i++) {
+    datos[FE_ITEMS[i].id] = { done: false, fecha: '' };
   }
-  if (!valid) return;
 
-  var btn = document.getElementById('fe-m-save');
-  btn.disabled = true; btn.textContent = 'Guardando...';
-
-  var { error } = await sb.from('implementaciones_fe').insert({
+  var res = await sb.from('impl_checklist_fe').upsert({
     cliente: cliente,
-    contadora: contadora,
-    fecha_go_live_estimada: goLive,
-    estatus: estatus
-  });
+    implementadora: impl,
+    datos: datos,
+    updated_at: new Date().toISOString()
+  }, { onConflict: 'cliente' });
 
-  btn.disabled = false; btn.textContent = 'Guardar';
+  if (res.error) {
+    showToast('Error al guardar: ' + res.error.message, 'error');
+    console.error(res.error);
+    return;
+  }
 
-  if (error) { showToast('Error al guardar: ' + error.message, 'error'); console.error(error); return; }
-
-  feCloseModal();
-  await loadFEData();
-  feRenderAll();
   showToast('Cliente agregado');
+  closeAddModal();
+  await loadData();
+  render();
 }
 
-// ==================== BOOT ====================
-(async function() {
-  if (new URLSearchParams(location.search).get('embed') === '1') {
-    document.body.classList.add('embed');
-  }
-  var { data: { session } } = await sb.auth.getSession();
-  if (session) { initApp(); }
-})();
+// ==================== INIT ====================
+checkSession();
 </script>
 </body>
 </html>
