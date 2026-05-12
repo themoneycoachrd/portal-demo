@@ -1,0 +1,718 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Personal - Account One</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+/* ==================== DESIGN SYSTEM ==================== */
+:root {
+  --navy: #1e3a5f;
+  --blue: #3b82f6;
+  --green: #10b981;
+  --red: #ef4444;
+  --amber: #f59e0b;
+  --purple: #8b5cf6;
+  --bg: #f8fafc;
+  --card: #ffffff;
+  --border: #e5e7eb;
+  --text: #1f2937;
+  --muted: #6b7280;
+  --light: #9ca3af;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.5;
+}
+
+/* ==================== LAYOUT ==================== */
+.header {
+  background: linear-gradient(135deg, #1e3a5f, #2d4a7a);
+  color: white;
+  padding: 24px;
+}
+.header h1 { font-size: 1.5rem; font-weight: 700; }
+.header p { opacity: 0.8; font-size: 0.9rem; margin-top: 4px; }
+
+.breadcrumb-bar { display:flex; align-items:center; gap:6px; padding:10px 24px; background:white; border-bottom:1px solid var(--border); font-size:13px; }
+.breadcrumb-bar a { color:var(--muted); text-decoration:none; font-weight:500; }
+.breadcrumb-bar a:hover { color:var(--navy); text-decoration:underline; }
+.breadcrumb-bar .sep { color:var(--light); font-size:11px; }
+.breadcrumb-bar .current { color:var(--text); font-weight:600; }
+
+.container { max-width: 1100px; margin: 0 auto; padding: 24px; }
+.hidden { display: none !important; }
+
+body.embed .login-overlay { display: none !important; }
+body.embed .header { display: none !important; }
+body.embed .breadcrumb-bar { display: none !important; }
+body.embed #app-wrapper { display: block !important; }
+
+/* ==================== LOGIN ==================== */
+.login-overlay {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: linear-gradient(135deg, #1e3a5f 0%, #2d4a7a 50%, #1e3a5f 100%);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 1000;
+}
+.login-box {
+  background: white; border-radius: 16px; padding: 40px;
+  width: 100%; max-width: 400px;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+}
+.login-box h2 { font-size: 1.4rem; color: var(--navy); margin-bottom: 4px; }
+.login-box .subtitle { font-size: 0.85rem; color: var(--muted); margin-bottom: 24px; }
+.login-box .field { margin-bottom: 16px; }
+.login-box .field label { display: block; font-size: 0.8rem; font-weight: 600; color: var(--text); margin-bottom: 6px; }
+.login-box .field input {
+  width: 100%; padding: 10px 14px; border: 1px solid var(--border);
+  border-radius: 8px; font-size: 0.95rem; font-family: inherit; transition: border-color 0.2s;
+}
+.login-box .field input:focus { outline: none; border-color: var(--blue); box-shadow: 0 0 0 3px rgba(59,130,246,0.1); }
+.login-btn {
+  width: 100%; padding: 12px; background: var(--navy); color: white; border: none;
+  border-radius: 8px; font-size: 0.95rem; font-weight: 600; cursor: pointer;
+  transition: background 0.2s; margin-top: 8px;
+}
+.login-btn:hover { background: #2d4a7a; }
+.login-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+.login-error { color: var(--red); font-size: 0.8rem; margin-top: 12px; display: none; }
+
+/* ==================== USER BAR ==================== */
+.user-bar { display: flex; align-items: center; gap: 12px; margin-top: 8px; }
+.user-bar .user-name { font-size: 0.8rem; opacity: 0.9; background: rgba(255,255,255,0.15); padding: 4px 12px; border-radius: 20px; }
+.user-bar .user-role { font-size: 0.7rem; opacity: 0.7; text-transform: uppercase; letter-spacing: 0.5px; }
+.btn-logout { font-size: 0.75rem; padding: 4px 12px; background: rgba(255,255,255,0.15); color: white; border: 1px solid rgba(255,255,255,0.3); border-radius: 6px; cursor: pointer; }
+.btn-logout:hover { background: rgba(255,255,255,0.25); }
+
+/* ==================== SUMMARY STATS ==================== */
+.summary-stats {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 16px; margin-bottom: 24px;
+}
+.stat-card {
+  background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 16px 20px; text-align: center;
+}
+.stat-card .label { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.5px; color: var(--muted); font-weight: 600; margin-bottom: 4px; }
+.stat-card .value { font-size: 1.6rem; font-weight: 700; }
+.stat-card .value.navy { color: var(--navy); }
+.stat-card .value.green { color: var(--green); }
+.stat-card .value.amber { color: var(--amber); }
+.stat-card .value.purple { color: var(--purple); }
+
+/* ==================== EMPLOYEE CARDS ==================== */
+.emp-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px; margin-bottom: 32px; }
+
+.emp-card {
+  background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 20px;
+  transition: box-shadow 0.2s;
+}
+.emp-card:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.06); }
+.emp-card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+.emp-name { font-size: 1rem; font-weight: 700; color: var(--navy); }
+.emp-points { font-size: 1.3rem; font-weight: 800; }
+.emp-points.close-to-pay { color: var(--green); }
+
+.progress-track {
+  height: 10px; background: #f1f5f9; border-radius: 5px; overflow: hidden; margin-bottom: 8px;
+}
+.progress-fill {
+  height: 100%; border-radius: 5px; transition: width 0.4s ease;
+}
+.progress-label { display: flex; justify-content: space-between; font-size: 0.72rem; color: var(--muted); font-weight: 500; }
+
+.emp-last-wow { font-size: 0.78rem; color: var(--muted); margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border); }
+.emp-last-wow strong { color: var(--text); }
+
+.emp-actions { display: flex; gap: 8px; margin-top: 12px; }
+
+.btn-sm {
+  padding: 6px 14px; border-radius: 6px; font-size: 0.78rem; font-weight: 600;
+  border: none; cursor: pointer; transition: opacity 0.2s;
+}
+.btn-sm:hover { opacity: 0.85; }
+.btn-add-pts { background: var(--blue); color: white; }
+.btn-pay { background: var(--green); color: white; }
+
+/* ==================== HISTORY TABLE ==================== */
+.card-section {
+  background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 20px; margin-bottom: 24px;
+}
+.card-section h3 { font-size: 0.95rem; font-weight: 700; color: var(--navy); margin-bottom: 16px; }
+
+.wow-table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+.wow-table th {
+  text-align: left; font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.5px;
+  color: var(--muted); font-weight: 600; padding: 8px 10px; border-bottom: 2px solid var(--border);
+}
+.wow-table td { padding: 10px; border-bottom: 1px solid #f1f5f9; }
+.wow-table tr:hover td { background: #fafbfc; }
+
+.badge-puntos {
+  display: inline-block; padding: 2px 10px; border-radius: 10px;
+  font-size: 0.72rem; font-weight: 700;
+}
+.badge-puntos.tipo-puntos { background: #eef2ff; color: var(--blue); }
+.badge-puntos.tipo-pago { background: #ecfdf5; color: var(--green); }
+
+/* ==================== MODAL ==================== */
+.modal-overlay {
+  position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.4); display: flex; align-items: center; justify-content: center;
+  z-index: 500;
+}
+.modal-box {
+  background: white; border-radius: 12px; padding: 28px; width: 100%; max-width: 440px;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.15);
+}
+.modal-box h3 { font-size: 1.05rem; font-weight: 700; color: var(--navy); margin-bottom: 20px; }
+.modal-box .field { margin-bottom: 14px; }
+.modal-box .field label { display: block; font-size: 0.78rem; font-weight: 600; color: var(--muted); margin-bottom: 4px; }
+.modal-box .field input,
+.modal-box .field select,
+.modal-box .field textarea {
+  width: 100%; padding: 8px 12px; border: 1px solid var(--border); border-radius: 8px;
+  font-size: 0.88rem; font-family: inherit;
+}
+.modal-box .field textarea { resize: vertical; min-height: 60px; }
+.modal-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 18px; }
+.btn-modal {
+  padding: 8px 20px; border-radius: 8px; font-size: 0.85rem; font-weight: 600;
+  border: none; cursor: pointer; transition: opacity 0.2s;
+}
+.btn-modal:hover { opacity: 0.85; }
+.btn-modal.primary { background: var(--blue); color: white; }
+.btn-modal.secondary { background: #f1f5f9; color: var(--text); }
+.btn-modal.green { background: var(--green); color: white; }
+
+/* ==================== TABS ==================== */
+.main-tabs { display: flex; gap: 0; background: white; border-bottom: 1px solid var(--border); padding: 0 24px; }
+.main-tab {
+  padding: 12px 20px; font-size: 0.85rem; font-weight: 600; color: var(--muted);
+  border: none; background: none; cursor: pointer; border-bottom: 2px solid transparent;
+  transition: color 0.2s, border-color 0.2s;
+}
+.main-tab:hover { color: var(--text); }
+.main-tab.active { color: var(--navy); border-bottom-color: var(--navy); }
+
+.tab-content { display: none; }
+.tab-content.active { display: block; }
+
+/* ==================== EMPTY STATE ==================== */
+.empty-state { text-align: center; padding: 48px 24px; color: var(--muted); }
+.empty-state .icon { font-size: 2.5rem; margin-bottom: 12px; }
+.empty-state p { font-size: 0.9rem; }
+
+/* ==================== FILTER ==================== */
+.filter-bar { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; flex-wrap: wrap; }
+.filter-bar select {
+  padding: 6px 12px; border: 1px solid var(--border); border-radius: 8px;
+  font-size: 0.82rem; font-family: inherit; background: white;
+}
+</style>
+</head>
+<body>
+
+<!-- LOGIN SCREEN -->
+<div class="login-overlay" id="login-screen">
+  <div class="login-box">
+    <h2>Account One</h2>
+    <p class="subtitle">Inicia sesión para continuar</p>
+    <div class="field">
+      <label>Email</label>
+      <input type="email" id="login-email" placeholder="tu@accountone.do">
+    </div>
+    <div class="field">
+      <label>Contraseña</label>
+      <input type="password" id="login-pass" placeholder="••••••••">
+    </div>
+    <button class="login-btn" id="btn-login" onclick="doLogin()">Iniciar sesión</button>
+    <div class="login-error" id="login-error"></div>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app-wrapper" class="hidden">
+  <div class="header">
+    <h1>Personal</h1>
+    <p>Reconocimiento y puntos Wow del equipo</p>
+    <div class="user-bar">
+      <span class="user-name" id="user-display-name"></span>
+      <button class="btn-logout" onclick="doLogout()">Cerrar sesión</button>
+    </div>
+  </div>
+
+  <div class="breadcrumb-bar">
+    <a href="index.html">Inicio</a>
+    <span class="sep">›</span>
+    <span class="current">Personal</span>
+  </div>
+
+  <div class="main-tabs">
+    <button class="main-tab active" data-tab="tablero" onclick="switchTab('tablero')">Tablero</button>
+    <button class="main-tab" data-tab="historial" onclick="switchTab('historial')">Historial</button>
+  </div>
+
+  <div class="container">
+    <div id="tab-tablero" class="tab-content active"></div>
+    <div id="tab-historial" class="tab-content"></div>
+  </div>
+</div>
+
+<!-- MODAL: Agregar puntos -->
+<div class="modal-overlay hidden" id="modal-add">
+  <div class="modal-box">
+    <h3>Dar puntos Wow</h3>
+    <div class="field">
+      <label>Empleado</label>
+      <select id="modal-empleado"></select>
+    </div>
+    <div class="field">
+      <label>Puntos</label>
+      <select id="modal-puntos">
+        <option value="50">50 — Medio Wow</option>
+        <option value="100" selected>100 — Wow completo</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>Reconocido por (cliente o supervisor)</label>
+      <input type="text" id="modal-otorgado" placeholder="Ej: Juan Pérez, cliente de XYZ">
+    </div>
+    <div class="field">
+      <label>Motivo</label>
+      <textarea id="modal-motivo" placeholder="¿Qué hizo bien?"></textarea>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-modal secondary" onclick="closeModal()">Cancelar</button>
+      <button class="btn-modal primary" onclick="savePoints()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: Confirmar pago -->
+<div class="modal-overlay hidden" id="modal-pay">
+  <div class="modal-box">
+    <h3>Registrar pago de bono</h3>
+    <p style="font-size:0.88rem; color:var(--muted); margin-bottom:16px;">
+      <strong id="pay-emp-name"></strong> tiene <strong id="pay-emp-points"></strong> puntos acumulados.
+      Al registrar el pago, se le acreditarán RD$3,000 y el contador vuelve a cero.
+    </p>
+    <div class="modal-actions">
+      <button class="btn-modal secondary" onclick="closePayModal()">Cancelar</button>
+      <button class="btn-modal green" onclick="confirmPay()">Registrar pago</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ==================== CONFIG ====================
+var isEmbed = new URLSearchParams(window.location.search).get('embed') === '1';
+if (isEmbed) document.body.classList.add('embed');
+
+const SUPABASE_URL = 'https://ouetusstqvpyjeycfdio.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im91ZXR1c3N0cXZweWpleWNmZGlvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY2NDcwNzksImV4cCI6MjA5MjIyMzA3OX0.Bsys947JLGEuf3zdBF2GPFdbJVJtaZdC4YEmyBU5Bow';
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+const PAGO_THRESHOLD = 1000;
+const PAGO_MONTO = 3000;
+
+// ==================== STATE ====================
+var APP = {
+  userRole: null,
+  userName: '',
+  userId: null,
+  activeTab: 'tablero',
+  profiles: [],     // todos los empleados
+  wowData: [],      // registros de wow_points
+  payTarget: null    // empleado_id para modal de pago
+};
+
+// ==================== AUTH ====================
+async function doLogin() {
+  var email = document.getElementById('login-email').value.trim();
+  var pass = document.getElementById('login-pass').value;
+  var errEl = document.getElementById('login-error');
+  errEl.style.display = 'none';
+  document.getElementById('btn-login').disabled = true;
+
+  var { error } = await sb.auth.signInWithPassword({ email: email, password: pass });
+  if (error) {
+    errEl.textContent = 'Credenciales incorrectas';
+    errEl.style.display = 'block';
+    document.getElementById('btn-login').disabled = false;
+    return;
+  }
+  await loadUserProfile();
+  showApp();
+}
+
+async function doLogout() {
+  await sb.auth.signOut();
+  location.reload();
+}
+
+async function loadUserProfile() {
+  var { data: { user } } = await sb.auth.getUser();
+  if (!user) return;
+  APP.userId = user.id;
+
+  var { data: profile } = await sb.from('profiles')
+    .select('nombre, rol')
+    .eq('id', user.id)
+    .single();
+
+  if (profile) {
+    APP.userRole = profile.rol;
+    APP.userName = profile.nombre || user.email;
+  } else {
+    APP.userRole = 'contadora';
+    APP.userName = user.email;
+  }
+}
+
+function showApp() {
+  document.getElementById('login-screen').style.display = 'none';
+  document.getElementById('app-wrapper').classList.remove('hidden');
+  document.getElementById('user-display-name').textContent = APP.userName;
+  startApp();
+}
+
+// ==================== DATA ====================
+async function startApp() {
+  // Cargar todos los perfiles (empleados)
+  var { data: profiles } = await sb.from('profiles').select('id, nombre, rol, email');
+  APP.profiles = profiles || [];
+
+  // Cargar todos los registros de wow_points
+  var { data: wow } = await sb.from('wow_points').select('*').order('created_at', { ascending: false });
+  APP.wowData = wow || [];
+
+  render();
+}
+
+function canManage() {
+  return APP.userRole === 'admin' || APP.userRole === 'ventas';
+}
+
+// ==================== CALCULATIONS ====================
+function getEmployeeStats() {
+  // Para cada empleado, calcular puntos del ciclo actual
+  var stats = {};
+
+  APP.profiles.forEach(function(p) {
+    stats[p.id] = {
+      id: p.id,
+      nombre: p.nombre || p.email,
+      rol: p.rol,
+      puntosCiclo: 0,
+      totalHistorico: 0,
+      pagos: 0,
+      ultimoWow: null
+    };
+  });
+
+  // Procesar registros de más antiguo a más reciente para calcular ciclo actual
+  var sorted = APP.wowData.slice().sort(function(a, b) {
+    return new Date(a.created_at) - new Date(b.created_at);
+  });
+
+  sorted.forEach(function(row) {
+    var s = stats[row.empleado_id];
+    if (!s) return;
+
+    if (row.tipo === 'pago') {
+      s.puntosCiclo = 0;
+      s.pagos++;
+    } else {
+      s.puntosCiclo += row.puntos;
+      s.totalHistorico += row.puntos;
+    }
+  });
+
+  // Último wow (solo tipo puntos, ya están ordenados desc en APP.wowData)
+  APP.wowData.forEach(function(row) {
+    if (row.tipo !== 'puntos') return;
+    var s = stats[row.empleado_id];
+    if (s && !s.ultimoWow) {
+      s.ultimoWow = row;
+    }
+  });
+
+  return stats;
+}
+
+// ==================== RENDER ====================
+function render() {
+  renderTablero();
+  renderHistorial();
+}
+
+function switchTab(tab) {
+  APP.activeTab = tab;
+  document.querySelectorAll('.main-tab').forEach(function(t) {
+    t.classList.toggle('active', t.dataset.tab === tab);
+  });
+  document.querySelectorAll('.tab-content').forEach(function(tc) {
+    tc.classList.toggle('active', tc.id === 'tab-' + tab);
+  });
+}
+
+function renderTablero() {
+  var container = document.getElementById('tab-tablero');
+  var stats = getEmployeeStats();
+  var empList = Object.values(stats).sort(function(a, b) { return b.puntosCiclo - a.puntosCiclo; });
+
+  // Filtrar solo empleados que tienen puntos o son elegibles (todos por ahora)
+  var withPoints = empList.filter(function(e) { return e.puntosCiclo > 0 || e.totalHistorico > 0; });
+  var totalPuntos = empList.reduce(function(s, e) { return s + e.puntosCiclo; }, 0);
+  var proxPago = empList.filter(function(e) { return e.puntosCiclo >= PAGO_THRESHOLD; }).length;
+  var totalPagos = empList.reduce(function(s, e) { return s + e.pagos; }, 0);
+
+  var html = '';
+
+  // Summary stats
+  html += '<div class="summary-stats">';
+  html += '<div class="stat-card"><div class="label">Empleados activos</div><div class="value navy">' + APP.profiles.length + '</div></div>';
+  html += '<div class="stat-card"><div class="label">Puntos en juego</div><div class="value purple">' + totalPuntos.toLocaleString() + '</div></div>';
+  html += '<div class="stat-card"><div class="label">Listos para cobrar</div><div class="value green">' + proxPago + '</div></div>';
+  html += '<div class="stat-card"><div class="label">Bonos pagados</div><div class="value amber">' + totalPagos + '</div></div>';
+  html += '</div>';
+
+  // Botón agregar (solo admin/comercial)
+  if (canManage()) {
+    html += '<div style="margin-bottom:20px;">';
+    html += '<button class="btn-sm btn-add-pts" onclick="openAddModal()" style="padding:10px 20px; font-size:0.88rem;">+ Dar puntos Wow</button>';
+    html += '</div>';
+  }
+
+  // Employee cards
+  if (withPoints.length === 0 && !canManage()) {
+    html += '<div class="empty-state"><div class="icon">⭐</div><p>Todavía no hay puntos registrados. ¡A ganárselos!</p></div>';
+  } else {
+    html += '<div class="emp-grid">';
+    // Mostrar todos los que tienen puntos, y si eres manager, todos los empleados
+    var toShow = canManage() ? empList : withPoints;
+    toShow.forEach(function(emp) {
+      var pct = Math.min(100, (emp.puntosCiclo / PAGO_THRESHOLD) * 100);
+      var closeClass = emp.puntosCiclo >= PAGO_THRESHOLD ? ' close-to-pay' : '';
+      var barColor = pct >= 100 ? 'var(--green)' : pct >= 70 ? 'var(--amber)' : 'var(--blue)';
+
+      html += '<div class="emp-card">';
+      html += '<div class="emp-card-header">';
+      html += '<span class="emp-name">' + esc(emp.nombre) + '</span>';
+      html += '<span class="emp-points' + closeClass + '">' + emp.puntosCiclo + '</span>';
+      html += '</div>';
+
+      html += '<div class="progress-track"><div class="progress-fill" style="width:' + pct + '%; background:' + barColor + ';"></div></div>';
+      html += '<div class="progress-label"><span>' + Math.round(pct) + '%</span><span>' + PAGO_THRESHOLD + ' pts = RD$' + PAGO_MONTO.toLocaleString() + '</span></div>';
+
+      if (emp.ultimoWow) {
+        var fecha = new Date(emp.ultimoWow.created_at);
+        var fechaStr = fecha.toLocaleDateString('es-DO', { day: 'numeric', month: 'short' });
+        html += '<div class="emp-last-wow">';
+        html += '<strong>+' + emp.ultimoWow.puntos + '</strong> — ' + esc(emp.ultimoWow.motivo || 'Sin motivo') + ' <span style="color:var(--light)">(' + fechaStr + ')</span>';
+        html += '</div>';
+      }
+
+      if (canManage()) {
+        html += '<div class="emp-actions">';
+        html += '<button class="btn-sm btn-add-pts" onclick="openAddModal(\'' + emp.id + '\')">+ Puntos</button>';
+        if (emp.puntosCiclo >= PAGO_THRESHOLD) {
+          html += '<button class="btn-sm btn-pay" onclick="openPayModal(\'' + emp.id + '\',' + emp.puntosCiclo + ')">Pagar bono</button>';
+        }
+        html += '</div>';
+      }
+
+      html += '</div>';
+    });
+    html += '</div>';
+  }
+
+  container.innerHTML = html;
+}
+
+function renderHistorial() {
+  var container = document.getElementById('tab-historial');
+  var stats = getEmployeeStats();
+
+  // Filtro por empleado
+  var html = '<div class="card-section">';
+  html += '<div class="filter-bar">';
+  html += '<select id="filter-emp" onchange="render()">';
+  html += '<option value="">Todos los empleados</option>';
+  APP.profiles.forEach(function(p) {
+    html += '<option value="' + p.id + '">' + esc(p.nombre || p.email) + '</option>';
+  });
+  html += '</select>';
+  html += '</div>';
+
+  var filterEmp = document.getElementById('filter-emp') ? document.getElementById('filter-emp').value : '';
+  var records = APP.wowData;
+  if (filterEmp) {
+    records = records.filter(function(r) { return r.empleado_id === filterEmp; });
+  }
+
+  if (records.length === 0) {
+    html += '<div class="empty-state"><div class="icon">📋</div><p>No hay registros todavía.</p></div>';
+  } else {
+    html += '<table class="wow-table">';
+    html += '<thead><tr><th>Fecha</th><th>Empleado</th><th>Tipo</th><th>Puntos</th><th>Reconocido por</th><th>Motivo</th></tr></thead>';
+    html += '<tbody>';
+    records.forEach(function(row) {
+      var emp = stats[row.empleado_id];
+      var empName = emp ? emp.nombre : '?';
+      var fecha = new Date(row.created_at);
+      var fechaStr = fecha.toLocaleDateString('es-DO', { day: 'numeric', month: 'short', year: 'numeric' });
+      var tipoBadge = row.tipo === 'pago'
+        ? '<span class="badge-puntos tipo-pago">Pago</span>'
+        : '<span class="badge-puntos tipo-puntos">Puntos</span>';
+      var pts = row.tipo === 'pago' ? 'RD$' + PAGO_MONTO.toLocaleString() : '+' + row.puntos;
+
+      html += '<tr>';
+      html += '<td>' + fechaStr + '</td>';
+      html += '<td style="font-weight:600;">' + esc(empName) + '</td>';
+      html += '<td>' + tipoBadge + '</td>';
+      html += '<td style="font-weight:700;">' + pts + '</td>';
+      html += '<td>' + esc(row.otorgado_por || '-') + '</td>';
+      html += '<td>' + esc(row.motivo || '-') + '</td>';
+      html += '</tr>';
+    });
+    html += '</tbody></table>';
+  }
+
+  html += '</div>';
+  container.innerHTML = html;
+
+  // Restaurar filtro si estaba seleccionado
+  if (filterEmp) {
+    var sel = document.getElementById('filter-emp');
+    if (sel) sel.value = filterEmp;
+  }
+}
+
+// ==================== MODALS ====================
+function openAddModal(preselectedId) {
+  var select = document.getElementById('modal-empleado');
+  var html = '';
+  APP.profiles.forEach(function(p) {
+    var sel = p.id === preselectedId ? ' selected' : '';
+    html += '<option value="' + p.id + '"' + sel + '>' + esc(p.nombre || p.email) + '</option>';
+  });
+  select.innerHTML = html;
+  document.getElementById('modal-puntos').value = '100';
+  document.getElementById('modal-otorgado').value = '';
+  document.getElementById('modal-motivo').value = '';
+  document.getElementById('modal-add').classList.remove('hidden');
+}
+
+function closeModal() {
+  document.getElementById('modal-add').classList.add('hidden');
+}
+
+async function savePoints() {
+  var empId = document.getElementById('modal-empleado').value;
+  var puntos = parseInt(document.getElementById('modal-puntos').value);
+  var otorgado = document.getElementById('modal-otorgado').value.trim();
+  var motivo = document.getElementById('modal-motivo').value.trim();
+
+  if (!empId) { alert('Selecciona un empleado.'); return; }
+  if (!motivo) { alert('Escribe un motivo.'); return; }
+
+  var { data, error } = await sb.from('wow_points').insert({
+    empleado_id: empId,
+    tipo: 'puntos',
+    puntos: puntos,
+    otorgado_por: otorgado || null,
+    motivo: motivo,
+    registrado_por: APP.userId
+  }).select();
+
+  if (error) {
+    console.error('Error guardando puntos:', error);
+    alert('Error al guardar. Intenta de nuevo.');
+    return;
+  }
+
+  // Agregar al estado local
+  if (data && data[0]) {
+    APP.wowData.unshift(data[0]);
+  }
+
+  closeModal();
+  render();
+}
+
+function openPayModal(empId, currentPoints) {
+  APP.payTarget = empId;
+  var stats = getEmployeeStats();
+  var emp = stats[empId];
+  document.getElementById('pay-emp-name').textContent = emp ? emp.nombre : '?';
+  document.getElementById('pay-emp-points').textContent = currentPoints;
+  document.getElementById('modal-pay').classList.remove('hidden');
+}
+
+function closePayModal() {
+  document.getElementById('modal-pay').classList.add('hidden');
+  APP.payTarget = null;
+}
+
+async function confirmPay() {
+  if (!APP.payTarget) return;
+
+  var { data, error } = await sb.from('wow_points').insert({
+    empleado_id: APP.payTarget,
+    tipo: 'pago',
+    puntos: 0,
+    otorgado_por: null,
+    motivo: 'Pago de bono RD$' + PAGO_MONTO.toLocaleString(),
+    registrado_por: APP.userId
+  }).select();
+
+  if (error) {
+    console.error('Error registrando pago:', error);
+    alert('Error al registrar el pago.');
+    return;
+  }
+
+  if (data && data[0]) {
+    APP.wowData.unshift(data[0]);
+  }
+
+  closePayModal();
+  render();
+}
+
+// ==================== UTILS ====================
+function esc(str) {
+  if (!str) return '';
+  var div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+// ==================== INIT ====================
+async function init() {
+  var { data: { session } } = await sb.auth.getSession();
+  if (session) {
+    await loadUserProfile();
+    showApp();
+  } else if (isEmbed) {
+    document.body.innerHTML = '<div style="text-align:center;padding:60px;color:#7c8495;">Sesión no encontrada. Recarga la página principal.</div>';
+  }
+}
+
+// Enter key on login
+document.getElementById('login-pass').addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') doLogin();
+});
+
+init();
+</script>
+</body>
+</html>
