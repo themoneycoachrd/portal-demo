@@ -322,15 +322,27 @@ const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 const PAGO_THRESHOLD = 1000;
 const PAGO_MONTO = 3000;
 
+// Lista del equipo elegible para Wow Points
+// Para agregar o quitar personas, editar este array.
+const TEAM_ROSTER = [
+  'Claudia Carrion',
+  'Lisete Peña',
+  'Morelia Matos',
+  'Naomi Matos',
+  'Taina Guzman',
+  'Yolenny Castillo',
+  'Milka Ramirez',
+  'Karina Encarnacion'
+];
+
 // ==================== STATE ====================
 var APP = {
   userRole: null,
   userName: '',
   userId: null,
   activeTab: 'tablero',
-  profiles: [],     // todos los empleados
   wowData: [],      // registros de wow_points
-  payTarget: null    // empleado_id para modal de pago
+  payTarget: null    // empleado (nombre) para modal de pago
 };
 
 // ==================== AUTH ====================
@@ -385,10 +397,6 @@ function showApp() {
 
 // ==================== DATA ====================
 async function startApp() {
-  // Cargar todos los perfiles (empleados)
-  var { data: profiles } = await sb.from('profiles').select('id, nombre, rol, email');
-  APP.profiles = profiles || [];
-
   // Cargar todos los registros de wow_points
   var { data: wow } = await sb.from('wow_points').select('*').order('created_at', { ascending: false });
   APP.wowData = wow || [];
@@ -402,14 +410,11 @@ function canManage() {
 
 // ==================== CALCULATIONS ====================
 function getEmployeeStats() {
-  // Para cada empleado, calcular puntos del ciclo actual
   var stats = {};
 
-  APP.profiles.forEach(function(p) {
-    stats[p.id] = {
-      id: p.id,
-      nombre: p.nombre || p.email,
-      rol: p.rol,
+  TEAM_ROSTER.forEach(function(name) {
+    stats[name] = {
+      nombre: name,
       puntosCiclo: 0,
       totalHistorico: 0,
       pagos: 0,
@@ -417,13 +422,13 @@ function getEmployeeStats() {
     };
   });
 
-  // Procesar registros de más antiguo a más reciente para calcular ciclo actual
+  // Procesar de más antiguo a más reciente para calcular ciclo actual
   var sorted = APP.wowData.slice().sort(function(a, b) {
     return new Date(a.created_at) - new Date(b.created_at);
   });
 
   sorted.forEach(function(row) {
-    var s = stats[row.empleado_id];
+    var s = stats[row.empleado];
     if (!s) return;
 
     if (row.tipo === 'pago') {
@@ -435,10 +440,10 @@ function getEmployeeStats() {
     }
   });
 
-  // Último wow (solo tipo puntos, ya están ordenados desc en APP.wowData)
+  // Último wow (solo tipo puntos, ya ordenados desc en APP.wowData)
   APP.wowData.forEach(function(row) {
     if (row.tipo !== 'puntos') return;
-    var s = stats[row.empleado_id];
+    var s = stats[row.empleado];
     if (s && !s.ultimoWow) {
       s.ultimoWow = row;
     }
@@ -478,7 +483,7 @@ function renderTablero() {
 
   // Summary stats
   html += '<div class="summary-stats">';
-  html += '<div class="stat-card"><div class="label">Empleados activos</div><div class="value navy">' + APP.profiles.length + '</div></div>';
+  html += '<div class="stat-card"><div class="label">Empleados activos</div><div class="value navy">' + TEAM_ROSTER.length + '</div></div>';
   html += '<div class="stat-card"><div class="label">Puntos en juego</div><div class="value purple">' + totalPuntos.toLocaleString() + '</div></div>';
   html += '<div class="stat-card"><div class="label">Listos para cobrar</div><div class="value green">' + proxPago + '</div></div>';
   html += '<div class="stat-card"><div class="label">Bonos pagados</div><div class="value amber">' + totalPagos + '</div></div>';
@@ -522,9 +527,9 @@ function renderTablero() {
 
       if (canManage()) {
         html += '<div class="emp-actions">';
-        html += '<button class="btn-sm btn-add-pts" onclick="openAddModal(\'' + emp.id + '\')">+ Puntos</button>';
+        html += '<button class="btn-sm btn-add-pts" onclick="openAddModal(\'' + esc(emp.nombre).replace(/'/g, "\\'") + '\')">+ Puntos</button>';
         if (emp.puntosCiclo >= PAGO_THRESHOLD) {
-          html += '<button class="btn-sm btn-pay" onclick="openPayModal(\'' + emp.id + '\',' + emp.puntosCiclo + ')">Pagar bono</button>';
+          html += '<button class="btn-sm btn-pay" onclick="openPayModal(\'' + esc(emp.nombre).replace(/'/g, "\\'") + '\',' + emp.puntosCiclo + ')">Pagar bono</button>';
         }
         html += '</div>';
       }
@@ -539,23 +544,22 @@ function renderTablero() {
 
 function renderHistorial() {
   var container = document.getElementById('tab-historial');
-  var stats = getEmployeeStats();
 
-  // Filtro por empleado
+  var filterEmp = document.getElementById('filter-emp') ? document.getElementById('filter-emp').value : '';
+
   var html = '<div class="card-section">';
   html += '<div class="filter-bar">';
   html += '<select id="filter-emp" onchange="render()">';
   html += '<option value="">Todos los empleados</option>';
-  APP.profiles.forEach(function(p) {
-    html += '<option value="' + p.id + '">' + esc(p.nombre || p.email) + '</option>';
+  TEAM_ROSTER.forEach(function(name) {
+    html += '<option value="' + esc(name) + '"' + (filterEmp === name ? ' selected' : '') + '>' + esc(name) + '</option>';
   });
   html += '</select>';
   html += '</div>';
 
-  var filterEmp = document.getElementById('filter-emp') ? document.getElementById('filter-emp').value : '';
   var records = APP.wowData;
   if (filterEmp) {
-    records = records.filter(function(r) { return r.empleado_id === filterEmp; });
+    records = records.filter(function(r) { return r.empleado === filterEmp; });
   }
 
   if (records.length === 0) {
@@ -565,8 +569,6 @@ function renderHistorial() {
     html += '<thead><tr><th>Fecha</th><th>Empleado</th><th>Tipo</th><th>Puntos</th><th>Reconocido por</th><th>Motivo</th></tr></thead>';
     html += '<tbody>';
     records.forEach(function(row) {
-      var emp = stats[row.empleado_id];
-      var empName = emp ? emp.nombre : '?';
       var fecha = new Date(row.created_at);
       var fechaStr = fecha.toLocaleDateString('es-DO', { day: 'numeric', month: 'short', year: 'numeric' });
       var tipoBadge = row.tipo === 'pago'
@@ -576,7 +578,7 @@ function renderHistorial() {
 
       html += '<tr>';
       html += '<td>' + fechaStr + '</td>';
-      html += '<td style="font-weight:600;">' + esc(empName) + '</td>';
+      html += '<td style="font-weight:600;">' + esc(row.empleado) + '</td>';
       html += '<td>' + tipoBadge + '</td>';
       html += '<td style="font-weight:700;">' + pts + '</td>';
       html += '<td>' + esc(row.otorgado_por || '-') + '</td>';
@@ -588,21 +590,15 @@ function renderHistorial() {
 
   html += '</div>';
   container.innerHTML = html;
-
-  // Restaurar filtro si estaba seleccionado
-  if (filterEmp) {
-    var sel = document.getElementById('filter-emp');
-    if (sel) sel.value = filterEmp;
-  }
 }
 
 // ==================== MODALS ====================
-function openAddModal(preselectedId) {
+function openAddModal(preselectedName) {
   var select = document.getElementById('modal-empleado');
   var html = '';
-  APP.profiles.forEach(function(p) {
-    var sel = p.id === preselectedId ? ' selected' : '';
-    html += '<option value="' + p.id + '"' + sel + '>' + esc(p.nombre || p.email) + '</option>';
+  TEAM_ROSTER.forEach(function(name) {
+    var sel = name === preselectedName ? ' selected' : '';
+    html += '<option value="' + esc(name) + '"' + sel + '>' + esc(name) + '</option>';
   });
   select.innerHTML = html;
   document.getElementById('modal-puntos').value = '100';
@@ -616,16 +612,16 @@ function closeModal() {
 }
 
 async function savePoints() {
-  var empId = document.getElementById('modal-empleado').value;
+  var empName = document.getElementById('modal-empleado').value;
   var puntos = parseInt(document.getElementById('modal-puntos').value);
   var otorgado = document.getElementById('modal-otorgado').value.trim();
   var motivo = document.getElementById('modal-motivo').value.trim();
 
-  if (!empId) { alert('Selecciona un empleado.'); return; }
+  if (!empName) { alert('Selecciona un empleado.'); return; }
   if (!motivo) { alert('Escribe un motivo.'); return; }
 
   var { data, error } = await sb.from('wow_points').insert({
-    empleado_id: empId,
+    empleado: empName,
     tipo: 'puntos',
     puntos: puntos,
     otorgado_por: otorgado || null,
@@ -648,11 +644,9 @@ async function savePoints() {
   render();
 }
 
-function openPayModal(empId, currentPoints) {
-  APP.payTarget = empId;
-  var stats = getEmployeeStats();
-  var emp = stats[empId];
-  document.getElementById('pay-emp-name').textContent = emp ? emp.nombre : '?';
+function openPayModal(empName, currentPoints) {
+  APP.payTarget = empName;
+  document.getElementById('pay-emp-name').textContent = empName;
   document.getElementById('pay-emp-points').textContent = currentPoints;
   document.getElementById('modal-pay').classList.remove('hidden');
 }
@@ -666,7 +660,7 @@ async function confirmPay() {
   if (!APP.payTarget) return;
 
   var { data, error } = await sb.from('wow_points').insert({
-    empleado_id: APP.payTarget,
+    empleado: APP.payTarget,
     tipo: 'pago',
     puntos: 0,
     otorgado_por: null,
