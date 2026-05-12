@@ -1957,20 +1957,18 @@ function renderProyeccionDetail() {
   var impMayor = Math.max(impActivo, isrProyectado);
   var mayorPagar = Math.max(impMayor - totalAnticipos, 0);
   var notaLabel = aplicaActivos ? 'Aplica: Impuesto al Activo (1%)' : 'Aplica: ISR (27%)';
-  h += '<div class="pm-panel" style="margin-bottom:0;overflow:hidden">';
-  h += '<div class="pm-panel-hdr" style="background:var(--navy);border-bottom:none">';
-  h += '<h3 style="color:white;text-transform:uppercase;font-size:0.78rem;letter-spacing:0.3px">Resultado: ISR vs Impuesto al Activo</h3></div>';
-  h += '<div class="pm-crs-banner">';
-  h += '<div><div style="color:rgba(255,255,255,0.7);font-size:0.78rem">' + notaLabel + '</div>';
+  h += '<div class="pm-panel" style="margin-bottom:24px;overflow:hidden">';
+  h += '<div class="pm-crs-banner" style="padding:14px 20px">';
+  h += '<div><div style="color:rgba(255,255,255,0.7);font-size:0.7rem;text-transform:uppercase;letter-spacing:0.3px">' + notaLabel + '</div>';
   if (aplicaActivos) {
-    h += '<div style="color:white;font-size:1rem;font-family:monospace">1% Activos: $' + pmFormatMoney(impActivo) + ' &gt; ISR: $' + pmFormatMoney(isrProyectado) + '</div>';
+    h += '<div style="color:white;font-size:0.85rem;font-family:monospace">1% Activos: $' + pmFormatMoney(impActivo) + ' &gt; ISR: $' + pmFormatMoney(isrProyectado) + '</div>';
   } else {
-    h += '<div style="color:white;font-size:1rem;font-family:monospace">ISR: $' + pmFormatMoney(isrProyectado) + ' &gt; 1% Activos: $' + pmFormatMoney(impActivo) + '</div>';
+    h += '<div style="color:white;font-size:0.85rem;font-family:monospace">ISR: $' + pmFormatMoney(isrProyectado) + ' &gt; 1% Activos: $' + pmFormatMoney(impActivo) + '</div>';
   }
   h += '</div>';
-  h += '<div class="pm-crs-pill"><span style="color:white;font-weight:700;font-size:0.95rem">Total a Pagar*</span>';
-  h += '<span style="color:#fbbf24;font-weight:800;font-size:1.6rem">$' + pmFormatMoney(mayorPagar) + '</span></div></div>';
-  h += '<div style="background:var(--navy);padding:4px 20px 14px;font-size:0.7rem;color:rgba(255,255,255,0.5)">*Estimado si se pagan todos los anticipos del año.</div>';
+  h += '<div class="pm-crs-pill" style="padding:10px 18px"><span style="color:white;font-weight:700;font-size:0.82rem">Total a Pagar*</span>';
+  h += '<span style="color:#fbbf24;font-weight:800;font-size:1.3rem">$' + pmFormatMoney(mayorPagar) + '</span></div></div>';
+  h += '<div style="background:var(--navy);padding:2px 20px 10px;font-size:0.65rem;color:rgba(255,255,255,0.5)">*Estimado si se pagan todos los anticipos del año.</div>';
   h += '</div>';
 
   h += '<div class="pm-dual">';
