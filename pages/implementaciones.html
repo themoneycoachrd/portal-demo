@@ -406,9 +406,9 @@ async function initApp(user) {
   document.getElementById('app-wrapper').classList.remove('hidden');
 
   // Get role
-  var prof = await sb.from('profiles').select('role, full_name').eq('id', user.id).single();
-  userRole = (prof.data && prof.data.role) ? prof.data.role : 'viewer';
-  userName = (prof.data && prof.data.full_name) ? prof.data.full_name : user.email;
+  var prof = await sb.from('profiles').select('rol, nombre').eq('id', user.id).single();
+  userRole = (prof.data && prof.data.rol) ? prof.data.rol : 'viewer';
+  userName = (prof.data && prof.data.nombre) ? prof.data.nombre : user.email;
   document.getElementById('user-display-name').textContent = userName;
 
   await loadData();
