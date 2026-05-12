@@ -322,18 +322,15 @@ const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 const PAGO_THRESHOLD = 1000;
 const PAGO_MONTO = 3000;
 
-// Lista del equipo elegible para Wow Points
-// Para agregar o quitar personas, editar este array.
-const TEAM_ROSTER = [
-  'Claudia Carrion',
-  'Lisete Peña',
-  'Morelia Matos',
-  'Naomi Matos',
-  'Taina Guzman',
-  'Yolenny Castillo',
-  'Milka Ramirez',
-  'Karina Encarnacion'
+// Lista del equipo elegible para Wow Points, organizada por departamento.
+// Para agregar o quitar personas, editar estos arrays.
+const TEAM_DEPARTMENTS = [
+  { name: 'Comercial', members: ['Felix Rosa', 'Naomi Villar'] },
+  { name: 'Implementación', members: ['Claudia Carrion', 'Lisete Peña'] },
+  { name: 'Impuestos', members: ['Karina Sánchez', 'Lovelis'] },
+  { name: 'Contadoras', members: ['Belliani', 'Jessica', 'Victoria', 'Taina Guzman', 'Morelia Matos'] }
 ];
+const TEAM_ROSTER = TEAM_DEPARTMENTS.reduce(function(arr, dept) { return arr.concat(dept.members); }, []);
 
 // ==================== STATE ====================
 var APP = {
@@ -496,47 +493,52 @@ function renderTablero() {
     html += '</div>';
   }
 
-  // Employee cards
+  // Employee cards por departamento
   if (withPoints.length === 0 && !canManage()) {
     html += '<div class="empty-state"><div class="icon">⭐</div><p>Todavía no hay puntos registrados. ¡A ganárselos!</p></div>';
   } else {
-    html += '<div class="emp-grid">';
-    // Mostrar todos los que tienen puntos, y si eres manager, todos los empleados
-    var toShow = canManage() ? empList : withPoints;
-    toShow.forEach(function(emp) {
-      var pct = Math.min(100, (emp.puntosCiclo / PAGO_THRESHOLD) * 100);
-      var closeClass = emp.puntosCiclo >= PAGO_THRESHOLD ? ' close-to-pay' : '';
-      var barColor = pct >= 100 ? 'var(--green)' : pct >= 70 ? 'var(--amber)' : 'var(--blue)';
+    TEAM_DEPARTMENTS.forEach(function(dept) {
+      html += '<h3 style="font-size:0.88rem; font-weight:700; color:var(--navy); margin:20px 0 12px; text-transform:uppercase; letter-spacing:0.5px;">' + esc(dept.name) + '</h3>';
+      html += '<div class="emp-grid">';
+      dept.members.forEach(function(name) {
+        var emp = stats[name];
+        if (!emp) return;
+        if (!canManage() && emp.puntosCiclo === 0 && emp.totalHistorico === 0) return;
 
-      html += '<div class="emp-card">';
-      html += '<div class="emp-card-header">';
-      html += '<span class="emp-name">' + esc(emp.nombre) + '</span>';
-      html += '<span class="emp-points' + closeClass + '">' + emp.puntosCiclo + '</span>';
-      html += '</div>';
+        var pct = Math.min(100, (emp.puntosCiclo / PAGO_THRESHOLD) * 100);
+        var closeClass = emp.puntosCiclo >= PAGO_THRESHOLD ? ' close-to-pay' : '';
+        var barColor = pct >= 100 ? 'var(--green)' : pct >= 70 ? 'var(--amber)' : 'var(--blue)';
 
-      html += '<div class="progress-track"><div class="progress-fill" style="width:' + pct + '%; background:' + barColor + ';"></div></div>';
-      html += '<div class="progress-label"><span>' + Math.round(pct) + '%</span><span>' + PAGO_THRESHOLD + ' pts = RD$' + PAGO_MONTO.toLocaleString() + '</span></div>';
-
-      if (emp.ultimoWow) {
-        var fecha = new Date(emp.ultimoWow.created_at);
-        var fechaStr = fecha.toLocaleDateString('es-DO', { day: 'numeric', month: 'short' });
-        html += '<div class="emp-last-wow">';
-        html += '<strong>+' + emp.ultimoWow.puntos + '</strong> — ' + esc(emp.ultimoWow.motivo || 'Sin motivo') + ' <span style="color:var(--light)">(' + fechaStr + ')</span>';
+        html += '<div class="emp-card">';
+        html += '<div class="emp-card-header">';
+        html += '<span class="emp-name">' + esc(emp.nombre) + '</span>';
+        html += '<span class="emp-points' + closeClass + '">' + emp.puntosCiclo + '</span>';
         html += '</div>';
-      }
 
-      if (canManage()) {
-        html += '<div class="emp-actions">';
-        html += '<button class="btn-sm btn-add-pts" onclick="openAddModal(\'' + esc(emp.nombre).replace(/'/g, "\\'") + '\')">+ Puntos</button>';
-        if (emp.puntosCiclo >= PAGO_THRESHOLD) {
-          html += '<button class="btn-sm btn-pay" onclick="openPayModal(\'' + esc(emp.nombre).replace(/'/g, "\\'") + '\',' + emp.puntosCiclo + ')">Pagar bono</button>';
+        html += '<div class="progress-track"><div class="progress-fill" style="width:' + pct + '%; background:' + barColor + ';"></div></div>';
+        html += '<div class="progress-label"><span>' + Math.round(pct) + '%</span><span>' + PAGO_THRESHOLD + ' pts = RD$' + PAGO_MONTO.toLocaleString() + '</span></div>';
+
+        if (emp.ultimoWow) {
+          var fecha = new Date(emp.ultimoWow.created_at);
+          var fechaStr = fecha.toLocaleDateString('es-DO', { day: 'numeric', month: 'short' });
+          html += '<div class="emp-last-wow">';
+          html += '<strong>+' + emp.ultimoWow.puntos + '</strong> — ' + esc(emp.ultimoWow.motivo || 'Sin motivo') + ' <span style="color:var(--light)">(' + fechaStr + ')</span>';
+          html += '</div>';
         }
-        html += '</div>';
-      }
 
+        if (canManage()) {
+          html += '<div class="emp-actions">';
+          html += '<button class="btn-sm btn-add-pts" onclick="openAddModal(\'' + esc(emp.nombre).replace(/'/g, "\\'") + '\')">+ Puntos</button>';
+          if (emp.puntosCiclo >= PAGO_THRESHOLD) {
+            html += '<button class="btn-sm btn-pay" onclick="openPayModal(\'' + esc(emp.nombre).replace(/'/g, "\\'") + '\',' + emp.puntosCiclo + ')">Pagar bono</button>';
+          }
+          html += '</div>';
+        }
+
+        html += '</div>';
+      });
       html += '</div>';
     });
-    html += '</div>';
   }
 
   container.innerHTML = html;
@@ -551,8 +553,12 @@ function renderHistorial() {
   html += '<div class="filter-bar">';
   html += '<select id="filter-emp" onchange="render()">';
   html += '<option value="">Todos los empleados</option>';
-  TEAM_ROSTER.forEach(function(name) {
-    html += '<option value="' + esc(name) + '"' + (filterEmp === name ? ' selected' : '') + '>' + esc(name) + '</option>';
+  TEAM_DEPARTMENTS.forEach(function(dept) {
+    html += '<optgroup label="' + esc(dept.name) + '">';
+    dept.members.forEach(function(name) {
+      html += '<option value="' + esc(name) + '"' + (filterEmp === name ? ' selected' : '') + '>' + esc(name) + '</option>';
+    });
+    html += '</optgroup>';
   });
   html += '</select>';
   html += '</div>';
@@ -596,9 +602,13 @@ function renderHistorial() {
 function openAddModal(preselectedName) {
   var select = document.getElementById('modal-empleado');
   var html = '';
-  TEAM_ROSTER.forEach(function(name) {
-    var sel = name === preselectedName ? ' selected' : '';
-    html += '<option value="' + esc(name) + '"' + sel + '>' + esc(name) + '</option>';
+  TEAM_DEPARTMENTS.forEach(function(dept) {
+    html += '<optgroup label="' + esc(dept.name) + '">';
+    dept.members.forEach(function(name) {
+      var sel = name === preselectedName ? ' selected' : '';
+      html += '<option value="' + esc(name) + '"' + sel + '>' + esc(name) + '</option>';
+    });
+    html += '</optgroup>';
   });
   select.innerHTML = html;
   document.getElementById('modal-puntos').value = '100';
