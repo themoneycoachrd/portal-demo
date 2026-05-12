@@ -287,8 +287,10 @@ body { font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-se
 .toggle-opt { padding:5px 14px; font-size:11px; font-weight:600; cursor:pointer; border:1px solid var(--border); background:white; color:var(--muted); transition:all 0.15s; font-family:inherit; }
 .toggle-opt:first-child { border-radius:6px 0 0 6px; }
 .toggle-opt:last-child { border-radius:0 6px 6px 0; border-left:none; }
+.toggle-opt:not(:first-child) { border-left:none; }
 .toggle-opt.active-yes { background:#ecfdf5; color:#065f46; border-color:#a7f3d0; }
 .toggle-opt.active-no { background:#fef2f2; color:#991b1b; border-color:#fecaca; }
+.toggle-opt.active-na { background:#f5f3ff; color:#5b21b6; border-color:#c4b5fd; }
 
 /* ─── Trimestral table (KPI) ─── */
 .tri-table { width:100%; border-collapse:collapse; font-size:0.82rem; }
@@ -848,7 +850,8 @@ function getProgress(contadora, cliente, mes) {
   const entry = getCheckData(contadora, cliente, mes);
   let done = 0;
   ITEMS.forEach(item => {
-    if (entry.datos[item.id] && entry.datos[item.id].done) done++;
+    var v = entry.datos[item.id] && entry.datos[item.id].done;
+    if (v === true || v === 'na') done++;
   });
   return { done: done, total: ITEMS.length, pct: Math.round(done / ITEMS.length * 100) };
 }
@@ -1460,8 +1463,8 @@ function renderCkDetail(el) {
     const limiteStr = formatDeadline(mesIdx, item);
     const firmaStr = formatFirma(mesIdx, item);
     const sem = d.fecha ? getCheckSemaforo(d.fecha, mesIdx, item) : '';
-    const overdue = !d.done && isOverdue(mesIdx, item);
-    const rowClass = d.done ? 'row-done' : (overdue ? 'row-overdue' : '');
+    const overdue = d.done === false && isOverdue(mesIdx, item);
+    const rowClass = (d.done === true || d.done === 'na') ? 'row-done' : (overdue ? 'row-overdue' : '');
     const fechaDisplay = d.fecha
       ? sem + formatDateShort(d.fecha)
       : (overdue ? '<span style="color:var(--red);font-size:10px;font-weight:600">Vencido</span>' : '<span style="color:var(--light)">—</span>');
@@ -1475,11 +1478,12 @@ function renderCkDetail(el) {
 
     if (editable) {
       html += '<td class="center"><div class="toggle-group">';
-      html += '<button class="toggle-opt ' + (d.done ? 'active-yes' : '') + '" onclick="handleCkToggle(\'' + esc(contadora) + '\',\'' + esc(cliente) + '\',\'' + mes + '\',\'' + item.id + '\',true)">Si</button>';
-      html += '<button class="toggle-opt ' + (!d.done ? 'active-no' : '') + '" onclick="handleCkToggle(\'' + esc(contadora) + '\',\'' + esc(cliente) + '\',\'' + mes + '\',\'' + item.id + '\',false)">No</button>';
+      html += '<button class="toggle-opt ' + (d.done === true ? 'active-yes' : '') + '" onclick="handleCkToggle(\'' + esc(contadora) + '\',\'' + esc(cliente) + '\',\'' + mes + '\',\'' + item.id + '\',true)">Si</button>';
+      html += '<button class="toggle-opt ' + (d.done === false ? 'active-no' : '') + '" onclick="handleCkToggle(\'' + esc(contadora) + '\',\'' + esc(cliente) + '\',\'' + mes + '\',\'' + item.id + '\',false)">No</button>';
+      html += '<button class="toggle-opt ' + (d.done === "na" ? 'active-na' : '') + '" onclick="handleCkToggle(\'' + esc(contadora) + '\',\'' + esc(cliente) + '\',\'' + mes + '\',\'' + item.id + '\',\'na\')">N/A</button>';
       html += '</div></td>';
     } else {
-      html += '<td class="center">' + (d.done ? '<span style="color:var(--green);font-weight:600">Si</span>' : '<span style="color:var(--light)">No</span>') + '</td>';
+      html += '<td class="center">' + (d.done === true ? '<span style="color:var(--green);font-weight:600">Si</span>' : d.done === 'na' ? '<span style="color:#7c3aed;font-weight:600">N/A</span>' : '<span style="color:var(--light)">No</span>') + '</td>';
     }
 
     html += '<td class="center" style="font-size:0.78rem">' + fechaDisplay + '</td>';
@@ -1838,9 +1842,9 @@ function renderTrimestral(el) {
 
 function handleCkToggle(contadora, cliente, mes, itemId, done) {
   const entry = getCheckData(contadora, cliente, mes);
-  if (!entry.datos[itemId]) entry.datos[itemId] = { done: false, fecha: '' };
+  if (!entry.datos[itemId]) entry.datos[itemId] = { done: false, fecha: '', nota: '' };
   entry.datos[itemId].done = done;
-  entry.datos[itemId].fecha = done ? todayStr() : '';
+  entry.datos[itemId].fecha = (done === true || done === 'na') ? todayStr() : '';
   renderCkContent();
 }
 

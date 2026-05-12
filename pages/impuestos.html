@@ -163,8 +163,10 @@ body { font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-se
 .toggle-opt { padding:5px 14px; font-size:11px; font-weight:600; cursor:pointer; border:1px solid var(--border); background:white; color:var(--muted); transition:all 0.15s; font-family:inherit; }
 .toggle-opt:first-child { border-radius:6px 0 0 6px; }
 .toggle-opt:last-child { border-radius:0 6px 6px 0; border-left:none; }
+.toggle-opt:not(:first-child) { border-left:none; }
 .toggle-opt.active-yes { background:#ecfdf5; color:#065f46; border-color:#a7f3d0; }
 .toggle-opt.active-no { background:#fef2f2; color:#991b1b; border-color:#fecaca; }
+.toggle-opt.active-na { background:#f5f3ff; color:#5b21b6; border-color:#c4b5fd; }
 
 /* Pago a cuenta special select */
 .pago-select { padding:4px 8px; border:1px solid var(--border); border-radius:6px; font-size:0.82rem; font-family:inherit; background:white; cursor:pointer; }
@@ -423,7 +425,7 @@ function calcStatus(taxId, datos, enAtraso) {
     if (it.special === 'select') {
       if (d.valor === 'si' || d.valor === 'n/a') done++;
     } else {
-      if (d.done) done++;
+      if (d.done === true || d.done === 'na') done++;
     }
   });
   if (done === total && total > 0) return 'finalizado';
@@ -626,7 +628,7 @@ function getClientProgress(cliente, mes) {
       var d = datos[it.id];
       if (!d) return;
       if (it.special === 'select') { if (d.valor === 'si' || d.valor === 'n/a') doneItems++; }
-      else { if (d.done) doneItems++; }
+      else { if (d.done === true || d.done === 'na') doneItems++; }
     });
   });
   var pct = totalItems > 0 ? Math.round(doneItems / totalItems * 100) : 0;
@@ -967,7 +969,7 @@ function renderDetail() {
       var d = datos[it.id];
       if (!d) return;
       if (it.special === 'select') { if (d.valor === 'si' || d.valor === 'n/a') doneCount++; }
-      else { if (d.done) doneCount++; }
+      else { if (d.done === true || d.done === 'na') doneCount++; }
     });
 
     // Group header (same style as contabilidad)
@@ -987,7 +989,7 @@ function renderDetail() {
     items.forEach(function(it, idx) {
       rowNum++;
       var d = datos[it.id] || { done: false, fecha: null };
-      var isDone = it.special === 'select' ? (d.valor === 'si' || d.valor === 'n/a') : d.done;
+      var isDone = it.special === 'select' ? (d.valor === 'si' || d.valor === 'n/a') : (d.done === true || d.done === 'na');
       var rowClass = isDone ? 'row-done' : '';
       var fechaDisplay;
       if (d.fecha) {
@@ -1037,8 +1039,9 @@ function renderDetail() {
       // Estado — Si/No toggle (same as contabilidad)
       if (it.special !== 'select') {
         h += '<td class="center"><div class="toggle-group">';
-        h += '<button class="toggle-opt ' + (isDone ? 'active-yes' : '') + '" onclick="toggleItem(\'' + escJs(detCliente) + '\',\'' + selectedMes + '\',\'' + imp.id + '\',\'' + it.id + '\',true)">Si</button>';
-        h += '<button class="toggle-opt ' + (!isDone ? 'active-no' : '') + '" onclick="toggleItem(\'' + escJs(detCliente) + '\',\'' + selectedMes + '\',\'' + imp.id + '\',\'' + it.id + '\',false)">No</button>';
+        h += '<button class="toggle-opt ' + (d.done === true ? 'active-yes' : '') + '" onclick="toggleItem(\'' + escJs(detCliente) + '\',\'' + selectedMes + '\',\'' + imp.id + '\',\'' + it.id + '\',true)">Si</button>';
+        h += '<button class="toggle-opt ' + (d.done === false ? 'active-no' : '') + '" onclick="toggleItem(\'' + escJs(detCliente) + '\',\'' + selectedMes + '\',\'' + imp.id + '\',\'' + it.id + '\',false)">No</button>';
+        h += '<button class="toggle-opt ' + (d.done === "na" ? 'active-na' : '') + '" onclick="toggleItem(\'' + escJs(detCliente) + '\',\'' + selectedMes + '\',\'' + imp.id + '\',\'' + it.id + '\',\'na\')">N/A</button>';
         h += '</div></td>';
       } else {
         h += '<td class="center">' + (isDone ? '<span style="color:var(--green);font-weight:600">Si</span>' : '<span style="color:var(--light)">No</span>') + '</td>';
@@ -1080,7 +1083,7 @@ function toggleItem(cliente, mes, impuesto, itemId, checked) {
   var dirty = ensureDirty(cliente, mes, impuesto);
   if (!dirty.datos[itemId]) dirty.datos[itemId] = { done: false, fecha: null };
   dirty.datos[itemId].done = checked;
-  dirty.datos[itemId].fecha = checked ? new Date().toISOString().slice(0,10) : null;
+  dirty.datos[itemId].fecha = (checked === true || checked === 'na') ? new Date().toISOString().slice(0,10) : null;
   renderDetail();
 }
 
