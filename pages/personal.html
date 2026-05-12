@@ -481,8 +481,16 @@ function renderTablero() {
 
   var html = '';
 
-  // Heading
-  html += '<div class="wow-heading"><h2>🎉 Quién va ganando 🏆🔥</h2></div>';
+  // Heading — quién va ganando
+  var lider = empList.length > 0 && empList[0].puntosCiclo > 0 ? empList[0] : null;
+  html += '<div class="wow-heading">';
+  if (lider) {
+    html += '<h2>🎉 Va ganando ' + esc(lider.nombre.split(' ')[0]) + ' con ' + lider.puntosCiclo + ' puntos 🏆🔥</h2>';
+  } else {
+    html += '<h2>🎉 Wow Board 🏆🔥</h2>';
+    html += '<div style="font-size:0.85rem;color:var(--muted);margin-top:4px">Todavía no hay puntos registrados</div>';
+  }
+  html += '</div>';
 
   // Summary stats
   html += '<div class="summary-stats">';
