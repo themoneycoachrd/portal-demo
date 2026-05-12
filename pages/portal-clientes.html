@@ -1949,9 +1949,16 @@ function renderProyeccionDetail() {
   h += '<tr style="background:#f0fdf4"><td style="padding:10px 20px;color:var(--muted)">Activos exentos</td><td class="pm-text-right" style="padding:10px 20px">' + pmFormatMoney(activosExentos) + '</td></tr>';
   h += '<tr style="border-top:1px solid var(--border);font-weight:700"><td style="padding:10px 20px">Base Imponible Activos</td><td class="pm-text-right" style="padding:10px 20px">' + pmFormatMoney(baseActivos) + '</td></tr>';
   h += '<tr><td style="padding:10px 20px;color:var(--muted)">Impuesto Calculado (1%)</td><td class="pm-text-right" style="padding:10px 20px;font-weight:600">' + pmFormatMoney(impActivo) + '</td></tr>';
-  h += '<tr style="background:#f8fafc"><td style="padding:10px 20px;color:var(--muted)">Comparativo ISR Liq.</td><td class="pm-text-right" style="padding:10px 20px;font-weight:700">' + pmFormatMoney(isrProyectado) + '</td></tr>';
-  var mayorPagar = Math.max(impActivo, isrAPagar);
-  h += '<tr style="border-top:3px solid var(--red)"><td style="padding:14px 20px"><span style="color:var(--red);font-weight:700;text-transform:uppercase">Total a Pagar</span><br><span style="color:var(--red);font-size:0.65rem">(Se paga el mayor entre 1% Activos e ISR)</span></td>';
+  h += '<tr style="background:#f8fafc"><td style="padding:10px 20px;color:var(--muted)">Comparativo ISR (antes de anticipos)</td><td class="pm-text-right" style="padding:10px 20px;font-weight:700">' + pmFormatMoney(isrProyectado) + '</td></tr>';
+  // Comparar ISR vs Activos ANTES de restar anticipos. Después restar anticipos al mayor.
+  var impMayor = Math.max(impActivo, isrProyectado);
+  var mayorPagar = Math.max(impMayor - totalAnticipos, 0);
+  var aplicaActivos = impActivo > isrProyectado;
+  h += '<tr style="background:#f8fafc"><td style="padding:10px 20px;color:var(--muted)">Aplica</td><td class="pm-text-right" style="padding:10px 20px;font-weight:600;color:' + (aplicaActivos ? 'var(--amber)' : 'var(--navy)') + '">' + (aplicaActivos ? '1% Activos' : 'ISR 27%') + '</td></tr>';
+  if (!aplicaActivos) {
+    h += '<tr style="background:#f8fafc"><td style="padding:10px 20px;color:var(--muted)">Menos anticipos pagados</td><td class="pm-text-right" style="padding:10px 20px;font-weight:600">(' + pmFormatMoney(totalAnticipos) + ')</td></tr>';
+  }
+  h += '<tr style="border-top:3px solid var(--red)"><td style="padding:14px 20px"><span style="color:var(--red);font-weight:700;text-transform:uppercase">Total a Pagar</span><br><span style="color:var(--red);font-size:0.65rem">(Se paga el mayor entre 1% Activos e ISR, menos anticipos)</span></td>';
   h += '<td class="pm-text-right" style="padding:14px 20px;font-size:1.1rem;font-weight:800;color:' + (mayorPagar > 0 ? 'var(--red)' : 'var(--green)') + '">' + pmFormatMoney(mayorPagar) + '</td></tr>';
   h += '</tbody></table></div></div></div>';
 
