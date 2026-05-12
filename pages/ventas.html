@@ -818,6 +818,7 @@ async function dbUpdateLead(lead) {
   if (lead.f === 'Cerrado Ganado' && prevFunnel !== 'Cerrado Ganado') {
     await dbCreatePendienteFromLead(lead);
     await dbCreateChecklistFromLead(lead);
+    await dbCreateImplFEFromLead(lead);
   }
   delete lead._prevFunnel;
 }
@@ -865,6 +866,37 @@ async function dbCreateChecklistFromLead(lead) {
   if (CHK_PERSONAS.indexOf(responsable) < 0) responsable = chkDetectResponsable();
   var row = await createChecklistComercial(lead._id, lead.n || lead.e || '', lead.e || '', responsable, APP.currentMonth);
   if (row) console.log('Checklist comercial creado para:', lead.n);
+}
+
+// Crear checklist FE en implementaciones si el lead tiene Facturación Electrónica
+async function dbCreateImplFEFromLead(lead) {
+  var cats = (lead.categoria || '').split(',').map(function(s) { return s.trim(); }).filter(Boolean);
+  if (cats.indexOf('Facturacion Electronica') < 0) return;
+
+  var clienteName = lead.e || lead.n || '';
+  if (!clienteName) return;
+
+  // Verificar que no exista ya
+  var { data: existing } = await sb.from('impl_checklist_fe')
+    .select('id').eq('cliente', clienteName);
+  if (existing && existing.length > 0) return;
+
+  // Crear con datos vacíos — la implementadora se asigna después en el módulo
+  var datos = {};
+  for (var i = 1; i <= 15; i++) {
+    datos['paso_' + i] = { done: false, fecha: '' };
+  }
+
+  var { error } = await sb.from('impl_checklist_fe').insert({
+    cliente: clienteName,
+    implementadora: null,
+    datos: datos
+  });
+
+  if (!error) {
+    console.log('Checklist FE creado para:', clienteName);
+    showToast('Checklist FE creado para ' + clienteName);
+  }
 }
 
 // Eliminar un lead
