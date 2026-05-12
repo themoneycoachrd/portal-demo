@@ -190,7 +190,7 @@ body.embed .content { padding-top:12px; }
 .pm-panel-dark .pm-panel-hdr { background:var(--navy); color:white; border-bottom:none; }
 .pm-panel-dark .pm-panel-hdr h3 { color:white; }
 .pm-panel-dark .pm-panel-body th { background:var(--navy-mid); color:rgba(255,255,255,0.7); border-bottom:1px solid rgba(255,255,255,0.1); }
-.pm-panel-dark .pm-panel-body tr.pm-projected td { background:#fefce8; }
+.pm-panel-dark .pm-panel-body tr.pm-projected td { background:#fef08a; }
 .pm-panel-dark .pm-panel-body tr.pm-actual td { color:var(--light); }
 
 /* Blue panel header */
@@ -2231,17 +2231,30 @@ function renderProyeccionDetail() {
   var baseISR = Math.max(projGanancia - perdidas, 0);
   var isrProyectado = baseISR * 0.27;
 
+  var tipoContrib = pmImpConfig ? (pmImpConfig.tipo_contribuyente || 'empresa') : 'empresa';
+  var esPersonaFisica = tipoContrib === 'persona_fisica';
   var antTramo1 = pmImpConfig ? (pmImpConfig.anticipo_tramo1 || 0) : 0;
   var antTramo2 = pmImpConfig ? (pmImpConfig.anticipo_tramo2 || 0) : 0;
-  var totalAnticipos = antTramo1 * 4 + antTramo2 * 8;
+  var totalAnticipos;
+  if (esPersonaFisica) {
+    totalAnticipos = antTramo1 * 3; // 3 cuotas: jun, sep, dic
+  } else {
+    totalAnticipos = antTramo1 * 4 + antTramo2 * 8;
+  }
 
   var isrAPagar = Math.max(isrProyectado - totalAnticipos, 0);
 
   var tet = projV > 0 ? (isrProyectado / projV * 100) : 0;
 
   var totalAntCalc = isrProyectado;
-  var antMensualProx = totalAntCalc / 12;
-  var antActual = antTramo2 > 0 ? antTramo2 : antTramo1;
+  var antMensualProx, antActual;
+  if (esPersonaFisica) {
+    antMensualProx = totalAntCalc / 3; // 3 cuotas anuales
+    antActual = antTramo1;
+  } else {
+    antMensualProx = totalAntCalc / 12;
+    antActual = antTramo2 > 0 ? antTramo2 : antTramo1;
+  }
   var varAntPct = antActual > 0 ? ((antMensualProx - antActual) / antActual * 100) : 0;
 
   var activos = pmImpConfig ? (pmImpConfig.activos_totales || 0) : 0;
@@ -2262,9 +2275,11 @@ function renderProyeccionDetail() {
   h += '<div class="pm-sc-value navy">$' + pmFormatMoney(isrProyectado) + '</div>';
   h += '<div class="pm-sc-sub">Sobre base imponible estimada</div></div>';
 
-  h += '<div class="pm-summary-card"><div class="pm-sc-label">Anticipo mensual (próx. año) <span>📋</span></div>';
+  var antPillLabel = esPersonaFisica ? 'Cuota anticipo (próx. año)' : 'Anticipo mensual (próx. año)';
+  var antPillSub = esPersonaFisica ? '3 cuotas: Jun, Sep, Dic' : 'Nuevo tramo desde mayo ' + pmYear;
+  h += '<div class="pm-summary-card"><div class="pm-sc-label">' + antPillLabel + ' <span>📋</span></div>';
   h += '<div class="pm-sc-value navy">$' + pmFormatMoney(antMensualProx) + '</div>';
-  h += '<div class="pm-sc-sub">Nuevo tramo desde mayo ' + pmYear + '</div></div>';
+  h += '<div class="pm-sc-sub">' + antPillSub + '</div></div>';
   h += '</div>';
 
   h += '<div class="pm-dual">';
@@ -2363,17 +2378,26 @@ function renderProyeccionDetail() {
   h += '<div class="pm-panel pm-panel-dark"><div class="pm-panel-hdr">';
   h += '<h3 style="text-transform:uppercase;font-size:0.78rem;letter-spacing:0.3px">Anticipos Año Corriente</h3></div>';
   h += '<div class="pm-panel-body" style="padding:20px">';
-  h += '<div style="display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--border);padding-bottom:14px;margin-bottom:14px">';
-  h += '<div><div style="font-weight:700">Enero — Abril</div><div style="font-size:0.7rem;color:var(--light)">Cuota Mensual</div></div>';
-  h += '<div style="font-weight:700;font-size:1.1rem">$' + pmFormatMoney(antTramo1) + '</div></div>';
-  h += '<div style="display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--border);padding-bottom:14px;margin-bottom:14px">';
-  h += '<div><div style="font-weight:700">Mayo — Diciembre</div><div style="font-size:0.7rem;color:var(--light)">Cuota Mensual</div></div>';
-  h += '<div style="font-weight:700;font-size:1.1rem">$' + pmFormatMoney(antTramo2) + '</div></div>';
+  if (esPersonaFisica) {
+    var mesesCuota = ['Junio', 'Septiembre', 'Diciembre'];
+    for (var qi = 0; qi < 3; qi++) {
+      h += '<div style="display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--border);padding-bottom:14px;margin-bottom:14px">';
+      h += '<div><div style="font-weight:700">' + mesesCuota[qi] + '</div><div style="font-size:0.7rem;color:var(--light)">Cuota ' + (qi + 1) + ' de 3</div></div>';
+      h += '<div style="font-weight:700;font-size:1.1rem">$' + pmFormatMoney(antTramo1) + '</div></div>';
+    }
+  } else {
+    h += '<div style="display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--border);padding-bottom:14px;margin-bottom:14px">';
+    h += '<div><div style="font-weight:700">Enero — Abril</div><div style="font-size:0.7rem;color:var(--light)">Cuota Mensual</div></div>';
+    h += '<div style="font-weight:700;font-size:1.1rem">$' + pmFormatMoney(antTramo1) + '</div></div>';
+    h += '<div style="display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--border);padding-bottom:14px;margin-bottom:14px">';
+    h += '<div><div style="font-weight:700">Mayo — Diciembre</div><div style="font-size:0.7rem;color:var(--light)">Cuota Mensual</div></div>';
+    h += '<div style="font-weight:700;font-size:1.1rem">$' + pmFormatMoney(antTramo2) + '</div></div>';
+  }
   var ultimoPagado = antTramo1;
   h += '<div style="background:#f8fafc;padding:14px;border-radius:8px;display:flex;justify-content:space-between;align-items:center">';
-  h += '<div><div style="font-weight:700;font-size:0.75rem;text-transform:uppercase">Último Anticipo Pagado</div>';
-  h += '<div style="font-size:0.7rem;color:var(--light)">Monto del último mes</div></div>';
-  h += '<div style="font-weight:800;font-size:1.4rem;color:var(--blue)">$' + pmFormatMoney(ultimoPagado) + '</div></div>';
+  h += '<div><div style="font-weight:700;font-size:0.75rem;text-transform:uppercase">Total Anticipos Año</div>';
+  h += '<div style="font-size:0.7rem;color:var(--light)">' + (esPersonaFisica ? '3 cuotas' : '4×Tramo1 + 8×Tramo2') + '</div></div>';
+  h += '<div style="font-weight:800;font-size:1.4rem;color:var(--blue)">$' + pmFormatMoney(totalAnticipos) + '</div></div>';
   h += '</div></div>';
 
   h += '<div class="pm-panel pm-panel-dark"><div class="pm-panel-hdr">';
@@ -2383,7 +2407,8 @@ function renderProyeccionDetail() {
   h += '<tr><td style="padding:10px 20px;color:var(--muted)">ISR Liquidado (Base)</td><td class="pm-text-right" style="padding:10px 20px;font-weight:700">$' + pmFormatMoney(isrProyectado) + '</td></tr>';
   h += '<tr><td style="padding:10px 20px;color:var(--muted)">T.E.T. (Tasa Efectiva)</td><td class="pm-text-right" style="padding:10px 20px;font-weight:600;color:var(--blue)">' + tet.toFixed(0) + '%</td></tr>';
   h += '<tr style="background:#fffbeb"><td style="padding:10px 20px;font-weight:600">Total Anticipo Calculado</td><td class="pm-text-right" style="padding:10px 20px;font-weight:700;color:var(--amber)">$' + pmFormatMoney(totalAntCalc) + '</td></tr>';
-  h += '<tr style="border-top:1px solid var(--border)"><td style="padding:14px 20px;font-weight:700">Anticipo Mensual Estimado</td>';
+  var antEstLabel = esPersonaFisica ? 'Cuota Estimada (×3)' : 'Anticipo Mensual Estimado';
+  h += '<tr style="border-top:1px solid var(--border)"><td style="padding:14px 20px;font-weight:700">' + antEstLabel + '</td>';
   h += '<td class="pm-text-right" style="padding:14px 20px"><div style="font-weight:800;font-size:1.3rem;color:var(--amber)">$' + pmFormatMoney(antMensualProx) + '</div>';
   if (antActual > 0) {
     var arrow = varAntPct < 0 ? '↓' : '↑';
@@ -2401,44 +2426,60 @@ function renderProyeccionDetail() {
   h += '<div class="pm-crs-pill"><span style="color:white;font-weight:700;font-size:0.95rem">Contribución Anual (Ley 98-25)</span>';
   h += '<span style="color:#fbbf24;font-weight:800;font-size:1.6rem">$' + pmFormatMoney(crsMonto) + '</span></div></div></div>';
 
-  // Anticipos Mensuales — dos tablas lado a lado
+  // Anticipos Mensuales — tabla detallada
   var totalAntAnual = 0;
-  var antHalves = [
-    { titulo: 'Ene — Jun', desde: 1, hasta: 6 },
-    { titulo: 'Jul — Dic', desde: 7, hasta: 12 }
-  ];
-  h += '<div class="pm-panel" style="margin-bottom:16px"><div class="pm-panel-hdr" style="background:var(--navy);border-bottom:none"><h3 style="color:white;text-transform:uppercase;font-size:0.78rem;letter-spacing:0.3px">Anticipos Mensuales — Comparativo de Tramos</h3></div><div class="pm-panel-body" style="padding:16px">';
-  h += '<div class="pm-dual">';
-  for (var hi = 0; hi < 2; hi++) {
-    var half = antHalves[hi];
-    var subtotal = 0;
-    h += '<div class="pm-card" style="margin-bottom:0"><div class="pm-card-title" style="font-size:0.82rem;padding:10px 14px">' + half.titulo + '</div>';
-    h += '<table style="width:100%;table-layout:auto"><thead><tr><th style="white-space:nowrap">Mes</th><th class="pm-text-right" style="white-space:nowrap">Anticipo RD$</th><th class="pm-text-center" style="white-space:nowrap">Tramo</th><th style="width:40%">Nota</th></tr></thead><tbody>';
-    for (var am = half.desde; am <= half.hasta; am++) {
-      var antMonto = am <= 4 ? antTramo1 : antTramo2;
-      subtotal += antMonto;
-      totalAntAnual += antMonto;
-      var tramo = am <= 4 ? 'Anterior' : 'Nuevo';
-      var tramoCls = am <= 4 ? 'na' : 'verde';
-      var nota = '';
-      if (am === 4) nota = 'Último mes tramo anterior';
-      if (am === 5) {
-        var diff5 = antTramo2 - antTramo1;
-        var pct5 = antTramo1 ? (diff5 / antTramo1 * 100) : 0;
-        nota = (diff5 < 0 ? '↓' : '↑') + ' Cambio — ' + (diff5 < 0 ? 'baja' : 'sube') + ' $' + pmFormatMoney(Math.abs(diff5)) + ' (' + Math.abs(pct5).toFixed(1) + '%)';
-      }
-      var rowStyle = am === 5 ? ' style="background:#fffbeb"' : '';
-      h += '<tr' + rowStyle + '><td' + (am === 5 ? ' class="pm-font-bold"' : '') + '>' + MESES_FULL[am - 1] + '</td>';
-      h += '<td class="pm-text-right pm-font-bold">' + pmFormatMoney(antMonto) + '</td>';
-      h += '<td class="pm-text-center"><span class="pm-sem ' + tramoCls + '"><span class="pm-dot"></span>' + tramo + '</span></td>';
-      h += '<td style="color:' + (am === 5 ? 'var(--amber);font-weight:600' : 'var(--muted)') + ';font-size:0.75rem">' + nota + '</td></tr>';
+  if (esPersonaFisica) {
+    // Persona física: tabla simple con 3 cuotas
+    var mesesPF = [6, 9, 12]; // jun, sep, dic
+    h += '<div class="pm-panel" style="margin-bottom:16px"><div class="pm-panel-hdr" style="background:var(--navy);border-bottom:none"><h3 style="color:white;text-transform:uppercase;font-size:0.78rem;letter-spacing:0.3px">Anticipos — Persona Física (3 Cuotas)</h3></div><div class="pm-panel-body" style="padding:16px">';
+    h += '<table style="width:100%;table-layout:auto"><thead><tr><th style="white-space:nowrap">Mes</th><th class="pm-text-right" style="white-space:nowrap">Anticipo RD$</th><th>Nota</th></tr></thead><tbody>';
+    for (var pi = 0; pi < mesesPF.length; pi++) {
+      totalAntAnual += antTramo1;
+      h += '<tr><td class="pm-font-bold">' + MESES_FULL[mesesPF[pi] - 1] + '</td>';
+      h += '<td class="pm-text-right pm-font-bold">' + pmFormatMoney(antTramo1) + '</td>';
+      h += '<td style="color:var(--muted);font-size:0.75rem">Cuota ' + (pi + 1) + ' de 3</td></tr>';
+    }
+    h += '<tr class="pm-row-total"><td class="pm-font-bold">Total Anual</td><td class="pm-text-right pm-font-bold">' + pmFormatMoney(totalAntAnual) + '</td><td></td></tr>';
+    h += '</tbody></table></div></div>';
+  } else {
+    // Empresa: tabla de 12 meses con tramos
+    var antHalves = [
+      { titulo: 'Ene — Jun', desde: 1, hasta: 6 },
+      { titulo: 'Jul — Dic', desde: 7, hasta: 12 }
+    ];
+    h += '<div class="pm-panel" style="margin-bottom:16px"><div class="pm-panel-hdr" style="background:var(--navy);border-bottom:none"><h3 style="color:white;text-transform:uppercase;font-size:0.78rem;letter-spacing:0.3px">Anticipos Mensuales — Comparativo de Tramos</h3></div><div class="pm-panel-body" style="padding:16px">';
+    h += '<div class="pm-dual">';
+    for (var hi = 0; hi < 2; hi++) {
+      var half = antHalves[hi];
+      var subtotal = 0;
+      h += '<div class="pm-card" style="margin-bottom:0"><div class="pm-card-title" style="font-size:0.82rem;padding:10px 14px">' + half.titulo + '</div>';
+      h += '<table style="width:100%;table-layout:auto"><thead><tr><th style="white-space:nowrap">Mes</th><th class="pm-text-right" style="white-space:nowrap">Anticipo RD$</th><th class="pm-text-center" style="white-space:nowrap">Tramo</th><th style="width:40%">Nota</th></tr></thead><tbody>';
+      for (var am = half.desde; am <= half.hasta; am++) {
+        var antMonto = am <= 4 ? antTramo1 : antTramo2;
+        subtotal += antMonto;
+        totalAntAnual += antMonto;
+        var tramo = am <= 4 ? 'Anterior' : 'Nuevo';
+        var tramoCls = am <= 4 ? 'na' : 'verde';
+        var nota = '';
+        if (am === 4) nota = 'Último mes tramo anterior';
+        if (am === 5) {
+          var diff5 = antTramo2 - antTramo1;
+          var pct5 = antTramo1 ? (diff5 / antTramo1 * 100) : 0;
+          nota = (diff5 < 0 ? '↓' : '↑') + ' Cambio — ' + (diff5 < 0 ? 'baja' : 'sube') + ' $' + pmFormatMoney(Math.abs(diff5)) + ' (' + Math.abs(pct5).toFixed(1) + '%)';
+        }
+        var rowStyle = am === 5 ? ' style="background:#fffbeb"' : '';
+        h += '<tr' + rowStyle + '><td' + (am === 5 ? ' class="pm-font-bold"' : '') + '>' + MESES_FULL[am - 1] + '</td>';
+        h += '<td class="pm-text-right pm-font-bold">' + pmFormatMoney(antMonto) + '</td>';
+        h += '<td class="pm-text-center"><span class="pm-sem ' + tramoCls + '"><span class="pm-dot"></span>' + tramo + '</span></td>';
+        h += '<td style="color:' + (am === 5 ? 'var(--amber);font-weight:600' : 'var(--muted)') + ';font-size:0.75rem">' + nota + '</td></tr>';
     }
     h += '<tr class="pm-row-total"><td class="pm-font-bold">Subtotal</td><td class="pm-text-right pm-font-bold">' + pmFormatMoney(subtotal) + '</td><td></td><td></td></tr>';
     h += '</tbody></table></div>';
   }
-  h += '</div>';
-  h += '<div style="text-align:right;padding:8px 14px;font-weight:700;font-size:0.9rem;color:var(--navy)">Total Anual: $' + pmFormatMoney(totalAntAnual) + '</div>';
-  h += '</div></div>';
+    h += '</div>';
+    h += '<div style="text-align:right;padding:8px 14px;font-weight:700;font-size:0.9rem;color:var(--navy)">Total Anual: $' + pmFormatMoney(totalAntAnual) + '</div>';
+    h += '</div></div>';
+  }
 
   return h;
 }
@@ -2807,10 +2848,15 @@ function renderAdminDatos() {
   h += '</div>';
 
   var ic = pmImpConfig || {};
+  var tipoC = ic.tipo_contribuyente || 'empresa';
   h += '<div class="pm-admin-form"><h3>Configuración de Impuestos <span class="pm-admin-badge">Año ' + pmYear + '</span></h3>';
   h += '<div class="pm-form-grid">';
-  h += '<div class="pm-form-group"><label>Anticipo Tramo 1 (Ene-Abr)</label><input type="number" class="pm-form-input" id="pmIcAnt1" value="' + (ic.anticipo_tramo1 || '') + '" placeholder="Cuota mensual" step="0.01"></div>';
-  h += '<div class="pm-form-group"><label>Anticipo Tramo 2 (May-Dic)</label><input type="number" class="pm-form-input" id="pmIcAnt2" value="' + (ic.anticipo_tramo2 || '') + '" placeholder="Cuota mensual" step="0.01"></div>';
+  h += '<div class="pm-form-group"><label>Tipo de Contribuyente</label><select class="pm-form-input" id="pmIcTipo" onchange="pmToggleTipoContrib()">';
+  h += '<option value="empresa"' + (tipoC === 'empresa' ? ' selected' : '') + '>Empresa (Persona Jurídica)</option>';
+  h += '<option value="persona_fisica"' + (tipoC === 'persona_fisica' ? ' selected' : '') + '>Persona Física</option>';
+  h += '</select></div>';
+  h += '<div class="pm-form-group" id="pmGrpAnt1"><label id="pmLblAnt1">' + (tipoC === 'persona_fisica' ? 'Cuota de Anticipo (×3)' : 'Anticipo Tramo 1 (Ene-Abr)') + '</label><input type="number" class="pm-form-input" id="pmIcAnt1" value="' + (ic.anticipo_tramo1 || '') + '" placeholder="Cuota mensual" step="0.01"></div>';
+  h += '<div class="pm-form-group" id="pmGrpAnt2" style="' + (tipoC === 'persona_fisica' ? 'display:none' : '') + '"><label>Anticipo Tramo 2 (May-Dic)</label><input type="number" class="pm-form-input" id="pmIcAnt2" value="' + (ic.anticipo_tramo2 || '') + '" placeholder="Cuota mensual" step="0.01"></div>';
   h += '<div class="pm-form-group"><label>Pérdidas Compensables</label><input type="number" class="pm-form-input" id="pmIcPerdidas" value="' + (ic.perdidas_compensables || '') + '" placeholder="0.00" step="0.01"></div>';
   h += '<div class="pm-form-group"><label>Activos Totales</label><input type="number" class="pm-form-input" id="pmIcActivos" value="' + (ic.activos_totales || '') + '" placeholder="0.00" step="0.01"></div>';
   h += '<div class="pm-form-group"><label>Activos Exentos</label><input type="number" class="pm-form-input" id="pmIcExentos" value="' + (ic.activos_exentos || '') + '" placeholder="0.00" step="0.01"></div>';
@@ -3268,12 +3314,27 @@ async function pmSaveEjecucion() {
   render();
 }
 
+function pmToggleTipoContrib() {
+  var tipo = document.getElementById('pmIcTipo').value;
+  var grp2 = document.getElementById('pmGrpAnt2');
+  var lbl1 = document.getElementById('pmLblAnt1');
+  if (tipo === 'persona_fisica') {
+    grp2.style.display = 'none';
+    lbl1.textContent = 'Cuota de Anticipo (×3)';
+  } else {
+    grp2.style.display = '';
+    lbl1.textContent = 'Anticipo Tramo 1 (Ene-Abr)';
+  }
+}
+
 async function pmSaveImpConfig() {
+  var tipoC = document.getElementById('pmIcTipo').value;
   var { error } = await sb.from('portal_impuestos_config').upsert({
     cliente: clienteNombre,
     anio: pmYear,
+    tipo_contribuyente: tipoC,
     anticipo_tramo1: parseFloat(document.getElementById('pmIcAnt1').value) || 0,
-    anticipo_tramo2: parseFloat(document.getElementById('pmIcAnt2').value) || 0,
+    anticipo_tramo2: tipoC === 'persona_fisica' ? 0 : (parseFloat(document.getElementById('pmIcAnt2').value) || 0),
     perdidas_compensables: parseFloat(document.getElementById('pmIcPerdidas').value) || 0,
     activos_totales: parseFloat(document.getElementById('pmIcActivos').value) || 0,
     activos_exentos: parseFloat(document.getElementById('pmIcExentos').value) || 0,

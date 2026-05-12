@@ -1248,7 +1248,7 @@ function bindPipelineEvents() {
 
   // Edit actions
   document.querySelectorAll('[data-action="save"]').forEach(btn => {
-    btn.onclick = (e) => {
+    btn.onclick = async (e) => {
       e.stopPropagation();
       const idx = parseInt(btn.dataset.idx);
       const editRow = btn.closest('.edit-row');
@@ -1276,10 +1276,10 @@ function bindPipelineEvents() {
           APP.data.pipeline[APP.currentMonth].splice(idx, 1);
           if (!APP.data.pipeline[demoMes]) APP.data.pipeline[demoMes] = [];
           APP.data.pipeline[demoMes].push(lead);
-          sb.from('leads').update({ mes: demoMes }).eq('id', lead._id);
+          await sb.from('leads').update({ mes: demoMes }).eq('id', lead._id);
         }
       }
-      dbUpdateLead(lead); // Guardar en Supabase
+      await dbUpdateLead(lead); // Guardar en Supabase
       syncRoasFromPipeline();
       APP.expandedRow = -1;
       renderPipeline();
@@ -1333,10 +1333,18 @@ function bindPipelineEvents() {
       form.querySelectorAll('[data-cat]').forEach(cb => { if (cb.checked) checkedCats.push(cb.dataset.cat); });
       newLead.categoria = checkedCats.join(',');
       if (!newLead.n || !newLead.n.trim()) { alert('El nombre es obligatorio.'); return; }
+      // Derivar mes de la fecha demo si existe, sino usar mes actual
+      var targetMonth = APP.currentMonth;
+      if (newLead.demo) {
+        var demoDate = new Date(newLead.demo + 'T00:00:00');
+        var demoMes = MONTHS[demoDate.getMonth()];
+        if (demoMes && demoDate.getFullYear() === 2026) targetMonth = demoMes;
+      }
       // Insertar en Supabase y obtener ID antes de agregar al array
-      const newId = await dbInsertLead(APP.currentMonth, newLead);
+      const newId = await dbInsertLead(targetMonth, newLead);
       if (newId) newLead._id = newId;
-      APP.data.pipeline[APP.currentMonth].push(newLead);
+      if (!APP.data.pipeline[targetMonth]) APP.data.pipeline[targetMonth] = [];
+      APP.data.pipeline[targetMonth].push(newLead);
       syncRoasFromPipeline();
       APP.addingLead = false;
       renderPipeline();
