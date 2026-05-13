@@ -1587,9 +1587,11 @@ function switchMainTab(tabId) {
   pmDetail = null;
   renderMainTabs();
   if (adminShowingIndex) {
+    renderAdminNav();
     renderAdminIndex();
   } else {
     renderSubTabs();
+    renderAdminNav();
     render();
   }
 }
