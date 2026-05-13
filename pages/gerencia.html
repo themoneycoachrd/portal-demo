@@ -624,6 +624,19 @@
           </select>
         </div>
       </div>
+      <!-- Checklist de implementación -->
+      <div id="cl-m-impl-checklist-wrap" style="margin-top:8px;padding:10px 14px;background:#f0f4ff;border:1px solid #c7d2fe;border-radius:8px">
+        <div style="font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.4px;color:#4338ca;margin-bottom:8px">Checklist de implementación</div>
+        <div style="display:flex;gap:20px;align-items:center">
+          <label style="display:flex;align-items:center;gap:6px;font-size:0.82rem;font-weight:600;color:var(--navy);cursor:pointer">
+            <input type="checkbox" id="cl-m-ck-fe"> Facturación Electrónica
+          </label>
+          <label style="display:flex;align-items:center;gap:6px;font-size:0.82rem;font-weight:600;color:var(--navy);cursor:pointer">
+            <input type="checkbox" id="cl-m-ck-adm" disabled> Adm <span style="font-size:0.7rem;color:var(--light);font-weight:400">(próximamente)</span>
+          </label>
+        </div>
+        <div id="cl-m-ck-fe-exists" style="display:none;margin-top:6px;font-size:0.75rem;color:var(--green);font-weight:600">✓ Ya tiene checklist FE creado</div>
+      </div>
       <div class="m-row">
         <div class="m-field">
           <label style="margin-bottom:4px">Contabilidad</label>
@@ -3579,8 +3592,27 @@ function clOpenModal(editId) {
     document.getElementById('cl-m-contadora-imp').onchange = null;
   }
 
+  // Reset checkboxes de implementación
+  document.getElementById('cl-m-ck-fe').checked = false;
+  document.getElementById('cl-m-ck-fe').disabled = false;
+  document.getElementById('cl-m-ck-fe-exists').style.display = 'none';
+
   document.getElementById('cl-m-nombre-err').style.display = 'none';
   document.getElementById('cl-modal-overlay').classList.remove('hidden');
+
+  // Si editando, verificar si ya tiene checklist FE
+  if (clEditingId) {
+    var cNombre = bdClientes.find(function(x) { return x.id === clEditingId; });
+    if (cNombre) {
+      sb.from('impl_checklist_fe').select('id').eq('cliente', cNombre.nombre).then(function(res) {
+        if (res.data && res.data.length > 0) {
+          document.getElementById('cl-m-ck-fe').checked = true;
+          document.getElementById('cl-m-ck-fe').disabled = true;
+          document.getElementById('cl-m-ck-fe-exists').style.display = 'block';
+        }
+      });
+    }
+  }
 }
 
 function clEditClient(id) { clOpenModal(id); }
@@ -3732,28 +3764,20 @@ async function clSaveClient() {
 
   btn.disabled = false; btn.textContent = 'Guardar';
 
-  // Auto-crear checklist de implementación si aplica
-  var servicioImpl = record.servicio_impl || '';
-  if (servicioImpl) {
-    var crearFE = servicioImpl.indexOf('Facturación Electrónica') !== -1;
-    var crearAdm = servicioImpl.indexOf('Implementación Adm') !== -1 && servicioImpl.indexOf('Facturación Electrónica') === -1
-      ? true
-      : servicioImpl.indexOf('Adm + Facturación') !== -1 || servicioImpl.indexOf('Adm +') !== -1;
-    // Corregir: si dice "Implementación Adm" (solo) o "Implementación Adm + Facturación Electrónica"
-    crearAdm = servicioImpl.indexOf('Adm') !== -1;
-
-    if (crearFE) {
-      var existFE = await sb.from('impl_checklist_fe').select('id').eq('cliente', nombre);
-      if (!existFE.data || existFE.data.length === 0) {
-        var datosFE = {};
-        for (var fi = 1; fi <= 15; fi++) { datosFE['paso_' + fi] = { done: false, fecha: '' }; }
-        var resFE = await sb.from('impl_checklist_fe').insert({ cliente: nombre, implementadora: null, datos: datosFE });
-        if (!resFE.error) gerShowToast('Checklist FE creado para ' + nombre, 'success');
-        else console.error('Error creando checklist FE:', resFE.error);
-      }
+  // Crear checklist de implementación si el checkbox está marcado
+  var ckFEChecked = document.getElementById('cl-m-ck-fe').checked;
+  var ckFEDisabled = document.getElementById('cl-m-ck-fe').disabled;
+  if (ckFEChecked && !ckFEDisabled) {
+    var existFE = await sb.from('impl_checklist_fe').select('id').eq('cliente', nombre);
+    if (!existFE.data || existFE.data.length === 0) {
+      var datosFE = {};
+      for (var fi = 1; fi <= 15; fi++) { datosFE['paso_' + fi] = { done: false, fecha: '' }; }
+      var resFE = await sb.from('impl_checklist_fe').insert({ cliente: nombre, implementadora: null, datos: datosFE });
+      if (!resFE.error) gerShowToast('Checklist FE creado para ' + nombre, 'success');
+      else console.error('Error creando checklist FE:', resFE.error);
     }
-    // TODO: cuando exista impl_checklist_adm, crear aquí si crearAdm es true
   }
+  // TODO: cuando exista impl_checklist_adm, crear aquí con cl-m-ck-adm
 
   var wasEditing = !!clEditingId;
   clCloseModal();
