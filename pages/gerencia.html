@@ -479,11 +479,6 @@
   <div class="content" id="ctd-content"></div>
 </div>
 
-<div id="bd-area" class="hidden">
-  <div class="bd-sub-tabs" id="bdSubTabs"></div>
-  <div class="content" id="bd-content"></div>
-</div>
-
 <div class="footer">Conectado a Supabase — los datos se guardan en la nube.</div>
 
 </div><!-- /app-wrapper -->
@@ -934,8 +929,7 @@ function renderGerMainTabs() {
   const el = document.getElementById('mainTabs');
   var tabs = [
     { id:'clientes', label:'Clientes' },
-    { id:'contadoras', label:'Contadoras' },
-    { id:'basedatos', label:'Base de Datos' }
+    { id:'contadoras', label:'Contadoras' }
   ];
   if (!tengoPermiso('gerencia', 'contadoras', 'consulta')) {
     tabs = tabs.filter(t => t.id !== 'contadoras');
@@ -948,16 +942,12 @@ function switchGerTab(tab) {
   renderGerMainTabs();
   document.getElementById('cc-area').classList.add('hidden');
   document.getElementById('ctd-area').classList.add('hidden');
-  document.getElementById('bd-area').classList.add('hidden');
   if (tab === 'clientes') {
     document.getElementById('cc-area').classList.remove('hidden');
     ccRenderAll();
   } else if (tab === 'contadoras') {
     document.getElementById('ctd-area').classList.remove('hidden');
     ctdRenderApp();
-  } else if (tab === 'basedatos') {
-    document.getElementById('bd-area').classList.remove('hidden');
-    bdRenderAll();
   }
 }
 
@@ -3114,6 +3104,14 @@ async function loadUserProfile() {
   else { userRole = 'contadora'; userName = user.email; }
 }
 
+/* ══════════════════════════════════════════════════════════════
+   PENDIENTE MIGRAR — Código de BD que se reutilizará en pills nuevos
+   (Outsourcing CRUD, Software CRUD, Contadoras maestra, Asignaciones)
+   Comentado en Fase 5 Sub-fase A (2026-05-20)
+   ══════════════════════════════════════════════════════════════
+*/
+
+/*
 // ══════════════════════════════════════════════════════════════
 // ██  BASE DE DATOS (BD) MODULE — Clientes, Contadoras, Asignaciones
 // ══════════════════════════════════════════════════════════════
@@ -4626,109 +4624,7 @@ async function bdAsigDeleteRow(id) {
   bdRenderAsignaciones();
   gerShowToast('Asignación eliminada');
 }
-
-// ═══════════════════════════════════════════
-// BD SUB-TAB: LINKS PORTAL
-// ═══════════════════════════════════════════
-
-function bdGetPortalBaseUrl() {
-  var loc = window.location;
-  var base = loc.origin + loc.pathname.replace(/\/[^\/]*$/, '/');
-  return base + 'portal-clientes.html?token=';
-}
-
-function bdRenderLinks() {
-  var el = document.getElementById('bd-content');
-  if (!el) return;
-
-  var activos = bdTokens.filter(function(t) { return t.activo; });
-  activos.sort(function(a, b) { return a.cliente.localeCompare(b.cliente, 'es'); });
-
-  var h = '';
-  h += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">';
-  h += '<div style="font-size:0.85rem;color:var(--muted)">' + activos.length + ' clientes con link activo</div>';
-  h += '<button style="padding:6px 14px;border-radius:8px;font-size:0.78rem;font-weight:600;cursor:pointer;border:1px solid var(--border);background:white;color:var(--navy);font-family:inherit" onclick="bdCopyAllLinks()">Copiar todos los links</button>';
-  h += '</div>';
-
-  if (activos.length === 0) {
-    h += '<div class="cl-empty"><p>No hay tokens generados. Ejecuta el SQL de setup primero.</p></div>';
-    el.innerHTML = h;
-    return;
-  }
-
-  h += '<table class="bd-cont-table">';
-  h += '<thead><tr>';
-  h += '<th style="width:30px">#</th>';
-  h += '<th>Cliente</th>';
-  h += '<th>Link</th>';
-  h += '<th style="width:80px;text-align:center">Copiar</th>';
-  h += '</tr></thead><tbody>';
-
-  var baseUrl = bdGetPortalBaseUrl();
-
-  activos.forEach(function(t, i) {
-    var fullUrl = baseUrl + t.token;
-    h += '<tr>';
-    h += '<td style="color:var(--light);font-size:0.75rem">' + (i + 1) + '</td>';
-    h += '<td style="font-weight:600">' + esc(t.cliente) + '</td>';
-    h += '<td><span style="font-size:0.75rem;color:var(--muted);word-break:break-all" id="link_' + t.id + '">' + esc(fullUrl) + '</span></td>';
-    h += '<td style="text-align:center"><button style="padding:4px 10px;border-radius:6px;font-size:0.72rem;font-weight:600;cursor:pointer;border:1px solid var(--border);background:white;color:var(--blue);font-family:inherit" onclick="bdCopyLink(\'' + esc(fullUrl).replace(/'/g, "\\'") + '\',this)">Copiar</button></td>';
-    h += '</tr>';
-  });
-
-  h += '</tbody></table>';
-  el.innerHTML = h;
-}
-
-function bdCopyLink(url, btn) {
-  navigator.clipboard.writeText(url).then(function() {
-    btn.textContent = 'Copiado';
-    btn.style.color = 'var(--green)';
-    btn.style.borderColor = '#a7f3d0';
-    setTimeout(function() {
-      btn.textContent = 'Copiar';
-      btn.style.color = 'var(--blue)';
-      btn.style.borderColor = '';
-    }, 2000);
-  });
-}
-
-function bdCopyAllLinks() {
-  var activos = bdTokens.filter(function(t) { return t.activo; });
-  activos.sort(function(a, b) { return a.cliente.localeCompare(b.cliente, 'es'); });
-  var baseUrl = bdGetPortalBaseUrl();
-  var text = activos.map(function(t) {
-    return t.cliente + ': ' + baseUrl + t.token;
-  }).join('\n');
-  navigator.clipboard.writeText(text).then(function() {
-    gerShowToast('Todos los links copiados al portapapeles');
-  });
-}
-
-function bdRenderLinkDashboard() {
-  var el = document.getElementById('bd-content');
-  if (!el) return;
-  var baseUrl = window.location.origin + window.location.pathname.replace(/\/[^/]*$/, '/');
-  var dashUrl = baseUrl + 'dashboard-publico.html';
-  var h = '';
-  h += '<div style="padding:40px 20px;text-align:center">';
-  h += '<div style="font-size:14px;font-weight:700;color:var(--navy);margin-bottom:12px">Dashboard Público</div>';
-  h += '<div style="font-size:0.82rem;color:var(--muted);margin-bottom:20px">Link para compartir el dashboard de clientes sin necesidad de login.</div>';
-  h += '<div style="background:#f8fafc;border:1px solid var(--border);border-radius:10px;padding:16px;display:inline-block;max-width:600px;width:100%">';
-  h += '<div style="font-size:0.75rem;color:var(--light);margin-bottom:6px">URL del dashboard:</div>';
-  h += '<div style="font-size:0.82rem;color:var(--navy);font-weight:500;word-break:break-all;margin-bottom:12px" id="dash-pub-url">' + dashUrl + '</div>';
-  h += '<button style="padding:8px 20px;border-radius:8px;font-size:0.8rem;font-weight:600;cursor:pointer;border:1px solid var(--blue);background:var(--blue);color:white;font-family:inherit" onclick="bdCopyDashLink()">Copiar link</button>';
-  h += ' <a href="' + dashUrl + '" target="_blank" style="padding:8px 20px;border-radius:8px;font-size:0.8rem;font-weight:600;text-decoration:none;border:1px solid var(--border);background:white;color:var(--navy);font-family:inherit;display:inline-block">Abrir ↗</a>';
-  h += '</div></div>';
-  el.innerHTML = h;
-}
-
-function bdCopyDashLink() {
-  var url = document.getElementById('dash-pub-url').textContent;
-  navigator.clipboard.writeText(url).then(function() {
-    gerShowToast('Link del dashboard copiado');
-  });
-}
+*/
 
 // ══════════════════════════════════════════════════════════════
 // ██  SHOW APP
@@ -4745,8 +4641,7 @@ async function showApp() {
     ccLoadImplementaciones(),
     ccLoadSoftwareClientes(),
     ccLoadKpiFromDB(),
-    ctdLoadContadoras(),
-    bdLoadAll()
+    ctdLoadContadoras()
   ]);
 
   // Init CC state
@@ -4755,17 +4650,6 @@ async function showApp() {
 
   // Init CTD state
   ctdSelectedMes = ctdGetCurrentReportMonth();
-
-  // Init BD state
-  bdActiveSubTab = 'clientes';
-  // Set BD months to current month or latest with data
-  var now = new Date();
-  var curMes = BD_MESES[now.getMonth()];
-  var mesConDatos = bdAsignaciones.filter(function(a) { return a.mes === curMes; });
-  bdAsigMes = mesConDatos.length > 0 ? curMes : (bdAsignaciones.length > 0 ? bdAsignaciones[bdAsignaciones.length - 1].mes : curMes);
-  bdClMes = curMes;
-  bdSwMes = curMes;
-  bdContMes = curMes;
 
   // Render
   renderGerMainTabs();
