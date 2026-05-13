@@ -1383,7 +1383,11 @@ function ccRenderMainTabs() {
     {id:'software', label:'Software'},
     {id:'implementacion', label:'Implementaciones'},
     {id:'facturacion', label:'Facturación'}
-  ];
+  ].filter(t => {
+    if (t.id === 'facturacion') return tengoPermiso('gerencia', 'facturacion', 'consulta');
+    return tengoPermiso('gerencia', 'clientes', 'consulta', t.id);
+  });
+  if (tabs.length && !tabs.find(t => t.id === ccActiveMainTab)) ccActiveMainTab = tabs[0].id;
   el.innerHTML = tabs.map(t =>
     `<button class="sub-tab ${ccActiveMainTab===t.id?'active':''}" onclick="ccNavigateMain('${t.id}')">${t.label}</button>`
   ).join('');
@@ -3196,6 +3200,8 @@ function bdRenderSubTabs() {
   var el = document.getElementById('bdSubTabs');
   var pendRec = bdPendientes.filter(function(p) { return p.destino === 'recurrente'; }).length;
   var pendSw = bdPendientes.filter(function(p) { return p.destino === 'software'; }).length;
+  // Mapa de pill-id → permiso-key en basedatos
+  var permKey = { clientes:'clientes', software:'clientes', contadoras:'contadoras', asignaciones:'asignaciones', links:'links-portal', 'link-dashboard':'links-portal' };
   var tabs = [
     { id:'clientes', label:'Outsourcing' + (pendRec ? ' <span style="background:var(--amber);color:white;font-size:10px;padding:1px 6px;border-radius:10px;margin-left:4px">' + pendRec + '</span>' : '') },
     { id:'software', label:'Software' + (pendSw ? ' <span style="background:var(--amber);color:white;font-size:10px;padding:1px 6px;border-radius:10px;margin-left:4px">' + pendSw + '</span>' : '') },
@@ -3203,7 +3209,10 @@ function bdRenderSubTabs() {
     { id:'asignaciones', label:'Asignaciones' },
     { id:'links', label:'Links Portal' },
     { id:'link-dashboard', label:'Link Dashboard' }
-  ];
+  ].filter(function(t) {
+    return tengoPermiso('gerencia', 'basedatos', 'consulta', permKey[t.id] || t.id);
+  });
+  if (tabs.length && !tabs.find(function(t) { return t.id === bdActiveSubTab; })) bdActiveSubTab = tabs[0].id;
   el.innerHTML = tabs.map(function(t) {
     return '<button class="bd-sub-tab ' + (bdActiveSubTab === t.id ? 'active' : '') + '" onclick="bdSwitchSubTab(\'' + t.id + '\')">' + t.label + '</button>';
   }).join('');
