@@ -279,23 +279,24 @@ body.embed .content { padding-top:12px; }
 .cal-task-row { display:grid; grid-template-columns:1fr 70px; gap:8px; padding:7px 0; border-bottom:1px solid var(--border); font-size:0.8rem; align-items:center; }
 .cal-task-row:last-child { border-bottom:none; }
 .cal-task-date { font-size:0.75rem; font-weight:700; text-align:right; color:#b8860b; }
-.cal-tl-row { display:flex; margin-bottom:2px; overflow:hidden; }
+.cal-tl-row { display:flex; margin-bottom:0; border-bottom:1px solid var(--border); }
+.cal-tl-row:last-child { border-bottom:none; }
 .cal-tl-num { width:70px; padding:14px 8px; text-align:center; flex-shrink:0; }
 .cal-tl-num-big { font-size:1.6rem; font-weight:800; line-height:1; }
 .cal-tl-num-label { font-size:0.58rem; text-transform:uppercase; letter-spacing:0.3px; font-weight:700; margin-top:3px; }
 .cal-tl-content { flex:1; padding:12px 16px; }
-.cal-tl-content h4 { font-size:0.88rem; font-weight:700; margin:0 0 4px; color:white; }
-.cal-tl-content p { font-size:0.78rem; color:rgba(255,255,255,0.6); line-height:1.5; margin:0; }
+.cal-tl-content h4 { font-size:0.88rem; font-weight:700; margin:0 0 4px; color:var(--navy); }
+.cal-tl-content p { font-size:0.78rem; color:var(--muted); line-height:1.5; margin:0; }
 .cal-tl-badge { display:inline-block; font-size:0.6rem; font-weight:700; padding:2px 8px; border-radius:3px; margin-bottom:6px; letter-spacing:0.3px; }
-.cal-tipo-cliente { background:#5a4a2e; }
-.cal-tipo-cliente .cal-tl-num { color:#d4a946; }
-.cal-tipo-cliente .cal-tl-badge { background:rgba(212,169,70,0.25); color:#d4a946; }
-.cal-tipo-ao { background:#3a4050; }
-.cal-tipo-ao .cal-tl-num { color:#7ba8f0; }
-.cal-tipo-ao .cal-tl-badge { background:rgba(123,168,240,0.2); color:#7ba8f0; }
-.cal-tipo-dgii { background:#4a3538; }
-.cal-tipo-dgii .cal-tl-num { color:#e07070; }
-.cal-tipo-dgii .cal-tl-badge { background:rgba(224,112,112,0.2); color:#e07070; }
+.cal-tipo-cliente { background:rgba(16,185,129,0.06); }
+.cal-tipo-cliente .cal-tl-num { color:var(--green); }
+.cal-tipo-cliente .cal-tl-badge { background:rgba(16,185,129,0.12); color:var(--green); }
+.cal-tipo-ao { background:rgba(67,97,238,0.06); }
+.cal-tipo-ao .cal-tl-num { color:var(--blue); }
+.cal-tipo-ao .cal-tl-badge { background:rgba(67,97,238,0.12); color:var(--blue); }
+.cal-tipo-dgii { background:rgba(239,68,68,0.06); }
+.cal-tipo-dgii .cal-tl-num { color:var(--red); }
+.cal-tipo-dgii .cal-tl-badge { background:rgba(239,68,68,0.12); color:var(--red); }
 </style>
 </head>
 <body>
@@ -1048,6 +1049,7 @@ function switchMonth(mes) {
 /* ── Calendario de entregas ── */
 var calActiveView = 'resumen';
 var calActiveMes = new Date().getMonth();
+var calActivePerspective = 'cliente';
 
 var OBLIGACIONES = [
   {
@@ -1130,7 +1132,7 @@ function renderCalendario() {
   h += '<div class="cal-pills">';
   var views = [
     { id: 'resumen', label: 'Resumen' },
-    { id: 'mes', label: 'Vista mensual' }
+    { id: 'mes', label: 'Cómo se ve un mes' }
   ];
   views.forEach(function(v) {
     h += '<button class="month-tab' + (calActiveView === v.id ? ' active' : '') + '" onclick="calSwitchView(\'' + v.id + '\')">' + v.label + '</button>';
@@ -1143,6 +1145,7 @@ function renderCalendario() {
 
 function calSwitchView(v) { calActiveView = v; render(); }
 function calSwitchMes(m) { calActiveMes = m; render(); }
+function calSwitchPerspective(p) { calActivePerspective = p; render(); }
 
 /* Vista: Resumen con accordion */
 function renderCalResumen() {
@@ -1206,21 +1209,30 @@ function calToggleRes(id) {
   calOpenObs[id] = !isOpen;
 }
 
-/* Vista: Mes */
+/* Vista: Cómo se ve un mes */
 function renderCalMes() {
   var h = '';
+  var perspectives = [
+    { id: 'cliente', label: 'Cliente', color: 'var(--green)' },
+    { id: 'ao', label: 'Account One', color: 'var(--blue)' },
+    { id: 'dgii', label: 'DGII', color: 'var(--red)' }
+  ];
   h += '<div class="cal-pills">';
-  MESES_CORTO.forEach(function(m, i) {
-    h += '<button class="month-tab' + (calActiveMes === i ? ' active' : '') + '" onclick="calSwitchMes(' + i + ')">' + m + '</button>';
+  perspectives.forEach(function(p) {
+    h += '<button class="month-tab' + (calActivePerspective === p.id ? ' active' : '') + '" onclick="calSwitchPerspective(\'' + p.id + '\')">' + p.label + '</button>';
   });
   h += '</div>';
 
-  var mesNombre = MESES_CORTO[calActiveMes];
-  var mesSig = MESES_CORTO[(calActiveMes + 1) % 12];
-  var badgeLabels = { cliente: 'CLIENTE', ao: 'ACCOUNT ONE', dgii: 'DGII' };
+  var filtered = TIMELINE_ENTRIES.filter(function(e) {
+    if (calActivePerspective === 'cliente') return e.tipo === 'cliente' || e.tipo === 'dgii';
+    if (calActivePerspective === 'ao') return e.tipo === 'ao';
+    return e.tipo === 'dgii';
+  });
 
-  h += '<div style="border-radius:12px;overflow:hidden;">';
-  TIMELINE_ENTRIES.forEach(function(e) {
+  var badgeLabels = { cliente: 'CLIENTE', ao: 'ACCOUNT ONE', dgii: 'LÍMITE DGII' };
+
+  h += '<div style="background:white;border-radius:12px;border:1px solid var(--border);overflow:hidden;">';
+  filtered.forEach(function(e) {
     h += '<div class="cal-tl-row cal-tipo-' + e.tipo + '">';
     h += '<div class="cal-tl-num">';
     h += '<div class="cal-tl-num-big">' + e.day + '</div>';
@@ -1235,7 +1247,12 @@ function renderCalMes() {
   });
   h += '</div>';
 
-  h += '<p style="font-size:0.72rem;color:var(--muted);margin-top:12px;">Preparando ' + mesNombre + ': del día 25 de ' + mesNombre + ' al día 20 de ' + mesSig + '.</p>';
+  var descPersp = {
+    cliente: 'Responsabilidades del cliente y fechas límite de pago ante la DGII.',
+    ao: 'Procesamiento interno de Account One para cumplir con las obligaciones.',
+    dgii: 'Fechas límite de presentación y pago ante la DGII.'
+  };
+  h += '<p style="font-size:0.72rem;color:var(--muted);margin-top:12px;">' + descPersp[calActivePerspective] + '</p>';
 
   return h;
 }
