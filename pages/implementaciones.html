@@ -354,7 +354,45 @@ var FE_GROUPS = [
   { label: 'IMPLEMENTACION', responsable: null, from: 5, to: 14 }
 ];
 
-var TOTAL_STEPS = 15;
+var ADM_ITEMS = [
+  // Onboarding
+  { id: 'paso_1', n: 1, label: 'Correo de presentacion y link para agendar la primera sesion', responsable: 'Implementadora', grupo: 'Onboarding' },
+  { id: 'paso_2', n: 2, label: 'Primera sesion agendada', responsable: 'Implementadora', grupo: 'Onboarding' },
+  { id: 'paso_3', n: 3, label: 'Creacion de cuenta en base', responsable: 'Implementadora', grupo: 'Onboarding' },
+  // Gerencia
+  { id: 'paso_4', n: 4, label: 'Creacion de cuenta en Adm', responsable: 'Felix', grupo: 'Gerencia' },
+  // Implementacion
+  { id: 'paso_5', n: 5, label: 'Sesion 1 impartida', responsable: 'Implementadora', grupo: 'Implementacion' },
+  { id: 'paso_6', n: 6, label: 'Sesion 2 impartida', responsable: 'Implementadora', grupo: 'Implementacion' },
+  { id: 'paso_7', n: 7, label: 'Sesion 3 impartida', responsable: 'Implementadora', grupo: 'Implementacion' },
+  { id: 'paso_8', n: 8, label: 'Recepcion de Plantillas', responsable: 'Implementadora', grupo: 'Implementacion' },
+  { id: 'paso_9', n: 9, label: 'Revision de plantillas', responsable: 'Implementadora', grupo: 'Implementacion' },
+  { id: 'paso_10', n: 10, label: 'Carga de plantillas previo al go live', responsable: 'Implementadora', grupo: 'Implementacion' },
+  { id: 'paso_11', n: 11, label: 'Sesion 4 (Go Live)', responsable: 'Implementadora', grupo: 'Implementacion' },
+  { id: 'paso_12', n: 12, label: 'Firma de Actas 1-4', responsable: 'Implementadora', grupo: 'Implementacion' },
+  { id: 'paso_13', n: 13, label: 'Firma de Go Live y aceptacion final del proyecto', responsable: 'Implementadora', grupo: 'Implementacion' },
+  // Transicion
+  { id: 'paso_14', n: 14, label: 'Reunion de asignacion de contadora con gerencia', responsable: 'Implementadora', grupo: 'Transicion' },
+  { id: 'paso_15', n: 15, label: 'Correo de asignacion de contadora y firma de recepcion de cliente', responsable: 'Implementadora', grupo: 'Transicion' },
+  { id: 'paso_16', n: 16, label: 'Envio de correo al cliente con link para agendar reunion presentacion contadora', responsable: 'Implementadora', grupo: 'Transicion' },
+  { id: 'paso_17', n: 17, label: 'Sesion 5 de presentacion de contadora agendada', responsable: 'Implementadora', grupo: 'Transicion' },
+  { id: 'paso_18', n: 18, label: 'Correo de encuesta de satisfaccion de Implementacion', responsable: 'Implementadora', grupo: 'Transicion' }
+];
+
+var ADM_GROUPS = [
+  { label: 'ONBOARDING', responsable: null, from: 0, to: 2 },
+  { label: 'GERENCIA', responsable: 'Felix', from: 3, to: 3 },
+  { label: 'IMPLEMENTACION', responsable: null, from: 4, to: 12 },
+  { label: 'TRANSICION', responsable: null, from: 13, to: 17 }
+];
+
+// Helpers to get current tab config
+function getItems() { return mainTab === 'adm' ? ADM_ITEMS : FE_ITEMS; }
+function getGroups() { return mainTab === 'adm' ? ADM_GROUPS : FE_GROUPS; }
+function getTotalSteps() { return mainTab === 'adm' ? 18 : 15; }
+function getTableName() { return mainTab === 'adm' ? 'impl_checklist_adm' : 'impl_checklist_fe'; }
+function getRows() { return mainTab === 'adm' ? allRowsAdm : allRows; }
+function setRows(data) { if (mainTab === 'adm') allRowsAdm = data; else allRows = data; }
 
 // ==================== STATE ====================
 var userRole = null;
@@ -365,6 +403,7 @@ var selectedImpl = 'Todas';
 var viewMode = 'table'; // 'table' or 'cards'
 var currentCliente = null;
 var allRows = [];
+var allRowsAdm = [];
 var localEdits = {};
 var notaCtx = null;
 
@@ -400,9 +439,10 @@ function showToast(msg, type) {
 }
 
 function countDone(datos) {
+  var items = getItems();
   var count = 0;
-  for (var i = 0; i < FE_ITEMS.length; i++) {
-    var val = datos[FE_ITEMS[i].id];
+  for (var i = 0; i < items.length; i++) {
+    var val = datos[items[i].id];
     if (val && (val.done === true || val.done === 'na')) count++;
   }
   return count;
@@ -463,6 +503,10 @@ async function loadData() {
   var res = await sb.from('impl_checklist_fe').select('*');
   allRows = res.data || [];
   if (res.error) console.error('Error cargando impl_checklist_fe:', res.error);
+
+  var res2 = await sb.from('impl_checklist_adm').select('*');
+  allRowsAdm = res2.data || [];
+  if (res2.error) console.error('Error cargando impl_checklist_adm:', res2.error);
 }
 
 // ==================== MAIN TAB SWITCH ====================
@@ -480,13 +524,6 @@ function render() {
   var navArea = document.getElementById('navArea');
   var content = document.getElementById('content');
 
-  if (mainTab === 'adm') {
-    navArea.innerHTML = '';
-    content.innerHTML = '<div class="coming-soon"><h2>Checklist Adm</h2><p>Proximamente</p></div>';
-    return;
-  }
-
-  // FE tab
   if (currentCliente) {
     navArea.innerHTML = '';
     renderDetail(content);
@@ -521,6 +558,7 @@ function toggleView(mode) {
 // ==================== LIST VIEW ====================
 function renderList(el) {
   var filtered = getFilteredRows();
+  var totalSteps = getTotalSteps();
   var totalClientes = filtered.length;
   var completados = 0;
   var enProgreso = 0;
@@ -529,7 +567,7 @@ function renderList(el) {
   for (var i = 0; i < filtered.length; i++) {
     var datos = filtered[i].datos || {};
     var done = countDone(datos);
-    if (done >= TOTAL_STEPS) completados++;
+    if (done >= totalSteps) completados++;
     else if (done > 0) enProgreso++;
     else sinIniciar++;
   }
@@ -570,14 +608,14 @@ function renderList(el) {
       var row = filtered[j];
       var datos = row.datos || {};
       var done = countDone(datos);
-      var pct = Math.round((done / TOTAL_STEPS) * 100);
-      var status = getStatusInfo(done, TOTAL_STEPS);
+      var pct = Math.round((done / totalSteps) * 100);
+      var status = getStatusInfo(done, totalSteps);
 
       html += '<tr onclick="openDetail(\'' + esc(row.cliente) + '\')">';
       html += '<td>' + (j + 1) + '</td>';
       html += '<td><span class="ck-table-name">' + row.cliente + '</span></td>';
       html += '<td><span class="ck-table-contadora">' + (row.implementadora || '') + '</span></td>';
-      html += '<td><span class="ck-progress-bar"><span class="ck-progress-fill" style="width:' + pct + '%;background:' + getBarColor(pct) + '"></span></span><span class="ck-progress-text">' + done + '/' + TOTAL_STEPS + '</span></td>';
+      html += '<td><span class="ck-progress-bar"><span class="ck-progress-fill" style="width:' + pct + '%;background:' + getBarColor(pct) + '"></span></span><span class="ck-progress-text">' + done + '/' + totalSteps + '</span></td>';
       html += '<td><span class="ck-status-badge ' + status.css + '">' + status.label + '</span></td>';
       html += '</tr>';
     }
@@ -590,7 +628,7 @@ function renderList(el) {
       var row = filtered[j];
       var datos = row.datos || {};
       var done = countDone(datos);
-      var pct = Math.round((done / TOTAL_STEPS) * 100);
+      var pct = Math.round((done / totalSteps) * 100);
 
       html += '<div class="client-card" onclick="openDetail(\'' + esc(row.cliente) + '\')">';
       html += '<div class="client-card-name">' + row.cliente + '</div>';
@@ -599,7 +637,7 @@ function renderList(el) {
       html += '<div class="client-card-bar"><div class="client-card-fill" style="width:' + pct + '%;background:' + getBarColor(pct) + '"></div></div>';
       html += '<div class="client-card-pct" style="color:' + getBarColor(pct) + '">' + pct + '%</div>';
       html += '</div>';
-      html += '<div class="client-card-count">' + done + ' de ' + TOTAL_STEPS + ' pasos</div>';
+      html += '<div class="client-card-count">' + done + ' de ' + totalSteps + ' pasos</div>';
       html += '</div>';
     }
     html += '</div>';
@@ -609,7 +647,7 @@ function renderList(el) {
 }
 
 function getFilteredRows() {
-  var rows = allRows.slice();
+  var rows = getRows().slice();
   if (selectedImpl !== 'Todas') {
     rows = rows.filter(function(r) { return r.implementadora === selectedImpl; });
   }
@@ -619,13 +657,14 @@ function getFilteredRows() {
 
 // ==================== DETAIL VIEW ====================
 function openDetail(cliente) {
-  currentCliente = allRows.find(function(r) { return r.cliente === cliente; });
+  currentCliente = getRows().find(function(r) { return r.cliente === cliente; });
   if (!currentCliente) return;
   localEdits = {};
   // Copy current datos into localEdits (including nota)
+  var items = getItems();
   var datos = currentCliente.datos || {};
-  for (var i = 0; i < FE_ITEMS.length; i++) {
-    var item = FE_ITEMS[i];
+  for (var i = 0; i < items.length; i++) {
+    var item = items[i];
     var val = datos[item.id];
     if (val) {
       localEdits[item.id] = { done: val.done, fecha: val.fecha || '', nota: val.nota || '' };
@@ -645,8 +684,11 @@ function closeDetail() {
 function renderDetail(el) {
   var row = currentCliente;
   var datos = row.datos || {};
+  var items = getItems();
+  var groups = getGroups();
+  var totalSteps = getTotalSteps();
   var done = countDone(localEdits);
-  var pct = Math.round((done / TOTAL_STEPS) * 100);
+  var pct = Math.round((done / totalSteps) * 100);
   var implName = row.implementadora || 'Sin asignar';
 
   var html = '';
@@ -671,7 +713,7 @@ function renderDetail(el) {
 
   // Progress bar + save button
   html += '<div class="progress-row">';
-  html += '<span class="pr-count">' + done + ' / ' + TOTAL_STEPS + '</span>';
+  html += '<span class="pr-count">' + done + ' / ' + totalSteps + '</span>';
   html += '<div class="pr-bar"><div class="pr-fill" style="width:' + pct + '%;background:' + getBarColor(pct) + '"></div></div>';
   html += '<span class="pr-pct">' + pct + '%</span>';
   if (canEdit()) {
@@ -685,13 +727,13 @@ function renderDetail(el) {
   html += '</tr></thead><tbody>';
 
   var lastGroup = '';
-  for (var i = 0; i < FE_ITEMS.length; i++) {
-    var item = FE_ITEMS[i];
+  for (var i = 0; i < items.length; i++) {
+    var item = items[i];
     var groupKey = item.grupo;
 
     // Group header
     if (groupKey !== lastGroup) {
-      var grp = FE_GROUPS.find(function(g) { return g.label === groupKey.toUpperCase(); });
+      var grp = groups.find(function(g) { return g.label === groupKey.toUpperCase(); });
       var groupLabel = groupKey.toUpperCase();
       if (grp) {
         var respLabel = grp.responsable ? grp.responsable : implName;
@@ -771,14 +813,15 @@ async function saveChecklist() {
   var btn = document.getElementById('btn-save');
   if (btn) btn.disabled = true;
 
+  var items = getItems();
   var newDatos = {};
-  for (var i = 0; i < FE_ITEMS.length; i++) {
-    var item = FE_ITEMS[i];
+  for (var i = 0; i < items.length; i++) {
+    var item = items[i];
     var val = localEdits[item.id] || { done: false, fecha: '', nota: '' };
     newDatos[item.id] = { done: val.done, fecha: val.fecha, nota: val.nota || '' };
   }
 
-  var res = await sb.from('impl_checklist_fe').upsert({
+  var res = await sb.from(getTableName()).upsert({
     cliente: currentCliente.cliente,
     implementadora: currentCliente.implementadora,
     datos: newDatos,
@@ -796,8 +839,9 @@ async function saveChecklist() {
 
   // Update local data
   currentCliente.datos = newDatos;
-  var idx = allRows.findIndex(function(r) { return r.cliente === currentCliente.cliente; });
-  if (idx >= 0) allRows[idx].datos = newDatos;
+  var rows = getRows();
+  var idx = rows.findIndex(function(r) { return r.cliente === currentCliente.cliente; });
+  if (idx >= 0) rows[idx].datos = newDatos;
 
   showToast('Cambios guardados');
 }
@@ -839,16 +883,18 @@ async function saveNewClient() {
   if (!impl) { showToast('Selecciona una implementadora', 'error'); return; }
 
   // Check duplicate
-  var exists = allRows.find(function(r) { return r.cliente.toLowerCase() === cliente.toLowerCase(); });
+  var rows = getRows();
+  var exists = rows.find(function(r) { return r.cliente.toLowerCase() === cliente.toLowerCase(); });
   if (exists) { showToast('Ese cliente ya existe', 'error'); return; }
 
   // Build empty datos
+  var items = getItems();
   var datos = {};
-  for (var i = 0; i < FE_ITEMS.length; i++) {
-    datos[FE_ITEMS[i].id] = { done: false, fecha: '' };
+  for (var i = 0; i < items.length; i++) {
+    datos[items[i].id] = { done: false, fecha: '' };
   }
 
-  var res = await sb.from('impl_checklist_fe').upsert({
+  var res = await sb.from(getTableName()).upsert({
     cliente: cliente,
     implementadora: impl,
     datos: datos,
@@ -871,14 +917,15 @@ async function saveNewClient() {
 async function changeImplementadora(val) {
   if (!currentCliente) return;
   var newImpl = val || null;
-  var res = await sb.from('impl_checklist_fe').update({ implementadora: newImpl, updated_at: new Date().toISOString() }).eq('cliente', currentCliente.cliente);
+  var res = await sb.from(getTableName()).update({ implementadora: newImpl, updated_at: new Date().toISOString() }).eq('cliente', currentCliente.cliente);
   if (res.error) {
     showToast('Error: ' + res.error.message, 'error');
     return;
   }
   currentCliente.implementadora = newImpl;
-  var idx = allRows.findIndex(function(r) { return r.cliente === currentCliente.cliente; });
-  if (idx >= 0) allRows[idx].implementadora = newImpl;
+  var rows = getRows();
+  var idx = rows.findIndex(function(r) { return r.cliente === currentCliente.cliente; });
+  if (idx >= 0) rows[idx].implementadora = newImpl;
   showToast('Implementadora actualizada');
   renderDetail(document.getElementById('content'));
 }

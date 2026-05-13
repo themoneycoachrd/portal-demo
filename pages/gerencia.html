@@ -632,10 +632,11 @@
             <input type="checkbox" id="cl-m-ck-fe"> Facturación Electrónica
           </label>
           <label style="display:flex;align-items:center;gap:6px;font-size:0.82rem;font-weight:600;color:var(--navy);cursor:pointer">
-            <input type="checkbox" id="cl-m-ck-adm" disabled> Adm <span style="font-size:0.7rem;color:var(--light);font-weight:400">(próximamente)</span>
+            <input type="checkbox" id="cl-m-ck-adm"> Adm
           </label>
         </div>
         <div id="cl-m-ck-fe-exists" style="display:none;margin-top:6px;font-size:0.75rem;color:var(--green);font-weight:600">✓ Ya tiene checklist FE creado</div>
+        <div id="cl-m-ck-adm-exists" style="display:none;margin-top:4px;font-size:0.75rem;color:var(--green);font-weight:600">✓ Ya tiene checklist Adm creado</div>
       </div>
       <div class="m-row">
         <div class="m-field">
@@ -3596,11 +3597,14 @@ function clOpenModal(editId) {
   document.getElementById('cl-m-ck-fe').checked = false;
   document.getElementById('cl-m-ck-fe').disabled = false;
   document.getElementById('cl-m-ck-fe-exists').style.display = 'none';
+  document.getElementById('cl-m-ck-adm').checked = false;
+  document.getElementById('cl-m-ck-adm').disabled = false;
+  document.getElementById('cl-m-ck-adm-exists').style.display = 'none';
 
   document.getElementById('cl-m-nombre-err').style.display = 'none';
   document.getElementById('cl-modal-overlay').classList.remove('hidden');
 
-  // Si editando, verificar si ya tiene checklist FE
+  // Si editando, verificar si ya tiene checklists
   if (clEditingId) {
     var cNombre = bdClientes.find(function(x) { return x.id === clEditingId; });
     if (cNombre) {
@@ -3609,6 +3613,13 @@ function clOpenModal(editId) {
           document.getElementById('cl-m-ck-fe').checked = true;
           document.getElementById('cl-m-ck-fe').disabled = true;
           document.getElementById('cl-m-ck-fe-exists').style.display = 'block';
+        }
+      });
+      sb.from('impl_checklist_adm').select('id').eq('cliente', cNombre.nombre).then(function(res) {
+        if (res.data && res.data.length > 0) {
+          document.getElementById('cl-m-ck-adm').checked = true;
+          document.getElementById('cl-m-ck-adm').disabled = true;
+          document.getElementById('cl-m-ck-adm-exists').style.display = 'block';
         }
       });
     }
@@ -3777,7 +3788,19 @@ async function clSaveClient() {
       else console.error('Error creando checklist FE:', resFE.error);
     }
   }
-  // TODO: cuando exista impl_checklist_adm, crear aquí con cl-m-ck-adm
+  // Crear checklist Adm si el checkbox está marcado
+  var ckAdmChecked = document.getElementById('cl-m-ck-adm').checked;
+  var ckAdmDisabled = document.getElementById('cl-m-ck-adm').disabled;
+  if (ckAdmChecked && !ckAdmDisabled) {
+    var existAdm = await sb.from('impl_checklist_adm').select('id').eq('cliente', nombre);
+    if (!existAdm.data || existAdm.data.length === 0) {
+      var datosAdm = {};
+      for (var ai = 1; ai <= 18; ai++) { datosAdm['paso_' + ai] = { done: false, fecha: '' }; }
+      var resAdm = await sb.from('impl_checklist_adm').insert({ cliente: nombre, implementadora: null, datos: datosAdm });
+      if (!resAdm.error) gerShowToast('Checklist Adm creado para ' + nombre, 'success');
+      else console.error('Error creando checklist Adm:', resAdm.error);
+    }
+  }
 
   var wasEditing = !!clEditingId;
   clCloseModal();
