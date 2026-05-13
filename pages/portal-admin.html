@@ -1078,61 +1078,56 @@ function getEjecucionCount(nombre) {
 
 /* ── Calendario de entregas ── */
 var calActiveView = 'resumen';
-var calActiveMes = new Date().getMonth(); // 0-indexed
+var calActiveMes = new Date().getMonth();
 
 var OBLIGACIONES = [
   {
     id: 'tss', nombre: 'TSS', color: '#8b5cf6',
     fechas: { cliente: 'Día 25*', ao: 'Día 29', dgii: 'Día 3 (mes sig.)' },
     tareas: [
-      { t: 'Descargar nómina del cliente (Adm o archivo)', quien: 'ao' },
-      { t: 'Validar montos vs mes anterior', quien: 'ao' },
-      { t: 'Generar archivo TSS (.txt)', quien: 'ao' },
-      { t: 'Cargar archivo en SUIR', quien: 'ao' },
-      { t: 'Confirmar pago con el cliente', quien: 'cliente' },
-      { t: 'Archivar comprobante de pago', quien: 'ao' }
+      { t: 'Informar si hubo novedades en nómina', quien: 'cliente', fecha: 'Día 25' },
+      { t: 'Cargar la nómina', quien: 'cliente', fecha: 'Día 25' },
+      { t: 'Cargar los volantes de pago de nómina', quien: 'cliente', fecha: 'Día 30' },
+      { t: 'Recibir la autorización de pago de TSS', quien: 'ao', fecha: 'Día 1' },
+      { t: 'Pagar la TSS', quien: 'ao', fecha: 'Día 1' }
     ]
   },
   {
     id: 'ir3', nombre: 'IR-3', color: '#2563eb',
     fechas: { cliente: 'Día 25*', ao: 'Día 5', dgii: 'Día 10' },
     tareas: [
-      { t: 'Calcular retenciones del mes (607/606)', quien: 'ao' },
-      { t: 'Preparar formulario IR-3', quien: 'ao' },
-      { t: 'Presentar en DGII Virtual', quien: 'ao' },
-      { t: 'Archivar acuse de recibo', quien: 'ao' }
+      { t: 'Recibir autorización de pago de IR-3', quien: 'ao', fecha: 'Día 5' },
+      { t: 'Pagar el IR-3', quien: 'ao', fecha: 'A más tardar Día 10' }
     ]
   },
   {
     id: 'ir17', nombre: 'IR-17', color: '#059669',
     fechas: { cliente: 'Día 1', ao: 'Día 5', dgii: 'Día 10' },
     tareas: [
-      { t: 'Recopilar facturas de gastos (NCF)', quien: 'cliente' },
-      { t: 'Preparar formulario IR-17', quien: 'ao' },
-      { t: 'Presentar en DGII Virtual', quien: 'ao' }
+      { t: 'Informar si hubo pagos a informales', quien: 'cliente', fecha: 'Día 1' },
+      { t: 'Cargar el Excel de pagos informales', quien: 'cliente', fecha: 'Día 1' },
+      { t: 'Cargar los volantes de pago informales', quien: 'cliente', fecha: 'Día 1' }
     ]
   },
   {
     id: 'anticipo', nombre: 'Anticipo ISR', color: '#d97706',
     fechas: { cliente: '—', ao: 'Día 10', dgii: 'Día 15' },
     tareas: [
-      { t: 'Calcular anticipo según última declaración IR-2', quien: 'ao' },
-      { t: 'Presentar formulario de anticipo', quien: 'ao' },
-      { t: 'Confirmar pago con el cliente', quien: 'cliente' }
+      { t: 'Recibir la autorización de pago', quien: 'ao', fecha: 'Día 1' },
+      { t: 'Pagar el anticipo', quien: 'ao', fecha: 'A más tardar Día 15' }
     ]
   },
   {
     id: 'itbis', nombre: 'ITBIS', color: '#dc2626',
     fechas: { cliente: 'Día 1', ao: 'Día 15', dgii: 'Día 20' },
     tareas: [
-      { t: 'Cargar estados de cuenta bancarios', quien: 'cliente' },
-      { t: 'Recopilar facturas de ventas y compras', quien: 'cliente' },
-      { t: 'Registrar ingresos en Adm', quien: 'ao' },
-      { t: 'Registrar gastos y comprobantes', quien: 'ao' },
-      { t: 'Cuadrar ITBIS cobrado vs pagado', quien: 'ao' },
-      { t: 'Preparar formulario IT-1', quien: 'ao' },
-      { t: 'Presentar en DGII Virtual', quien: 'ao' },
-      { t: 'Archivar acuse y notificar al cliente', quien: 'ao' }
+      { t: 'Cargar todas las facturas del mes en Adm', quien: 'cliente', fecha: 'Día 30' },
+      { t: 'Cargar Excel con facturas', quien: 'cliente', fecha: 'Día 30 (tope Día 5)', nota: 'No recibimos facturas posteriores al día 5. Si sucede, tendríamos que hacer un pago a cuenta.' },
+      { t: 'Cargar los estados de cuenta de los bancos', quien: 'cliente', fecha: 'Día 5' },
+      { t: 'Confirmar si va a haber facturas atrasadas', quien: 'cliente', fecha: 'Día 5' },
+      { t: 'Recibir el borrador de ITBIS', quien: 'ao', fecha: 'Día 15' },
+      { t: 'Aprobar el borrador', quien: 'cliente', fecha: 'Día 15–20' },
+      { t: 'Pagar ITBIS', quien: 'cliente', fecha: 'A más tardar Día 20' }
     ]
   }
 ];
@@ -1141,27 +1136,17 @@ var MESES_CORTO = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','
 
 function renderCalendario() {
   var h = '';
-
-  // Sub-view pills
   h += '<div class="cal-pills">';
   var views = [
     { id: 'resumen', label: 'Resumen' },
-    { id: 'tareas', label: 'Tareas por obligación' },
     { id: 'mes', label: 'Vista mensual' }
   ];
   views.forEach(function(v) {
     h += '<button class="month-tab' + (calActiveView === v.id ? ' active' : '') + '" onclick="calSwitchView(\'' + v.id + '\')">' + v.label + '</button>';
   });
   h += '</div>';
-
-  if (calActiveView === 'resumen') {
-    h += renderCalResumen();
-  } else if (calActiveView === 'tareas') {
-    h += renderCalTareas();
-  } else {
-    h += renderCalMes();
-  }
-
+  if (calActiveView === 'resumen') h += renderCalResumen();
+  else h += renderCalMes();
   return h;
 }
 
@@ -1175,7 +1160,7 @@ function calSwitchMes(m) {
   renderAdminIndex();
 }
 
-/* Vista 1: Resumen */
+/* Vista: Resumen con accordion */
 function renderCalResumen() {
   var h = '';
   h += '<div class="cal-legend">';
@@ -1189,66 +1174,55 @@ function renderCalResumen() {
   h += '<thead><tr><th>Obligación</th><th>Cliente entrega</th><th>AO procesa</th><th>Límite DGII</th><th>Tareas</th></tr></thead>';
   h += '<tbody>';
   OBLIGACIONES.forEach(function(ob) {
-    h += '<tr>';
-    h += '<td><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:' + ob.color + ';margin-right:8px;vertical-align:middle;"></span><strong>' + ob.nombre + '</strong></td>';
+    var isOpen = calOpenObs[ob.id];
+    h += '<tr onclick="calToggleRes(\'' + ob.id + '\')" style="cursor:pointer;transition:background 0.12s;" onmouseover="this.style.background=\'#fafbfc\'" onmouseout="this.style.background=\'\'">';
+    h += '<td><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:' + ob.color + ';margin-right:8px;vertical-align:middle;"></span><strong>' + ob.nombre + '</strong> <span id="calChev_' + ob.id + '" style="font-size:0.65rem;color:var(--muted);transition:transform 0.15s;display:inline-block;' + (isOpen ? 'transform:rotate(180deg)' : '') + '">▼</span></td>';
     h += '<td style="color:#b8860b;font-weight:600;">' + ob.fechas.cliente + '</td>';
     h += '<td style="color:var(--blue);font-weight:600;">' + ob.fechas.ao + '</td>';
     h += '<td style="color:var(--red);font-weight:600;">' + ob.fechas.dgii + '</td>';
     h += '<td>' + ob.tareas.length + '</td>';
     h += '</tr>';
+    h += '<tr id="calRes_' + ob.id + '" style="' + (isOpen ? '' : 'display:none;') + '">';
+    h += '<td colspan="5" style="padding:0;border-bottom:1px solid var(--border);">';
+    h += '<div style="padding:10px 16px;background:#f8fafc;">';
+    h += '<table style="width:100%;border-collapse:collapse;font-size:0.8rem;">';
+    h += '<thead><tr><th style="text-align:left;font-size:0.65rem;font-weight:700;text-transform:uppercase;color:var(--muted);padding:4px 8px;border-bottom:1px solid var(--border);">Tarea</th><th style="width:120px;text-align:center;font-size:0.65rem;font-weight:700;text-transform:uppercase;color:var(--muted);padding:4px 8px;border-bottom:1px solid var(--border);">Fecha</th><th style="width:80px;text-align:center;font-size:0.65rem;font-weight:700;text-transform:uppercase;color:var(--muted);padding:4px 8px;border-bottom:1px solid var(--border);">Quién</th></tr></thead>';
+    h += '<tbody>';
+    ob.tareas.forEach(function(tk, i) {
+      var quienLabel = tk.quien === 'cliente' ? '<span style="color:#b8860b;font-weight:600;">Cliente</span>' : '<span style="color:var(--blue);font-weight:600;">AO</span>';
+      h += '<tr><td style="padding:6px 8px;border-bottom:1px solid #eef0f4;">' + (i + 1) + '. ' + tk.t;
+      if (tk.nota) h += '<div style="font-size:0.72rem;color:var(--amber);margin-top:2px;">⚠ ' + tk.nota + '</div>';
+      h += '</td><td style="padding:6px 8px;text-align:center;font-weight:600;font-size:0.75rem;color:var(--navy);border-bottom:1px solid #eef0f4;">' + tk.fecha + '</td>';
+      h += '<td style="padding:6px 8px;text-align:center;border-bottom:1px solid #eef0f4;">' + quienLabel + '</td></tr>';
+    });
+    h += '</tbody></table></div></td></tr>';
   });
   h += '</tbody></table>';
   h += '</div>';
 
-  h += '<p style="font-size:0.72rem;color:var(--muted);margin-top:10px;">* Las fechas con asterisco son sugeridas para garantizar el procesamiento a tiempo.</p>';
-  return h;
-}
-
-/* Vista 2: Tareas por obligación */
-function renderCalTareas() {
-  var h = '';
-  OBLIGACIONES.forEach(function(ob) {
-    h += '<div class="cal-ob-card">';
-    h += '<div class="cal-ob-header" onclick="calToggleOb(\'' + ob.id + '\')">';
-    h += '<div class="cal-ob-title"><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:' + ob.color + ';margin-right:8px;vertical-align:middle;"></span>' + ob.nombre + '</div>';
-    h += '<div style="display:flex;align-items:center;gap:10px;">';
-    h += '<div class="cal-ob-badge">' + ob.tareas.length + ' tareas</div>';
-    h += '<span class="cal-ob-arrow" id="calArrow_' + ob.id + '" style="font-size:0.7rem;color:var(--muted);transition:transform 0.15s;">▼</span>';
-    h += '</div></div>';
-    h += '<div class="cal-ob-detail" id="calDetail_' + ob.id + '" style="display:none;">';
-    ob.tareas.forEach(function(tk, i) {
-      var quienLabel = tk.quien === 'cliente' ? '<span style="color:#b8860b;font-weight:600;">Cliente</span>' : '<span style="color:var(--blue);font-weight:600;">AO</span>';
-      h += '<div class="cal-task-row">';
-      h += '<div>' + (i + 1) + '. ' + tk.t + '</div>';
-      h += '<div style="text-align:right;">' + quienLabel + '</div>';
-      h += '</div>';
-    });
-    h += '</div></div>';
-  });
+  h += '<p style="font-size:0.72rem;color:var(--muted);margin-top:10px;">* Las fechas con asterisco son sugeridas para garantizar el procesamiento a tiempo. Clic en cada obligación para ver las tareas.</p>';
   return h;
 }
 
 var calOpenObs = {};
-function calToggleOb(id) {
-  var det = document.getElementById('calDetail_' + id);
-  var arrow = document.getElementById('calArrow_' + id);
-  if (!det) return;
-  if (det.style.display === 'none') {
-    det.style.display = 'block';
-    arrow.style.transform = 'rotate(180deg)';
+function calToggleRes(id) {
+  var row = document.getElementById('calRes_' + id);
+  var chev = document.getElementById('calChev_' + id);
+  if (!row) return;
+  if (row.style.display === 'none') {
+    row.style.display = '';
+    if (chev) chev.style.transform = 'rotate(180deg)';
     calOpenObs[id] = true;
   } else {
-    det.style.display = 'none';
-    arrow.style.transform = '';
+    row.style.display = 'none';
+    if (chev) chev.style.transform = '';
     calOpenObs[id] = false;
   }
 }
 
-/* Vista 3: Mes */
+/* Vista: Mes */
 function renderCalMes() {
   var h = '';
-
-  // Month pills
   h += '<div class="cal-pills">';
   MESES_CORTO.forEach(function(m, i) {
     h += '<button class="month-tab' + (calActiveMes === i ? ' active' : '') + '" onclick="calSwitchMes(' + i + ')">' + m + '</button>';
@@ -1261,10 +1235,8 @@ function renderCalMes() {
   h += '<div class="cal-legend-item"><div class="cal-legend-dot" style="background:var(--red)"></div>DGII</div>';
   h += '</div>';
 
-  // Build timeline events
   var events = [];
   OBLIGACIONES.forEach(function(ob) {
-    // Parse dates
     var entries = [
       { key: 'cliente', label: ob.nombre + ' — Cliente entrega', cssClass: 'cal-tl-client' },
       { key: 'ao', label: ob.nombre + ' — Account One procesa', cssClass: 'cal-tl-ao' },
@@ -1272,39 +1244,31 @@ function renderCalMes() {
     ];
     entries.forEach(function(e) {
       var raw = ob.fechas[e.key];
-      if (raw === '—') return; // skip "—"
+      if (raw === '—') return;
       var dayMatch = raw.match(/\d+/);
       if (!dayMatch) return;
       var day = parseInt(dayMatch[0]);
       var isSig = raw.indexOf('sig.') !== -1;
       var mesLabel = isSig ? MESES_CORTO[(calActiveMes + 1) % 12] : MESES_CORTO[calActiveMes];
       events.push({
-        day: isSig ? day + 31 : day, // sort: next month items go after current
+        day: isSig ? day + 31 : day,
         dayDisplay: day,
         mesLabel: mesLabel,
-        label: e.label,
         cssClass: e.cssClass,
-        color: ob.color,
         obNombre: ob.nombre,
         tipo: e.key
       });
     });
   });
 
-  // Sort by day
   events.sort(function(a, b) { return a.day - b.day; });
 
-  // Group by dayDisplay + mesLabel
   var grouped = [];
   var lastKey = '';
   events.forEach(function(ev) {
     var key = ev.dayDisplay + '_' + ev.mesLabel;
-    if (key !== lastKey) {
-      grouped.push({ day: ev.dayDisplay, mes: ev.mesLabel, items: [ev] });
-      lastKey = key;
-    } else {
-      grouped[grouped.length - 1].items.push(ev);
-    }
+    if (key !== lastKey) { grouped.push({ day: ev.dayDisplay, mes: ev.mesLabel, items: [ev] }); lastKey = key; }
+    else { grouped[grouped.length - 1].items.push(ev); }
   });
 
   grouped.forEach(function(g) {
@@ -1318,11 +1282,7 @@ function renderCalMes() {
       h += '<div class="cal-tl-content">';
       var tipoLabel = ev.tipo === 'cliente' ? 'CLIENTE' : (ev.tipo === 'ao' ? 'ACCOUNT ONE' : 'DGII');
       h += '<h4><span class="cal-tl-badge">' + tipoLabel + '</span>' + ev.obNombre + '</h4>';
-      // Description based on type
-      var desc = '';
-      if (ev.tipo === 'cliente') desc = 'El cliente debe enviar la documentación requerida';
-      else if (ev.tipo === 'ao') desc = 'Account One procesa y prepara la declaración';
-      else desc = 'Fecha límite para presentar ante la DGII';
+      var desc = ev.tipo === 'cliente' ? 'El cliente debe enviar la documentación requerida' : (ev.tipo === 'ao' ? 'Account One procesa y prepara la declaración' : 'Fecha límite para presentar ante la DGII');
       h += '<p>' + desc + '</p>';
       h += '</div></div>';
     });
