@@ -709,6 +709,7 @@ function renderNav() {
 function renderMain() {
   currentView = 'main';
   document.getElementById('mainView').style.display = '';
+  document.getElementById('navArea').style.display = '';
   document.getElementById('detailView').style.display = 'none';
 
   var el = document.getElementById('mainView');
@@ -912,6 +913,7 @@ function closeDetail() {
 function renderDetail() {
   currentView = 'detail';
   document.getElementById('mainView').style.display = 'none';
+  document.getElementById('navArea').style.display = 'none';
   document.getElementById('detailView').style.display = '';
 
   var el = document.getElementById('detailView');
