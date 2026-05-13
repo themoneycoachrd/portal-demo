@@ -740,12 +740,15 @@ async function loadData() {
     data.roas[m] = { leads:0, presupuesto:0, ejecutado:0, cierres:0, vendido:0, cotizado:0, cpa:0, retorno:0, roas:0 };
   });
 
-  // Cargar leads desde Supabase
-  const { data: leads, error: leadsErr } = await sb
-    .from('leads').select('*').eq('anio', 2026);
-  if (leadsErr) console.error('Error cargando leads:', leadsErr);
-  if (leads) {
-    leads.forEach(row => {
+  // Cargar leads y ROAS en paralelo
+  const [leadsRes, roasRes] = await Promise.all([
+    sb.from('leads').select('*').eq('anio', 2026),
+    sb.from('roas_mensual').select('*').eq('anio', 2026)
+  ]);
+
+  if (leadsRes.error) console.error('Error cargando leads:', leadsRes.error);
+  if (leadsRes.data) {
+    leadsRes.data.forEach(row => {
       if (!data.pipeline[row.mes]) return;
       data.pipeline[row.mes].push({
         _id: row.id,
@@ -765,12 +768,9 @@ async function loadData() {
     });
   }
 
-  // Cargar ROAS desde Supabase
-  const { data: roasRows, error: roasErr } = await sb
-    .from('roas_mensual').select('*').eq('anio', 2026);
-  if (roasErr) console.error('Error cargando ROAS:', roasErr);
-  if (roasRows) {
-    roasRows.forEach(row => {
+  if (roasRes.error) console.error('Error cargando ROAS:', roasRes.error);
+  if (roasRes.data) {
+    roasRes.data.forEach(row => {
       if (!data.roas[row.mes]) return;
       data.roas[row.mes] = {
         _id: row.id,
@@ -2316,8 +2316,8 @@ function showApp() {
 }
 
 async function startApp() {
-  APP.data = await loadData();
-  await loadChecklistComercial();
+  var [data] = await Promise.all([loadData(), loadChecklistComercial()]);
+  APP.data = data;
   MONTHS.forEach(m => {
     if (!APP.data.pipeline[m]) APP.data.pipeline[m] = [];
     if (!APP.data.roas[m]) APP.data.roas[m] = { leads:0, presupuesto:0, ejecutado:0, cierres:0, vendido:0, cotizado:0, cpa:0, retorno:0, roas:0 };
