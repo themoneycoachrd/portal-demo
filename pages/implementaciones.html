@@ -394,6 +394,40 @@ function getTableName() { return mainTab === 'adm' ? 'impl_checklist_adm' : 'imp
 function getRows() { return mainTab === 'adm' ? allRowsAdm : allRows; }
 function setRows(data) { if (mainTab === 'adm') allRowsAdm = data; else allRows = data; }
 
+// ==================== PERMISOS POR GRUPO ====================
+
+var misPermisos = {};
+
+async function loadMisPermisos() {
+  misPermisos = {};
+  var sessionData = await sb.auth.getUser();
+  var user = sessionData.data ? sessionData.data.user : null;
+  if (!user) return;
+  var res1 = await sb.from('usuario_grupos').select('grupo_id').eq('user_id', user.id);
+  if (!res1.data || res1.data.length === 0) return;
+  var grupoIds = res1.data.map(function(a) { return a.grupo_id; });
+  var res2 = await sb.from('grupos').select('permisos').in('id', grupoIds);
+  if (!res2.data) return;
+  function mergeInto(target, source) {
+    if (!source || typeof source !== 'object') return;
+    Object.keys(source).forEach(function(k) {
+      if (typeof source[k] === 'boolean') { if (source[k] === true) target[k] = true; else if (target[k] === undefined) target[k] = false; }
+      else if (typeof source[k] === 'object') { if (!target[k]) target[k] = {}; mergeInto(target[k], source[k]); }
+    });
+  }
+  res2.data.forEach(function(g) { mergeInto(misPermisos, g.permisos || {}); });
+}
+
+function tengoPermiso(modId, scrId, habId, subtabId) {
+  if (userRole === 'admin') return true;
+  var mod = misPermisos[modId];
+  if (!mod) return false;
+  var scr = mod[scrId];
+  if (!scr) return false;
+  if (subtabId) { var st = scr[subtabId]; return st && st[habId] === true; }
+  return scr[habId] === true;
+}
+
 // ==================== STATE ====================
 var userRole = null;
 var userName = '';
@@ -428,7 +462,8 @@ function getBarColor(pct) {
 function esc(s) { return s ? s.replace(/'/g, "\\'") : ''; }
 
 function canEdit() {
-  return userRole === 'admin' || userRole === 'implementaciones';
+  var scrId = mainTab === 'adm' ? 'checklist-adm' : 'checklist-fe';
+  return tengoPermiso('implementaciones', scrId, 'edicion');
 }
 
 function showToast(msg, type) {
@@ -493,6 +528,7 @@ async function initApp(user) {
   userRole = (prof.data && prof.data.rol) ? prof.data.rol : 'viewer';
   userName = (prof.data && prof.data.nombre) ? prof.data.nombre : user.email;
   document.getElementById('user-display-name').textContent = userName;
+  await loadMisPermisos();
 
   await loadData();
   render();

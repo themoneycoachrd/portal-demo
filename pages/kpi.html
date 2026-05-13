@@ -350,6 +350,31 @@ function getCurrentQuarter() {
   return Math.floor(m / 3) + 1;
 }
 
+// ==================== PERMISOS POR GRUPO ====================
+var misPermisos = {};
+async function loadMisPermisos() {
+  misPermisos = {};
+  var res1 = await sb.auth.getUser();
+  var u = res1.data ? res1.data.user : null;
+  if (!u) return;
+  var res2 = await sb.from('usuario_grupos').select('grupo_id, grupos(permisos)').eq('user_id', u.id);
+  if (!res2.data || !res2.data.length) return;
+  function mergeInto(target, source) {
+    Object.keys(source).forEach(function(k) {
+      if (source[k] === true) target[k] = true;
+      else if (typeof source[k] === 'object') { if (!target[k]) target[k] = {}; mergeInto(target[k], source[k]); }
+    });
+  }
+  res2.data.forEach(function(g) { var p = g.grupos ? g.grupos.permisos : null; if (p) mergeInto(misPermisos, p); });
+}
+function tengoPermiso(modId, scrId, habId, subtabId) {
+  if (userRole === 'admin') return true;
+  var mod = misPermisos[modId]; if (!mod) return false;
+  var scr = mod[scrId]; if (!scr) return false;
+  if (subtabId) { var st = scr[subtabId]; return st && st[habId] === true; }
+  return scr[habId] === true;
+}
+
 // ==================== STATE ====================
 let userRole = null;
 let userName = '';
@@ -590,6 +615,7 @@ async function handleLogin() {
   const { data, error } = await sb.auth.signInWithPassword({ email, password });
   if (error) { errorEl.textContent = 'Email o contrasena incorrectos.'; errorEl.style.display = 'block'; btn.disabled = false; btn.textContent = 'Entrar'; return; }
   await loadUserProfile();
+  await loadMisPermisos();
   await showApp();
 }
 
@@ -610,12 +636,12 @@ async function loadUserProfile() {
 }
 
 function getVisibleContadoras() {
-  if (userRole === 'admin') return KPI_CONTADORAS;
+  if (tengoPermiso('contabilidad', 'kpi', 'edicion')) return KPI_CONTADORAS;
   return KPI_CONTADORAS.filter(c => userName.includes(c.nombre));
 }
 
 function canEdit(contadoraNombre) {
-  if (userRole === 'admin') return true;
+  if (tengoPermiso('contabilidad', 'kpi', 'edicion')) return true;
   return userName.includes(contadoraNombre);
 }
 
@@ -646,7 +672,7 @@ function renderAll() { renderMainTabs(); renderNav(); renderContent(); }
 function renderMainTabs() {
   const el = document.getElementById('mainTabs');
   // Contadoras only see their own detail, no tabs
-  if (userRole !== 'admin') { el.innerHTML = ''; return; }
+  if (!tengoPermiso('contabilidad', 'kpi', 'edicion')) { el.innerHTML = ''; return; }
   const tabs = [
     { id:'detalle', label:'Detalle por Contadora' },
     { id:'trimestral', label:'Resumen Trimestral' }
@@ -658,7 +684,7 @@ function renderMainTabs() {
 
 function renderNav() {
   const el = document.getElementById('navArea');
-  if (activeTab === 'trimestral' && userRole === 'admin') {
+  if (activeTab === 'trimestral' && tengoPermiso('contabilidad', 'kpi', 'edicion')) {
     el.innerHTML = '<div class="quarter-bar">' + QUARTERS.map(q =>
       '<button class="q-btn ' + (activeQuarter === q.id ? 'active' : '') + '" onclick="switchQuarter(' + q.id + ')"><div class="q-label">' + q.label + '</div><div class="q-months">' + q.meses.map(m => MESES_LABEL[MESES.indexOf(m)]).join(' · ') + '</div></button>'
     ).join('') + '</div>';
@@ -673,7 +699,7 @@ function renderNav() {
     const q = QUARTERS[activeQuarter - 1];
     html += '<div style="display:flex;align-items:center;gap:12px;padding:10px 24px;background:var(--bg);border-bottom:1px solid var(--border)">';
     // Only show back button for admin
-    if (userRole === 'admin') {
+    if (tengoPermiso('contabilidad', 'kpi', 'edicion')) {
       html += '<button class="btn" style="padding:5px 12px;font-size:12px;background:white;color:var(--muted);border:1px solid var(--border)" onclick="goBackToSelector()">← Volver</button>';
     }
     html += '<div class="month-tabs">' + q.meses.map(m => {
@@ -687,8 +713,8 @@ function renderNav() {
 
 function renderContent() {
   const el = document.getElementById('content');
-  if (activeTab === 'trimestral' && userRole === 'admin') return renderTrimestral(el);
-  if (!activeContadora && userRole === 'admin') return renderSelector(el);
+  if (activeTab === 'trimestral' && tengoPermiso('contabilidad', 'kpi', 'edicion')) return renderTrimestral(el);
+  if (!activeContadora && tengoPermiso('contabilidad', 'kpi', 'edicion')) return renderSelector(el);
   if (!activeContadora) { el.innerHTML = '<div class="empty">Cargando...</div>'; return; }
   renderKPIDetail(el);
 }
@@ -1088,7 +1114,7 @@ async function showApp() {
   await Promise.all([loadAsignaciones(), loadDetalle()]);
 
   // Contadora: auto-select their profile, no selector
-  if (userRole !== 'admin') {
+  if (!tengoPermiso('contabilidad', 'kpi', 'edicion')) {
     activeTab = 'detalle';
     const match = KPI_CONTADORAS.find(c => userName.includes(c.nombre));
     if (match) activeContadora = match.nombre;
@@ -1101,6 +1127,7 @@ async function init() {
   const { data: { session } } = await sb.auth.getSession();
   if (session) {
     await loadUserProfile();
+    await loadMisPermisos();
     await showApp();
   } else if (isEmbed) {
     document.body.innerHTML = '<div style="text-align:center;padding:60px;color:#7c8495;">Sesion no encontrada. Recarga la pagina principal.</div>';

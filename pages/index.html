@@ -728,7 +728,7 @@ function getAllModulesFlat() {
   MENU.forEach(section => {
     if (section.children) {
       section.children.forEach(child => {
-        flat.push({ ...child, parentTitle: section.title, parentIcon: section.icon, parentIconBg: section.iconBg, roles: section.roles });
+        flat.push({ ...child, parentTitle: section.title, parentIcon: section.icon, parentIconBg: section.iconBg });
       });
     } else {
       flat.push(section);
@@ -1103,7 +1103,7 @@ function openModule(moduleId) {
 
 function renderSidebar() {
   const nav = document.getElementById('sidebar-nav');
-  const visible = MENU.filter(s => s.roles.includes(userRole));
+  const visible = MENU.filter(s => tieneAccesoModulo(s.id));
 
   let html = '';
 
@@ -1146,7 +1146,10 @@ function renderSidebar() {
 
 function renderModules() {
   const grid = document.getElementById('modules-grid');
-  const allFlat = getAllModulesFlat().filter(m => m.roles.includes(userRole));
+  const allFlat = getAllModulesFlat().filter(function(m) {
+    var parent = findParentSection(m.id);
+    return tieneAccesoModulo(parent ? parent.id : m.id);
+  });
 
   grid.innerHTML = allFlat.map(m => {
     const badgeClass = m.active ? 'badge-active' : 'badge-pending';
@@ -1283,9 +1286,9 @@ async function loadUserPermisos(userId) {
 }
 
 // Helper: verificar permiso específico
-// Uso: hasPermiso('gerencia', 'control-clientes', 'dashboard', 'consulta')
-//   o: hasPermiso('comercial', 'pipeline', null, 'edicion')
-function hasPermiso(modId, scrId, subtabId, habId) {
+// Uso: hasPermiso('gerencia', 'clientes', 'consulta', 'dashboard')
+//   o: hasPermiso('comercial', 'pipeline', 'edicion')
+function hasPermiso(modId, scrId, habId, subtabId) {
   if (userRole === 'admin' || realRole === 'admin') return true;
   var mod = userPermisos[modId];
   if (!mod) return false;
@@ -1296,6 +1299,27 @@ function hasPermiso(modId, scrId, subtabId, habId) {
     return st && st[habId] === true;
   }
   return scr[habId] === true;
+}
+
+// Helper: el usuario tiene al menos un permiso de consulta en algun screen del modulo
+function tieneAccesoModulo(modId) {
+  if (userRole === 'admin' || realRole === 'admin') return true;
+  var mod = userPermisos[modId];
+  if (!mod) return false;
+  var keys = Object.keys(mod);
+  for (var i = 0; i < keys.length; i++) {
+    var scr = mod[keys[i]];
+    if (!scr || typeof scr !== 'object') continue;
+    // Screen directo con consulta
+    if (scr.consulta === true) return true;
+    // Screen con subtabs: buscar consulta en cada subtab
+    var subKeys = Object.keys(scr);
+    for (var j = 0; j < subKeys.length; j++) {
+      var sub = scr[subKeys[j]];
+      if (sub && typeof sub === 'object' && sub.consulta === true) return true;
+    }
+  }
+  return false;
 }
 
 var ROLE_PICKER_DATA = [

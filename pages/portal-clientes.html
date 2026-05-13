@@ -395,6 +395,32 @@ var pmDeclaraciones = [];
 var pmImpChecklist = [];
 var pmYear = 2026;
 
+// ==================== PERMISOS POR GRUPO ====================
+var misPermisos = {};
+var userRolInternal = null;
+async function loadMisPermisos() {
+  misPermisos = {};
+  var res1 = await sb.auth.getUser();
+  var u = res1.data ? res1.data.user : null;
+  if (!u) return;
+  var res2 = await sb.from('usuario_grupos').select('grupo_id, grupos(permisos)').eq('user_id', u.id);
+  if (!res2.data || !res2.data.length) return;
+  function mergeInto(target, source) {
+    Object.keys(source).forEach(function(k) {
+      if (source[k] === true) target[k] = true;
+      else if (typeof source[k] === 'object') { if (!target[k]) target[k] = {}; mergeInto(target[k], source[k]); }
+    });
+  }
+  res2.data.forEach(function(g) { var p = g.grupos ? g.grupos.permisos : null; if (p) mergeInto(misPermisos, p); });
+}
+function tengoPermiso(modId, scrId, habId, subtabId) {
+  if (userRolInternal === 'admin') return true;
+  var mod = misPermisos[modId]; if (!mod) return false;
+  var scr = mod[scrId]; if (!scr) return false;
+  if (subtabId) { var st = scr[subtabId]; return st && st[habId] === true; }
+  return scr[habId] === true;
+}
+
 // Admin mode state
 var isAdminMode = false;
 var adminShowingIndex = true;
@@ -805,15 +831,19 @@ async function pcInitAdmin(isEmbed) {
   if (!session) return;
 
   var { data: profile } = await sb.from('profiles').select('rol').eq('id', session.user.id).single();
-  var allowedRoles = ['admin', 'contadores', 'impuestos', 'comercial'];
-  if (!profile || allowedRoles.indexOf(profile.rol) < 0) {
+  userRolInternal = profile ? profile.rol : null;
+
+  await loadMisPermisos();
+
+  // Verificar acceso: necesita permiso de consulta en portal-clientes
+  if (!tengoPermiso('portal-clientes', 'checklist', 'consulta') && !tengoPermiso('portal-clientes', 'presentacion-mensual', 'consulta')) {
     document.getElementById('loginOverlay').style.display = 'none';
     document.getElementById('errorScreen').innerHTML = '<div><h2>Acceso denegado</h2><p>No tienes permisos para acceder a esta vista.</p></div>';
     document.getElementById('errorScreen').style.display = 'flex';
     return;
   }
 
-  isAdminMode = (profile.rol === 'admin');
+  isAdminMode = tengoPermiso('portal-clientes', 'checklist', 'edicion');
   adminShowingIndex = true;
   if (isEmbed) document.body.classList.add('embed');
 

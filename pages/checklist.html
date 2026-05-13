@@ -334,6 +334,31 @@ function getCurrentMonth() {
 
 function esc(s) { return s.replace(/'/g, "\\'"); }
 
+// ==================== PERMISOS POR GRUPO ====================
+var misPermisos = {};
+async function loadMisPermisos() {
+  misPermisos = {};
+  var res1 = await sb.auth.getUser();
+  var u = res1.data ? res1.data.user : null;
+  if (!u) return;
+  var res2 = await sb.from('usuario_grupos').select('grupo_id, grupos(permisos)').eq('user_id', u.id);
+  if (!res2.data || !res2.data.length) return;
+  function mergeInto(target, source) {
+    Object.keys(source).forEach(function(k) {
+      if (source[k] === true) target[k] = true;
+      else if (typeof source[k] === 'object') { if (!target[k]) target[k] = {}; mergeInto(target[k], source[k]); }
+    });
+  }
+  res2.data.forEach(function(g) { var p = g.grupos ? g.grupos.permisos : null; if (p) mergeInto(misPermisos, p); });
+}
+function tengoPermiso(modId, scrId, habId, subtabId) {
+  if (userRole === 'admin') return true;
+  var mod = misPermisos[modId]; if (!mod) return false;
+  var scr = mod[scrId]; if (!scr) return false;
+  if (subtabId) { var st = scr[subtabId]; return st && st[habId] === true; }
+  return scr[habId] === true;
+}
+
 // ==================== STATE ====================
 var userRole = null;
 var userName = '';
@@ -459,6 +484,7 @@ async function handleLogin() {
   var result = await sb.auth.signInWithPassword({ email: email, password: password });
   if (result.error) { errorEl.textContent = 'Email o contrasena incorrectos.'; errorEl.style.display = 'block'; btn.disabled = false; btn.textContent = 'Entrar'; return; }
   await loadUserProfile();
+  await loadMisPermisos();
   await showApp();
 }
 
@@ -480,7 +506,7 @@ async function loadUserProfile() {
 }
 
 function canEdit(contadoraNombre) {
-  if (userRole === 'admin') return true;
+  if (tengoPermiso('contabilidad', 'checklist', 'edicion')) return true;
   return userName.indexOf(contadoraNombre) >= 0;
 }
 
@@ -530,8 +556,8 @@ function renderNav() {
   });
   html += '</div>';
 
-  // Contadora pills (admin only)
-  if (userRole === 'admin') {
+  // Contadora pills (edicion = puede ver todas)
+  if (tengoPermiso('contabilidad', 'checklist', 'edicion')) {
     var contadoras = getContadoraNames();
     html += '<div class="contadora-pills">';
     html += '<button class="contadora-pill' + (selectedContadora === 'Todas' ? ' active' : '') + '" onclick="switchContadora(\'Todas\')">Todas</button>';
@@ -561,7 +587,7 @@ function renderClientList(el) {
   var contadoras = getContadoraNames();
 
   // Filter by role or selection
-  if (userRole !== 'admin') {
+  if (!tengoPermiso('contabilidad', 'checklist', 'edicion')) {
     var myName = '';
     contadoras.forEach(function(c) {
       if (userName.indexOf(c) >= 0) myName = c;
@@ -746,7 +772,7 @@ async function showApp() {
   await Promise.all([loadAsignaciones(), loadChecklistData()]);
 
   // Contadora: auto-filter to their name
-  if (userRole !== 'admin') {
+  if (!tengoPermiso('contabilidad', 'checklist', 'edicion')) {
     var contadoras = getContadoraNames();
     contadoras.forEach(function(c) {
       if (userName.indexOf(c) >= 0) selectedContadora = c;
@@ -760,6 +786,7 @@ async function init() {
   var sess = await sb.auth.getSession();
   if (sess.data.session) {
     await loadUserProfile();
+    await loadMisPermisos();
     await showApp();
   } else if (isEmbed) {
     document.body.innerHTML = '<div style="text-align:center;padding:60px;color:#7c8495;">Sesion no encontrada. Recarga la pagina principal.</div>';

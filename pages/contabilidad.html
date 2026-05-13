@@ -651,7 +651,7 @@ function sortContadoras(arr) {
 }
 
 function canEdit(contadoraNombre) {
-  if (userRole === 'admin') return true;
+  if (tengoPermiso('contabilidad', 'checklist', 'edicion')) return true;
   return userName.includes(contadoraNombre);
 }
 
@@ -720,6 +720,55 @@ function getSemaforo(fecha, mesIdx) {
   if (day <= 25) return '<span class="sem-dot" style="background:var(--green)" title="Antes del 25"></span>';
   if (day <= 30) return '<span class="sem-dot" style="background:var(--amber)" title="Entre 25 y 30"></span>';
   return '<span class="sem-dot" style="background:var(--red)" title="Despues del 30"></span>';
+}
+
+// ==================== PERMISOS POR GRUPO ====================
+
+var misPermisos = {};
+
+async function loadMisPermisos() {
+  misPermisos = {};
+  var sessionData = await sb.auth.getUser();
+  var user = sessionData.data ? sessionData.data.user : null;
+  if (!user) return;
+
+  var res1 = await sb.from('usuario_grupos').select('grupo_id').eq('user_id', user.id);
+  if (!res1.data || res1.data.length === 0) return;
+
+  var grupoIds = res1.data.map(function(a) { return a.grupo_id; });
+  var res2 = await sb.from('grupos').select('permisos').in('id', grupoIds);
+  if (!res2.data) return;
+
+  // Merge aditivo (OR de booleans)
+  function mergeInto(target, source) {
+    if (!source || typeof source !== 'object') return;
+    Object.keys(source).forEach(function(k) {
+      if (typeof source[k] === 'boolean') {
+        if (source[k] === true) target[k] = true;
+        else if (target[k] === undefined) target[k] = false;
+      } else if (typeof source[k] === 'object') {
+        if (!target[k]) target[k] = {};
+        mergeInto(target[k], source[k]);
+      }
+    });
+  }
+  res2.data.forEach(function(g) { mergeInto(misPermisos, g.permisos || {}); });
+}
+
+// tengoPermiso('contabilidad', 'checklist', 'edicion')
+// tengoPermiso('contabilidad', 'kpi', 'consulta')
+// Para subtabs: tengoPermiso('gerencia', 'clientes', 'consulta', 'dashboard')
+function tengoPermiso(modId, scrId, habId, subtabId) {
+  if (userRole === 'admin') return true;
+  var mod = misPermisos[modId];
+  if (!mod) return false;
+  var scr = mod[scrId];
+  if (!scr) return false;
+  if (subtabId) {
+    var st = scr[subtabId];
+    return st && st[habId] === true;
+  }
+  return scr[habId] === true;
 }
 
 // ==================== STATE ====================
@@ -1078,7 +1127,7 @@ function getAvg(arr) {
 }
 
 function getVisibleContadoras() {
-  if (userRole === 'admin') return KPI_CONTADORAS;
+  if (tengoPermiso('contabilidad', 'kpi', 'edicion')) return KPI_CONTADORAS;
   return KPI_CONTADORAS.filter(c => userName.includes(c.nombre));
 }
 
@@ -1094,6 +1143,7 @@ async function handleLogin() {
   const { data, error } = await sb.auth.signInWithPassword({ email, password });
   if (error) { errorEl.textContent = 'Email o contrasena incorrectos.'; errorEl.style.display = 'block'; btn.disabled = false; btn.textContent = 'Entrar'; return; }
   await loadUserProfile();
+  await loadMisPermisos();
   await showApp();
 }
 
@@ -1219,8 +1269,8 @@ function renderCkNav() {
   });
   html += '</div>';
 
-  // Contadora pills (admin only)
-  if (userRole === 'admin') {
+  // Contadora pills (edicion = ve todas)
+  if (tengoPermiso('contabilidad', 'checklist', 'edicion')) {
     const contadoras = getContadoraNames();
     html += '<div class="contadora-pills" style="margin-top:10px">';
     html += '<button class="contadora-pill' + (ckContadora === 'Todas' ? ' active' : '') + '" onclick="ckSwitchContadora(\'Todas\')">Todas</button>';
@@ -1249,8 +1299,8 @@ function renderCkClientList(el) {
   const mesIdx = MESES.indexOf(ckMes);
   let contadoras = getContadoraNames();
 
-  // Filter by role or selection
-  if (userRole !== 'admin') {
+  // Filter: sin edicion ve solo sus clientes
+  if (!tengoPermiso('contabilidad', 'checklist', 'edicion')) {
     let myName = '';
     contadoras.forEach(c => {
       if (userName.indexOf(c) >= 0) myName = c;
@@ -1316,7 +1366,7 @@ function renderCkClientList(el) {
   var ckAsignados = clients.filter(c => c.contadora !== 'Sin asignar');
   var ckSinAsignar = clients.filter(c => c.contadora === 'Sin asignar');
   // Sin responsabilidad contable: solo mostrar en vista "Todas"
-  var ckShowSinResp = ckContadora === 'Todas' && userRole === 'admin';
+  var ckShowSinResp = ckContadora === 'Todas' && tengoPermiso('contabilidad', 'checklist', 'edicion');
   var ckSinResp = ckShowSinResp ? CLIENTES_SIN_RESP.slice().sort((a, b) => (a.nombre || '').localeCompare(b.nombre || '', 'es')) : [];
 
   if (ckViewMode === 'table') {
@@ -1511,15 +1561,15 @@ function renderKpiNav() {
   const el = document.getElementById('navArea');
   let html = '';
 
-  // Sub-tabs for admin
-  if (userRole === 'admin') {
+  // Sub-tabs (edicion = ve selector y trimestral)
+  if (tengoPermiso('contabilidad', 'kpi', 'edicion')) {
     html += '<div class="sub-tabs">';
     html += '<button class="sub-tab ' + (kpiSubTab === 'detalle' ? 'active' : '') + '" onclick="kpiSwitchSubTab(\'detalle\')">Detalle por Contadora</button>';
     html += '<button class="sub-tab ' + (kpiSubTab === 'trimestral' ? 'active' : '') + '" onclick="kpiSwitchSubTab(\'trimestral\')">Resumen Trimestral</button>';
     html += '</div>';
   }
 
-  if (kpiSubTab === 'trimestral' && userRole === 'admin') {
+  if (kpiSubTab === 'trimestral' && tengoPermiso('contabilidad', 'kpi', 'edicion')) {
     html += '<div class="quarter-bar">' + QUARTERS.map(q =>
       '<button class="q-btn ' + (kpiQuarter === q.id ? 'active' : '') + '" onclick="kpiSwitchQuarter(' + q.id + ')"><div class="q-label">' + q.label + '</div><div class="q-months">' + q.meses.map(m => MESES_LABEL[MESES.indexOf(m)]).join(' · ') + '</div></button>'
     ).join('') + '</div>';
@@ -1535,8 +1585,8 @@ function renderKpiNav() {
   if (kpiContadora) {
     const q = QUARTERS[kpiQuarter - 1];
     html += '<div style="display:flex;align-items:center;gap:12px;padding:10px 24px;background:var(--bg);border-bottom:1px solid var(--border)">';
-    // Only show back button for admin
-    if (userRole === 'admin') {
+    // Boton volver (edicion = puede navegar entre contadoras)
+    if (tengoPermiso('contabilidad', 'kpi', 'edicion')) {
       html += '<button class="btn" style="padding:5px 12px;font-size:12px;background:white;color:var(--muted);border:1px solid var(--border)" onclick="kpiGoBackToSelector()">← Volver</button>';
     }
     html += '<div class="month-tabs">' + q.meses.map(m => {
@@ -1550,8 +1600,8 @@ function renderKpiNav() {
 
 function renderKpiContent() {
   const el = document.getElementById('content');
-  if (kpiSubTab === 'trimestral' && userRole === 'admin') return renderTrimestral(el);
-  if (!kpiContadora && userRole === 'admin') return renderKpiSelector(el);
+  if (kpiSubTab === 'trimestral' && tengoPermiso('contabilidad', 'kpi', 'edicion')) return renderTrimestral(el);
+  if (!kpiContadora && tengoPermiso('contabilidad', 'kpi', 'edicion')) return renderKpiSelector(el);
   if (!kpiContadora) { el.innerHTML = '<div class="empty">Cargando...</div>'; return; }
   renderKPIDetail(el);
 }
@@ -2018,8 +2068,8 @@ async function showApp() {
   const qObj = QUARTERS[kpiQuarter - 1];
   kpiMes = qObj.meses[0];
 
-  // Contadora: auto-filter
-  if (userRole !== 'admin') {
+  // Contadora: auto-filter (sin edicion va directo a su nombre)
+  if (!tengoPermiso('contabilidad', 'checklist', 'edicion')) {
     // Checklist: filter to their name
     const contadoras = getContadoraNames();
     contadoras.forEach(c => { if (userName.includes(c)) ckContadora = c; });
@@ -2035,6 +2085,7 @@ async function init() {
   const { data: { session } } = await sb.auth.getSession();
   if (session) {
     await loadUserProfile();
+    await loadMisPermisos();
     await showApp();
   } else if (isEmbed) {
     document.body.innerHTML = '<div style="text-align:center;padding:60px;color:#7c8495;">Sesion no encontrada. Recarga la pagina principal.</div>';

@@ -889,6 +889,31 @@ const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 let userRole = null;
 let userName = '';
 
+// ==================== PERMISOS POR GRUPO ====================
+var misPermisos = {};
+async function loadMisPermisos() {
+  misPermisos = {};
+  var res1 = await sb.auth.getUser();
+  var u = res1.data ? res1.data.user : null;
+  if (!u) return;
+  var res2 = await sb.from('usuario_grupos').select('grupo_id, grupos(permisos)').eq('user_id', u.id);
+  if (!res2.data || !res2.data.length) return;
+  function mergeInto(target, source) {
+    Object.keys(source).forEach(function(k) {
+      if (source[k] === true) target[k] = true;
+      else if (typeof source[k] === 'object') { if (!target[k]) target[k] = {}; mergeInto(target[k], source[k]); }
+    });
+  }
+  res2.data.forEach(function(g) { var p = g.grupos ? g.grupos.permisos : null; if (p) mergeInto(misPermisos, p); });
+}
+function tengoPermiso(modId, scrId, habId, subtabId) {
+  if (userRole === 'admin') return true;
+  var mod = misPermisos[modId]; if (!mod) return false;
+  var scr = mod[scrId]; if (!scr) return false;
+  if (subtabId) { var st = scr[subtabId]; return st && st[habId] === true; }
+  return scr[habId] === true;
+}
+
 // ==================== SHARED CONSTANTS ====================
 const MESES = ["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
 const MESES_LABEL = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
@@ -912,7 +937,7 @@ function renderGerMainTabs() {
     { id:'contadoras', label:'Contadoras' },
     { id:'basedatos', label:'Base de Datos' }
   ];
-  if (userRole === 'comercial') {
+  if (!tengoPermiso('gerencia', 'contadoras', 'consulta')) {
     tabs = tabs.filter(t => t.id !== 'contadoras');
   }
   el.innerHTML = tabs.map(t => '<button class="main-tab ' + (gerMainTab === t.id ? 'active' : '') + '" onclick="switchGerTab(\'' + t.id + '\')">' + t.label + '</button>').join('');
@@ -2687,7 +2712,7 @@ async function ctdSaveReporte(contadora, cliente, mes, fields) {
 
 // ─── CTD Render ───
 async function ctdRenderApp() {
-  if (userRole === 'admin') {
+  if (tengoPermiso('gerencia', 'contadoras', 'edicion')) {
     await ctdRenderGerencial();
   } else {
     await ctdRenderContadoraView();
@@ -3063,6 +3088,7 @@ async function handleLogin() {
   var result = await sb.auth.signInWithPassword({ email: email, password: password });
   if (result.error) { errorEl.textContent = 'Email o contrasena incorrectos.'; errorEl.style.display = 'block'; btn.disabled = false; btn.textContent = 'Entrar'; return; }
   await loadUserProfile();
+  await loadMisPermisos();
   await showApp();
 }
 
@@ -3314,7 +3340,7 @@ function bdRenderClientes() {
 
   h += '<div class="cl-toolbar">';
   h += '<input class="cl-search" type="text" placeholder="Buscar cliente..." value="' + esc(clSearch) + '" oninput="clSearch=this.value;bdRenderClientes()">';
-  if (userRole === 'admin') {
+  if (tengoPermiso('gerencia', 'basedatos', 'edicion', 'clientes')) {
     h += '<button class="btn-add" onclick="clOpenModal()">+ Nuevo cliente</button>';
   }
   h += '</div>';
@@ -3352,7 +3378,7 @@ function bdRenderClientes() {
   if (filtered.length === 0) {
     if (bdClientes.length === 0) {
       h += '<div class="cl-empty"><div class="emoji">👥</div><p>No hay clientes registrados.</p>';
-      if (userRole === 'admin') h += '<p style="font-size:0.82rem">Usa el botón de arriba para agregar el primero.</p>';
+      if (tengoPermiso('gerencia', 'basedatos', 'edicion', 'clientes')) h += '<p style="font-size:0.82rem">Usa el botón de arriba para agregar el primero.</p>';
       h += '</div>';
     } else {
       h += '<div class="cl-empty"><p>No se encontraron resultados para "' + esc(clSearch) + '"</p></div>';
@@ -3380,12 +3406,13 @@ function bdRenderClientes() {
 
   h += '<table class="cl-table">';
   h += '<thead><tr>';
+  var canEditCl = tengoPermiso('gerencia', 'basedatos', 'edicion', 'clientes');
   h += '<th style="width:36px">#</th><th>Cliente</th><th>RNC</th><th>Servicio</th><th>Cont. contab</th><th>Cont. imp</th><th>Adm</th><th>Estado</th>';
-  if (userRole === 'admin') h += '<th></th>';
+  if (canEditCl) h += '<th></th>';
   h += '</tr></thead><tbody>';
 
   var clLastGroup = null;
-  var colCount = userRole === 'admin' ? 9 : 8;
+  var colCount = canEditCl ? 9 : 8;
   filtered.forEach(function(c, idx) {
     var isInactivo = clActivosSet.indexOf(c) < 0;
     var groupKey = isInactivo ? '__inactivo' : (clClientesSinAsignar(c) ? '__sin_asignar' : '__clientes');
@@ -3410,7 +3437,7 @@ function bdRenderClientes() {
     } else {
       h += '<td><span class="cl-badge-activo">Activo</span></td>';
     }
-    if (userRole === 'admin') {
+    if (canEditCl) {
       h += '<td style="white-space:nowrap">';
       h += '<button style="padding:4px 10px;border:1px solid var(--border);border-radius:6px;background:white;font-size:0.75rem;cursor:pointer;color:var(--muted)" onclick="clEditClient(\'' + c.id + '\')">Editar</button> ';
       h += '<button style="padding:4px 8px;border:1px solid var(--border);border-radius:6px;background:white;font-size:0.75rem;cursor:pointer;color:var(--muted)" onclick="clShowHistory(\'' + c.id + '\',\'' + (c.nombre||'').replace(/'/g,"\\'") + '\')" title="Historial de contadoras">&#128337;</button>';
@@ -3937,7 +3964,7 @@ function bdRenderSoftware() {
 
   h += '<div class="cl-toolbar">';
   h += '<input class="cl-search" type="text" placeholder="Buscar cliente software..." value="' + esc(swSearch) + '" oninput="swSearch=this.value;bdRenderSoftware()">';
-  if (userRole === 'admin') {
+  if (tengoPermiso('gerencia', 'basedatos', 'edicion', 'clientes')) {
     h += '<button class="btn-add" onclick="swOpenModal()">+ Nuevo cliente</button>';
   }
   h += '</div>';
@@ -3975,7 +4002,7 @@ function bdRenderSoftware() {
   if (filtered.length === 0) {
     if (bdSoftwareClientes.length === 0) {
       h += '<div class="cl-empty"><div class="emoji">💻</div><p>No hay clientes de software registrados.</p>';
-      if (userRole === 'admin') h += '<p style="font-size:0.82rem">Usa el botón de arriba para agregar el primero.</p>';
+      if (tengoPermiso('gerencia', 'basedatos', 'edicion', 'clientes')) h += '<p style="font-size:0.82rem">Usa el botón de arriba para agregar el primero.</p>';
       h += '</div>';
     } else {
       h += '<div class="cl-empty"><p>No se encontraron resultados para "' + esc(swSearch) + '"</p></div>';
@@ -3992,11 +4019,12 @@ function bdRenderSoftware() {
     return (a.nombre || '').localeCompare(b.nombre || '', 'es');
   });
 
-  var colCount = userRole === 'admin' ? 9 : 8;
+  var canEditSw = tengoPermiso('gerencia', 'basedatos', 'edicion', 'clientes');
+  var colCount = canEditSw ? 9 : 8;
   h += '<table class="cl-table">';
   h += '<thead><tr>';
   h += '<th style="width:36px">#</th><th>Cliente</th><th>Licencia</th><th>RNC</th><th>Contacto</th><th>Monto</th><th>Entrada</th><th>Estado</th>';
-  if (userRole === 'admin') h += '<th></th>';
+  if (canEditSw) h += '<th></th>';
   h += '</tr></thead><tbody>';
 
   var lastGroup = null;
@@ -4023,7 +4051,7 @@ function bdRenderSoftware() {
     } else {
       h += '<td><span class="cl-badge-activo">Activo</span></td>';
     }
-    if (userRole === 'admin') {
+    if (canEditSw) {
       h += '<td style="white-space:nowrap">';
       h += '<button style="padding:4px 10px;border:1px solid var(--border);border-radius:6px;background:white;font-size:0.75rem;cursor:pointer;color:var(--muted)" onclick="swEditClient(\'' + c.id + '\')">Editar</button> ';
       h += '<button style="padding:4px 8px;border:1px solid var(--border);border-radius:6px;background:white;font-size:0.75rem;cursor:pointer;color:var(--red)" onclick="swDeleteClient(\'' + c.id + '\',\'' + esc(c.nombre).replace(/'/g,"\\'") + '\')">Eliminar</button>';
@@ -4253,7 +4281,8 @@ function bdRenderContadoras() {
   h += '<div class="bd-summary-item"><div class="bd-summary-count">' + totalAsigMes + '</div><div class="bd-summary-label">Clientes asignados</div></div>';
   h += '</div>';
 
-  if (userRole === 'admin') {
+  var canEditCont = tengoPermiso('gerencia', 'basedatos', 'edicion', 'contadoras');
+  if (canEditCont) {
     h += '<div style="margin-bottom:14px"><button class="btn-add" onclick="bdContOpenModal()">+ Nueva contadora</button></div>';
   }
 
@@ -4261,7 +4290,7 @@ function bdRenderContadoras() {
 
   h += '<table class="bd-cont-table">';
   h += '<thead><tr><th style="width:36px">#</th><th>Nombre</th><th>Tipo</th><th>Clientes</th><th>Capacidad</th><th>Estado</th><th>Notas</th>';
-  if (userRole === 'admin') h += '<th></th>';
+  if (canEditCont) h += '<th></th>';
   h += '</tr></thead><tbody>';
 
   bdContadoras.forEach(function(c, idx) {
@@ -4276,7 +4305,7 @@ function bdRenderContadoras() {
     h += '<td>' + (c.capacidad ? c.capacidad.toLocaleString() : '<span style="color:var(--light)">—</span>') + '</td>';
     h += '<td><span class="' + (c.activa ? 'cl-badge-activo' : 'cl-badge-inactivo') + '">' + (c.activa ? 'Activa' : 'Inactiva') + '</span></td>';
     h += '<td style="font-size:0.8rem;color:var(--muted)">' + esc(c.notas || '') + '</td>';
-    if (userRole === 'admin') {
+    if (canEditCont) {
       h += '<td><button style="padding:4px 10px;border:1px solid var(--border);border-radius:6px;background:white;font-size:0.75rem;cursor:pointer;color:var(--muted)" onclick="bdContOpenModal(\'' + c.id + '\')">Editar</button></td>';
     }
     h += '</tr>';
@@ -4423,7 +4452,8 @@ function bdRenderAsignaciones() {
   }
 
   // Toolbar
-  if (userRole === 'admin') {
+  var canEditAsig = tengoPermiso('gerencia', 'basedatos', 'edicion', 'asignaciones');
+  if (canEditAsig) {
     h += '<div class="bd-asig-toolbar">';
     h += '<button class="bd-asig-add" onclick="bdAsigAddRow()">+ Agregar asignación</button>';
     h += '<div>';
@@ -4436,11 +4466,11 @@ function bdRenderAsignaciones() {
   // Table
   h += '<div class="table-wrap"><table class="bd-asig-table">';
   h += '<thead><tr><th>#</th><th>Cliente</th><th>Contadora</th><th style="text-align:right">Serv</th><th style="text-align:right">Adm</th>';
-  if (userRole === 'admin') h += '<th></th>';
+  if (canEditAsig) h += '<th></th>';
   h += '</tr></thead><tbody>';
 
   var asigLastGroup = null;
-  var asigColCount = userRole === 'admin' ? 6 : 5;
+  var asigColCount = canEditAsig ? 6 : 5;
   rows.forEach(function(r, idx) {
     var edited = bdAsigEdits[idx];
     var contVal = edited ? edited.contadora : r.contadora;
@@ -4458,7 +4488,7 @@ function bdRenderAsignaciones() {
     h += '<td style="color:var(--light);font-size:0.75rem">' + (idx + 1) + '</td>';
     h += '<td style="font-weight:600;color:var(--navy)">' + esc(r.cliente) + '</td>';
 
-    if (userRole === 'admin') {
+    if (canEditAsig) {
       h += '<td><select onchange="bdAsigEdit(' + idx + ',\'contadora\',this.value)">';
       h += '<option value="Sin asignar"' + (contVal === 'Sin asignar' ? ' selected' : '') + '>Sin asignar</option>';
       contadoraNames.forEach(function(cn) {
@@ -4747,7 +4777,7 @@ if (isEmbed) document.body.classList.add('embed');
 async function init() {
   var result = await sb.auth.getSession();
   var session = result.data ? result.data.session : null;
-  if (session) { await loadUserProfile(); await showApp(); }
+  if (session) { await loadUserProfile(); await loadMisPermisos(); await showApp(); }
   else if (isEmbed) { document.body.innerHTML = '<div style="text-align:center;padding:60px;color:#7c8495;">Sesion no encontrada. Recarga la pagina principal.</div>'; }
 }
 init();

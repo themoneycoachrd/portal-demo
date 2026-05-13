@@ -207,36 +207,38 @@ var sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 // ─── Estructura jerárquica de módulos ───
 var MODULOS = [
   { id:'gerencia', label:'Gerencia', screens:[
-    { id:'control-clientes', label:'Control de clientes', subtabs:[
+    { id:'clientes', label:'Clientes', subtabs:[
       { id:'dashboard', label:'Dashboard' },
       { id:'servicios', label:'Servicios' },
       { id:'implementacion', label:'Implementación' },
-      { id:'perfiles', label:'Perfiles' },
       { id:'software', label:'Software' }
     ]},
-    { id:'control-contadoras', label:'Control de contadoras' },
+    { id:'contadoras', label:'Contadoras' },
     { id:'basedatos', label:'Base de datos', subtabs:[
       { id:'clientes', label:'Clientes' },
       { id:'contadoras', label:'Contadoras' },
       { id:'asignaciones', label:'Asignaciones' },
       { id:'links-portal', label:'Links portal' }
-    ]}
+    ]},
+    { id:'facturacion', label:'Facturación' }
   ]},
   { id:'comercial', label:'Comercial', screens:[
     { id:'roas', label:'ROAS' },
-    { id:'pipeline', label:'Pipeline' }
+    { id:'pipeline', label:'Pipeline' },
+    { id:'movimiento', label:'Movimiento' },
+    { id:'checklist', label:'Checklist' }
   ]},
   { id:'contabilidad', label:'Contabilidad', screens:[
     { id:'checklist', label:'Checklist' },
     { id:'kpi', label:'KPI' }
   ]},
   { id:'impuestos', label:'Impuestos', screens:[
-    { id:'control', label:'Control' },
-    { id:'checklist', label:'Checklist' }
+    { id:'checklist', label:'Checklist' },
+    { id:'kpi', label:'KPI' }
   ]},
   { id:'implementaciones', label:'Implementaciones', screens:[
-    { id:'impl-completa', label:'Implementación completa' },
-    { id:'fact-electronica', label:'Facturación electrónica' }
+    { id:'checklist-fe', label:'Checklist FE' },
+    { id:'checklist-adm', label:'Checklist Adm' }
   ]},
   { id:'portal-admin', label:'Portal admin', screens:[
     { id:'checklist', label:'Checklist' },
@@ -246,22 +248,49 @@ var MODULOS = [
     { id:'checklist', label:'Checklist' },
     { id:'presentacion-mensual', label:'Presentación mensual' }
   ]},
-  { id:'usuarios', label:'Usuarios', screens:[
+  { id:'personal', label:'Personal', screens:[
+    { id:'wow-board', label:'Wow Board' },
+    { id:'dar-puntos', label:'Dar puntos' },
+    { id:'pagar-bono', label:'Pagar bono' }
+  ]},
+  { id:'configuracion', label:'Configuración', screens:[
     { id:'grupos', label:'Grupos' },
     { id:'usuarios', label:'Usuarios' }
   ]}
 ];
 
 var HABILIDADES = [
-  { id:'consulta',  label:'Consulta' },
-  { id:'adicion',   label:'Adición' },
-  { id:'edicion',   label:'Edición' },
-  { id:'anulacion', label:'Anulación' },
-  { id:'eliminar',  label:'Eliminar' }
+  { id:'consulta',  label:'Ver' },
+  { id:'edicion',   label:'Editar' }
 ];
 
 var AVATAR_COLORS = ['#4361ee','#8b5cf6','#10b981','#f59e0b','#ec4899','#06b6d4','#ef4444','#6366f1'];
 var GROUP_COLORS = ['#4361ee','#8b5cf6','#10b981','#f59e0b','#ec4899','#06b6d4','#ef4444','#6366f1','#0ea5e9','#f97316'];
+
+// ==================== PERMISOS POR GRUPO ====================
+var misPermisos = {};
+async function loadMisPermisos() {
+  misPermisos = {};
+  var res1 = await sb.auth.getUser();
+  var u = res1.data ? res1.data.user : null;
+  if (!u) return;
+  var res2 = await sb.from('usuario_grupos').select('grupo_id, grupos(permisos)').eq('user_id', u.id);
+  if (!res2.data || !res2.data.length) return;
+  function mergeInto(target, source) {
+    Object.keys(source).forEach(function(k) {
+      if (source[k] === true) target[k] = true;
+      else if (typeof source[k] === 'object') { if (!target[k]) target[k] = {}; mergeInto(target[k], source[k]); }
+    });
+  }
+  res2.data.forEach(function(g) { var p = g.grupos ? g.grupos.permisos : null; if (p) mergeInto(misPermisos, p); });
+}
+function tengoPermiso(modId, scrId, habId, subtabId) {
+  if (userRole === 'admin') return true;
+  var mod = misPermisos[modId]; if (!mod) return false;
+  var scr = mod[scrId]; if (!scr) return false;
+  if (subtabId) { var st = scr[subtabId]; return st && st[habId] === true; }
+  return scr[habId] === true;
+}
 
 // ==================== STATE ====================
 var userRole = null;
@@ -338,7 +367,7 @@ async function saveUserGroups(userId, grupoIds) {
 // ==================== RENDER ====================
 async function renderApp() {
   var el = document.getElementById('content');
-  if (userRole !== 'admin') {
+  if (!tengoPermiso('configuracion', 'grupos', 'consulta') && !tengoPermiso('configuracion', 'usuarios', 'consulta')) {
     el.innerHTML = '<div class="empty" style="padding:60px"><h2 style="font-size:1.1rem;color:var(--navy);margin-bottom:8px">Acceso restringido</h2><p style="color:var(--muted)">Solo administradores pueden gestionar usuarios y permisos.</p></div>';
     return;
   }
@@ -419,7 +448,7 @@ function renderGruposTab() {
 
         // Module header row
         html += '<tr class="mod-row" onclick="toggleModule(\'' + modKey + '\')">';
-        html += '<td colspan="6"><span class="mod-arrow' + (modOpen ? ' open' : '') + '">&#9654;</span>' + mod.label + '</td>';
+        html += '<td colspan="3"><span class="mod-arrow' + (modOpen ? ' open' : '') + '">&#9654;</span>' + mod.label + '</td>';
         html += '</tr>';
 
         if (modOpen) {
@@ -429,7 +458,7 @@ function renderGruposTab() {
             if (scr.subtabs) {
               // Screen with sub-tabs: show screen as label, then each sub-tab with toggles
               html += '<tr class="screen-row">';
-              html += '<td colspan="6" style="font-weight:600;color:var(--navy);padding-top:10px;">' + scr.label + '</td>';
+              html += '<td colspan="3" style="font-weight:600;color:var(--navy);padding-top:10px;">' + scr.label + '</td>';
               html += '</tr>';
 
               var scrBuf = modBuf[scr.id] || {};
@@ -499,7 +528,7 @@ function renderUsuariosTab() {
   var html = '';
 
   // Invite form (only admin)
-  if (userRole === 'admin') {
+  if (tengoPermiso('configuracion', 'usuarios', 'edicion')) {
     html += '<div class="invite-card">';
     html += '<h4>Invitar nuevo usuario</h4>';
     html += '<div class="invite-row">';
@@ -896,6 +925,7 @@ async function handleLogin() {
     btn.disabled = false; btn.textContent = 'Entrar'; return;
   }
   await loadUserProfile();
+  await loadMisPermisos();
   await showApp();
 }
 
@@ -935,7 +965,7 @@ if (isEmbed) document.body.classList.add('embed');
 async function init() {
   var result = await sb.auth.getSession();
   var session = result.data ? result.data.session : null;
-  if (session) { await loadUserProfile(); await showApp(); }
+  if (session) { await loadUserProfile(); await loadMisPermisos(); await showApp(); }
   else if (isEmbed) { document.body.innerHTML = '<div style="text-align:center;padding:60px;color:#7c8495;">Sesion no encontrada. Recarga la pagina principal.</div>'; }
 }
 init();

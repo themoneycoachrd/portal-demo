@@ -314,6 +314,40 @@ var CHECKLIST_ITEMS = {
 // Firma dates: 5 dias antes del deadline por defecto
 var FIRMA_OFFSETS = { 'TSS': 5, 'IR-3': 5, 'IR-17': 5, 'Anticipo': 5, 'ITBIS': 5 };
 
+// ==================== PERMISOS POR GRUPO ====================
+
+var misPermisos = {};
+
+async function loadMisPermisos() {
+  misPermisos = {};
+  var sessionData = await sb.auth.getUser();
+  var user = sessionData.data ? sessionData.data.user : null;
+  if (!user) return;
+  var res1 = await sb.from('usuario_grupos').select('grupo_id').eq('user_id', user.id);
+  if (!res1.data || res1.data.length === 0) return;
+  var grupoIds = res1.data.map(function(a) { return a.grupo_id; });
+  var res2 = await sb.from('grupos').select('permisos').in('id', grupoIds);
+  if (!res2.data) return;
+  function mergeInto(target, source) {
+    if (!source || typeof source !== 'object') return;
+    Object.keys(source).forEach(function(k) {
+      if (typeof source[k] === 'boolean') { if (source[k] === true) target[k] = true; else if (target[k] === undefined) target[k] = false; }
+      else if (typeof source[k] === 'object') { if (!target[k]) target[k] = {}; mergeInto(target[k], source[k]); }
+    });
+  }
+  res2.data.forEach(function(g) { mergeInto(misPermisos, g.permisos || {}); });
+}
+
+function tengoPermiso(modId, scrId, habId, subtabId) {
+  if (userRole === 'admin') return true;
+  var mod = misPermisos[modId];
+  if (!mod) return false;
+  var scr = mod[scrId];
+  if (!scr) return false;
+  if (subtabId) { var st = scr[subtabId]; return st && st[habId] === true; }
+  return scr[habId] === true;
+}
+
 // ==================== STATE ====================
 var userRole = null;
 var userNameVal = '';
@@ -514,13 +548,14 @@ async function initApp() {
     userRole = 'viewer';
     userNameVal = session.user.email;
   }
+  await loadMisPermisos();
   document.getElementById('userName').textContent = userNameVal;
   selectedMes = getCurrentMonth();
 
   await Promise.all([loadContadoras(), loadImpuestos()]);
 
-  // Si no es admin, pre-filtrar por su nombre en contadora_impuestos
-  if (userRole !== 'admin' && userNameVal) {
+  // Sin edicion: pre-filtrar por su nombre
+  if (!tengoPermiso('impuestos', 'checklist', 'edicion') && userNameVal) {
     var maestra = contadorasMap._maestra || {};
     Object.keys(maestra).forEach(function(c) {
       if (userNameVal.indexOf(c) >= 0 || c.indexOf(userNameVal) >= 0) selectedContadora = c;
@@ -735,7 +770,7 @@ function renderMain() {
   var impRowsAsignados = tableRows.filter(function(r) { return r.contadora !== 'Sin asignar'; });
   var impRowsSinAsignar = tableRows.filter(function(r) { return r.contadora === 'Sin asignar'; });
   // Sin resp fiscal: solo en vista "Todas"
-  var impShowSinResp = selectedContadora === 'Todas' && userRole === 'admin';
+  var impShowSinResp = selectedContadora === 'Todas' && tengoPermiso('impuestos', 'checklist', 'edicion');
   var impSinRespSorted = impShowSinResp ? impSinResp.slice().sort(function(a, b) { return (a.nombre || '').localeCompare(b.nombre || '', 'es'); }) : [];
   var impColCount = 6 + IMPUESTOS.length;
 

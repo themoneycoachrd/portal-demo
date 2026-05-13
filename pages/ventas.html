@@ -964,6 +964,40 @@ function syncRoasFromPipeline() {
   });
 }
 
+// ==================== PERMISOS POR GRUPO ====================
+
+var misPermisos = {};
+
+async function loadMisPermisos() {
+  misPermisos = {};
+  var sessionData = await sb.auth.getUser();
+  var user = sessionData.data ? sessionData.data.user : null;
+  if (!user) return;
+  var res1 = await sb.from('usuario_grupos').select('grupo_id').eq('user_id', user.id);
+  if (!res1.data || res1.data.length === 0) return;
+  var grupoIds = res1.data.map(function(a) { return a.grupo_id; });
+  var res2 = await sb.from('grupos').select('permisos').in('id', grupoIds);
+  if (!res2.data) return;
+  function mergeInto(target, source) {
+    if (!source || typeof source !== 'object') return;
+    Object.keys(source).forEach(function(k) {
+      if (typeof source[k] === 'boolean') { if (source[k] === true) target[k] = true; else if (target[k] === undefined) target[k] = false; }
+      else if (typeof source[k] === 'object') { if (!target[k]) target[k] = {}; mergeInto(target[k], source[k]); }
+    });
+  }
+  res2.data.forEach(function(g) { mergeInto(misPermisos, g.permisos || {}); });
+}
+
+function tengoPermiso(modId, scrId, habId, subtabId) {
+  if (APP.userRole === 'admin') return true;
+  var mod = misPermisos[modId];
+  if (!mod) return false;
+  var scr = mod[scrId];
+  if (!scr) return false;
+  if (subtabId) { var st = scr[subtabId]; return st && st[habId] === true; }
+  return scr[habId] === true;
+}
+
 // ==================== HOOKS (state) ====================
 let APP = {
   data: null,
@@ -994,9 +1028,9 @@ let APP = {
 function renderMainTabs() {
   // Mostrar tabs según rol
   const btnMov = document.getElementById('tab-btn-movimiento');
-  if (btnMov) btnMov.style.display = (APP.userRole !== 'comercial') ? '' : 'none';
+  if (btnMov) btnMov.style.display = tengoPermiso('comercial', 'movimiento', 'consulta') ? '' : 'none';
   const btnChk = document.getElementById('tab-btn-checklist-com');
-  if (btnChk) btnChk.style.display = (APP.userRole === 'admin' || APP.userRole === 'comercial') ? '' : 'none';
+  if (btnChk) btnChk.style.display = tengoPermiso('comercial', 'checklist', 'consulta') ? '' : 'none';
 
   document.querySelectorAll('.main-tab').forEach(tab => {
     if (tab.style.display === 'none') return;
@@ -1070,8 +1104,8 @@ function renderPipeline() {
   });
   html += '</div>';
 
-  // Summary stats
-  const isVentas = APP.userRole === 'comercial';
+  // Summary stats — ocultar costos si no tiene permiso de ROAS
+  const isVentas = !tengoPermiso('comercial', 'roas', 'consulta');
   html += '<div class="stats-grid stats-grid-pipeline">';
   html += `<div class="stat-card"><div class="label">Total Leads</div><div class="value navy">${totalLeads}</div></div>`;
   if (!isVentas) html += `<div class="stat-card"><div class="label">Costo x Lead</div><div class="value amber">${fmtCurrency(Math.round(cpl))}</div></div>`;
@@ -1169,7 +1203,7 @@ function renderPipeline() {
 
 function renderEditRow(lead, idx) {
   const descVal = lead.desc != null ? lead.desc : 25;
-  const colSpan = APP.userRole === 'comercial' ? 13 : 16;
+  const colSpan = !tengoPermiso('comercial', 'roas', 'consulta') ? 13 : 16;
   return `<tr class="edit-row"><td colspan="${colSpan}">
     <div class="edit-form" style="grid-template-columns:repeat(5,1fr);">
       <div class="field"><label>Nombre</label><input type="text" data-field="n" value="${esc(lead.n)}"></div>
@@ -1425,7 +1459,7 @@ function renderROAS() {
 
   let html = '';
 
-  const isVentas = APP.userRole === 'comercial';
+  const isVentas = !tengoPermiso('comercial', 'roas', 'consulta');
 
   // General summary cards
   if (activeMonths.length > 0) {
@@ -2241,6 +2275,7 @@ async function handleLogin() {
   }
 
   await loadUserProfile();
+  await loadMisPermisos();
   showApp();
 }
 
@@ -2319,6 +2354,7 @@ async function init() {
   const { data: { session } } = await sb.auth.getSession();
   if (session) {
     await loadUserProfile();
+    await loadMisPermisos();
     showApp();
   } else if (isEmbed) {
     // In embed mode without session, show nothing (parent handles auth)

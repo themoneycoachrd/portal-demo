@@ -335,6 +335,40 @@ const TEAM_DEPARTMENTS = [
 ];
 const TEAM_ROSTER = TEAM_DEPARTMENTS.reduce(function(arr, dept) { return arr.concat(dept.members); }, []);
 
+// ==================== PERMISOS POR GRUPO ====================
+
+var misPermisos = {};
+
+async function loadMisPermisos() {
+  misPermisos = {};
+  var sessionData = await sb.auth.getUser();
+  var user = sessionData.data ? sessionData.data.user : null;
+  if (!user) return;
+  var res1 = await sb.from('usuario_grupos').select('grupo_id').eq('user_id', user.id);
+  if (!res1.data || res1.data.length === 0) return;
+  var grupoIds = res1.data.map(function(a) { return a.grupo_id; });
+  var res2 = await sb.from('grupos').select('permisos').in('id', grupoIds);
+  if (!res2.data) return;
+  function mergeInto(target, source) {
+    if (!source || typeof source !== 'object') return;
+    Object.keys(source).forEach(function(k) {
+      if (typeof source[k] === 'boolean') { if (source[k] === true) target[k] = true; else if (target[k] === undefined) target[k] = false; }
+      else if (typeof source[k] === 'object') { if (!target[k]) target[k] = {}; mergeInto(target[k], source[k]); }
+    });
+  }
+  res2.data.forEach(function(g) { mergeInto(misPermisos, g.permisos || {}); });
+}
+
+function tengoPermiso(modId, scrId, habId, subtabId) {
+  if (APP.userRole === 'admin') return true;
+  var mod = misPermisos[modId];
+  if (!mod) return false;
+  var scr = mod[scrId];
+  if (!scr) return false;
+  if (subtabId) { var st = scr[subtabId]; return st && st[habId] === true; }
+  return scr[habId] === true;
+}
+
 // ==================== STATE ====================
 var APP = {
   userRole: null,
@@ -361,6 +395,7 @@ async function doLogin() {
     return;
   }
   await loadUserProfile();
+  await loadMisPermisos();
   showApp();
 }
 
@@ -405,7 +440,7 @@ async function startApp() {
 }
 
 function canManage() {
-  return APP.userRole === 'admin' || APP.userRole === 'comercial';
+  return tengoPermiso('personal', 'dar-puntos', 'edicion');
 }
 
 // ==================== CALCULATIONS ====================
@@ -719,6 +754,7 @@ async function init() {
   var { data: { session } } = await sb.auth.getSession();
   if (session) {
     await loadUserProfile();
+    await loadMisPermisos();
     showApp();
   } else if (isEmbed) {
     document.body.innerHTML = '<div style="text-align:center;padding:60px;color:#7c8495;">Sesión no encontrada. Recarga la página principal.</div>';
