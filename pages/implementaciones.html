@@ -655,7 +655,18 @@ function renderDetail(el) {
   html += '<div class="detail-header">';
   html += '<button class="detail-back" onclick="closeDetail()">&larr; Volver al listado</button>';
   html += '<div><div class="detail-title">' + row.cliente + '</div>';
-  html += '<div class="detail-sub">Implementadora: ' + implName + '</div></div>';
+  if (canEdit()) {
+    html += '<div class="detail-sub" style="display:flex;align-items:center;gap:8px">Implementadora: ';
+    html += '<select id="detail-impl-select" onchange="changeImplementadora(this.value)" style="padding:3px 8px;border:1px solid var(--border);border-radius:6px;font-size:0.8rem;font-family:inherit">';
+    html += '<option value=""' + (!row.implementadora ? ' selected' : '') + '>Sin asignar</option>';
+    for (var ii = 0; ii < IMPLEMENTADORAS.length; ii++) {
+      html += '<option value="' + IMPLEMENTADORAS[ii] + '"' + (row.implementadora === IMPLEMENTADORAS[ii] ? ' selected' : '') + '>' + IMPLEMENTADORAS[ii] + '</option>';
+    }
+    html += '</select></div>';
+  } else {
+    html += '<div class="detail-sub">Implementadora: ' + implName + '</div>';
+  }
+  html += '</div>';
   html += '</div>';
 
   // Progress bar + save button
@@ -854,6 +865,22 @@ async function saveNewClient() {
   closeAddModal();
   await loadData();
   render();
+}
+
+// ==================== CAMBIAR IMPLEMENTADORA ====================
+async function changeImplementadora(val) {
+  if (!currentCliente) return;
+  var newImpl = val || null;
+  var res = await sb.from('impl_checklist_fe').update({ implementadora: newImpl, updated_at: new Date().toISOString() }).eq('cliente', currentCliente.cliente);
+  if (res.error) {
+    showToast('Error: ' + res.error.message, 'error');
+    return;
+  }
+  currentCliente.implementadora = newImpl;
+  var idx = allRows.findIndex(function(r) { return r.cliente === currentCliente.cliente; });
+  if (idx >= 0) allRows[idx].implementadora = newImpl;
+  showToast('Implementadora actualizada');
+  renderDetail(document.getElementById('content'));
 }
 
 // ==================== NOTAS POR TAREA ====================
