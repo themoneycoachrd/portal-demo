@@ -754,6 +754,7 @@ function renderDetail(el) {
   html += '<span class="pr-pct">' + pct + '%</span>';
   if (canEdit()) {
     html += '<button class="btn btn-primary" id="btn-save" onclick="saveChecklist()" style="margin-left:12px">Guardar cambios</button>';
+    html += '<button class="btn" id="btn-delete" onclick="deleteChecklist()" style="margin-left:8px;color:var(--red);border-color:var(--red)">Eliminar checklist</button>';
   }
   html += '</div>';
 
@@ -880,6 +881,26 @@ async function saveChecklist() {
   if (idx >= 0) rows[idx].datos = newDatos;
 
   showToast('Cambios guardados');
+}
+
+async function deleteChecklist() {
+  if (!currentCliente || !canEdit()) return;
+  if (!confirm('¿Eliminar el checklist de ' + currentCliente.cliente + '? Esta acción no se puede deshacer.')) return;
+
+  var res = await sb.from(getTableName()).delete().eq('cliente', currentCliente.cliente);
+  if (res.error) {
+    showToast('Error al eliminar: ' + res.error.message, 'error');
+    console.error(res.error);
+    return;
+  }
+
+  // Quitar de la lista local
+  var rows = getRows();
+  var idx = rows.findIndex(function(r) { return r.cliente === currentCliente.cliente; });
+  if (idx >= 0) rows.splice(idx, 1);
+
+  showToast('Checklist eliminado');
+  closeDetail();
 }
 
 // ==================== ADD CLIENT MODAL ====================
