@@ -56,16 +56,20 @@ body { font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-se
 .tab.active { background:var(--navy); color:white; }
 
 /* ─── Cards ─── */
-.card { background:white; border-radius:12px; border:1px solid var(--border); margin-bottom:12px; overflow:hidden; transition:box-shadow 0.15s; }
+.card { background:white; border-radius:10px; border:1px solid var(--border); margin-bottom:6px; overflow:hidden; transition:box-shadow 0.15s; }
 .card:hover { box-shadow:0 2px 12px rgba(0,0,0,0.04); }
-.card-header { display:flex; align-items:center; gap:14px; padding:16px 20px; cursor:pointer; transition:background 0.12s; }
+.card-header { display:flex; align-items:center; gap:10px; padding:10px 16px; cursor:pointer; transition:background 0.12s; }
 .card-header:hover { background:#fafbfc; }
 .card-header.expanded { background:#f5f7fa; border-bottom:1px solid var(--border); }
-.card-avatar { width:40px; height:40px; border-radius:50%; display:flex; align-items:center; justify-content:center; color:white; font-weight:700; font-size:0.95rem; flex-shrink:0; }
+.card-avatar { width:32px; height:32px; border-radius:50%; display:flex; align-items:center; justify-content:center; color:white; font-weight:700; font-size:0.8rem; flex-shrink:0; }
 .card-info { flex:1; min-width:0; }
-.card-info-name { font-size:0.95rem; font-weight:700; }
-.card-info-sub { font-size:0.78rem; color:var(--muted); }
-.card-badge { font-size:0.68rem; font-weight:700; padding:3px 10px; border-radius:8px; text-transform:uppercase; letter-spacing:0.3px; }
+.card-info-name { font-size:0.85rem; font-weight:700; }
+.card-info-sub { font-size:0.72rem; color:var(--muted); }
+.card-badge { font-size:0.62rem; font-weight:700; padding:2px 8px; border-radius:8px; text-transform:uppercase; letter-spacing:0.3px; }
+.dept-pills { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:16px; }
+.dept-pill { padding:6px 14px; border-radius:20px; border:1px solid var(--border); background:white; font-size:0.78rem; font-weight:600; cursor:pointer; transition:all 0.15s; color:var(--muted); }
+.dept-pill:hover { border-color:var(--blue); color:var(--blue); }
+.dept-pill.active { background:var(--navy); color:white; border-color:var(--navy); }
 .card-arrow { font-size:14px; color:var(--light); transition:transform 0.2s; }
 .card-arrow.open { transform:rotate(180deg); }
 .card-detail { max-height:0; overflow:hidden; transition:max-height 0.35s ease; }
@@ -302,6 +306,17 @@ var allAssignments = []; // {user_id, grupo_id}
 var openCards = {};
 var editGrupoBuffer = {}; // grupo_id → permisos copy
 var editUserBuffer = {};  // user_id → [grupo_ids]
+var activeDeptFilter = 'todos'; // filtro de departamento en tab Usuarios
+
+var DEPT_PILLS = [
+  { id:'todos', label:'Todos' },
+  { id:'gerencia', label:'Gerencia', grupos:['Admin'] },
+  { id:'contabilidad', label:'Contabilidad', grupos:['Contadores'] },
+  { id:'impuestos', label:'Impuestos', grupos:['Impuestos'] },
+  { id:'comercial', label:'Comercial', grupos:['Comercial'] },
+  { id:'implementaciones', label:'Implementaciones', grupos:['Implementaciones'] },
+  { id:'sin-grupo', label:'Sin grupo', grupos:[] }
+];
 
 // ==================== DATA ====================
 async function loadGrupos() {
@@ -524,6 +539,31 @@ function usrShowToast(msg, type) {
   setTimeout(function() { t.classList.remove('show'); }, 3000);
 }
 
+function switchDept(deptId) {
+  activeDeptFilter = deptId;
+  renderAll();
+}
+
+function getUserGroups(userId) {
+  return allAssignments.filter(function(a) { return a.user_id === userId; }).map(function(a) {
+    var g = allGrupos.find(function(gr) { return gr.id === a.grupo_id; });
+    return g ? g.nombre : '';
+  }).filter(function(n) { return n; });
+}
+
+function filterUsersByDept(users) {
+  if (activeDeptFilter === 'todos') return users;
+  var pill = DEPT_PILLS.find(function(p) { return p.id === activeDeptFilter; });
+  if (!pill) return users;
+  if (activeDeptFilter === 'sin-grupo') {
+    return users.filter(function(u) { return getUserGroups(u.id).length === 0; });
+  }
+  return users.filter(function(u) {
+    var uGroups = getUserGroups(u.id);
+    return pill.grupos.some(function(gName) { return uGroups.indexOf(gName) >= 0; });
+  });
+}
+
 function renderUsuariosTab() {
   var html = '';
 
@@ -541,7 +581,20 @@ function renderUsuariosTab() {
     html += '</div>';
   }
 
-  allUsers.forEach(function(user, idx) {
+  // Department pills
+  html += '<div class="dept-pills">';
+  DEPT_PILLS.forEach(function(p) {
+    var count = 0;
+    if (p.id === 'todos') { count = allUsers.length; }
+    else if (p.id === 'sin-grupo') { count = allUsers.filter(function(u) { return getUserGroups(u.id).length === 0; }).length; }
+    else { count = allUsers.filter(function(u) { var ug = getUserGroups(u.id); return p.grupos.some(function(gn) { return ug.indexOf(gn) >= 0; }); }).length; }
+    html += '<button class="dept-pill' + (activeDeptFilter === p.id ? ' active' : '') + '" onclick="switchDept(\'' + p.id + '\')">' + p.label + ' <span style="opacity:0.6;font-size:0.7rem;margin-left:2px">' + count + '</span></button>';
+  });
+  html += '</div>';
+
+  var filteredUsers = filterUsersByDept(allUsers);
+
+  filteredUsers.forEach(function(user, idx) {
     var isOpen = openCards['u_' + user.id] || false;
     var color = AVATAR_COLORS[idx % AVATAR_COLORS.length];
     var initial = (user.nombre || '?').charAt(0).toUpperCase();
@@ -622,8 +675,8 @@ function renderUsuariosTab() {
     html += '</div></div>';
   });
 
-  if (allUsers.length === 0) {
-    html += '<div class="empty">No se encontraron usuarios.</div>';
+  if (filteredUsers.length === 0) {
+    html += '<div class="empty">No hay usuarios en este departamento.</div>';
   }
 
   return html;
