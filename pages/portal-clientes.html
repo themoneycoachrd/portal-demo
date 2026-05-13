@@ -260,6 +260,42 @@ body.embed .content { padding-top:12px; }
 .pc-admin-stat { background:white; border-radius:10px; border:1px solid var(--border); padding:14px 20px; }
 .pc-admin-stat .pc-stat-val { font-size:1.4rem; font-weight:800; color:var(--navy); }
 .pc-admin-stat .pc-stat-label { font-size:0.7rem; color:var(--muted); text-transform:uppercase; letter-spacing:0.3px; font-weight:600; }
+
+/* Calendario */
+.cal-pills { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:18px; }
+.cal-legend { display:flex; gap:18px; margin-bottom:14px; flex-wrap:wrap; }
+.cal-legend-item { display:flex; align-items:center; gap:6px; font-size:0.75rem; color:var(--muted); }
+.cal-legend-dot { width:10px; height:10px; border-radius:2px; }
+.cal-sum-table { width:100%; border-collapse:collapse; font-size:0.82rem; }
+.cal-sum-table th { text-align:left; font-size:0.68rem; font-weight:700; text-transform:uppercase; letter-spacing:0.3px; color:var(--muted); padding:8px 12px; border-bottom:1px solid var(--border); }
+.cal-sum-table td { padding:10px 12px; border-bottom:1px solid var(--border); }
+.cal-sum-table tr:last-child td { border-bottom:none; }
+.cal-ob-card { background:white; border-radius:10px; border:1px solid var(--border); margin-bottom:8px; overflow:hidden; }
+.cal-ob-header { display:flex; align-items:center; justify-content:space-between; padding:10px 14px; cursor:pointer; transition:background 0.12s; }
+.cal-ob-header:hover { background:#fafbfc; }
+.cal-ob-title { font-weight:700; font-size:0.85rem; }
+.cal-ob-badge { font-size:0.68rem; padding:2px 8px; border-radius:6px; font-weight:700; background:#fce8e8; color:var(--red); }
+.cal-ob-detail { padding:0 14px 14px; }
+.cal-task-row { display:grid; grid-template-columns:1fr 70px; gap:8px; padding:7px 0; border-bottom:1px solid var(--border); font-size:0.8rem; align-items:center; }
+.cal-task-row:last-child { border-bottom:none; }
+.cal-task-date { font-size:0.75rem; font-weight:700; text-align:right; color:#b8860b; }
+.cal-tl-row { display:grid; grid-template-columns:56px 1fr; margin-bottom:2px; }
+.cal-tl-num { padding:9px 6px; text-align:center; border-radius:8px 0 0 8px; }
+.cal-tl-num-big { font-size:1.15rem; font-weight:700; line-height:1; }
+.cal-tl-num-label { font-size:0.6rem; text-transform:uppercase; letter-spacing:0.5px; font-weight:600; margin-top:2px; }
+.cal-tl-content { padding:9px 12px; border-left:2px solid; }
+.cal-tl-content h4 { font-size:0.8rem; font-weight:700; margin:0 0 2px; }
+.cal-tl-content p { font-size:0.75rem; color:var(--muted); line-height:1.5; margin:0; }
+.cal-tl-badge { display:inline-block; font-size:0.62rem; font-weight:700; padding:1px 6px; border-radius:3px; margin-right:6px; }
+.cal-tl-client .cal-tl-num { background:#fef3e0; color:#8b6914; }
+.cal-tl-client .cal-tl-content { border-left-color:#b8860b; background:rgba(254,243,224,0.3); }
+.cal-tl-client .cal-tl-badge { background:#fef3e0; color:#8b6914; }
+.cal-tl-ao .cal-tl-num { background:#e8f0fe; color:var(--blue); }
+.cal-tl-ao .cal-tl-content { border-left-color:var(--blue); background:rgba(232,240,254,0.3); }
+.cal-tl-ao .cal-tl-badge { background:#e8f0fe; color:var(--blue); }
+.cal-tl-dgii .cal-tl-num { background:#fce8e8; color:var(--red); }
+.cal-tl-dgii .cal-tl-content { border-left-color:var(--red); background:rgba(252,232,232,0.3); }
+.cal-tl-dgii .cal-tl-badge { background:#fce8e8; color:var(--red); }
 </style>
 </head>
 <body>
@@ -959,6 +995,7 @@ function renderMainTabs() {
   }
   h += '<button class="pm-main-tab' + (selectedMainTab === 'checklist' ? ' active' : '') + '" onclick="switchMainTab(\'checklist\')">Checklist</button>';
   h += '<button class="pm-main-tab' + (selectedMainTab === 'presentacion' ? ' active' : '') + '" onclick="switchMainTab(\'presentacion\')">Presentación Mensual</button>';
+  h += '<button class="pm-main-tab' + (selectedMainTab === 'calendario' ? ' active' : '') + '" onclick="switchMainTab(\'calendario\')">Calendario</button>';
   el.innerHTML = h;
 }
 
@@ -981,6 +1018,7 @@ function switchMainTab(tabId) {
   pmDetail = null;
   renderMainTabs();
   renderSubTabs();
+  renderNav();
   render();
 }
 
@@ -992,6 +1030,7 @@ function switchTab(tabId) {
 
 function renderNav() {
   var el = document.getElementById('navArea');
+  if (selectedMainTab === 'calendario') { el.innerHTML = ''; return; }
   var h = '<div class="nav-area"><div class="month-tabs">';
   MESES_KEY.forEach(function(m, i) {
     h += '<button class="month-tab' + (m === selectedMes ? ' active' : '') + '" onclick="switchMonth(\'' + m + '\')">' + MESES_LABEL[i] + '</button>';
@@ -1006,8 +1045,221 @@ function switchMonth(mes) {
   render();
 }
 
+/* ── Calendario de entregas ── */
+var calActiveView = 'resumen';
+var calActiveMes = new Date().getMonth();
+
+var OBLIGACIONES = [
+  {
+    id: 'tss', nombre: 'TSS', color: '#8b5cf6',
+    fechas: { cliente: 'Día 25*', ao: 'Día 29', dgii: 'Día 3 (mes sig.)' },
+    tareas: [
+      { t: 'Descargar nómina del cliente (Adm o archivo)', quien: 'ao' },
+      { t: 'Validar montos vs mes anterior', quien: 'ao' },
+      { t: 'Generar archivo TSS (.txt)', quien: 'ao' },
+      { t: 'Cargar archivo en SUIR', quien: 'ao' },
+      { t: 'Confirmar pago con el cliente', quien: 'cliente' },
+      { t: 'Archivar comprobante de pago', quien: 'ao' }
+    ]
+  },
+  {
+    id: 'ir3', nombre: 'IR-3', color: '#2563eb',
+    fechas: { cliente: 'Día 25*', ao: 'Día 5', dgii: 'Día 10' },
+    tareas: [
+      { t: 'Calcular retenciones del mes (607/606)', quien: 'ao' },
+      { t: 'Preparar formulario IR-3', quien: 'ao' },
+      { t: 'Presentar en DGII Virtual', quien: 'ao' },
+      { t: 'Archivar acuse de recibo', quien: 'ao' }
+    ]
+  },
+  {
+    id: 'ir17', nombre: 'IR-17', color: '#059669',
+    fechas: { cliente: 'Día 1', ao: 'Día 5', dgii: 'Día 10' },
+    tareas: [
+      { t: 'Recopilar facturas de gastos (NCF)', quien: 'cliente' },
+      { t: 'Preparar formulario IR-17', quien: 'ao' },
+      { t: 'Presentar en DGII Virtual', quien: 'ao' }
+    ]
+  },
+  {
+    id: 'anticipo', nombre: 'Anticipo ISR', color: '#d97706',
+    fechas: { cliente: '—', ao: 'Día 10', dgii: 'Día 15' },
+    tareas: [
+      { t: 'Calcular anticipo según última declaración IR-2', quien: 'ao' },
+      { t: 'Presentar formulario de anticipo', quien: 'ao' },
+      { t: 'Confirmar pago con el cliente', quien: 'cliente' }
+    ]
+  },
+  {
+    id: 'itbis', nombre: 'ITBIS', color: '#dc2626',
+    fechas: { cliente: 'Día 1', ao: 'Día 15', dgii: 'Día 20' },
+    tareas: [
+      { t: 'Cargar estados de cuenta bancarios', quien: 'cliente' },
+      { t: 'Recopilar facturas de ventas y compras', quien: 'cliente' },
+      { t: 'Registrar ingresos en Adm', quien: 'ao' },
+      { t: 'Registrar gastos y comprobantes', quien: 'ao' },
+      { t: 'Cuadrar ITBIS cobrado vs pagado', quien: 'ao' },
+      { t: 'Preparar formulario IT-1', quien: 'ao' },
+      { t: 'Presentar en DGII Virtual', quien: 'ao' },
+      { t: 'Archivar acuse y notificar al cliente', quien: 'ao' }
+    ]
+  }
+];
+
+var MESES_CORTO = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+
+function renderCalendario() {
+  var h = '';
+  h += '<div class="cal-pills">';
+  var views = [
+    { id: 'resumen', label: 'Resumen' },
+    { id: 'tareas', label: 'Tareas por obligación' },
+    { id: 'mes', label: 'Vista mensual' }
+  ];
+  views.forEach(function(v) {
+    h += '<button class="month-tab' + (calActiveView === v.id ? ' active' : '') + '" onclick="calSwitchView(\'' + v.id + '\')">' + v.label + '</button>';
+  });
+  h += '</div>';
+  if (calActiveView === 'resumen') h += renderCalResumen();
+  else if (calActiveView === 'tareas') h += renderCalTareas();
+  else h += renderCalMes();
+  return h;
+}
+
+function calSwitchView(v) { calActiveView = v; render(); }
+function calSwitchMes(m) { calActiveMes = m; render(); }
+
+function renderCalResumen() {
+  var h = '';
+  h += '<div class="cal-legend">';
+  h += '<div class="cal-legend-item"><div class="cal-legend-dot" style="background:#b8860b"></div>Cliente entrega</div>';
+  h += '<div class="cal-legend-item"><div class="cal-legend-dot" style="background:var(--blue)"></div>Account One procesa</div>';
+  h += '<div class="cal-legend-item"><div class="cal-legend-dot" style="background:var(--red)"></div>Límite DGII</div>';
+  h += '</div>';
+  h += '<div style="background:white; border-radius:12px; border:1px solid var(--border); overflow:hidden;">';
+  h += '<table class="cal-sum-table">';
+  h += '<thead><tr><th>Obligación</th><th>Cliente entrega</th><th>AO procesa</th><th>Límite DGII</th><th>Tareas</th></tr></thead>';
+  h += '<tbody>';
+  OBLIGACIONES.forEach(function(ob) {
+    h += '<tr>';
+    h += '<td><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:' + ob.color + ';margin-right:8px;vertical-align:middle;"></span><strong>' + ob.nombre + '</strong></td>';
+    h += '<td style="color:#b8860b;font-weight:600;">' + ob.fechas.cliente + '</td>';
+    h += '<td style="color:var(--blue);font-weight:600;">' + ob.fechas.ao + '</td>';
+    h += '<td style="color:var(--red);font-weight:600;">' + ob.fechas.dgii + '</td>';
+    h += '<td>' + ob.tareas.length + '</td>';
+    h += '</tr>';
+  });
+  h += '</tbody></table></div>';
+  h += '<p style="font-size:0.72rem;color:var(--muted);margin-top:10px;">* Las fechas con asterisco son sugeridas para garantizar el procesamiento a tiempo.</p>';
+  return h;
+}
+
+function renderCalTareas() {
+  var h = '';
+  OBLIGACIONES.forEach(function(ob) {
+    h += '<div class="cal-ob-card">';
+    h += '<div class="cal-ob-header" onclick="calToggleOb(\'' + ob.id + '\')">';
+    h += '<div class="cal-ob-title"><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:' + ob.color + ';margin-right:8px;vertical-align:middle;"></span>' + ob.nombre + '</div>';
+    h += '<div style="display:flex;align-items:center;gap:10px;">';
+    h += '<div class="cal-ob-badge">' + ob.tareas.length + ' tareas</div>';
+    h += '<span class="cal-ob-arrow" id="calArrow_' + ob.id + '" style="font-size:0.7rem;color:var(--muted);transition:transform 0.15s;">▼</span>';
+    h += '</div></div>';
+    h += '<div class="cal-ob-detail" id="calDetail_' + ob.id + '" style="display:none;">';
+    ob.tareas.forEach(function(tk, i) {
+      var quienLabel = tk.quien === 'cliente' ? '<span style="color:#b8860b;font-weight:600;">Cliente</span>' : '<span style="color:var(--blue);font-weight:600;">AO</span>';
+      h += '<div class="cal-task-row">';
+      h += '<div>' + (i + 1) + '. ' + tk.t + '</div>';
+      h += '<div style="text-align:right;">' + quienLabel + '</div>';
+      h += '</div>';
+    });
+    h += '</div></div>';
+  });
+  return h;
+}
+
+var calOpenObs = {};
+function calToggleOb(id) {
+  var det = document.getElementById('calDetail_' + id);
+  var arrow = document.getElementById('calArrow_' + id);
+  if (!det) return;
+  if (det.style.display === 'none') {
+    det.style.display = 'block';
+    arrow.style.transform = 'rotate(180deg)';
+    calOpenObs[id] = true;
+  } else {
+    det.style.display = 'none';
+    arrow.style.transform = '';
+    calOpenObs[id] = false;
+  }
+}
+
+function renderCalMes() {
+  var h = '';
+  h += '<div class="cal-pills">';
+  MESES_CORTO.forEach(function(m, i) {
+    h += '<button class="month-tab' + (calActiveMes === i ? ' active' : '') + '" onclick="calSwitchMes(' + i + ')">' + m + '</button>';
+  });
+  h += '</div>';
+  h += '<div class="cal-legend">';
+  h += '<div class="cal-legend-item"><div class="cal-legend-dot" style="background:#b8860b"></div>Cliente</div>';
+  h += '<div class="cal-legend-item"><div class="cal-legend-dot" style="background:var(--blue)"></div>Account One</div>';
+  h += '<div class="cal-legend-item"><div class="cal-legend-dot" style="background:var(--red)"></div>DGII</div>';
+  h += '</div>';
+
+  var events = [];
+  OBLIGACIONES.forEach(function(ob) {
+    var entries = [
+      { key: 'cliente', label: ob.nombre + ' — Cliente entrega', cssClass: 'cal-tl-client' },
+      { key: 'ao', label: ob.nombre + ' — Account One procesa', cssClass: 'cal-tl-ao' },
+      { key: 'dgii', label: ob.nombre + ' — Límite DGII', cssClass: 'cal-tl-dgii' }
+    ];
+    entries.forEach(function(e) {
+      var raw = ob.fechas[e.key];
+      if (raw === '—') return;
+      var dayMatch = raw.match(/\d+/);
+      if (!dayMatch) return;
+      var day = parseInt(dayMatch[0]);
+      var isSig = raw.indexOf('sig.') !== -1;
+      var mesLabel = isSig ? MESES_CORTO[(calActiveMes + 1) % 12] : MESES_CORTO[calActiveMes];
+      events.push({ day: isSig ? day + 31 : day, dayDisplay: day, mesLabel: mesLabel, label: e.label, cssClass: e.cssClass, color: ob.color, obNombre: ob.nombre, tipo: e.key });
+    });
+  });
+  events.sort(function(a, b) { return a.day - b.day; });
+
+  var grouped = [];
+  var lastKey = '';
+  events.forEach(function(ev) {
+    var key = ev.dayDisplay + '_' + ev.mesLabel;
+    if (key !== lastKey) { grouped.push({ day: ev.dayDisplay, mes: ev.mesLabel, items: [ev] }); lastKey = key; }
+    else { grouped[grouped.length - 1].items.push(ev); }
+  });
+
+  grouped.forEach(function(g) {
+    g.items.forEach(function(ev, idx) {
+      h += '<div class="cal-tl-row ' + ev.cssClass + '">';
+      if (idx === 0) {
+        h += '<div class="cal-tl-num"><div class="cal-tl-num-big">' + g.day + '</div><div class="cal-tl-num-label">' + g.mes + '</div></div>';
+      } else {
+        h += '<div class="cal-tl-num" style="background:transparent;"></div>';
+      }
+      h += '<div class="cal-tl-content">';
+      var tipoLabel = ev.tipo === 'cliente' ? 'CLIENTE' : (ev.tipo === 'ao' ? 'ACCOUNT ONE' : 'DGII');
+      h += '<h4><span class="cal-tl-badge">' + tipoLabel + '</span>' + ev.obNombre + '</h4>';
+      var desc = ev.tipo === 'cliente' ? 'El cliente debe enviar la documentación requerida' : (ev.tipo === 'ao' ? 'Account One procesa y prepara la declaración' : 'Fecha límite para presentar ante la DGII');
+      h += '<p>' + desc + '</p>';
+      h += '</div></div>';
+    });
+  });
+  return h;
+}
+
 function render() {
   var el = document.getElementById('content');
+
+  if (selectedMainTab === 'calendario') {
+    el.innerHTML = renderCalendario();
+    return;
+  }
 
   if (selectedMainTab === 'presentacion') {
     renderPresentacion(el);
