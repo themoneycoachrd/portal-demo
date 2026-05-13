@@ -1229,64 +1229,80 @@ function renderCalMes() {
   });
   h += '</div>';
 
-  h += '<div class="cal-legend">';
-  h += '<div class="cal-legend-item"><div class="cal-legend-dot" style="background:#b8860b"></div>Cliente</div>';
-  h += '<div class="cal-legend-item"><div class="cal-legend-dot" style="background:var(--blue)"></div>Account One</div>';
-  h += '<div class="cal-legend-item"><div class="cal-legend-dot" style="background:var(--red)"></div>DGII</div>';
-  h += '</div>';
+  var mesNombre = MESES_CORTO[calActiveMes];
+  var mesSig = MESES_CORTO[(calActiveMes + 1) % 12];
 
-  var events = [];
+  // Collect tasks by perspective
+  var clienteTasks = [];
+  var aoTasks = [];
   OBLIGACIONES.forEach(function(ob) {
-    var entries = [
-      { key: 'cliente', label: ob.nombre + ' — Cliente entrega', cssClass: 'cal-tl-client' },
-      { key: 'ao', label: ob.nombre + ' — Account One procesa', cssClass: 'cal-tl-ao' },
-      { key: 'dgii', label: ob.nombre + ' — Límite DGII', cssClass: 'cal-tl-dgii' }
-    ];
-    entries.forEach(function(e) {
-      var raw = ob.fechas[e.key];
-      if (raw === '—') return;
-      var dayMatch = raw.match(/\d+/);
-      if (!dayMatch) return;
-      var day = parseInt(dayMatch[0]);
-      var isSig = raw.indexOf('sig.') !== -1;
-      var mesLabel = isSig ? MESES_CORTO[(calActiveMes + 1) % 12] : MESES_CORTO[calActiveMes];
-      events.push({
-        day: isSig ? day + 31 : day,
-        dayDisplay: day,
-        mesLabel: mesLabel,
-        cssClass: e.cssClass,
-        obNombre: ob.nombre,
-        tipo: e.key
+    ob.tareas.forEach(function(tk) {
+      var dayMatch = tk.fecha.match(/\d+/);
+      var sortDay = dayMatch ? parseInt(dayMatch[0]) : 99;
+      var entry = { ob: ob.nombre, t: tk.t, fecha: tk.fecha, nota: tk.nota, sortDay: sortDay };
+      if (tk.quien === 'cliente') clienteTasks.push(entry);
+      else aoTasks.push(entry);
+    });
+  });
+  clienteTasks.sort(function(a, b) { return a.sortDay - b.sortDay; });
+  aoTasks.sort(function(a, b) { return a.sortDay - b.sortDay; });
+
+  // DGII deadlines
+  var dgiiTasks = [];
+  OBLIGACIONES.forEach(function(ob) {
+    var raw = ob.fechas.dgii;
+    var dayMatch = raw.match(/\d+/);
+    if (!dayMatch) return;
+    var day = parseInt(dayMatch[0]);
+    var isSig = raw.indexOf('sig.') !== -1;
+    dgiiTasks.push({ ob: ob.nombre, fecha: raw, sortDay: isSig ? day + 31 : day });
+  });
+  dgiiTasks.sort(function(a, b) { return a.sortDay - b.sortDay; });
+
+  // Helper: group tasks by sortDay
+  function groupByDay(tasks) {
+    var groups = [];
+    var last = -1;
+    tasks.forEach(function(tk) {
+      if (tk.sortDay !== last) { groups.push({ day: tk.sortDay, items: [tk] }); last = tk.sortDay; }
+      else { groups[groups.length - 1].items.push(tk); }
+    });
+    return groups;
+  }
+
+  // Helper: render a perspective section
+  function renderSection(title, color, bgLight, tasks, isDgii) {
+    var s = '';
+    s += '<div style="background:white;border-radius:12px;border:1px solid var(--border);overflow:hidden;margin-bottom:16px;">';
+    s += '<div style="padding:12px 16px;background:' + bgLight + ';border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;">';
+    s += '<div style="width:10px;height:10px;border-radius:2px;background:' + color + ';"></div>';
+    s += '<strong style="font-size:0.88rem;">' + title + '</strong>';
+    s += '</div>';
+    var groups = groupByDay(tasks);
+    groups.forEach(function(g) {
+      s += '<div style="display:flex;border-bottom:1px solid #f1f5f9;">';
+      s += '<div style="width:56px;padding:10px 6px;text-align:center;flex-shrink:0;background:' + bgLight + ';">';
+      s += '<div style="font-size:1.1rem;font-weight:700;color:' + color + ';line-height:1;">' + g.day + '</div>';
+      s += '<div style="font-size:0.6rem;text-transform:uppercase;font-weight:600;color:' + color + ';margin-top:2px;">' + mesNombre + '</div>';
+      s += '</div>';
+      s += '<div style="flex:1;padding:8px 14px;">';
+      g.items.forEach(function(tk) {
+        if (isDgii) {
+          s += '<div style="font-size:0.82rem;padding:2px 0;"><strong>' + tk.ob + '</strong> <span style="color:var(--muted);font-size:0.75rem;">— ' + tk.fecha + '</span></div>';
+        } else {
+          s += '<div style="font-size:0.82rem;padding:2px 0;"><span style="color:var(--muted);font-size:0.72rem;margin-right:6px;">' + tk.ob + '</span>' + tk.t + '</div>';
+          if (tk.nota) s += '<div style="font-size:0.72rem;color:var(--amber);padding:0 0 2px;">⚠ ' + tk.nota + '</div>';
+        }
       });
+      s += '</div></div>';
     });
-  });
+    s += '</div>';
+    return s;
+  }
 
-  events.sort(function(a, b) { return a.day - b.day; });
-
-  var grouped = [];
-  var lastKey = '';
-  events.forEach(function(ev) {
-    var key = ev.dayDisplay + '_' + ev.mesLabel;
-    if (key !== lastKey) { grouped.push({ day: ev.dayDisplay, mes: ev.mesLabel, items: [ev] }); lastKey = key; }
-    else { grouped[grouped.length - 1].items.push(ev); }
-  });
-
-  grouped.forEach(function(g) {
-    g.items.forEach(function(ev, idx) {
-      h += '<div class="cal-tl-row ' + ev.cssClass + '">';
-      if (idx === 0) {
-        h += '<div class="cal-tl-num"><div class="cal-tl-num-big">' + g.day + '</div><div class="cal-tl-num-label">' + g.mes + '</div></div>';
-      } else {
-        h += '<div class="cal-tl-num" style="background:transparent;"></div>';
-      }
-      h += '<div class="cal-tl-content">';
-      var tipoLabel = ev.tipo === 'cliente' ? 'CLIENTE' : (ev.tipo === 'ao' ? 'ACCOUNT ONE' : 'DGII');
-      h += '<h4><span class="cal-tl-badge">' + tipoLabel + '</span>' + ev.obNombre + '</h4>';
-      var desc = ev.tipo === 'cliente' ? 'El cliente debe enviar la documentación requerida' : (ev.tipo === 'ao' ? 'Account One procesa y prepara la declaración' : 'Fecha límite para presentar ante la DGII');
-      h += '<p>' + desc + '</p>';
-      h += '</div></div>';
-    });
-  });
+  h += renderSection('El mes del cliente', '#b8860b', '#fef8ee', clienteTasks, false);
+  h += renderSection('El mes de Account One', 'var(--blue)', '#eef2fe', aoTasks, false);
+  h += renderSection('Fechas límite DGII', 'var(--red)', '#fef0f0', dgiiTasks, true);
 
   return h;
 }
