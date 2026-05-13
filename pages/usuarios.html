@@ -299,7 +299,7 @@ function tengoPermiso(modId, scrId, habId, subtabId) {
 // ==================== STATE ====================
 var userRole = null;
 var userName = '';
-var activeTab = 'grupos';
+var activeTab = 'usuarios';
 var allGrupos = [];
 var allUsers = [];
 var allAssignments = []; // {user_id, grupo_id}
@@ -396,8 +396,8 @@ async function renderApp() {
 
   // Tabs
   html += '<div class="tabs">';
-  html += '<button class="tab' + (activeTab === 'grupos' ? ' active' : '') + '" onclick="switchTab(\'grupos\')">Grupos</button>';
   html += '<button class="tab' + (activeTab === 'usuarios' ? ' active' : '') + '" onclick="switchTab(\'usuarios\')">Usuarios</button>';
+  html += '<button class="tab' + (activeTab === 'grupos' ? ' active' : '') + '" onclick="switchTab(\'grupos\')">Grupos</button>';
   html += '</div>';
 
   if (activeTab === 'grupos') {
@@ -541,7 +541,7 @@ function usrShowToast(msg, type) {
 
 function switchDept(deptId) {
   activeDeptFilter = deptId;
-  renderAll();
+  renderApp();
 }
 
 function getUserGroups(userId) {
