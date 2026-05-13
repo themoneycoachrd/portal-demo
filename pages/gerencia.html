@@ -3732,6 +3732,29 @@ async function clSaveClient() {
 
   btn.disabled = false; btn.textContent = 'Guardar';
 
+  // Auto-crear checklist de implementación si aplica
+  var servicioImpl = record.servicio_impl || '';
+  if (servicioImpl) {
+    var crearFE = servicioImpl.indexOf('Facturación Electrónica') !== -1;
+    var crearAdm = servicioImpl.indexOf('Implementación Adm') !== -1 && servicioImpl.indexOf('Facturación Electrónica') === -1
+      ? true
+      : servicioImpl.indexOf('Adm + Facturación') !== -1 || servicioImpl.indexOf('Adm +') !== -1;
+    // Corregir: si dice "Implementación Adm" (solo) o "Implementación Adm + Facturación Electrónica"
+    crearAdm = servicioImpl.indexOf('Adm') !== -1;
+
+    if (crearFE) {
+      var existFE = await sb.from('impl_checklist_fe').select('id').eq('cliente', nombre);
+      if (!existFE.data || existFE.data.length === 0) {
+        var datosFE = {};
+        for (var fi = 1; fi <= 15; fi++) { datosFE['paso_' + fi] = { done: false, fecha: '' }; }
+        var resFE = await sb.from('impl_checklist_fe').insert({ cliente: nombre, implementadora: null, datos: datosFE });
+        if (!resFE.error) gerShowToast('Checklist FE creado para ' + nombre, 'success');
+        else console.error('Error creando checklist FE:', resFE.error);
+      }
+    }
+    // TODO: cuando exista impl_checklist_adm, crear aquí si crearAdm es true
+  }
+
   var wasEditing = !!clEditingId;
   clCloseModal();
   await bdLoadClientes();

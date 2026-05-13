@@ -498,7 +498,7 @@ function renderList(el) {
 
   // Add button
   if (canEdit()) {
-    html += '<div class="add-bar"><button class="btn-add" onclick="openAddModal()">+ Agregar cliente</button></div>';
+    html += '<div class="add-bar"><button class="btn-add" onclick="openAddModal()">+ Agregar checklist</button></div>';
   }
 
   // Client table
@@ -725,7 +725,7 @@ function openAddModal() {
   }
 
   overlay.innerHTML = '<div class="modal-box">' +
-    '<h3>Agregar cliente</h3>' +
+    '<h3>Agregar checklist</h3>' +
     '<div class="field"><label>Cliente</label><input type="text" id="add-cliente" placeholder="Nombre del cliente"></div>' +
     '<div class="field"><label>Implementadora</label><select id="add-impl">' + optionsHtml + '</select></div>' +
     '<div class="modal-btns">' +
