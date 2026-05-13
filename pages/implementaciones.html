@@ -115,11 +115,22 @@ body { font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-se
 .client-card-pct { font-size:12px; font-weight:700; min-width:36px; text-align:right; }
 .client-card-count { font-size:11px; color:var(--muted); margin-top:4px; }
 
-/* ─── Notas ─── */
-.detail-notas { margin-top:16px; }
-.detail-notas label { display:block; font-size:0.72rem; font-weight:700; text-transform:uppercase; letter-spacing:0.4px; color:var(--muted); margin-bottom:6px; }
-.detail-notas textarea { width:100%; min-height:70px; padding:10px 14px; border:1px solid var(--border); border-radius:10px; font-size:0.85rem; font-family:inherit; background:#fafbfc; resize:vertical; }
-.detail-notas textarea:focus { outline:none; border-color:var(--blue); box-shadow:0 0 0 3px rgba(67,97,238,0.1); background:white; }
+/* ─── Nota icon ─── */
+.nota-btn { background:none; border:none; cursor:pointer; padding:2px 4px; font-size:14px; color:var(--light); transition:color 0.2s; }
+.nota-btn:hover { color:var(--blue); }
+.nota-btn.has-nota { color:var(--blue); }
+
+/* ─── Modal nota ─── */
+.nota-overlay { position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.4); z-index:9000; display:flex; align-items:center; justify-content:center; }
+.nota-modal { background:white; border-radius:12px; padding:24px; width:90%; max-width:420px; box-shadow:0 8px 32px rgba(0,0,0,0.18); }
+.nota-modal h3 { font-size:14px; font-weight:700; margin-bottom:4px; }
+.nota-modal .nota-sub { font-size:12px; color:var(--muted); margin-bottom:12px; }
+.nota-modal textarea { width:100%; height:100px; border:1px solid var(--border); border-radius:8px; padding:10px; font-size:13px; font-family:inherit; resize:vertical; }
+.nota-modal textarea:focus { outline:none; border-color:var(--blue); }
+.nota-modal-btns { display:flex; gap:8px; justify-content:flex-end; margin-top:12px; }
+.nota-modal-btns button { padding:8px 16px; border-radius:8px; font-size:12px; font-weight:600; cursor:pointer; font-family:inherit; border:1px solid var(--border); }
+.nota-modal-btns .btn-cancel { background:white; color:var(--muted); }
+.nota-modal-btns .btn-save { background:var(--blue); color:white; border-color:var(--blue); }
 
 /* ─── Detail view ─── */
 .detail-header { display:flex; align-items:center; gap:12px; margin-bottom:16px; }
@@ -355,7 +366,7 @@ var viewMode = 'table'; // 'table' or 'cards'
 var currentCliente = null;
 var allRows = [];
 var localEdits = {};
-var localNotas = '';
+var notaCtx = null;
 
 // ==================== HELPERS ====================
 function todayStr() {
@@ -611,16 +622,15 @@ function openDetail(cliente) {
   currentCliente = allRows.find(function(r) { return r.cliente === cliente; });
   if (!currentCliente) return;
   localEdits = {};
-  localNotas = currentCliente.notas || '';
-  // Copy current datos into localEdits
+  // Copy current datos into localEdits (including nota)
   var datos = currentCliente.datos || {};
   for (var i = 0; i < FE_ITEMS.length; i++) {
     var item = FE_ITEMS[i];
     var val = datos[item.id];
     if (val) {
-      localEdits[item.id] = { done: val.done, fecha: val.fecha || '' };
+      localEdits[item.id] = { done: val.done, fecha: val.fecha || '', nota: val.nota || '' };
     } else {
-      localEdits[item.id] = { done: false, fecha: '' };
+      localEdits[item.id] = { done: false, fecha: '', nota: '' };
     }
   }
   render();
@@ -660,7 +670,7 @@ function renderDetail(el) {
 
   // Checklist table
   html += '<table class="check-table"><thead><tr>';
-  html += '<th>#</th><th>Tarea</th><th>Responsable</th><th class="center">Estado</th><th class="center">Fecha</th>';
+  html += '<th>#</th><th>Tarea</th><th>Responsable</th><th class="center">Estado</th><th class="center">Fecha</th><th style="width:40px" class="center">Nota</th>';
   html += '</tr></thead><tbody>';
 
   var lastGroup = '';
@@ -676,7 +686,7 @@ function renderDetail(el) {
         var respLabel = grp.responsable ? grp.responsable : implName;
         groupLabel += ' — ' + respLabel;
       }
-      html += '<tr class="group-row"><td colspan="5">' + groupLabel + '</td></tr>';
+      html += '<tr class="group-row"><td colspan="6">' + groupLabel + '</td></tr>';
       lastGroup = groupKey;
     }
 
@@ -712,20 +722,15 @@ function renderDetail(el) {
     // Fecha column
     html += '<td class="center">' + formatDateShort(val.fecha) + '</td>';
 
+    // Nota column
+    var notaVal = val.nota || '';
+    var notaClass = notaVal ? 'nota-btn has-nota' : 'nota-btn';
+    html += '<td class="center"><button class="' + notaClass + '" title="' + (notaVal ? 'Ver/editar nota' : 'Agregar nota') + '" onclick="openNotaModal(\'' + item.id + '\',\'' + esc(item.label) + '\')">&#9998;</button></td>';
+
     html += '</tr>';
   }
 
   html += '</tbody></table>';
-
-  // Notas
-  html += '<div class="detail-notas">';
-  html += '<label>Notas</label>';
-  if (canEdit()) {
-    html += '<textarea id="detail-notas-field" placeholder="Notas sobre esta implementación..." onchange="localNotas=this.value">' + (localNotas || '').replace(/</g, '&lt;') + '</textarea>';
-  } else {
-    html += '<div style="font-size:0.85rem;color:var(--muted);padding:10px 0">' + (localNotas || 'Sin notas') + '</div>';
-  }
-  html += '</div>';
 
   el.innerHTML = html;
 }
@@ -740,7 +745,8 @@ function toggleItem(itemId, value) {
 
   localEdits[itemId] = {
     done: value,
-    fecha: (value === true || value === 'na') ? todayStr() : ''
+    fecha: (value === true || value === 'na') ? todayStr() : '',
+    nota: current.nota || ''
   };
 
   // Re-render detail
@@ -754,22 +760,17 @@ async function saveChecklist() {
   var btn = document.getElementById('btn-save');
   if (btn) btn.disabled = true;
 
-  // Leer notas del textarea
-  var notasField = document.getElementById('detail-notas-field');
-  if (notasField) localNotas = notasField.value;
-
   var newDatos = {};
   for (var i = 0; i < FE_ITEMS.length; i++) {
     var item = FE_ITEMS[i];
-    var val = localEdits[item.id] || { done: false, fecha: '' };
-    newDatos[item.id] = { done: val.done, fecha: val.fecha };
+    var val = localEdits[item.id] || { done: false, fecha: '', nota: '' };
+    newDatos[item.id] = { done: val.done, fecha: val.fecha, nota: val.nota || '' };
   }
 
   var res = await sb.from('impl_checklist_fe').upsert({
     cliente: currentCliente.cliente,
     implementadora: currentCliente.implementadora,
     datos: newDatos,
-    notas: localNotas || null,
     updated_at: new Date().toISOString()
   }, { onConflict: 'cliente' });
 
@@ -784,9 +785,8 @@ async function saveChecklist() {
 
   // Update local data
   currentCliente.datos = newDatos;
-  currentCliente.notas = localNotas || null;
   var idx = allRows.findIndex(function(r) { return r.cliente === currentCliente.cliente; });
-  if (idx >= 0) { allRows[idx].datos = newDatos; allRows[idx].notas = localNotas || null; }
+  if (idx >= 0) allRows[idx].datos = newDatos;
 
   showToast('Cambios guardados');
 }
@@ -854,6 +854,45 @@ async function saveNewClient() {
   closeAddModal();
   await loadData();
   render();
+}
+
+// ==================== NOTAS POR TAREA ====================
+function openNotaModal(itemId, label) {
+  var val = localEdits[itemId] || { done: false, fecha: '', nota: '' };
+  notaCtx = itemId;
+
+  var overlay = document.createElement('div');
+  overlay.className = 'nota-overlay';
+  overlay.id = 'nota-overlay';
+  overlay.onclick = function(e) { if (e.target === overlay) closeNotaModal(); };
+
+  overlay.innerHTML = '<div class="nota-modal">'
+    + '<h3>' + label + '</h3>'
+    + '<div class="nota-sub">Nota / novedad de este paso</div>'
+    + '<textarea id="nota-textarea" placeholder="Escribe la nota aquí...">' + (val.nota || '') + '</textarea>'
+    + '<div class="nota-modal-btns">'
+    + '<button class="btn-cancel" onclick="closeNotaModal()">Cancelar</button>'
+    + '<button class="btn-save" onclick="saveNotaImpl()">Guardar</button>'
+    + '</div></div>';
+
+  document.body.appendChild(overlay);
+  document.getElementById('nota-textarea').focus();
+}
+
+function closeNotaModal() {
+  var el = document.getElementById('nota-overlay');
+  if (el) el.remove();
+  notaCtx = null;
+}
+
+function saveNotaImpl() {
+  if (!notaCtx) return;
+  var txt = document.getElementById('nota-textarea').value.trim();
+  if (localEdits[notaCtx]) {
+    localEdits[notaCtx].nota = txt;
+  }
+  closeNotaModal();
+  renderDetail(document.getElementById('content'));
 }
 
 // ==================== INIT ====================
