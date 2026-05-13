@@ -1144,18 +1144,18 @@ var MESES_CORTO = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','
 var TIMELINE_ENTRIES = [
   { day: 25, periodo: 'mes', tipo: 'cliente', label: 'MES ANT.', titulo: 'Nómina y documentos de personal', desc: 'Enviar nómina, volantes de pago, novedades (altas, bajas, cambios). Esto cubre TSS e IR-3.' },
   { day: 29, periodo: 'mes', tipo: 'ao', label: 'FIRMA', titulo: 'Procesamiento de TSS', desc: 'Con la nómina recibida, Account One prepara la autodeterminación de la TSS.' },
-  { day: 30, periodo: 'mes', tipo: 'cliente', label: 'MES ANT.', titulo: 'Volantes de nómina y facturas en Adm', desc: 'Cargar volantes de pago de nómina (TSS). Cargar todas las facturas del mes en Adm y Excel con facturas (ITBIS).' },
-  { day: 1, periodo: 'sig', tipo: 'cliente', label: 'DEL MES', titulo: 'Documentación de informales', desc: 'Informar si hubo pagos a informales, cargar Excel de pagos informales y volantes de pago (IR-17).' },
-  { day: 1, periodo: 'sig', tipo: 'ao', label: 'FIRMA', titulo: 'Pago de TSS y autorización de anticipo', desc: 'Recibir autorización y pagar la TSS. Recibir la autorización de pago de anticipo ISR.' },
-  { day: 3, periodo: 'sig', tipo: 'dgii', label: 'LÍMITE', titulo: 'Fecha límite TSS', desc: 'Presentación y pago de la Seguridad Social vía SUIR.' },
-  { day: 5, periodo: 'sig', tipo: 'cliente', label: 'DEL MES', titulo: 'Estados de cuenta y tope de facturas', desc: 'Cargar estados de cuenta bancarios. Confirmar si habrá facturas atrasadas. No se reciben facturas posteriores al día 5.' },
-  { day: 5, periodo: 'sig', tipo: 'ao', label: 'FIRMA', titulo: 'Borrador IR-3 e IR-17 listo', desc: 'La contadora prepara las retenciones con la documentación recibida y las envía para aprobación.' },
-  { day: 10, periodo: 'sig', tipo: 'dgii', label: 'LÍMITE', titulo: 'Fecha límite IR-3 e IR-17', desc: 'Presentación y pago de retenciones de asalariados y otras retenciones.' },
-  { day: 10, periodo: 'sig', tipo: 'ao', label: 'FIRMA', titulo: 'Envío de monto anticipo ISR', desc: 'Account One calcula y envía el monto del anticipo. El cliente solo confirma.' },
-  { day: 15, periodo: 'sig', tipo: 'dgii', label: 'LÍMITE', titulo: 'Fecha límite anticipo ISR', desc: 'Pago del anticipo mensual del impuesto sobre la renta.' },
-  { day: 15, periodo: 'sig', tipo: 'ao', label: 'FIRMA', titulo: 'Borrador ITBIS + formatos 606/607', desc: 'Declaración y formatos listos para aprobación final del cliente.' },
-  { day: 20, periodo: 'sig', tipo: 'cliente', label: 'DEL MES', titulo: 'Aprobación y pago de ITBIS', desc: 'Aprobar el borrador de ITBIS y realizar el pago a más tardar el día 20.' },
-  { day: 20, periodo: 'sig', tipo: 'dgii', label: 'LÍMITE', titulo: 'Fecha límite ITBIS', desc: 'Declaración IT-1, pago del ITBIS y envío de formatos 606/607.' }
+  { day: 30, periodo: 'mes', tipo: 'ao', label: 'FIRMA', titulo: 'Procesamiento de todas las facturas del mes', desc: 'Registrar todas las facturas recibidas en Adm con proveedor y cuenta contable.' },
+  { day: 30, periodo: 'mes', tipo: 'cliente', label: 'MES ANT.', titulo: 'Volantes de nómina y facturas en Basecamp', desc: 'Cargar volantes de pago de nómina (TSS). Cargar todas las facturas del mes en Basecamp y Excel con facturas (ITBIS).' },
+  { day: 1, periodo: 'sig', tipo: 'cliente', label: 'DEL MES', titulo: 'Documentación de proveedores informales', desc: 'Informar si hubo pagos a informales, cargar Excel de pagos informales y volantes de pago (IR-17).' },
+  { day: 1, periodo: 'sig', tipo: 'ao', label: 'FIRMA', titulo: 'Subir autorización de TSS y autorización de anticipo', desc: 'Enviar al cliente la autorización de pago de TSS y la autorización de pago de anticipo ISR.' },
+  { day: 3, periodo: 'sig', tipo: 'dgii', label: 'LÍMITE', titulo: 'Fecha límite de pago de TSS', desc: 'Presentación y pago de la Seguridad Social vía SUIR.' },
+  { day: 5, periodo: 'sig', tipo: 'cliente', label: 'DEL MES', titulo: 'Estados de cuenta bancarios y día tope para entrega de facturas del mes anterior', desc: 'Cargar estados de cuenta bancarios. Confirmar si habrá facturas atrasadas. No se reciben facturas posteriores al día 5.' },
+  { day: 5, periodo: 'sig', tipo: 'ao', label: 'FIRMA', titulo: 'Subir borrador de IR-17', desc: 'La contadora prepara el borrador de IR-17 con la documentación recibida y lo envía para aprobación del cliente.' },
+  { day: 10, periodo: 'sig', tipo: 'dgii', label: 'LÍMITE', titulo: 'Fecha límite de pago IR-3 e IR-17', desc: 'Presentación y pago de retenciones de asalariados y otras retenciones.' },
+  { day: 15, periodo: 'sig', tipo: 'dgii', label: 'LÍMITE', titulo: 'Fecha límite de pago anticipo ISR', desc: 'Pago del anticipo mensual del impuesto sobre la renta.' },
+  { day: 15, periodo: 'sig', tipo: 'ao', label: 'FIRMA', titulo: 'Enviar borrador ITBIS', desc: 'Declaración ITBIS y formatos 606/607 listos para aprobación final del cliente.' },
+  { day: 18, periodo: 'sig', tipo: 'cliente', label: 'DEL MES', titulo: 'Aprobación de borrador y pago de ITBIS', desc: 'Aprobar el borrador de ITBIS y realizar el pago antes de la fecha límite.' },
+  { day: 20, periodo: 'sig', tipo: 'dgii', label: 'LÍMITE', titulo: 'Fecha límite de pago de ITBIS', desc: 'Declaración IT-1, pago del ITBIS y envío de formatos 606/607.' }
 ];
 
 function renderCalendario() {
