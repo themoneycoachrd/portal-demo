@@ -1132,32 +1132,33 @@ function renderCalResumen() {
   h += '</div>';
 
   h += '<div style="background:white; border-radius:12px; border:1px solid var(--border); overflow:hidden;">';
-  h += '<table class="cal-sum-table">';
-  h += '<thead><tr><th>Obligación</th><th>Cliente entrega</th><th>AO procesa</th><th>Límite DGII</th><th>Tareas</th></tr></thead>';
+  h += '<table class="cal-sum-table" style="table-layout:fixed;">';
+  h += '<colgroup><col style="width:40%"><col style="width:16%"><col style="width:16%"><col style="width:16%"><col style="width:12%"></colgroup>';
+  h += '<thead><tr><th>Obligación</th><th style="text-align:center;">Cliente entrega</th><th style="text-align:center;">AO procesa</th><th style="text-align:center;">Límite DGII</th><th style="text-align:center;">Tareas</th></tr></thead>';
   h += '<tbody>';
   OBLIGACIONES.forEach(function(ob) {
     var isOpen = calOpenObs[ob.id];
     h += '<tr onclick="calToggleRes(\'' + ob.id + '\')" style="cursor:pointer;transition:background 0.12s;" onmouseover="this.style.background=\'#fafbfc\'" onmouseout="this.style.background=\'\'">';
     h += '<td><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:' + ob.color + ';margin-right:8px;vertical-align:middle;"></span><strong>' + ob.nombre + '</strong> <span id="calChev_' + ob.id + '" style="font-size:0.65rem;color:var(--muted);transition:transform 0.15s;display:inline-block;' + (isOpen ? 'transform:rotate(180deg)' : '') + '">▼</span></td>';
-    h += '<td style="color:#b8860b;font-weight:600;">' + ob.fechas.cliente + '</td>';
-    h += '<td style="color:var(--blue);font-weight:600;">' + ob.fechas.ao + '</td>';
-    h += '<td style="color:var(--red);font-weight:600;">' + ob.fechas.dgii + '</td>';
-    h += '<td>' + ob.tareas.length + '</td>';
+    h += '<td style="color:#b8860b;font-weight:600;text-align:center;">' + ob.fechas.cliente + '</td>';
+    h += '<td style="color:var(--blue);font-weight:600;text-align:center;">' + ob.fechas.ao + '</td>';
+    h += '<td style="color:var(--red);font-weight:600;text-align:center;">' + ob.fechas.dgii + '</td>';
+    h += '<td style="text-align:center;">' + ob.tareas.length + '</td>';
     h += '</tr>';
-    h += '<tr id="calRes_' + ob.id + '" style="' + (isOpen ? '' : 'display:none;') + '">';
-    h += '<td colspan="5" style="padding:0;border-bottom:1px solid var(--border);">';
-    h += '<div style="padding:10px 16px;background:#f8fafc;">';
-    h += '<table style="width:100%;border-collapse:collapse;font-size:0.8rem;">';
-    h += '<thead><tr><th style="text-align:left;font-size:0.65rem;font-weight:700;text-transform:uppercase;color:var(--muted);padding:4px 8px;border-bottom:1px solid var(--border);">Tarea</th><th style="width:120px;text-align:center;font-size:0.65rem;font-weight:700;text-transform:uppercase;color:var(--muted);padding:4px 8px;border-bottom:1px solid var(--border);">Fecha</th><th style="width:80px;text-align:center;font-size:0.65rem;font-weight:700;text-transform:uppercase;color:var(--muted);padding:4px 8px;border-bottom:1px solid var(--border);">Quién</th></tr></thead>';
-    h += '<tbody>';
     ob.tareas.forEach(function(tk, i) {
-      var quienLabel = tk.quien === 'cliente' ? '<span style="color:#b8860b;font-weight:600;">Cliente</span>' : '<span style="color:var(--blue);font-weight:600;">AO</span>';
-      h += '<tr><td style="padding:6px 8px;border-bottom:1px solid #eef0f4;">' + (i + 1) + '. ' + tk.t;
-      if (tk.nota) h += '<div style="font-size:0.72rem;color:var(--amber);margin-top:2px;">⚠ ' + tk.nota + '</div>';
-      h += '</td><td style="padding:6px 8px;text-align:center;font-weight:600;font-size:0.75rem;color:var(--navy);border-bottom:1px solid #eef0f4;">' + tk.fecha + '</td>';
-      h += '<td style="padding:6px 8px;text-align:center;border-bottom:1px solid #eef0f4;">' + quienLabel + '</td></tr>';
+      var isCliente = tk.quien === 'cliente';
+      var clienteCell = isCliente ? '<span style="font-weight:600;color:#b8860b;">' + tk.fecha + '</span>' : '<span style="color:#d5d9e0;">—</span>';
+      var aoCell = !isCliente ? '<span style="font-weight:600;color:var(--blue);">' + tk.fecha + '</span>' : '<span style="color:#d5d9e0;">—</span>';
+      h += '<tr class="cal-task-' + ob.id + '" style="' + (isOpen ? '' : 'display:none;') + 'background:#f8fafc;border-bottom:1px solid #eef0f4;">';
+      h += '<td style="padding:7px 12px 7px 30px;font-size:0.8rem;">' + (i + 1) + '. ' + tk.t;
+      if (tk.nota) h += '<div style="font-size:0.7rem;color:var(--amber);margin-top:2px;">⚠ ' + tk.nota + '</div>';
+      h += '</td>';
+      h += '<td style="text-align:center;padding:7px 8px;' + (isCliente ? 'background:rgba(184,134,11,0.06);' : '') + '">' + clienteCell + '</td>';
+      h += '<td style="text-align:center;padding:7px 8px;' + (!isCliente ? 'background:rgba(67,97,238,0.06);' : '') + '">' + aoCell + '</td>';
+      h += '<td style="text-align:center;padding:7px 8px;"><span style="color:#d5d9e0;">—</span></td>';
+      h += '<td></td>';
+      h += '</tr>';
     });
-    h += '</tbody></table></div></td></tr>';
   });
   h += '</tbody></table>';
   h += '</div>';
@@ -1168,18 +1169,14 @@ function renderCalResumen() {
 
 var calOpenObs = {};
 function calToggleRes(id) {
-  var row = document.getElementById('calRes_' + id);
+  var rows = document.querySelectorAll('.cal-task-' + id);
   var chev = document.getElementById('calChev_' + id);
-  if (!row) return;
-  if (row.style.display === 'none') {
-    row.style.display = '';
-    if (chev) chev.style.transform = 'rotate(180deg)';
-    calOpenObs[id] = true;
-  } else {
-    row.style.display = 'none';
-    if (chev) chev.style.transform = '';
-    calOpenObs[id] = false;
-  }
+  var isOpen = calOpenObs[id];
+  rows.forEach(function(r) {
+    r.style.display = isOpen ? 'none' : '';
+  });
+  if (chev) chev.style.transform = isOpen ? '' : 'rotate(180deg)';
+  calOpenObs[id] = !isOpen;
 }
 
 /* Vista: Mes */
