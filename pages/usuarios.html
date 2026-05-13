@@ -541,7 +541,18 @@ function usrShowToast(msg, type) {
 
 function switchDept(deptId) {
   activeDeptFilter = deptId;
-  renderApp();
+  renderUsuariosOnly();
+}
+
+function renderUsuariosOnly() {
+  var el = document.getElementById('content');
+  var html = '';
+  html += '<div class="tabs">';
+  html += '<button class="tab' + (activeTab === 'usuarios' ? ' active' : '') + '" onclick="switchTab(\'usuarios\')">Usuarios</button>';
+  html += '<button class="tab' + (activeTab === 'grupos' ? ' active' : '') + '" onclick="switchTab(\'grupos\')">Grupos</button>';
+  html += '</div>';
+  html += renderUsuariosTab();
+  el.innerHTML = html;
 }
 
 function getUserGroups(userId) {
