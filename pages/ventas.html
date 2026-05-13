@@ -1904,7 +1904,9 @@ function renderChecklistComercial() {
   }
 
   // Filtrar por mes y persona
-  var filtered = APP.chkData.filter(r => r.mes === APP.chkMonth);
+  var filtered = APP.chkMonth === 'Todos'
+    ? APP.chkData.slice()
+    : APP.chkData.filter(r => r.mes === APP.chkMonth);
   if (APP.chkPersona !== 'Todos') {
     filtered = filtered.filter(r => r.responsable === APP.chkPersona);
   }
@@ -1920,6 +1922,8 @@ function renderChecklistComercial() {
 
   // Month pills
   html += '<div class="month-tabs" style="margin-bottom:12px">';
+  var totalAll = APP.chkData.length;
+  html += '<button class="month-tab chk-month-pill' + (APP.chkMonth === 'Todos' ? ' active' : '') + '" data-chk-month="Todos">Todos</button>';
   MONTHS.forEach((m, i) => {
     var count = APP.chkData.filter(r => r.mes === m).length;
     html += '<button class="month-tab chk-month-pill' + (m === APP.chkMonth ? ' active' : '') + '" data-chk-month="' + m + '" style="' + (count === 0 ? 'opacity:0.4' : '') + '">' + MONTH_LABELS[i] + '</button>';
@@ -1959,7 +1963,8 @@ function renderChecklistComercial() {
     });
     html += '</div>';
   } else {
-    html += '<div class="card" style="text-align:center;color:var(--muted);padding:40px">No hay checklists en ' + MONTH_LABELS[MONTHS.indexOf(APP.chkMonth)] + '</div>';
+    var mesLabel = APP.chkMonth === 'Todos' ? 'ningún mes' : MONTH_LABELS[MONTHS.indexOf(APP.chkMonth)];
+    html += '<div class="card" style="text-align:center;color:var(--muted);padding:40px">No hay checklists en ' + mesLabel + '</div>';
   }
 
   // Botón crear manual
