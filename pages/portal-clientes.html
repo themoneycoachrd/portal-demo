@@ -1052,56 +1052,56 @@ var calActiveMes = new Date().getMonth();
 var OBLIGACIONES = [
   {
     id: 'tss', nombre: 'TSS', color: '#8b5cf6',
-    fechas: { aTiempo: 'Día 25', tarde: 'Día 30', dgii: 'Día 3 (mes sig.)', ao: 'Día 29' },
+    fechas: { aTiempo: 'Día 25', tarde: 'Día 30', ao: 'Día 29', dgii: 'Día 3 (mes sig.)' },
     tareas: [
-      { t: 'Informar si hubo novedades en nómina', quien: 'cliente', fecha: 'Día 25' },
-      { t: 'Cargar la nómina', quien: 'cliente', fecha: 'Día 25' },
-      { t: 'Cargar los volantes de pago de nómina', quien: 'cliente', fecha: 'Día 30' },
+      { t: 'Informar si hubo novedades en nómina', quien: 'cliente', fecha: 'Día 25', fechaTarde: 'Día 30' },
+      { t: 'Cargar la nómina', quien: 'cliente', fecha: 'Día 25', fechaTarde: 'Día 30' },
+      { t: 'Cargar los volantes de pago de nómina', quien: 'cliente', fecha: 'Día 30', fechaTarde: 'Día 3' },
       { t: 'Recibir la autorización de pago de TSS', quien: 'ao', fecha: 'Día 1' },
       { t: 'Pagar la TSS', quien: 'ao', fecha: 'Día 1' }
     ]
   },
   {
     id: 'ir3', nombre: 'IR-3', color: '#2563eb',
-    fechas: { aTiempo: 'Día 25', tarde: 'Día 30', dgii: 'Día 10', ao: 'Día 5' },
+    fechas: { aTiempo: 'Día 25', tarde: 'Día 30', ao: 'Día 5', dgii: 'Día 10' },
     tareas: [
       { t: 'Enviar autorización de pago de IR-3', quien: 'ao', fecha: 'Día 5' },
-      { t: 'Confirmar recibido y pagar IR-3', quien: 'cliente', fecha: 'A más tardar Día 10' }
+      { t: 'Confirmar recibido y pagar IR-3', quien: 'cliente', fecha: 'Día 5', fechaTarde: 'Día 10' }
     ]
   },
   {
     id: 'ir17', nombre: 'IR-17', color: '#059669',
-    fechas: { aTiempo: 'Día 1', tarde: 'Día 6', dgii: 'Día 10', ao: 'Día 5' },
+    fechas: { aTiempo: 'Día 1', tarde: 'Día 6', ao: 'Día 5', dgii: 'Día 10' },
     tareas: [
-      { t: 'Informar si hubo pagos a informales', quien: 'cliente', fecha: 'Día 1' },
-      { t: 'Cargar el Excel de pagos informales', quien: 'cliente', fecha: 'Día 1' },
-      { t: 'Cargar los volantes de pago informales', quien: 'cliente', fecha: 'Día 1' },
+      { t: 'Informar si hubo pagos a informales', quien: 'cliente', fecha: 'Día 1', fechaTarde: 'Día 6' },
+      { t: 'Cargar el Excel de pagos informales', quien: 'cliente', fecha: 'Día 1', fechaTarde: 'Día 6' },
+      { t: 'Cargar los volantes de pago informales', quien: 'cliente', fecha: 'Día 1', fechaTarde: 'Día 6' },
       { t: 'Registrar los gastos de proveedores en el sistema', quien: 'ao', fecha: 'Día 3' },
       { t: 'Realizar el borrador de IR-17', quien: 'ao', fecha: 'Día 5' },
       { t: 'Enviar el borrador al cliente', quien: 'ao', fecha: 'Día 5' },
-      { t: 'Pagar el IR-17', quien: 'cliente', fecha: 'A más tardar Día 10' }
+      { t: 'Pagar el IR-17', quien: 'cliente', fecha: 'Día 5', fechaTarde: 'Día 10' }
     ]
   },
   {
     id: 'anticipo', nombre: 'Anticipo ISR', color: '#d97706',
-    fechas: { aTiempo: '—', tarde: '—', dgii: 'Día 15', ao: 'Día 10' },
+    fechas: { aTiempo: 'Día 1', tarde: 'Día 15', ao: 'Día 10', dgii: 'Día 15' },
     tareas: [
       { t: 'Enviar la autorización de pago al cliente', quien: 'ao', fecha: 'Día 10' },
-      { t: 'Recibir la autorización y pagar el anticipo', quien: 'cliente', fecha: 'A más tardar Día 15' }
+      { t: 'Recibir la autorización y pagar el anticipo', quien: 'cliente', fecha: 'Día 10', fechaTarde: 'Día 15' }
     ]
   },
   {
     id: 'itbis', nombre: 'ITBIS', color: '#dc2626',
-    fechas: { aTiempo: 'Semanal', tarde: 'Día 5', dgii: 'Día 20', ao: 'Día 15' },
+    fechas: { aTiempo: 'Semanal', tarde: 'Día 5', ao: 'Día 15', dgii: 'Día 20' },
     tareas: [
       { t: 'Cargar todas las facturas del mes en Basecamp', quien: 'cliente', fecha: 'Semanalmente (viernes)', fechaTarde: 'Día 30' },
       { t: 'Registrar todas las facturas en Adm con proveedor y cuenta contable', quien: 'ao', fecha: 'Diariamente' },
       { t: 'Cargar Excel con facturas', quien: 'cliente', fecha: 'Día 30', fechaTarde: 'Día 5', nota: 'No recibimos facturas posteriores al día 5. Si sucede, tendríamos que hacer un pago a cuenta.' },
       { t: 'Cargar los estados de cuenta de los bancos', quien: 'cliente', fecha: 'Día 5', fechaTarde: 'Día 10' },
       { t: 'Confirmar si va a haber facturas atrasadas', quien: 'cliente', fecha: 'Día 5', fechaTarde: 'Día 20' },
-      { t: 'Recibir el borrador de ITBIS', quien: 'ao', fecha: 'Día 15' },
-      { t: 'Aprobar el borrador', quien: 'cliente', fecha: 'Día 15–20' },
-      { t: 'Pagar ITBIS', quien: 'cliente', fecha: 'A más tardar Día 20' }
+      { t: 'Recibir el borrador de ITBIS', quien: 'ao', fecha: 'Día 16–20' },
+      { t: 'Aprobar el borrador', quien: 'cliente', fecha: 'Día 15', fechaTarde: 'Día 16–20' },
+      { t: 'Pagar ITBIS', quien: 'cliente', fecha: 'Día 16', fechaTarde: 'Día 16–20' }
     ]
   }
 ];
@@ -1150,14 +1150,14 @@ function renderCalResumen() {
   h += '<div class="cal-legend">';
   h += '<div class="cal-legend-item"><div class="cal-legend-dot" style="background:var(--green)"></div>A tiempo (cliente)</div>';
   h += '<div class="cal-legend-item"><div class="cal-legend-dot" style="background:var(--amber)"></div>Tarde (cliente)</div>';
-  h += '<div class="cal-legend-item"><div class="cal-legend-dot" style="background:var(--red)"></div>Límite DGII</div>';
   h += '<div class="cal-legend-item"><div class="cal-legend-dot" style="background:var(--blue)"></div>AO procesa</div>';
+  h += '<div class="cal-legend-item"><div class="cal-legend-dot" style="background:var(--red)"></div>Límite DGII</div>';
   h += '</div>';
 
   h += '<div style="background:white; border-radius:12px; border:1px solid var(--border); overflow:hidden;">';
   h += '<table class="cal-sum-table" style="table-layout:fixed;">';
   h += '<colgroup><col style="width:28%"><col style="width:13%"><col style="width:13%"><col style="width:13%"><col style="width:13%"><col style="width:20%"></colgroup>';
-  h += '<thead><tr><th>Obligación</th><th style="text-align:center;">A tiempo</th><th style="text-align:center;">Tarde</th><th style="text-align:center;">Límite DGII</th><th style="text-align:center;">AO procesa</th><th style="text-align:center;">Tareas / Resp.</th></tr></thead>';
+  h += '<thead><tr><th>Obligación</th><th style="text-align:center;">A tiempo</th><th style="text-align:center;">Tarde</th><th style="text-align:center;">AO procesa</th><th style="text-align:center;">Límite DGII</th><th style="text-align:center;">Tareas / Resp.</th></tr></thead>';
   h += '<tbody>';
   OBLIGACIONES.forEach(function(ob) {
     var isOpen = calOpenObs[ob.id];
@@ -1165,8 +1165,8 @@ function renderCalResumen() {
     h += '<td><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:' + ob.color + ';margin-right:8px;vertical-align:middle;"></span><strong>' + ob.nombre + '</strong> <span id="calChev_' + ob.id + '" style="font-size:0.65rem;color:var(--muted);transition:transform 0.15s;display:inline-block;' + (isOpen ? 'transform:rotate(180deg)' : '') + '">▼</span></td>';
     h += '<td style="color:var(--green);font-weight:600;text-align:center;">' + ob.fechas.aTiempo + '</td>';
     h += '<td style="color:var(--amber);font-weight:600;text-align:center;">' + ob.fechas.tarde + '</td>';
-    h += '<td style="color:var(--red);font-weight:600;text-align:center;">' + ob.fechas.dgii + '</td>';
     h += '<td style="color:var(--blue);font-weight:600;text-align:center;">' + ob.fechas.ao + '</td>';
+    h += '<td style="color:var(--red);font-weight:600;text-align:center;">' + ob.fechas.dgii + '</td>';
     h += '<td style="text-align:center;">' + ob.tareas.length + '</td>';
     h += '</tr>';
     ob.tareas.forEach(function(tk, i) {
@@ -1181,8 +1181,8 @@ function renderCalResumen() {
       h += '</td>';
       h += '<td style="text-align:center;padding:7px 6px;' + (isCliente ? 'background:rgba(16,185,129,0.06);' : '') + '">' + aTiempoCell + '</td>';
       h += '<td style="text-align:center;padding:7px 6px;' + (tk.fechaTarde ? 'background:rgba(245,158,11,0.06);' : '') + '">' + tardeCell + '</td>';
-      h += '<td style="text-align:center;padding:7px 6px;"><span style="font-weight:600;color:var(--red);font-size:0.75rem;">' + ob.fechas.dgii + '</span></td>';
       h += '<td style="text-align:center;padding:7px 6px;' + (!isCliente ? 'background:rgba(67,97,238,0.06);' : '') + '">' + aoCell + '</td>';
+      h += '<td style="text-align:center;padding:7px 6px;"><span style="font-weight:600;color:var(--red);font-size:0.75rem;">' + ob.fechas.dgii + '</span></td>';
       h += '<td style="text-align:center;padding:7px 6px;">' + respLabel + '</td>';
       h += '</tr>';
     });
