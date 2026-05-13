@@ -355,23 +355,23 @@ body.embed .content { padding-top:12px; }
 .cal-task-row { display:grid; grid-template-columns:1fr 70px; gap:8px; padding:7px 0; border-bottom:1px solid var(--border); font-size:0.8rem; align-items:center; }
 .cal-task-row:last-child { border-bottom:none; }
 .cal-task-date { font-size:0.75rem; font-weight:700; text-align:right; color:#b8860b; }
-.cal-tl-row { display:grid; grid-template-columns:56px 1fr; margin-bottom:2px; }
-.cal-tl-num { padding:9px 6px; text-align:center; border-radius:8px 0 0 8px; }
-.cal-tl-num-big { font-size:1.15rem; font-weight:700; line-height:1; }
-.cal-tl-num-label { font-size:0.6rem; text-transform:uppercase; letter-spacing:0.5px; font-weight:600; margin-top:2px; }
-.cal-tl-content { padding:9px 12px; border-left:2px solid; }
-.cal-tl-content h4 { font-size:0.8rem; font-weight:700; margin:0 0 2px; }
-.cal-tl-content p { font-size:0.75rem; color:var(--muted); line-height:1.5; margin:0; }
-.cal-tl-badge { display:inline-block; font-size:0.62rem; font-weight:700; padding:1px 6px; border-radius:3px; margin-right:6px; }
-.cal-tl-client .cal-tl-num { background:#fef3e0; color:#8b6914; }
-.cal-tl-client .cal-tl-content { border-left-color:#b8860b; background:rgba(254,243,224,0.3); }
-.cal-tl-client .cal-tl-badge { background:#fef3e0; color:#8b6914; }
-.cal-tl-ao .cal-tl-num { background:#e8f0fe; color:var(--blue); }
-.cal-tl-ao .cal-tl-content { border-left-color:var(--blue); background:rgba(232,240,254,0.3); }
-.cal-tl-ao .cal-tl-badge { background:#e8f0fe; color:var(--blue); }
-.cal-tl-dgii .cal-tl-num { background:#fce8e8; color:var(--red); }
-.cal-tl-dgii .cal-tl-content { border-left-color:var(--red); background:rgba(252,232,232,0.3); }
-.cal-tl-dgii .cal-tl-badge { background:#fce8e8; color:var(--red); }
+.cal-tl-row { display:flex; margin-bottom:2px; overflow:hidden; }
+.cal-tl-num { width:70px; padding:14px 8px; text-align:center; flex-shrink:0; }
+.cal-tl-num-big { font-size:1.6rem; font-weight:800; line-height:1; }
+.cal-tl-num-label { font-size:0.58rem; text-transform:uppercase; letter-spacing:0.3px; font-weight:700; margin-top:3px; }
+.cal-tl-content { flex:1; padding:12px 16px; }
+.cal-tl-content h4 { font-size:0.88rem; font-weight:700; margin:0 0 4px; color:white; }
+.cal-tl-content p { font-size:0.78rem; color:rgba(255,255,255,0.6); line-height:1.5; margin:0; }
+.cal-tl-badge { display:inline-block; font-size:0.6rem; font-weight:700; padding:2px 8px; border-radius:3px; margin-bottom:6px; letter-spacing:0.3px; }
+.cal-tipo-cliente { background:#5a4a2e; }
+.cal-tipo-cliente .cal-tl-num { color:#d4a946; }
+.cal-tipo-cliente .cal-tl-badge { background:rgba(212,169,70,0.25); color:#d4a946; }
+.cal-tipo-ao { background:#3a4050; }
+.cal-tipo-ao .cal-tl-num { color:#7ba8f0; }
+.cal-tipo-ao .cal-tl-badge { background:rgba(123,168,240,0.2); color:#7ba8f0; }
+.cal-tipo-dgii { background:#4a3538; }
+.cal-tipo-dgii .cal-tl-num { color:#e07070; }
+.cal-tipo-dgii .cal-tl-badge { background:rgba(224,112,112,0.2); color:#e07070; }
 </style>
 </head>
 <body>
@@ -1134,6 +1134,23 @@ var OBLIGACIONES = [
 
 var MESES_CORTO = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
 
+var TIMELINE_ENTRIES = [
+  { day: 25, periodo: 'mes', tipo: 'cliente', label: 'MES ANT.', titulo: 'Nómina y documentos de personal', desc: 'Enviar nómina, volantes de pago, novedades (altas, bajas, cambios). Esto cubre TSS e IR-3.' },
+  { day: 29, periodo: 'mes', tipo: 'ao', label: 'FIRMA', titulo: 'Procesamiento de TSS', desc: 'Con la nómina recibida, Account One prepara la autodeterminación de la TSS.' },
+  { day: 30, periodo: 'mes', tipo: 'cliente', label: 'MES ANT.', titulo: 'Volantes de nómina y facturas en Adm', desc: 'Cargar volantes de pago de nómina (TSS). Cargar todas las facturas del mes en Adm y Excel con facturas (ITBIS).' },
+  { day: 1, periodo: 'sig', tipo: 'cliente', label: 'DEL MES', titulo: 'Documentación de informales', desc: 'Informar si hubo pagos a informales, cargar Excel de pagos informales y volantes de pago (IR-17).' },
+  { day: 1, periodo: 'sig', tipo: 'ao', label: 'FIRMA', titulo: 'Pago de TSS y autorización de anticipo', desc: 'Recibir autorización y pagar la TSS. Recibir la autorización de pago de anticipo ISR.' },
+  { day: 3, periodo: 'sig', tipo: 'dgii', label: 'LÍMITE', titulo: 'Fecha límite TSS', desc: 'Presentación y pago de la Seguridad Social vía SUIR.' },
+  { day: 5, periodo: 'sig', tipo: 'cliente', label: 'DEL MES', titulo: 'Estados de cuenta y tope de facturas', desc: 'Cargar estados de cuenta bancarios. Confirmar si habrá facturas atrasadas. No se reciben facturas posteriores al día 5.' },
+  { day: 5, periodo: 'sig', tipo: 'ao', label: 'FIRMA', titulo: 'Borrador IR-3 e IR-17 listo', desc: 'La contadora prepara las retenciones con la documentación recibida y las envía para aprobación.' },
+  { day: 10, periodo: 'sig', tipo: 'dgii', label: 'LÍMITE', titulo: 'Fecha límite IR-3 e IR-17', desc: 'Presentación y pago de retenciones de asalariados y otras retenciones.' },
+  { day: 10, periodo: 'sig', tipo: 'ao', label: 'FIRMA', titulo: 'Envío de monto anticipo ISR', desc: 'Account One calcula y envía el monto del anticipo. El cliente solo confirma.' },
+  { day: 15, periodo: 'sig', tipo: 'dgii', label: 'LÍMITE', titulo: 'Fecha límite anticipo ISR', desc: 'Pago del anticipo mensual del impuesto sobre la renta.' },
+  { day: 15, periodo: 'sig', tipo: 'ao', label: 'FIRMA', titulo: 'Borrador ITBIS + formatos 606/607', desc: 'Declaración y formatos listos para aprobación final del cliente.' },
+  { day: 20, periodo: 'sig', tipo: 'cliente', label: 'DEL MES', titulo: 'Aprobación y pago de ITBIS', desc: 'Aprobar el borrador de ITBIS y realizar el pago a más tardar el día 20.' },
+  { day: 20, periodo: 'sig', tipo: 'dgii', label: 'LÍMITE', titulo: 'Fecha límite ITBIS', desc: 'Declaración IT-1, pago del ITBIS y envío de formatos 606/607.' }
+];
+
 function renderCalendario() {
   var h = '';
   h += '<div class="cal-pills">';
@@ -1230,78 +1247,25 @@ function renderCalMes() {
 
   var mesNombre = MESES_CORTO[calActiveMes];
   var mesSig = MESES_CORTO[(calActiveMes + 1) % 12];
+  var badgeLabels = { cliente: 'CLIENTE', ao: 'ACCOUNT ONE', dgii: 'DGII' };
 
-  // Collect tasks by perspective
-  var clienteTasks = [];
-  var aoTasks = [];
-  OBLIGACIONES.forEach(function(ob) {
-    ob.tareas.forEach(function(tk) {
-      var dayMatch = tk.fecha.match(/\d+/);
-      var sortDay = dayMatch ? parseInt(dayMatch[0]) : 99;
-      var entry = { ob: ob.nombre, t: tk.t, fecha: tk.fecha, nota: tk.nota, sortDay: sortDay };
-      if (tk.quien === 'cliente') clienteTasks.push(entry);
-      else aoTasks.push(entry);
-    });
+  h += '<div style="border-radius:12px;overflow:hidden;">';
+  TIMELINE_ENTRIES.forEach(function(e) {
+    h += '<div class="cal-tl-row cal-tipo-' + e.tipo + '">';
+    h += '<div class="cal-tl-num">';
+    h += '<div class="cal-tl-num-big">' + e.day + '</div>';
+    h += '<div class="cal-tl-num-label">' + e.label + '</div>';
+    h += '</div>';
+    h += '<div class="cal-tl-content">';
+    h += '<div class="cal-tl-badge">' + badgeLabels[e.tipo] + '</div>';
+    h += '<h4>' + e.titulo + '</h4>';
+    h += '<p>' + e.desc + '</p>';
+    h += '</div>';
+    h += '</div>';
   });
-  clienteTasks.sort(function(a, b) { return a.sortDay - b.sortDay; });
-  aoTasks.sort(function(a, b) { return a.sortDay - b.sortDay; });
+  h += '</div>';
 
-  // DGII deadlines
-  var dgiiTasks = [];
-  OBLIGACIONES.forEach(function(ob) {
-    var raw = ob.fechas.dgii;
-    var dayMatch = raw.match(/\d+/);
-    if (!dayMatch) return;
-    var day = parseInt(dayMatch[0]);
-    var isSig = raw.indexOf('sig.') !== -1;
-    dgiiTasks.push({ ob: ob.nombre, fecha: raw, sortDay: isSig ? day + 31 : day });
-  });
-  dgiiTasks.sort(function(a, b) { return a.sortDay - b.sortDay; });
-
-  // Helper: group tasks by sortDay
-  function groupByDay(tasks) {
-    var groups = [];
-    var last = -1;
-    tasks.forEach(function(tk) {
-      if (tk.sortDay !== last) { groups.push({ day: tk.sortDay, items: [tk] }); last = tk.sortDay; }
-      else { groups[groups.length - 1].items.push(tk); }
-    });
-    return groups;
-  }
-
-  // Helper: render a perspective section
-  function renderSection(title, color, bgLight, tasks, isDgii) {
-    var s = '';
-    s += '<div style="background:white;border-radius:12px;border:1px solid var(--border);overflow:hidden;margin-bottom:16px;">';
-    s += '<div style="padding:12px 16px;background:' + bgLight + ';border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;">';
-    s += '<div style="width:10px;height:10px;border-radius:2px;background:' + color + ';"></div>';
-    s += '<strong style="font-size:0.88rem;">' + title + '</strong>';
-    s += '</div>';
-    var groups = groupByDay(tasks);
-    groups.forEach(function(g) {
-      s += '<div style="display:flex;border-bottom:1px solid #f1f5f9;">';
-      s += '<div style="width:56px;padding:10px 6px;text-align:center;flex-shrink:0;background:' + bgLight + ';">';
-      s += '<div style="font-size:1.1rem;font-weight:700;color:' + color + ';line-height:1;">' + g.day + '</div>';
-      s += '<div style="font-size:0.6rem;text-transform:uppercase;font-weight:600;color:' + color + ';margin-top:2px;">' + mesNombre + '</div>';
-      s += '</div>';
-      s += '<div style="flex:1;padding:8px 14px;">';
-      g.items.forEach(function(tk) {
-        if (isDgii) {
-          s += '<div style="font-size:0.82rem;padding:2px 0;"><strong>' + tk.ob + '</strong> <span style="color:var(--muted);font-size:0.75rem;">— ' + tk.fecha + '</span></div>';
-        } else {
-          s += '<div style="font-size:0.82rem;padding:2px 0;"><span style="color:var(--muted);font-size:0.72rem;margin-right:6px;">' + tk.ob + '</span>' + tk.t + '</div>';
-          if (tk.nota) s += '<div style="font-size:0.72rem;color:var(--amber);padding:0 0 2px;">⚠ ' + tk.nota + '</div>';
-        }
-      });
-      s += '</div></div>';
-    });
-    s += '</div>';
-    return s;
-  }
-
-  h += renderSection('El mes del cliente', '#b8860b', '#fef8ee', clienteTasks, false);
-  h += renderSection('El mes de Account One', 'var(--blue)', '#eef2fe', aoTasks, false);
-  h += renderSection('Fechas límite DGII', 'var(--red)', '#fef0f0', dgiiTasks, true);
+  h += '<p style="font-size:0.72rem;color:var(--muted);margin-top:12px;">Preparando ' + mesNombre + ': del día 25 de ' + mesNombre + ' al día 20 de ' + mesSig + '.</p>';
 
   return h;
 }
