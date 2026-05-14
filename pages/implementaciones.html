@@ -306,7 +306,8 @@ body.embed .footer { display:none !important; }
 </div>
 
 <div class="main-tabs" id="mainTabs">
-  <button class="main-tab active" onclick="switchMainTab('fe')">Checklist FE</button>
+  <button class="main-tab active" onclick="switchMainTab('resumen')">Resumen</button>
+  <button class="main-tab" onclick="switchMainTab('fe')">Checklist FE</button>
   <button class="main-tab" onclick="switchMainTab('adm')">Checklist Adm</button>
 </div>
 
@@ -432,7 +433,8 @@ function tengoPermiso(modId, scrId, habId, subtabId) {
 var userRole = null;
 var userName = '';
 var saving = false;
-var mainTab = 'fe';
+var mainTab = 'resumen';
+var implDates = {};
 var selectedImpl = 'Todas';
 var viewMode = 'table'; // 'table' or 'cards'
 var currentCliente = null;
@@ -536,21 +538,132 @@ async function initApp(user) {
 
 // ==================== DATA LOADING ====================
 async function loadData() {
-  var res = await sb.from('impl_checklist_fe').select('*');
-  allRows = res.data || [];
-  if (res.error) console.error('Error cargando impl_checklist_fe:', res.error);
+  var p1 = sb.from('impl_checklist_fe').select('*');
+  var p2 = sb.from('impl_checklist_adm').select('*');
+  var p3 = sb.from('implementaciones').select('cliente, impl_inicio, impl_fin');
+  var results = await Promise.all([p1, p2, p3]);
 
-  var res2 = await sb.from('impl_checklist_adm').select('*');
-  allRowsAdm = res2.data || [];
-  if (res2.error) console.error('Error cargando impl_checklist_adm:', res2.error);
+  allRows = results[0].data || [];
+  if (results[0].error) console.error('Error cargando impl_checklist_fe:', results[0].error);
+
+  allRowsAdm = results[1].data || [];
+  if (results[1].error) console.error('Error cargando impl_checklist_adm:', results[1].error);
+
+  implDates = {};
+  (results[2].data || []).forEach(function(r) {
+    implDates[r.cliente] = { inicio: r.impl_inicio, fin: r.impl_fin };
+  });
+}
+
+// ==================== RESUMEN ====================
+function resumenCountDone(datos, items) {
+  var count = 0;
+  for (var i = 0; i < items.length; i++) {
+    var val = datos[items[i].id];
+    if (val && (val.done === true || val.done === 'na')) count++;
+  }
+  return count;
+}
+
+function resumenParseDate(dateStr) {
+  var parts = dateStr.split('-');
+  return new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+}
+
+function resumenIsEnRiesgo(cliente, pct, totalPasos) {
+  var dates = implDates[cliente];
+  if (!dates || !dates.inicio || !dates.fin) return false;
+  var hoy = new Date(); hoy.setHours(0,0,0,0);
+  var inicio = resumenParseDate(dates.inicio);
+  var fin = resumenParseDate(dates.fin);
+  var totalMs = fin - inicio;
+  if (totalMs <= 0) return false;
+  var avanceMs = hoy - inicio;
+  var tiempoPct = avanceMs / totalMs;
+  return tiempoPct > 0.5 && pct < 40;
+}
+
+function renderResumen(el) {
+  var feItems = FE_ITEMS;
+  var admItems = ADM_ITEMS;
+
+  // Build unified rows
+  var unifiedRows = [];
+  allRows.forEach(function(row) {
+    var datos = row.datos || {};
+    var done = resumenCountDone(datos, feItems);
+    var pct = Math.round((done / feItems.length) * 100);
+    var riesgo = resumenIsEnRiesgo(row.cliente, pct, feItems.length);
+    unifiedRows.push({ cliente: row.cliente, implementadora: row.implementadora, done: done, total: feItems.length, pct: pct, riesgo: riesgo, tipo: 'FE' });
+  });
+  allRowsAdm.forEach(function(row) {
+    var datos = row.datos || {};
+    var done = resumenCountDone(datos, admItems);
+    var pct = Math.round((done / admItems.length) * 100);
+    var riesgo = resumenIsEnRiesgo(row.cliente, pct, admItems.length);
+    unifiedRows.push({ cliente: row.cliente, implementadora: row.implementadora, done: done, total: admItems.length, pct: pct, riesgo: riesgo, tipo: 'Adm' });
+  });
+
+  var totalActivas = unifiedRows.length;
+  var totalFE = allRows.length;
+  var totalAdm = allRowsAdm.length;
+  var enRiesgo = unifiedRows.filter(function(r) { return r.riesgo; }).length;
+
+  // Stats cards
+  var html = '<div class="summary-stats" style="grid-template-columns:repeat(4,1fr)">';
+  html += '<div class="summary-stat"><div class="summary-stat-label">Total activas</div><div class="summary-stat-value" style="color:var(--navy)">' + totalActivas + '</div></div>';
+  html += '<div class="summary-stat"><div class="summary-stat-label">Impl. FE</div><div class="summary-stat-value" style="color:var(--blue)">' + totalFE + '</div></div>';
+  html += '<div class="summary-stat"><div class="summary-stat-label">Impl. Adm</div><div class="summary-stat-value" style="color:var(--purple)">' + totalAdm + '</div></div>';
+  html += '<div class="summary-stat"><div class="summary-stat-label">En riesgo</div><div class="summary-stat-value" style="color:var(--red)">' + enRiesgo + '</div></div>';
+  html += '</div>';
+
+  // Table
+  if (totalActivas === 0) {
+    html += '<div class="empty" style="margin-top:20px">No hay checklists de implementacion activos.</div>';
+  } else {
+    // Sort: riesgo first, then by pct ascending
+    unifiedRows.sort(function(a, b) {
+      if (a.riesgo && !b.riesgo) return -1;
+      if (!a.riesgo && b.riesgo) return 1;
+      return a.pct - b.pct;
+    });
+
+    html += '<table class="ck-client-table" style="margin-top:16px"><thead><tr>';
+    html += '<th>#</th><th>Cliente</th><th>Tipo</th><th>Implementadora</th><th>Progreso</th><th>Estado</th>';
+    html += '</tr></thead><tbody>';
+
+    unifiedRows.forEach(function(row, idx) {
+      var barColor = row.pct >= 100 ? 'var(--green)' : row.pct > 0 ? 'var(--amber)' : '#cbd5e1';
+      var tipoBg = row.tipo === 'FE' ? 'background:#eff6ff;color:var(--blue)' : 'background:#f3e8ff;color:#8b5cf6';
+      var badgeColor, badgeLabel;
+      if (row.riesgo) { badgeColor = 'background:#fef2f2;color:var(--red)'; badgeLabel = 'En riesgo'; }
+      else if (row.pct === 100) { badgeColor = 'background:#ecfdf5;color:var(--green)'; badgeLabel = 'Completado'; }
+      else if (row.pct === 0) { badgeColor = 'background:#f3f4f6;color:#6b7280'; badgeLabel = 'Sin iniciar'; }
+      else { badgeColor = 'background:#eff6ff;color:var(--blue)'; badgeLabel = 'En progreso'; }
+
+      html += '<tr style="cursor:pointer" onclick="switchMainTab(\'' + (row.tipo === 'FE' ? 'fe' : 'adm') + '\');setTimeout(function(){openDetail(\'' + esc(row.cliente) + '\')},50)">';
+      html += '<td>' + (idx + 1) + '</td>';
+      html += '<td style="font-weight:600">' + (row.cliente || '') + '</td>';
+      html += '<td><span style="display:inline-block;padding:2px 8px;border-radius:6px;font-size:0.7rem;font-weight:600;' + tipoBg + '">' + row.tipo + '</span></td>';
+      html += '<td>' + (row.implementadora || '-') + '</td>';
+      html += '<td><span class="ck-progress-bar"><span class="ck-progress-fill" style="width:' + row.pct + '%;background:' + barColor + '"></span></span><span class="ck-progress-text">' + row.done + '/' + row.total + '</span></td>';
+      html += '<td><span class="ck-status-badge" style="' + badgeColor + '">' + badgeLabel + '</span></td>';
+      html += '</tr>';
+    });
+
+    html += '</tbody></table>';
+  }
+
+  el.innerHTML = html;
 }
 
 // ==================== MAIN TAB SWITCH ====================
 function switchMainTab(tab) {
   mainTab = tab;
   var btns = document.querySelectorAll('.main-tab');
-  btns[0].className = 'main-tab' + (tab === 'fe' ? ' active' : '');
-  btns[1].className = 'main-tab' + (tab === 'adm' ? ' active' : '');
+  btns[0].className = 'main-tab' + (tab === 'resumen' ? ' active' : '');
+  btns[1].className = 'main-tab' + (tab === 'fe' ? ' active' : '');
+  btns[2].className = 'main-tab' + (tab === 'adm' ? ' active' : '');
   currentCliente = null;
   render();
 }
@@ -559,6 +672,12 @@ function switchMainTab(tab) {
 function render() {
   var navArea = document.getElementById('navArea');
   var content = document.getElementById('content');
+
+  if (mainTab === 'resumen') {
+    navArea.innerHTML = '';
+    renderResumen(content);
+    return;
+  }
 
   if (currentCliente) {
     navArea.innerHTML = '';
