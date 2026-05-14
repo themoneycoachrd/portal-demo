@@ -806,6 +806,14 @@
         <input type="date" id="sw-m-fecha-entrada">
       </div>
       <div class="m-field">
+        <label>Inicio implementación</label>
+        <input type="date" id="sw-m-fecha-inicio-impl">
+      </div>
+      <div class="m-field">
+        <label>Fin esperado implementación</label>
+        <input type="date" id="sw-m-fecha-fin-impl">
+      </div>
+      <div class="m-field">
         <label>Estado</label>
         <div style="display:flex;align-items:center;gap:10px;margin-top:4px">
           <button type="button" id="sw-m-activo-btn" onclick="swToggleActivo()" style="padding:6px 16px;border-radius:20px;font-size:0.82rem;font-weight:600;cursor:pointer;border:1px solid var(--border);transition:all 0.15s">Activo</button>
@@ -1069,11 +1077,20 @@ async function ccLoadData() {
   ccDATA = data;
 }
 
-async function ccLoadImplementaciones() {
-  const { data } = await sb.from('implementaciones').select('cliente, impl_inicio, impl_fin');
+function ccBuildImplDates() {
   ccImplDates = {};
-  (data || []).forEach(r => {
-    ccImplDates[r.cliente] = { inicio: r.impl_inicio, fin: r.impl_fin };
+  // From outsourcing clients
+  (bdClientes || []).forEach(r => {
+    if (r.fecha_inicio_impl || r.fecha_fin_impl) {
+      ccImplDates[r.nombre] = { inicio: r.fecha_inicio_impl, fin: r.fecha_fin_impl };
+    }
+  });
+  // From software clients
+  (ccSOFTWARE_CLIENTES || []).forEach(r => {
+    var name = r.n || r.nombre;
+    if (r.fecha_inicio_impl || r.fecha_fin_impl) {
+      ccImplDates[name] = { inicio: r.fecha_inicio_impl, fin: r.fecha_fin_impl };
+    }
   });
 }
 
@@ -1095,6 +1112,8 @@ async function ccLoadSoftwareClientes() {
     _id: r.id, n: r.nombre, licencia: r.tipo_licencia || '',
     monto: parseFloat(r.monto_mensual) || 0,
     fecha_entrada: r.fecha_entrada || null,
+    fecha_inicio_impl: r.fecha_inicio_impl || null,
+    fecha_fin_impl: r.fecha_fin_impl || null,
     fecha_salida: r.fecha_salida || null,
     activo: r.activo !== false,
     descuento_pct: r.descuento_pct || null,
@@ -3265,6 +3284,25 @@ var bdContEditingId = null;
 var swSearch = '';
 var clFilter = 'todos'; // 'todos' | 'nuevos' | 'churn'
 var swFilter = 'todos'; // 'todos' | 'nuevos' | 'churn'
+
+function clSearchInput(val) {
+  clSearch = val;
+  bdRenderClientes();
+  var si = document.getElementById('cl-search-input');
+  if (si) { si.focus(); si.setSelectionRange(clSearch.length, clSearch.length); }
+}
+function swSearchInput(val) {
+  swSearch = val;
+  bdRenderSoftware();
+  var si = document.getElementById('sw-search-input');
+  if (si) { si.focus(); si.setSelectionRange(swSearch.length, swSearch.length); }
+}
+function swSearchCrudInput(val) {
+  swSearch = val;
+  bdRenderSoftwareCrud();
+  var si = document.getElementById('sw-search-input');
+  if (si) { si.focus(); si.setSelectionRange(swSearch.length, swSearch.length); }
+}
 var swEditingId = null;
 var swModalActivo = true;
 
@@ -3475,7 +3513,7 @@ function bdRenderClientes() {
   }
 
   h += '<div class="cl-toolbar">';
-  h += '<input class="cl-search" type="text" placeholder="Buscar cliente..." value="' + esc(clSearch) + '" oninput="clSearch=this.value;bdRenderClientes()">';
+  h += '<input class="cl-search" type="text" placeholder="Buscar cliente..." value="' + esc(clSearch) + '" id="cl-search-input" oninput="clSearchInput(this.value)">';
   if (tengoPermiso('gerencia', 'basedatos', 'edicion', 'clientes')) {
     h += '<button class="btn-add" onclick="clOpenModal()">+ Nuevo cliente</button>';
   }
@@ -3969,6 +4007,7 @@ async function clSaveClient() {
   clCloseModal();
   await bdLoadClientes();
   if (bdSoftwareClientes) { var swReload = await sb.from('clientes_software').select('*'); bdSoftwareClientes = swReload.data || []; }
+  ccBuildImplDates();
   bdRenderClientes();
   gerShowToast(wasEditing ? 'Cliente actualizado' : 'Cliente agregado');
 }
@@ -4099,7 +4138,7 @@ function bdRenderSoftware() {
   }
 
   h += '<div class="cl-toolbar">';
-  h += '<input class="cl-search" type="text" placeholder="Buscar cliente software..." value="' + esc(swSearch) + '" oninput="swSearch=this.value;bdRenderSoftware()">';
+  h += '<input class="cl-search" type="text" placeholder="Buscar cliente software..." value="' + esc(swSearch) + '" id="sw-search-input" oninput="swSearchInput(this.value)">';
   if (tengoPermiso('gerencia', 'basedatos', 'edicion', 'clientes')) {
     h += '<button class="btn-add" onclick="swOpenModal()">+ Nuevo cliente</button>';
   }
@@ -4247,6 +4286,8 @@ function swOpenModal(editId) {
     document.getElementById('sw-m-monto').value = c.monto_mensual || '';
     document.getElementById('sw-m-tipo-licencia').value = c.tipo_licencia || '';
     document.getElementById('sw-m-fecha-entrada').value = c.fecha_entrada || '';
+    document.getElementById('sw-m-fecha-inicio-impl').value = c.fecha_inicio_impl || '';
+    document.getElementById('sw-m-fecha-fin-impl').value = c.fecha_fin_impl || '';
     document.getElementById('sw-m-fecha-salida').value = c.fecha_salida || '';
     document.getElementById('sw-m-motivo-salida').value = c.motivo_salida || '';
     document.getElementById('sw-m-nota-salida').value = c.nota_salida || '';
@@ -4265,6 +4306,8 @@ function swOpenModal(editId) {
     document.getElementById('sw-m-monto').value = '';
     document.getElementById('sw-m-tipo-licencia').value = '';
     document.getElementById('sw-m-fecha-entrada').value = '';
+    document.getElementById('sw-m-fecha-inicio-impl').value = '';
+    document.getElementById('sw-m-fecha-fin-impl').value = '';
     document.getElementById('sw-m-fecha-salida').value = '';
     document.getElementById('sw-m-motivo-salida').value = '';
     document.getElementById('sw-m-nota-salida').value = '';
@@ -4316,6 +4359,8 @@ async function swSaveClient() {
     monto_mensual: montoVal ? parseInt(montoVal) : null,
     tipo_licencia: document.getElementById('sw-m-tipo-licencia').value || null,
     fecha_entrada: document.getElementById('sw-m-fecha-entrada').value || null,
+    fecha_inicio_impl: document.getElementById('sw-m-fecha-inicio-impl').value || null,
+    fecha_fin_impl: document.getElementById('sw-m-fecha-fin-impl').value || null,
     fecha_salida: document.getElementById('sw-m-fecha-salida').value || null,
     activo: swModalActivo,
     motivo_salida: !swModalActivo ? (document.getElementById('sw-m-motivo-salida').value || null) : null,
@@ -4355,6 +4400,7 @@ async function swSaveClient() {
 
   swCloseModal();
   await bdLoadSoftware();
+  ccBuildImplDates();
   bdRenderSoftware();
   gerShowToast(wasEditing ? 'Cliente software actualizado' : 'Cliente software agregado');
 }
@@ -5252,6 +5298,8 @@ async function bdLoadSoftware() {
       _id: r.id, n: r.nombre, licencia: r.tipo_licencia || '',
       monto: parseFloat(r.monto_mensual) || 0,
       fecha_entrada: r.fecha_entrada || null,
+      fecha_inicio_impl: r.fecha_inicio_impl || null,
+      fecha_fin_impl: r.fecha_fin_impl || null,
       fecha_salida: r.fecha_salida || null,
       activo: r.activo !== false,
       descuento_pct: r.descuento_pct || null,
@@ -5381,7 +5429,7 @@ function bdRenderClientes() {
   }
 
   h += '<div class="cl-toolbar">';
-  h += '<input class="cl-search" type="text" placeholder="Buscar cliente..." value="' + esc(clSearch) + '" oninput="clSearch=this.value;bdRenderClientes()">';
+  h += '<input class="cl-search" type="text" placeholder="Buscar cliente..." value="' + esc(clSearch) + '" id="cl-search-input" oninput="clSearchInput(this.value)">';
   if (tengoPermiso('gerencia', 'basedatos', 'edicion', 'clientes')) {
     h += '<button class="btn-add" onclick="clOpenModal()">+ Nuevo cliente</button>';
   }
@@ -5865,6 +5913,7 @@ async function clSaveClient() {
   clCloseModal();
   await bdLoadClientes();
   await bdLoadSoftware();
+  ccBuildImplDates();
   bdRenderClientes();
   gerShowToast(wasEditing ? 'Cliente actualizado' : 'Cliente agregado');
 }
@@ -5994,7 +6043,7 @@ function bdRenderSoftwareCrud() {
   }
 
   h += '<div class="cl-toolbar">';
-  h += '<input class="cl-search" type="text" placeholder="Buscar cliente software..." value="' + esc(swSearch) + '" oninput="swSearch=this.value;bdRenderSoftwareCrud()">';
+  h += '<input class="cl-search" type="text" placeholder="Buscar cliente software..." value="' + esc(swSearch) + '" id="sw-search-input" oninput="swSearchCrudInput(this.value)">';
   if (tengoPermiso('gerencia', 'basedatos', 'edicion', 'clientes')) {
     h += '<button class="btn-add" onclick="swOpenModal()">+ Nuevo cliente</button>';
   }
@@ -6135,6 +6184,8 @@ function swOpenModal(editId) {
     document.getElementById('sw-m-monto').value = c.monto_mensual || '';
     document.getElementById('sw-m-tipo-licencia').value = c.tipo_licencia || '';
     document.getElementById('sw-m-fecha-entrada').value = c.fecha_entrada || '';
+    document.getElementById('sw-m-fecha-inicio-impl').value = c.fecha_inicio_impl || '';
+    document.getElementById('sw-m-fecha-fin-impl').value = c.fecha_fin_impl || '';
     document.getElementById('sw-m-fecha-salida').value = c.fecha_salida || '';
     document.getElementById('sw-m-motivo-salida').value = c.motivo_salida || '';
     document.getElementById('sw-m-nota-salida').value = c.nota_salida || '';
@@ -6153,6 +6204,8 @@ function swOpenModal(editId) {
     document.getElementById('sw-m-monto').value = '';
     document.getElementById('sw-m-tipo-licencia').value = '';
     document.getElementById('sw-m-fecha-entrada').value = '';
+    document.getElementById('sw-m-fecha-inicio-impl').value = '';
+    document.getElementById('sw-m-fecha-fin-impl').value = '';
     document.getElementById('sw-m-fecha-salida').value = '';
     document.getElementById('sw-m-motivo-salida').value = '';
     document.getElementById('sw-m-nota-salida').value = '';
@@ -6204,6 +6257,8 @@ async function swSaveClient() {
     monto_mensual: montoVal ? parseInt(montoVal) : null,
     tipo_licencia: document.getElementById('sw-m-tipo-licencia').value || null,
     fecha_entrada: document.getElementById('sw-m-fecha-entrada').value || null,
+    fecha_inicio_impl: document.getElementById('sw-m-fecha-inicio-impl').value || null,
+    fecha_fin_impl: document.getElementById('sw-m-fecha-fin-impl').value || null,
     fecha_salida: document.getElementById('sw-m-fecha-salida').value || null,
     activo: swModalActivo,
     motivo_salida: !swModalActivo ? (document.getElementById('sw-m-motivo-salida').value || null) : null,
@@ -6242,6 +6297,7 @@ async function swSaveClient() {
 
   swCloseModal();
   await bdLoadSoftware();
+  ccBuildImplDates();
   bdRenderSoftwareCrud();
   gerShowToast(wasEditing ? 'Cliente software actualizado' : 'Cliente software agregado');
 }
@@ -6266,7 +6322,6 @@ async function showApp() {
   // Load all modules' data in parallel
   await Promise.all([
     ccLoadData(),
-    ccLoadImplementaciones(),
     ccLoadImplFE(),
     ccLoadImplAdm(),
     ccLoadSoftwareClientes(),
@@ -6278,6 +6333,8 @@ async function showApp() {
   ]);
   // Load BD clients after ccLoadData so bdClientes (full select *) becomes the authoritative source
   await Promise.all([bdLoadClientes(), bdLoadSoftware()]);
+  // Build impl dates from client tables (needs bdClientes + ccSOFTWARE_CLIENTES loaded)
+  ccBuildImplDates();
 
   // Init CC state
   ccActiveMainTab = 'dashboard';
