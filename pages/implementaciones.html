@@ -604,6 +604,29 @@ function resumenIsEnRiesgo(cliente, pct, totalPasos, tipo) {
   return tiempoPct > 0.5 && pct < 40;
 }
 
+// Formatea '2026-05-14' → '14/05/2026'
+function fmtDate(d) {
+  if (!d) return '-';
+  var p = d.split('-');
+  return p[2] + '/' + p[1] + '/' + p[0];
+}
+
+// Calcula días restantes desde hoy hasta fecha fin
+function diasRestantes(finStr) {
+  if (!finStr) return null;
+  var hoy = new Date(); hoy.setHours(0,0,0,0);
+  var fin = resumenParseDate(finStr);
+  return Math.ceil((fin - hoy) / (1000 * 60 * 60 * 24));
+}
+
+// Obtiene fechas de impl para un cliente según tipo (fe/adm)
+function getImplFechas(cliente, tipo) {
+  var dates = implDates[cliente];
+  if (!dates) return { inicio: null, fin: null };
+  var t = tipo || 'fe';
+  return { inicio: dates['inicio_' + t] || null, fin: dates['fin_' + t] || null };
+}
+
 function renderResumen(el) {
   var feItems = FE_ITEMS;
   var admItems = ADM_ITEMS;
@@ -615,14 +638,16 @@ function renderResumen(el) {
     var done = resumenCountDone(datos, feItems);
     var pct = Math.round((done / feItems.length) * 100);
     var riesgo = resumenIsEnRiesgo(row.cliente, pct, feItems.length, 'fe');
-    unifiedRows.push({ cliente: row.cliente, implementadora: row.implementadora, done: done, total: feItems.length, pct: pct, riesgo: riesgo, tipo: 'FE' });
+    var fechas = getImplFechas(row.cliente, 'fe');
+    unifiedRows.push({ cliente: row.cliente, implementadora: row.implementadora, done: done, total: feItems.length, pct: pct, riesgo: riesgo, tipo: 'FE', fechas: fechas });
   });
   allRowsAdm.forEach(function(row) {
     var datos = row.datos || {};
     var done = resumenCountDone(datos, admItems);
     var pct = Math.round((done / admItems.length) * 100);
     var riesgo = resumenIsEnRiesgo(row.cliente, pct, admItems.length, 'adm');
-    unifiedRows.push({ cliente: row.cliente, implementadora: row.implementadora, done: done, total: admItems.length, pct: pct, riesgo: riesgo, tipo: 'Adm' });
+    var fechas = getImplFechas(row.cliente, 'adm');
+    unifiedRows.push({ cliente: row.cliente, implementadora: row.implementadora, done: done, total: admItems.length, pct: pct, riesgo: riesgo, tipo: 'Adm', fechas: fechas });
   });
 
   var totalActivas = unifiedRows.length;
@@ -650,7 +675,7 @@ function renderResumen(el) {
     });
 
     html += '<table class="ck-client-table" style="margin-top:16px"><thead><tr>';
-    html += '<th>#</th><th>Cliente</th><th>Tipo</th><th>Implementadora</th><th>Progreso</th><th>Estado</th>';
+    html += '<th>#</th><th>Cliente</th><th>Tipo</th><th>Implementadora</th><th>Inicio</th><th>Fin esperado</th><th>Progreso</th><th>Estado</th>';
     html += '</tr></thead><tbody>';
 
     unifiedRows.forEach(function(row, idx) {
@@ -662,11 +687,21 @@ function renderResumen(el) {
       else if (row.pct === 0) { badgeColor = 'background:#f3f4f6;color:#6b7280'; badgeLabel = 'Sin iniciar'; }
       else { badgeColor = 'background:#eff6ff;color:var(--blue)'; badgeLabel = 'En progreso'; }
 
+      // Días restantes para color
+      var dr = diasRestantes(row.fechas.fin);
+      var finStyle = '';
+      if (dr !== null && row.pct < 100) {
+        if (dr < 0) finStyle = 'color:var(--red);font-weight:600';
+        else if (dr <= 7) finStyle = 'color:var(--amber);font-weight:600';
+      }
+
       html += '<tr style="cursor:pointer" onclick="switchMainTab(\'' + (row.tipo === 'FE' ? 'fe' : 'adm') + '\');setTimeout(function(){openDetail(\'' + esc(row.cliente) + '\')},50)">';
       html += '<td>' + (idx + 1) + '</td>';
       html += '<td style="font-weight:600">' + (row.cliente || '') + '</td>';
       html += '<td><span style="display:inline-block;padding:2px 8px;border-radius:6px;font-size:0.7rem;font-weight:600;' + tipoBg + '">' + row.tipo + '</span></td>';
       html += '<td>' + (row.implementadora || '-') + '</td>';
+      html += '<td style="font-size:0.78rem">' + fmtDate(row.fechas.inicio) + '</td>';
+      html += '<td style="font-size:0.78rem;' + finStyle + '">' + fmtDate(row.fechas.fin) + (dr !== null && dr < 0 && row.pct < 100 ? ' <span style="font-size:0.68rem">(' + Math.abs(dr) + 'd atraso)</span>' : dr !== null && dr >= 0 && row.pct < 100 ? ' <span style="font-size:0.68rem;color:var(--muted)">(' + dr + 'd)</span>' : '') + '</td>';
       html += '<td><span class="ck-progress-bar"><span class="ck-progress-fill" style="width:' + row.pct + '%;background:' + barColor + '"></span></span><span class="ck-progress-text">' + row.done + '/' + row.total + '</span></td>';
       html += '<td><span class="ck-status-badge" style="' + badgeColor + '">' + badgeLabel + '</span></td>';
       html += '</tr>';
@@ -758,6 +793,8 @@ function renderList(el) {
   html += '<div class="summary-stat"><div class="summary-stat-label">Sin iniciar</div><div class="summary-stat-value" style="color:var(--muted)">' + sinIniciar + '</div></div>';
   html += '</div>';
 
+  var tipoFecha = mainTab === 'adm' ? 'adm' : 'fe';
+
   // Add button + view toggle row
   var iconTable = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3" y2="18"/><line x1="9" y1="6" x2="9" y2="18"/></svg>';
   var iconCards = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>';
@@ -777,7 +814,7 @@ function renderList(el) {
     html += '<div class="empty">No hay clientes registrados.</div>';
   } else if (viewMode === 'table') {
     html += '<table class="ck-client-table"><thead><tr>';
-    html += '<th>#</th><th>Cliente</th><th>Implementadora</th><th>Progreso</th><th>Estado</th>';
+    html += '<th>#</th><th>Cliente</th><th>Implementadora</th><th>Inicio</th><th>Fin esperado</th><th>Progreso</th><th>Estado</th>';
     html += '</tr></thead><tbody>';
 
     for (var j = 0; j < filtered.length; j++) {
@@ -786,11 +823,20 @@ function renderList(el) {
       var done = countDone(datos);
       var pct = Math.round((done / totalSteps) * 100);
       var status = getStatusInfo(done, totalSteps);
+      var fechas = getImplFechas(row.cliente, tipoFecha);
+      var dr = diasRestantes(fechas.fin);
+      var finStyle = '';
+      if (dr !== null && pct < 100) {
+        if (dr < 0) finStyle = 'color:var(--red);font-weight:600';
+        else if (dr <= 7) finStyle = 'color:var(--amber);font-weight:600';
+      }
 
       html += '<tr onclick="openDetail(\'' + esc(row.cliente) + '\')">';
       html += '<td>' + (j + 1) + '</td>';
       html += '<td><span class="ck-table-name">' + row.cliente + '</span></td>';
       html += '<td><span class="ck-table-contadora">' + (row.implementadora || '') + '</span></td>';
+      html += '<td style="font-size:0.78rem">' + fmtDate(fechas.inicio) + '</td>';
+      html += '<td style="font-size:0.78rem;' + finStyle + '">' + fmtDate(fechas.fin) + (dr !== null && dr < 0 && pct < 100 ? ' <span style="font-size:0.68rem">(' + Math.abs(dr) + 'd atraso)</span>' : dr !== null && dr >= 0 && pct < 100 ? ' <span style="font-size:0.68rem;color:var(--muted)">(' + dr + 'd)</span>' : '') + '</td>';
       html += '<td><span class="ck-progress-bar"><span class="ck-progress-fill" style="width:' + pct + '%;background:' + getBarColor(pct) + '"></span></span><span class="ck-progress-text">' + done + '/' + totalSteps + '</span></td>';
       html += '<td><span class="ck-status-badge ' + status.css + '">' + status.label + '</span></td>';
       html += '</tr>';
@@ -805,6 +851,8 @@ function renderList(el) {
       var datos = row.datos || {};
       var done = countDone(datos);
       var pct = Math.round((done / totalSteps) * 100);
+      var fechas = getImplFechas(row.cliente, tipoFecha);
+      var dr = diasRestantes(fechas.fin);
 
       html += '<div class="client-card" onclick="openDetail(\'' + esc(row.cliente) + '\')">';
       html += '<div class="client-card-name">' + row.cliente + '</div>';
@@ -814,6 +862,17 @@ function renderList(el) {
       html += '<div class="client-card-pct" style="color:' + getBarColor(pct) + '">' + pct + '%</div>';
       html += '</div>';
       html += '<div class="client-card-count">' + done + ' de ' + totalSteps + ' pasos</div>';
+      if (fechas.inicio || fechas.fin) {
+        var drText = '';
+        if (dr !== null && pct < 100) {
+          if (dr < 0) drText = '<span style="color:var(--red);font-weight:600">' + Math.abs(dr) + 'd atraso</span>';
+          else drText = '<span style="color:var(--muted)">' + dr + 'd restantes</span>';
+        }
+        html += '<div style="font-size:0.72rem;color:var(--muted);margin-top:4px;display:flex;gap:8px;align-items:center">';
+        html += '<span>' + fmtDate(fechas.inicio) + ' → ' + fmtDate(fechas.fin) + '</span>';
+        if (drText) html += drText;
+        html += '</div>';
+      }
       html += '</div>';
     }
     html += '</div>';
@@ -886,6 +945,33 @@ function renderDetail(el) {
   }
   html += '</div>';
   html += '</div>';
+
+  // Fechas de implementación
+  var tipoFechaD = mainTab === 'adm' ? 'adm' : 'fe';
+  var fechasD = getImplFechas(row.cliente, tipoFechaD);
+  if (fechasD.inicio || fechasD.fin) {
+    var drD = diasRestantes(fechasD.fin);
+    html += '<div style="display:flex;gap:20px;align-items:center;margin:8px 0 4px;padding:10px 16px;background:#f8f9fb;border:1px solid var(--border);border-radius:8px;font-size:0.82rem">';
+    html += '<div><span style="color:var(--muted);font-size:0.7rem;text-transform:uppercase;letter-spacing:0.3px">Inicio</span><div style="font-weight:600;color:var(--navy)">' + fmtDate(fechasD.inicio) + '</div></div>';
+    html += '<div><span style="color:var(--muted);font-size:0.7rem;text-transform:uppercase;letter-spacing:0.3px">Fin esperado</span><div style="font-weight:600;color:var(--navy)">' + fmtDate(fechasD.fin) + '</div></div>';
+    if (drD !== null && pct < 100) {
+      var drColor = drD < 0 ? 'var(--red)' : drD <= 7 ? 'var(--amber)' : 'var(--green)';
+      var drLabel = drD < 0 ? Math.abs(drD) + ' días de atraso' : drD === 0 ? 'Vence hoy' : drD + ' días restantes';
+      html += '<div><span style="color:var(--muted);font-size:0.7rem;text-transform:uppercase;letter-spacing:0.3px">Plazo</span><div style="font-weight:600;color:' + drColor + '">' + drLabel + '</div></div>';
+    }
+    if (fechasD.inicio && fechasD.fin && pct < 100) {
+      var inicioD = resumenParseDate(fechasD.inicio);
+      var finD = resumenParseDate(fechasD.fin);
+      var hoyD = new Date(); hoyD.setHours(0,0,0,0);
+      var totalMsD = finD - inicioD;
+      if (totalMsD > 0) {
+        var tiempoPct = Math.min(100, Math.max(0, Math.round(((hoyD - inicioD) / totalMsD) * 100)));
+        var tiempoColor = tiempoPct > 50 && pct < 40 ? 'var(--red)' : tiempoPct > pct ? 'var(--amber)' : 'var(--green)';
+        html += '<div><span style="color:var(--muted);font-size:0.7rem;text-transform:uppercase;letter-spacing:0.3px">Tiempo transcurrido</span><div style="font-weight:600;color:' + tiempoColor + '">' + tiempoPct + '%</div></div>';
+      }
+    }
+    html += '</div>';
+  }
 
   // Progress bar + save button
   html += '<div class="progress-row">';
