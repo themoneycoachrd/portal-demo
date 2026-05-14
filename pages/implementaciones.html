@@ -540,8 +540,9 @@ async function initApp(user) {
 async function loadData() {
   var p1 = sb.from('impl_checklist_fe').select('*');
   var p2 = sb.from('impl_checklist_adm').select('*');
-  var p3 = sb.from('implementaciones').select('cliente, impl_inicio, impl_fin');
-  var results = await Promise.all([p1, p2, p3]);
+  var p3 = sb.from('clientes').select('nombre, fecha_inicio_impl_fe, fecha_fin_impl_fe, fecha_inicio_impl_adm, fecha_fin_impl_adm');
+  var p4 = sb.from('clientes_software').select('nombre, fecha_inicio_impl, fecha_fin_impl');
+  var results = await Promise.all([p1, p2, p3, p4]);
 
   allRows = results[0].data || [];
   if (results[0].error) console.error('Error cargando impl_checklist_fe:', results[0].error);
@@ -550,8 +551,24 @@ async function loadData() {
   if (results[1].error) console.error('Error cargando impl_checklist_adm:', results[1].error);
 
   implDates = {};
+  // Outsourcing: fechas separadas FE/Adm
   (results[2].data || []).forEach(function(r) {
-    implDates[r.cliente] = { inicio: r.impl_inicio, fin: r.impl_fin };
+    var has = r.fecha_inicio_impl_fe || r.fecha_fin_impl_fe || r.fecha_inicio_impl_adm || r.fecha_fin_impl_adm;
+    if (has) {
+      implDates[r.nombre] = {
+        inicio_fe: r.fecha_inicio_impl_fe, fin_fe: r.fecha_fin_impl_fe,
+        inicio_adm: r.fecha_inicio_impl_adm, fin_adm: r.fecha_fin_impl_adm
+      };
+    }
+  });
+  // Software: par único, se copia a ambos
+  (results[3].data || []).forEach(function(r) {
+    if (r.fecha_inicio_impl || r.fecha_fin_impl) {
+      implDates[r.nombre] = {
+        inicio_fe: r.fecha_inicio_impl, fin_fe: r.fecha_fin_impl,
+        inicio_adm: r.fecha_inicio_impl, fin_adm: r.fecha_fin_impl
+      };
+    }
   });
 }
 
@@ -570,13 +587,17 @@ function resumenParseDate(dateStr) {
   return new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
 }
 
-function resumenIsEnRiesgo(cliente, pct, totalPasos) {
+function resumenIsEnRiesgo(cliente, pct, totalPasos, tipo) {
   var dates = implDates[cliente];
-  if (!dates || !dates.inicio || !dates.fin) return false;
+  if (!dates) return false;
+  var t = tipo || 'fe';
+  var ini = dates['inicio_' + t];
+  var fin = dates['fin_' + t];
+  if (!ini || !fin) return false;
   var hoy = new Date(); hoy.setHours(0,0,0,0);
-  var inicio = resumenParseDate(dates.inicio);
-  var fin = resumenParseDate(dates.fin);
-  var totalMs = fin - inicio;
+  var inicio = resumenParseDate(ini);
+  var finD = resumenParseDate(fin);
+  var totalMs = finD - inicio;
   if (totalMs <= 0) return false;
   var avanceMs = hoy - inicio;
   var tiempoPct = avanceMs / totalMs;
@@ -593,14 +614,14 @@ function renderResumen(el) {
     var datos = row.datos || {};
     var done = resumenCountDone(datos, feItems);
     var pct = Math.round((done / feItems.length) * 100);
-    var riesgo = resumenIsEnRiesgo(row.cliente, pct, feItems.length);
+    var riesgo = resumenIsEnRiesgo(row.cliente, pct, feItems.length, 'fe');
     unifiedRows.push({ cliente: row.cliente, implementadora: row.implementadora, done: done, total: feItems.length, pct: pct, riesgo: riesgo, tipo: 'FE' });
   });
   allRowsAdm.forEach(function(row) {
     var datos = row.datos || {};
     var done = resumenCountDone(datos, admItems);
     var pct = Math.round((done / admItems.length) * 100);
-    var riesgo = resumenIsEnRiesgo(row.cliente, pct, admItems.length);
+    var riesgo = resumenIsEnRiesgo(row.cliente, pct, admItems.length, 'adm');
     unifiedRows.push({ cliente: row.cliente, implementadora: row.implementadora, done: done, total: admItems.length, pct: pct, riesgo: riesgo, tipo: 'Adm' });
   });
 

@@ -554,6 +554,8 @@
     <!-- ═══ Sección 2: Servicio contratado ═══ -->
     <div style="border-top:1px solid var(--border);margin:12px 0;padding-top:12px">
       <div style="font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--muted);margin-bottom:10px">Servicio contratado</div>
+      <!-- Sub: Contabilidad -->
+      <div style="font-size:0.68rem;font-weight:600;text-transform:uppercase;letter-spacing:0.4px;color:var(--blue);margin-bottom:6px">Contabilidad</div>
       <div class="m-row">
         <div class="m-field">
           <label>Tipo de servicio</label>
@@ -576,6 +578,8 @@
           </select>
         </div>
       </div>
+      <!-- Sub: Licencia -->
+      <div style="font-size:0.68rem;font-weight:600;text-transform:uppercase;letter-spacing:0.4px;color:var(--blue);margin:12px 0 6px">Licencia</div>
       <div class="m-row">
         <div class="m-field">
           <label>Licencia Adm</label>
@@ -596,6 +600,10 @@
             <option value="Manufactura+FE">Manufactura+FE</option>
           </select>
         </div>
+      </div>
+      <!-- Sub: Implementación -->
+      <div style="font-size:0.68rem;font-weight:600;text-transform:uppercase;letter-spacing:0.4px;color:var(--blue);margin:12px 0 6px">Implementación</div>
+      <div class="m-row">
         <div class="m-field">
           <label>Servicio de implementación</label>
           <select id="cl-m-servicio-impl">
@@ -606,20 +614,34 @@
           </select>
         </div>
       </div>
-      <!-- Checklist de implementación -->
-      <div id="cl-m-impl-checklist-wrap" style="margin-top:8px;padding:10px 14px;background:#f0f4ff;border:1px solid #c7d2fe;border-radius:8px">
-        <div style="font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.4px;color:#4338ca;margin-bottom:8px">Checklist de implementación</div>
-        <div style="display:flex;gap:20px;align-items:center">
-          <label style="display:flex;align-items:center;gap:6px;font-size:0.82rem;font-weight:600;color:var(--navy);cursor:pointer">
-            <input type="checkbox" id="cl-m-ck-fe"> Facturación Electrónica
-          </label>
-          <label style="display:flex;align-items:center;gap:6px;font-size:0.82rem;font-weight:600;color:var(--navy);cursor:pointer">
-            <input type="checkbox" id="cl-m-ck-adm"> Adm
-          </label>
+      <div style="margin-top:8px;padding:10px 14px;background:#f8f9fb;border:1px solid var(--border);border-radius:8px">
+        <div style="font-size:0.65rem;font-weight:600;text-transform:uppercase;letter-spacing:0.3px;color:var(--muted);margin-bottom:8px">Facturación Electrónica</div>
+        <div class="m-row">
+          <div class="m-field">
+            <label>Fecha inicio FE</label>
+            <input type="date" id="cl-m-fecha-inicio-impl-fe">
+          </div>
+          <div class="m-field">
+            <label>Fecha fin esperado FE</label>
+            <input type="date" id="cl-m-fecha-fin-impl-fe">
+          </div>
         </div>
-        <div id="cl-m-ck-fe-exists" style="display:none;margin-top:6px;font-size:0.75rem;color:var(--green);font-weight:600">✓ Ya tiene checklist FE creado</div>
-        <div id="cl-m-ck-adm-exists" style="display:none;margin-top:4px;font-size:0.75rem;color:var(--green);font-weight:600">✓ Ya tiene checklist Adm creado</div>
+        <div style="font-size:0.65rem;font-weight:600;text-transform:uppercase;letter-spacing:0.3px;color:var(--muted);margin:10px 0 8px">Adm</div>
+        <div class="m-row">
+          <div class="m-field">
+            <label>Fecha inicio Adm</label>
+            <input type="date" id="cl-m-fecha-inicio-impl-adm">
+          </div>
+          <div class="m-field">
+            <label>Fecha fin esperado Adm</label>
+            <input type="date" id="cl-m-fecha-fin-impl-adm">
+          </div>
+        </div>
       </div>
+    </div>
+    <!-- ═══ Sección 3: Checklist de servicios ═══ -->
+    <div style="border-top:1px solid var(--border);margin:12px 0;padding-top:12px">
+      <div style="font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--muted);margin-bottom:10px">Checklist de servicios</div>
       <div class="m-row">
         <div class="m-field">
           <label style="margin-bottom:4px">Contabilidad</label>
@@ -636,28 +658,32 @@
           </div>
         </div>
       </div>
-      <!-- Sub-sección: Fechas -->
-      <div style="margin-top:12px;padding-top:10px;border-top:1px dashed var(--border)">
-        <div style="font-size:0.68rem;font-weight:600;text-transform:uppercase;letter-spacing:0.4px;color:var(--light);margin-bottom:8px">Fechas</div>
-        <div class="m-row">
-          <div class="m-field">
-            <label>Fecha de entrada</label>
-            <input type="date" id="cl-m-fecha-entrada">
-          </div>
-          <div class="m-field">
-            <label>Inicio responsabilidad fiscal</label>
-            <input type="date" id="cl-m-inicio-fiscal">
-          </div>
+      <!-- Checklist de implementación -->
+      <div id="cl-m-impl-checklist-wrap" style="margin-top:8px;padding:10px 14px;background:#f0f4ff;border:1px solid #c7d2fe;border-radius:8px">
+        <div style="font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.4px;color:#4338ca;margin-bottom:8px">Implementación</div>
+        <div style="display:flex;gap:20px;align-items:center">
+          <label style="display:flex;align-items:center;gap:6px;font-size:0.82rem;font-weight:600;color:var(--navy);cursor:pointer">
+            <input type="checkbox" id="cl-m-ck-fe"> Facturación Electrónica
+          </label>
+          <label style="display:flex;align-items:center;gap:6px;font-size:0.82rem;font-weight:600;color:var(--navy);cursor:pointer">
+            <input type="checkbox" id="cl-m-ck-adm"> Adm
+          </label>
         </div>
-        <div class="m-row">
-          <div class="m-field">
-            <label>Inicio implementación</label>
-            <input type="date" id="cl-m-fecha-inicio-impl">
-          </div>
-          <div class="m-field">
-            <label>Fin esperado implementación</label>
-            <input type="date" id="cl-m-fecha-fin-impl">
-          </div>
+        <div id="cl-m-ck-fe-exists" style="display:none;margin-top:6px;font-size:0.75rem;color:var(--green);font-weight:600">✓ Ya tiene checklist FE creado</div>
+        <div id="cl-m-ck-adm-exists" style="display:none;margin-top:4px;font-size:0.75rem;color:var(--green);font-weight:600">✓ Ya tiene checklist Adm creado</div>
+      </div>
+    </div>
+    <!-- ═══ Sección 4: Fechas ═══ -->
+    <div style="border-top:1px solid var(--border);margin:12px 0;padding-top:12px">
+      <div style="font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--muted);margin-bottom:10px">Fechas</div>
+      <div class="m-row">
+        <div class="m-field">
+          <label>Fecha de entrada</label>
+          <input type="date" id="cl-m-fecha-entrada">
+        </div>
+        <div class="m-field">
+          <label>Inicio responsabilidad fiscal</label>
+          <input type="date" id="cl-m-inicio-fiscal">
         </div>
       </div>
     </div>
@@ -1079,17 +1105,24 @@ async function ccLoadData() {
 
 function ccBuildImplDates() {
   ccImplDates = {};
-  // From outsourcing clients
+  // From outsourcing clients (fechas separadas FE/Adm)
   (bdClientes || []).forEach(r => {
-    if (r.fecha_inicio_impl || r.fecha_fin_impl) {
-      ccImplDates[r.nombre] = { inicio: r.fecha_inicio_impl, fin: r.fecha_fin_impl };
+    var has = r.fecha_inicio_impl_fe || r.fecha_fin_impl_fe || r.fecha_inicio_impl_adm || r.fecha_fin_impl_adm;
+    if (has) {
+      ccImplDates[r.nombre] = {
+        inicio_fe: r.fecha_inicio_impl_fe, fin_fe: r.fecha_fin_impl_fe,
+        inicio_adm: r.fecha_inicio_impl_adm, fin_adm: r.fecha_fin_impl_adm
+      };
     }
   });
-  // From software clients
+  // From software clients (mantienen par único)
   (ccSOFTWARE_CLIENTES || []).forEach(r => {
     var name = r.n || r.nombre;
     if (r.fecha_inicio_impl || r.fecha_fin_impl) {
-      ccImplDates[name] = { inicio: r.fecha_inicio_impl, fin: r.fecha_fin_impl };
+      ccImplDates[name] = {
+        inicio_fe: r.fecha_inicio_impl, fin_fe: r.fecha_fin_impl,
+        inicio_adm: r.fecha_inicio_impl, fin_adm: r.fecha_fin_impl
+      };
     }
   });
 }
@@ -1182,14 +1215,19 @@ function ccParseLocalDate(dateStr) {
 }
 
 // Evalúa si un checklist está en riesgo: avance < 40% cuando pasó > 50% del tiempo
-function ccImplIsEnRiesgo(row, totalPasos) {
+// tipo: 'fe' o 'adm'
+function ccImplIsEnRiesgo(row, totalPasos, tipo) {
   var prog = ccCalcImplProgress(row.datos, totalPasos);
   var dates = ccImplDates[row.cliente];
-  if (!dates || !dates.inicio || !dates.fin) return false;
+  if (!dates) return false;
+  var t = tipo || 'fe';
+  var ini = dates['inicio_' + t];
+  var fin = dates['fin_' + t];
+  if (!ini || !fin) return false;
   var hoy = new Date(); hoy.setHours(0,0,0,0);
-  var inicio = ccParseLocalDate(dates.inicio);
-  var fin = ccParseLocalDate(dates.fin);
-  var totalMs = fin - inicio;
+  var inicio = ccParseLocalDate(ini);
+  var finD = ccParseLocalDate(fin);
+  var totalMs = finD - inicio;
   if (totalMs <= 0) return false;
   var avanceMs = hoy - inicio;
   var tiempoPct = avanceMs / totalMs;
@@ -1918,12 +1956,12 @@ function ccRenderImplementacion(el) {
   // Calcular progreso y riesgo para cada checklist
   var feConProgreso = ccImplFEData.map(function(row) {
     var prog = ccCalcImplProgress(row.datos, FE_ITEMS_GER.length);
-    var riesgo = ccImplIsEnRiesgo(row, FE_ITEMS_GER.length);
+    var riesgo = ccImplIsEnRiesgo(row, FE_ITEMS_GER.length, 'fe');
     return { cliente: row.cliente, implementadora: row.implementadora, prog: prog, riesgo: riesgo, tipo: 'FE' };
   });
   var admConProgreso = ccImplAdmData.map(function(row) {
     var prog = ccCalcImplProgress(row.datos, ADM_ITEMS_GER.length);
-    var riesgo = ccImplIsEnRiesgo(row, ADM_ITEMS_GER.length);
+    var riesgo = ccImplIsEnRiesgo(row, ADM_ITEMS_GER.length, 'adm');
     return { cliente: row.cliente, implementadora: row.implementadora, prog: prog, riesgo: riesgo, tipo: 'Adm' };
   });
 
@@ -3753,8 +3791,10 @@ function clOpenModal(editId) {
     document.getElementById('cl-m-inicio-fiscal').value = c.inicio_responsabilidad_fiscal || '';
     document.getElementById('cl-m-software').value = c.software || '';
     document.getElementById('cl-m-servicio-impl').value = c.servicio_impl || '';
-    document.getElementById('cl-m-fecha-inicio-impl').value = c.fecha_inicio_impl || '';
-    document.getElementById('cl-m-fecha-fin-impl').value = c.fecha_fin_impl || '';
+    document.getElementById('cl-m-fecha-inicio-impl-fe').value = c.fecha_inicio_impl_fe || '';
+    document.getElementById('cl-m-fecha-fin-impl-fe').value = c.fecha_fin_impl_fe || '';
+    document.getElementById('cl-m-fecha-inicio-impl-adm').value = c.fecha_inicio_impl_adm || '';
+    document.getElementById('cl-m-fecha-fin-impl-adm').value = c.fecha_fin_impl_adm || '';
     document.getElementById('cl-m-tipo-empresa').value = c.tipo_empresa || '';
     document.getElementById('cl-m-estado-contabilidad').value = c.estado_contabilidad || '';
     document.getElementById('cl-m-notas').value = c.notas || '';
@@ -3785,8 +3825,10 @@ function clOpenModal(editId) {
     document.getElementById('cl-m-inicio-fiscal').value = '';
     document.getElementById('cl-m-software').value = '';
     document.getElementById('cl-m-servicio-impl').value = '';
-    document.getElementById('cl-m-fecha-inicio-impl').value = '';
-    document.getElementById('cl-m-fecha-fin-impl').value = '';
+    document.getElementById('cl-m-fecha-inicio-impl-fe').value = '';
+    document.getElementById('cl-m-fecha-fin-impl-fe').value = '';
+    document.getElementById('cl-m-fecha-inicio-impl-adm').value = '';
+    document.getElementById('cl-m-fecha-fin-impl-adm').value = '';
     document.getElementById('cl-m-tipo-empresa').value = '';
     document.getElementById('cl-m-estado-contabilidad').value = '';
     document.getElementById('cl-m-notas').value = '';
@@ -3907,8 +3949,10 @@ async function clSaveClient() {
     contadora_impuestos: newImp,
     fecha_entrada: document.getElementById('cl-m-fecha-entrada').value || null,
     inicio_responsabilidad_fiscal: document.getElementById('cl-m-inicio-fiscal').value || null,
-    fecha_inicio_impl: document.getElementById('cl-m-fecha-inicio-impl').value || null,
-    fecha_fin_impl: document.getElementById('cl-m-fecha-fin-impl').value || null,
+    fecha_inicio_impl_fe: document.getElementById('cl-m-fecha-inicio-impl-fe').value || null,
+    fecha_fin_impl_fe: document.getElementById('cl-m-fecha-fin-impl-fe').value || null,
+    fecha_inicio_impl_adm: document.getElementById('cl-m-fecha-inicio-impl-adm').value || null,
+    fecha_fin_impl_adm: document.getElementById('cl-m-fecha-fin-impl-adm').value || null,
     fecha_salida: document.getElementById('cl-m-fecha-salida').value || null,
     activo: clModalActivo,
     motivo_salida: !clModalActivo ? (document.getElementById('cl-m-motivo-salida').value || null) : null,
@@ -5682,8 +5726,10 @@ function clOpenModal(editId) {
     document.getElementById('cl-m-inicio-fiscal').value = c.inicio_responsabilidad_fiscal || '';
     document.getElementById('cl-m-software').value = c.software || '';
     document.getElementById('cl-m-servicio-impl').value = c.servicio_impl || '';
-    document.getElementById('cl-m-fecha-inicio-impl').value = c.fecha_inicio_impl || '';
-    document.getElementById('cl-m-fecha-fin-impl').value = c.fecha_fin_impl || '';
+    document.getElementById('cl-m-fecha-inicio-impl-fe').value = c.fecha_inicio_impl_fe || '';
+    document.getElementById('cl-m-fecha-fin-impl-fe').value = c.fecha_fin_impl_fe || '';
+    document.getElementById('cl-m-fecha-inicio-impl-adm').value = c.fecha_inicio_impl_adm || '';
+    document.getElementById('cl-m-fecha-fin-impl-adm').value = c.fecha_fin_impl_adm || '';
     document.getElementById('cl-m-tipo-empresa').value = c.tipo_empresa || '';
     document.getElementById('cl-m-estado-contabilidad').value = c.estado_contabilidad || '';
     document.getElementById('cl-m-notas').value = c.notas || '';
@@ -5713,8 +5759,10 @@ function clOpenModal(editId) {
     document.getElementById('cl-m-inicio-fiscal').value = '';
     document.getElementById('cl-m-software').value = '';
     document.getElementById('cl-m-servicio-impl').value = '';
-    document.getElementById('cl-m-fecha-inicio-impl').value = '';
-    document.getElementById('cl-m-fecha-fin-impl').value = '';
+    document.getElementById('cl-m-fecha-inicio-impl-fe').value = '';
+    document.getElementById('cl-m-fecha-fin-impl-fe').value = '';
+    document.getElementById('cl-m-fecha-inicio-impl-adm').value = '';
+    document.getElementById('cl-m-fecha-fin-impl-adm').value = '';
     document.getElementById('cl-m-tipo-empresa').value = '';
     document.getElementById('cl-m-estado-contabilidad').value = '';
     document.getElementById('cl-m-notas').value = '';
@@ -5835,8 +5883,10 @@ async function clSaveClient() {
     contadora_impuestos: newImp,
     fecha_entrada: document.getElementById('cl-m-fecha-entrada').value || null,
     inicio_responsabilidad_fiscal: document.getElementById('cl-m-inicio-fiscal').value || null,
-    fecha_inicio_impl: document.getElementById('cl-m-fecha-inicio-impl').value || null,
-    fecha_fin_impl: document.getElementById('cl-m-fecha-fin-impl').value || null,
+    fecha_inicio_impl_fe: document.getElementById('cl-m-fecha-inicio-impl-fe').value || null,
+    fecha_fin_impl_fe: document.getElementById('cl-m-fecha-fin-impl-fe').value || null,
+    fecha_inicio_impl_adm: document.getElementById('cl-m-fecha-inicio-impl-adm').value || null,
+    fecha_fin_impl_adm: document.getElementById('cl-m-fecha-fin-impl-adm').value || null,
     fecha_salida: document.getElementById('cl-m-fecha-salida').value || null,
     activo: clModalActivo,
     motivo_salida: !clModalActivo ? (document.getElementById('cl-m-motivo-salida').value || null) : null,
