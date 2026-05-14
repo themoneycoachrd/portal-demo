@@ -3306,8 +3306,8 @@ function swSearchCrudInput(val) {
 var swEditingId = null;
 var swModalActivo = true;
 
-const BD_MESES = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
-const BD_MESES_SHORT = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+var BD_MESES = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+var BD_MESES_SHORT = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
 
 // ─── BD Data Loading ───
 async function bdLoadClientes() {
@@ -4812,8 +4812,8 @@ var bdContEditingId = null;
 var bdAsigMes = 'abril';
 var bdAsigDirty = false;
 var bdAsigEdits = {};
-const BD_MESES = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
-const BD_MESES_SHORT = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+var BD_MESES = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+var BD_MESES_SHORT = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
 
 // ─── Data Loading ───
 
@@ -5269,6 +5269,25 @@ var clPendienteId = null;
 var swSearch = '';
 var swEditingId = null;
 var swFilter = 'todos';
+
+function clSearchInput(val) {
+  clSearch = val;
+  bdRenderClientes();
+  var si = document.getElementById('cl-search-input');
+  if (si) { si.focus(); si.setSelectionRange(clSearch.length, clSearch.length); }
+}
+function swSearchInput(val) {
+  swSearch = val;
+  bdRenderSoftware();
+  var si = document.getElementById('sw-search-input');
+  if (si) { si.focus(); si.setSelectionRange(swSearch.length, swSearch.length); }
+}
+function swSearchCrudInput(val) {
+  swSearch = val;
+  bdRenderSoftwareCrud();
+  var si = document.getElementById('sw-search-input');
+  if (si) { si.focus(); si.setSelectionRange(swSearch.length, swSearch.length); }
+}
 var swModalActivo = true;
 var swPendienteId = null;
 
