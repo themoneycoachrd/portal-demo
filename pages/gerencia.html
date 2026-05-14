@@ -866,6 +866,20 @@
         </div>
       </div>
     </div>
+    <!-- Checklist de implementación -->
+    <div id="sw-m-impl-checklist-wrap" style="margin-top:8px;padding:10px 14px;background:#f0f4ff;border:1px solid #c7d2fe;border-radius:8px">
+      <div style="font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.4px;color:#4338ca;margin-bottom:8px">Checklist de implementación</div>
+      <div style="display:flex;gap:20px;align-items:center">
+        <label style="display:flex;align-items:center;gap:6px;font-size:0.82rem;font-weight:600;color:var(--navy);cursor:pointer">
+          <input type="checkbox" id="sw-m-ck-fe"> Facturación Electrónica
+        </label>
+        <label style="display:flex;align-items:center;gap:6px;font-size:0.82rem;font-weight:600;color:var(--navy);cursor:pointer">
+          <input type="checkbox" id="sw-m-ck-adm"> Adm
+        </label>
+      </div>
+      <div id="sw-m-ck-fe-exists" style="display:none;margin-top:6px;font-size:0.75rem;color:var(--green);font-weight:600">&#10003; Ya tiene checklist FE creado</div>
+      <div id="sw-m-ck-adm-exists" style="display:none;margin-top:4px;font-size:0.75rem;color:var(--green);font-weight:600">&#10003; Ya tiene checklist Adm creado</div>
+    </div>
     <div class="m-row">
       <div class="m-field">
         <label>Estado</label>
@@ -4375,6 +4389,28 @@ function swOpenModal(editId) {
     document.getElementById('sw-m-descuento-nota').value = c.descuento_nota || '';
     document.getElementById('sw-m-notas').value = c.notas || '';
     swModalActivo = c.activo !== false;
+    // Check if impl checklists already exist
+    document.getElementById('sw-m-ck-fe').checked = false;
+    document.getElementById('sw-m-ck-fe').disabled = false;
+    document.getElementById('sw-m-ck-fe-exists').style.display = 'none';
+    document.getElementById('sw-m-ck-adm').checked = false;
+    document.getElementById('sw-m-ck-adm').disabled = false;
+    document.getElementById('sw-m-ck-adm-exists').style.display = 'none';
+    var cNombre = c;
+    sb.from('impl_checklist_fe').select('id').eq('cliente', cNombre.nombre).then(function(res) {
+      if (res.data && res.data.length > 0) {
+        document.getElementById('sw-m-ck-fe').checked = true;
+        document.getElementById('sw-m-ck-fe').disabled = true;
+        document.getElementById('sw-m-ck-fe-exists').style.display = 'block';
+      }
+    });
+    sb.from('impl_checklist_adm').select('id').eq('cliente', cNombre.nombre).then(function(res) {
+      if (res.data && res.data.length > 0) {
+        document.getElementById('sw-m-ck-adm').checked = true;
+        document.getElementById('sw-m-ck-adm').disabled = true;
+        document.getElementById('sw-m-ck-adm-exists').style.display = 'block';
+      }
+    });
   } else {
     document.getElementById('sw-modal-title').textContent = 'Nuevo cliente software';
     document.getElementById('sw-m-nombre').value = '';
@@ -4397,6 +4433,12 @@ function swOpenModal(editId) {
     document.getElementById('sw-m-descuento-vence').value = '';
     document.getElementById('sw-m-descuento-nota').value = '';
     document.getElementById('sw-m-notas').value = '';
+    document.getElementById('sw-m-ck-fe').checked = false;
+    document.getElementById('sw-m-ck-fe').disabled = false;
+    document.getElementById('sw-m-ck-fe-exists').style.display = 'none';
+    document.getElementById('sw-m-ck-adm').checked = false;
+    document.getElementById('sw-m-ck-adm').disabled = false;
+    document.getElementById('sw-m-ck-adm-exists').style.display = 'none';
     swModalActivo = true;
   }
   swRenderActivoBtn();
@@ -4474,6 +4516,33 @@ async function swSaveClient() {
   }
 
   btn.disabled = false; btn.textContent = 'Guardar';
+
+  // Crear checklist de implementación si el checkbox está marcado
+  var swCkFE = document.getElementById('sw-m-ck-fe').checked;
+  var swCkFEDis = document.getElementById('sw-m-ck-fe').disabled;
+  if (swCkFE && !swCkFEDis) {
+    var existFE = await sb.from('impl_checklist_fe').select('id').eq('cliente', nombre);
+    if (!existFE.data || existFE.data.length === 0) {
+      var datosFE = {};
+      for (var fi = 1; fi <= 15; fi++) { datosFE['paso_' + fi] = { done: false, fecha: '' }; }
+      var resFE = await sb.from('impl_checklist_fe').insert({ cliente: nombre, implementadora: null, datos: datosFE });
+      if (!resFE.error) gerShowToast('Checklist FE creado para ' + nombre, 'success');
+      else console.error('Error creando checklist FE:', resFE.error);
+    }
+  }
+  var swCkAdm = document.getElementById('sw-m-ck-adm').checked;
+  var swCkAdmDis = document.getElementById('sw-m-ck-adm').disabled;
+  if (swCkAdm && !swCkAdmDis) {
+    var existAdm = await sb.from('impl_checklist_adm').select('id').eq('cliente', nombre);
+    if (!existAdm.data || existAdm.data.length === 0) {
+      var datosAdm = {};
+      for (var ai = 1; ai <= 18; ai++) { datosAdm['paso_' + ai] = { done: false, fecha: '' }; }
+      var resAdm = await sb.from('impl_checklist_adm').insert({ cliente: nombre, implementadora: null, datos: datosAdm });
+      if (!resAdm.error) gerShowToast('Checklist Adm creado para ' + nombre, 'success');
+      else console.error('Error creando checklist Adm:', resAdm.error);
+    }
+  }
+
   var wasEditing = !!swEditingId;
 
   // Si venía de un pendiente, marcarlo como creado
@@ -6310,6 +6379,28 @@ function swOpenModal(editId) {
     document.getElementById('sw-m-descuento-nota').value = c.descuento_nota || '';
     document.getElementById('sw-m-notas').value = c.notas || '';
     swModalActivo = c.activo !== false;
+    // Check if impl checklists already exist
+    document.getElementById('sw-m-ck-fe').checked = false;
+    document.getElementById('sw-m-ck-fe').disabled = false;
+    document.getElementById('sw-m-ck-fe-exists').style.display = 'none';
+    document.getElementById('sw-m-ck-adm').checked = false;
+    document.getElementById('sw-m-ck-adm').disabled = false;
+    document.getElementById('sw-m-ck-adm-exists').style.display = 'none';
+    var cNombre = c;
+    sb.from('impl_checklist_fe').select('id').eq('cliente', cNombre.nombre).then(function(res) {
+      if (res.data && res.data.length > 0) {
+        document.getElementById('sw-m-ck-fe').checked = true;
+        document.getElementById('sw-m-ck-fe').disabled = true;
+        document.getElementById('sw-m-ck-fe-exists').style.display = 'block';
+      }
+    });
+    sb.from('impl_checklist_adm').select('id').eq('cliente', cNombre.nombre).then(function(res) {
+      if (res.data && res.data.length > 0) {
+        document.getElementById('sw-m-ck-adm').checked = true;
+        document.getElementById('sw-m-ck-adm').disabled = true;
+        document.getElementById('sw-m-ck-adm-exists').style.display = 'block';
+      }
+    });
   } else {
     document.getElementById('sw-modal-title').textContent = 'Nuevo cliente software';
     document.getElementById('sw-m-nombre').value = '';
@@ -6332,6 +6423,12 @@ function swOpenModal(editId) {
     document.getElementById('sw-m-descuento-vence').value = '';
     document.getElementById('sw-m-descuento-nota').value = '';
     document.getElementById('sw-m-notas').value = '';
+    document.getElementById('sw-m-ck-fe').checked = false;
+    document.getElementById('sw-m-ck-fe').disabled = false;
+    document.getElementById('sw-m-ck-fe-exists').style.display = 'none';
+    document.getElementById('sw-m-ck-adm').checked = false;
+    document.getElementById('sw-m-ck-adm').disabled = false;
+    document.getElementById('sw-m-ck-adm-exists').style.display = 'none';
     swModalActivo = true;
   }
   swRenderActivoBtn();
