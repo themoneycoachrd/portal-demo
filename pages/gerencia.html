@@ -149,20 +149,7 @@
   .utilization-bar { width:60px; height:6px; background:#f1f5f9; border-radius:3px; display:inline-block; overflow:hidden; vertical-align:middle; margin-left:4px; }
   .utilization-fill { height:100%; border-radius:3px; }
 
-  /* ─── Implementacion cards (CC) ─── */
-  .impl-card { background:white; border-radius:12px; border:1px solid var(--border); padding:20px; margin-bottom:14px; }
-  .impl-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; }
-  .impl-name { font-size:16px; font-weight:800; }
-  .impl-status { padding:4px 12px; border-radius:8px; font-size:12px; font-weight:700; }
-  .impl-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-bottom:14px; }
-  .impl-item { background:#f8fafc; border-radius:8px; padding:10px; text-align:center; }
-  .impl-item-label { font-size:10px; text-transform:uppercase; color:var(--light); letter-spacing:0.3px; }
-  .impl-item-value { font-size:14px; font-weight:700; margin-top:2px; }
-  .impl-progress { width:100%; height:8px; background:#f1f5f9; border-radius:4px; overflow:hidden; }
-  .impl-progress-fill { height:100%; border-radius:4px; transition:width 0.3s; }
-  .impl-timeline { display:flex; justify-content:space-between; margin-top:6px; }
-  .impl-timeline span { font-size:10px; color:var(--light); }
-  @media (max-width:600px) { .impl-grid { grid-template-columns:repeat(2,1fr); } }
+  /* ─── Implementacion (CC) — cards eliminadas, resumen usa tablas ─── */
 
   /* ─── CTD: Month tabs (pill style) ─── */
   .month-tabs { display:flex; gap:4px; flex-wrap:wrap; margin-bottom:16px; }
@@ -974,9 +961,7 @@ const ccMESES_CON_CAPACIDAD = ["abril","mayo","junio","julio","agosto","septiemb
 
 // ─── CC State ───
 let ccDATA = {};
-let ccIMPLEMENTACIONES = [];
-let ccSOLO_IMPLEMENTACION = [];
-let ccIMPLEMENTACIONES_RIESGO = [];
+let ccImplDates = {}; // { cliente: { inicio, fin } } from implementaciones table
 let ccSOFTWARE_CLIENTES = [];
 let ccKPI_DATA = {};
 
@@ -1085,24 +1070,11 @@ async function ccLoadData() {
 }
 
 async function ccLoadImplementaciones() {
-  const { data } = await sb.from('implementaciones').select('*');
-  const normal = [], soloImpl = [], riesgo = [];
+  const { data } = await sb.from('implementaciones').select('cliente, impl_inicio, impl_fin');
+  ccImplDates = {};
   (data || []).forEach(r => {
-    const impl = {
-      cliente: r.cliente,
-      implInicio: r.impl_inicio,
-      implFin: r.impl_fin,
-      primerMes: r.primer_mes,
-      contadora: r.contadora,
-      notas: r.notas || ''
-    };
-    if (r.tipo === 'solo_impl') soloImpl.push(impl);
-    else if (r.tipo === 'riesgo') riesgo.push(impl);
-    else normal.push(impl);
+    ccImplDates[r.cliente] = { inicio: r.impl_inicio, fin: r.impl_fin };
   });
-  ccIMPLEMENTACIONES = normal;
-  ccSOLO_IMPLEMENTACION = soloImpl;
-  ccIMPLEMENTACIONES_RIESGO = riesgo;
 }
 
 async function ccLoadImplFE() {
@@ -1185,41 +1157,28 @@ function ccSumAdm(asig) { return Object.values(asig).reduce((s,arr)=>s+arr.reduc
 function ccContadoraServ(asig, name) { return (asig[name]||[]).reduce((s,c)=>s+c.s,0); }
 function ccContadoraAdm(asig, name) { return (asig[name]||[]).reduce((s,c)=>s+c.a,0); }
 
-function ccGetImplStatus(impl) {
-  const hoy = new Date();
-  hoy.setHours(0,0,0,0);
-  if (!impl.implInicio) return { label:"Pendiente", color:"#a3aab8", bg:"#f1f5f9", icon:"⏳", pct:0 };
-  const inicio = ccParseLocalDate(impl.implInicio);
-  const fin = ccParseLocalDate(impl.implFin);
-  if (hoy < inicio) return { label:"Por iniciar", color:"#4361ee", bg:"#eff6ff", icon:"📅", pct:0 };
-  if (hoy > fin) return { label:"Completada", color:"#10b981", bg:"#ecfdf5", icon:"✓", pct:100 };
-  const total = fin - inicio;
-  const avance = hoy - inicio;
-  const pct = total > 0 ? Math.round(avance / total * 100) : 0;
-  return { label:"En progreso", color:"#f59e0b", bg:"#fffbeb", icon:"⚡", pct:pct };
-}
-
 function ccParseLocalDate(dateStr) {
   const parts = dateStr.split('-');
   return new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
 }
 
-function ccFormatFecha(dateStr) {
-  if (!dateStr) return "—";
-  const d = ccParseLocalDate(dateStr);
-  const dia = d.getDate();
-  const mesLabel = ["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"][d.getMonth()];
-  return dia + ' ' + mesLabel + ' ' + d.getFullYear();
+// Evalúa si un checklist está en riesgo: avance < 40% cuando pasó > 50% del tiempo
+function ccImplIsEnRiesgo(row, totalPasos) {
+  var prog = ccCalcImplProgress(row.datos, totalPasos);
+  var dates = ccImplDates[row.cliente];
+  if (!dates || !dates.inicio || !dates.fin) return false;
+  var hoy = new Date(); hoy.setHours(0,0,0,0);
+  var inicio = ccParseLocalDate(dates.inicio);
+  var fin = ccParseLocalDate(dates.fin);
+  var totalMs = fin - inicio;
+  if (totalMs <= 0) return false;
+  var avanceMs = hoy - inicio;
+  var tiempoPct = avanceMs / totalMs;
+  return tiempoPct > 0.5 && prog.pct < 40;
+}
 }
 
-function ccDiasRestantes(dateStr) {
-  if (!dateStr) return null;
-  const hoy = new Date();
-  hoy.setHours(0,0,0,0);
-  const fin = ccParseLocalDate(dateStr);
-  const diff = Math.ceil((fin - hoy) / (1000*60*60*24));
-  return diff;
-}
+// ccDiasRestantes eliminada — ya no se usa
 
 function ccGetAllMonths() { return MESES.filter(m=>ccDATA[m]); }
 
@@ -1820,40 +1779,7 @@ function ccRenderDashboard(el) {
   }));
 }
 
-function ccRenderImplCard(impl, opts) {
-  const st = ccGetImplStatus(impl);
-  const dias = ccDiasRestantes(impl.implFin);
-  let diasLabel = '';
-  if (st.label === 'En progreso' && dias !== null) {
-    diasLabel = dias > 0 ? dias + ' dias restantes' : dias === 0 ? 'Termina hoy' : Math.abs(dias) + ' dias de atraso';
-  } else if (st.label === 'Por iniciar' && impl.implInicio) {
-    const diasInicio = ccDiasRestantes(impl.implInicio);
-    diasLabel = diasInicio > 0 ? 'Inicia en ' + diasInicio + ' dias' : 'Inicia hoy';
-  } else if (st.label === 'Completada') {
-    diasLabel = opts.completedLabel || 'Lista para asignar';
-  }
-  const borderStyle = opts.borderColor ? 'border-left:3px solid ' + opts.borderColor + ';' : '';
-  const statusBg = opts.statusBg || st.bg;
-  const statusColor = opts.statusColor || st.color;
-  const statusLabel = opts.statusLabel || st.label;
-
-  return `<div class="impl-card" style="${borderStyle}">
-    <div class="impl-header">
-      <div class="impl-name">${st.icon} ${impl.cliente}</div>
-      <span class="impl-status" style="background:${statusBg};color:${statusColor}">${statusLabel}</span>
-    </div>
-    <div class="impl-grid">
-      <div class="impl-item"><div class="impl-item-label">Inicio implementacion</div><div class="impl-item-value">${ccFormatFecha(impl.implInicio)}</div></div>
-      <div class="impl-item"><div class="impl-item-label">Fin implementacion</div><div class="impl-item-value">${impl.implFin ? ccFormatFecha(impl.implFin) : '—'}</div></div>
-      <div class="impl-item"><div class="impl-item-label">Primer mes fiscal</div><div class="impl-item-value" style="color:var(--navy)">${impl.primerMes || '—'}</div></div>
-      <div class="impl-item"><div class="impl-item-label">Asignada a</div><div class="impl-item-value">${impl.contadora || 'Por definir'}</div></div>
-    </div>
-    ${impl.implInicio ? `
-      <div class="impl-progress"><div class="impl-progress-fill" style="width:${st.pct}%;background:${statusColor}"></div></div>
-      <div class="impl-timeline"><span>${ccFormatFecha(impl.implInicio)}</span><span style="font-weight:600;color:${statusColor}">${diasLabel}</span><span>${ccFormatFecha(impl.implFin)}</span></div>
-    ` : `<div style="text-align:center;padding:8px;color:var(--light);font-size:12px">${impl.notas || 'Sin fechas definidas'}</div>`}
-  </div>`;
-}
+// ccRenderImplCard eliminada — Resumen ahora usa tablas alimentadas por checklists
 
 var FE_ITEMS_GER = [
   'Confirmar pago',
@@ -1966,34 +1892,71 @@ function ccRenderImplementacion(el) {
     return;
   }
 
-  // Resumen (vista original)
-  const allImpl = ccIMPLEMENTACIONES.concat(ccSOLO_IMPLEMENTACION);
-  const enProgreso = allImpl.filter(i => { const s=ccGetImplStatus(i); return s.label==="En progreso"; }).length;
-  const porIniciar = allImpl.filter(i => { const s=ccGetImplStatus(i); return s.label==="Por iniciar"; }).length;
-  const completadas = allImpl.filter(i => { const s=ccGetImplStatus(i); return s.label==="Completada"; }).length;
+  // Resumen alimentado por checklists FE y Adm
+  var totalFE = ccImplFEData.length;
+  var totalAdm = ccImplAdmData.length;
+  var totalActivas = totalFE + totalAdm;
 
-  el.innerHTML += `
-    <div class="stats" style="grid-template-columns:repeat(5,1fr);">
-      <div class="stat"><div class="stat-label" style="font-size:10px;">Impl. activas</div><div class="stat-value">${ccIMPLEMENTACIONES.length + ccSOLO_IMPLEMENTACION.length}</div></div>
-      <div class="stat"><div class="stat-label">En progreso</div><div class="stat-value" style="color:var(--amber)">${enProgreso}</div></div>
-      <div class="stat"><div class="stat-label">Por iniciar</div><div class="stat-value" style="color:var(--blue)">${porIniciar}</div></div>
-      <div class="stat"><div class="stat-label" style="font-size:10px;">Solo impl.</div><div class="stat-value" style="color:var(--purple)">${ccSOLO_IMPLEMENTACION.length}</div></div>
-      <div class="stat"><div class="stat-label">En riesgo</div><div class="stat-value stat-red">${ccIMPLEMENTACIONES_RIESGO.length}</div></div>
-    </div>
-    <h3 style="font-size:14px;font-weight:700;color:var(--navy);margin:20px 0 12px;">Implementaciones de clientes</h3>
-    ${ccIMPLEMENTACIONES.map(impl => ccRenderImplCard(impl, {})).join('')}
-    <h3 style="font-size:14px;font-weight:700;color:var(--purple);margin:28px 0 12px;">Solo implementacion</h3>
-    <p style="font-size:12px;color:var(--muted);margin-bottom:12px;">Clientes que contrataron solo implementacion, no servicio mensual.</p>
-    ${ccSOLO_IMPLEMENTACION.map(impl => ccRenderImplCard(impl, {
-      borderColor: 'var(--purple)', statusBg: '#f3e8ff', statusColor: '#8b5cf6',
-      statusLabel: 'Solo Impl.', completedLabel: 'Implementacion completada'
-    })).join('')}
-    <h3 style="font-size:14px;font-weight:700;color:var(--red);margin:28px 0 12px;">⚠️ Implementaciones en riesgo</h3>
-    <p style="font-size:12px;color:var(--muted);margin-bottom:12px;">Implementaciones estancadas o con retrasos significativos.</p>
-    ${ccIMPLEMENTACIONES_RIESGO.map(impl => ccRenderImplCard(impl, {
-      borderColor: 'var(--red)', statusBg: '#fef2f2', statusColor: '#ef4444', statusLabel: 'En riesgo'
-    })).join('')}
-  `;
+  // Calcular progreso y riesgo para cada checklist
+  var feConProgreso = ccImplFEData.map(function(row) {
+    var prog = ccCalcImplProgress(row.datos, FE_ITEMS_GER.length);
+    var riesgo = ccImplIsEnRiesgo(row, FE_ITEMS_GER.length);
+    return { cliente: row.cliente, implementadora: row.implementadora, prog: prog, riesgo: riesgo, tipo: 'FE' };
+  });
+  var admConProgreso = ccImplAdmData.map(function(row) {
+    var prog = ccCalcImplProgress(row.datos, ADM_ITEMS_GER.length);
+    var riesgo = ccImplIsEnRiesgo(row, ADM_ITEMS_GER.length);
+    return { cliente: row.cliente, implementadora: row.implementadora, prog: prog, riesgo: riesgo, tipo: 'Adm' };
+  });
+
+  var allRows = feConProgreso.concat(admConProgreso);
+  var porIniciar = allRows.filter(function(r) { return r.prog.pct === 0; }).length;
+  var enRiesgo = allRows.filter(function(r) { return r.riesgo; }).length;
+
+  // Stats cards
+  var html = '';
+  html += '<div class="stats" style="grid-template-columns:repeat(5,1fr);">';
+  html += '<div class="stat"><div class="stat-label">Total activas</div><div class="stat-value">' + totalActivas + '</div></div>';
+  html += '<div class="stat"><div class="stat-label">Impl. FE</div><div class="stat-value" style="color:var(--blue)">' + totalFE + '</div></div>';
+  html += '<div class="stat"><div class="stat-label">Impl. Adm</div><div class="stat-value" style="color:var(--purple)">' + totalAdm + '</div></div>';
+  html += '<div class="stat"><div class="stat-label">Por iniciar</div><div class="stat-value" style="color:var(--amber)">' + porIniciar + '</div></div>';
+  html += '<div class="stat"><div class="stat-label">En riesgo</div><div class="stat-value stat-red">' + enRiesgo + '</div></div>';
+  html += '</div>';
+
+  // Tabla unificada de todos los checklists
+  if (totalActivas === 0) {
+    html += '<div class="empty" style="margin-top:20px">No hay checklists de implementación activos.</div>';
+  } else {
+    html += '<div class="table-wrap" style="margin-top:20px"><table>';
+    html += '<tr><th>Cliente</th><th>Tipo</th><th>Implementadora</th><th style="width:200px">Progreso</th><th style="text-align:center">Pasos</th><th style="text-align:center">Estado</th></tr>';
+
+    allRows.sort(function(a, b) {
+      // En riesgo primero, luego por % ascendente
+      if (a.riesgo && !b.riesgo) return -1;
+      if (!a.riesgo && b.riesgo) return 1;
+      return a.prog.pct - b.prog.pct;
+    });
+
+    allRows.forEach(function(row) {
+      var color = ccImplProgressColor(row.prog.pct);
+      var badgeColor = row.riesgo ? 'background:#fef2f2;color:var(--red)' : (row.prog.pct === 100 ? 'background:#ecfdf5;color:var(--green)' : (row.prog.pct === 0 ? 'background:#fffbeb;color:var(--amber)' : 'background:#eff6ff;color:var(--blue)'));
+      var badgeLabel = row.riesgo ? 'En riesgo' : (row.prog.pct === 100 ? 'Completado' : (row.prog.pct === 0 ? 'Por iniciar' : 'En progreso'));
+      var tipoBadge = row.tipo === 'FE' ? 'background:#eff6ff;color:var(--blue)' : 'background:#f3e8ff;color:#8b5cf6';
+
+      html += '<tr>';
+      html += '<td style="font-weight:600">' + (row.cliente || '') + '</td>';
+      html += '<td><span style="display:inline-block;padding:2px 8px;border-radius:6px;font-size:0.7rem;font-weight:600;' + tipoBadge + '">' + row.tipo + '</span></td>';
+      html += '<td>' + (row.implementadora || '-') + '</td>';
+      html += '<td><div style="display:flex;align-items:center;gap:8px"><div style="flex:1;height:8px;background:#eef0f4;border-radius:4px;overflow:hidden"><div style="width:' + row.prog.pct + '%;height:100%;background:' + color + ';border-radius:4px"></div></div><span style="font-size:11px;font-weight:700;color:' + color + '">' + row.prog.pct + '%</span></div></td>';
+      html += '<td style="text-align:center;font-size:12px;color:var(--muted)">' + row.prog.done + '/' + row.prog.total + '</td>';
+      html += '<td style="text-align:center"><span style="display:inline-block;padding:2px 10px;border-radius:6px;font-size:0.7rem;font-weight:600;' + badgeColor + '">' + badgeLabel + '</span></td>';
+      html += '</tr>';
+    });
+
+    html += '</table></div>';
+  }
+
+  el.innerHTML += html;
 }
 
 function ccToggleSwView() {
