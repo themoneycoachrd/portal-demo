@@ -4804,8 +4804,6 @@ var bdContEditingId = null;
 var bdAsigMes = 'abril';
 var bdAsigDirty = false;
 var bdAsigEdits = {};
-var bdTokens = [];
-
 const BD_MESES = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
 const BD_MESES_SHORT = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
 
@@ -4821,12 +4819,6 @@ async function bdLoadAsignaciones() {
   var { data, error } = await sb.from('asignaciones').select('*').eq('anio', 2026).order('cliente');
   if (error) { console.error('Error cargando asignaciones:', error); return; }
   bdAsignaciones = data || [];
-}
-
-async function bdLoadTokens() {
-  var { data, error } = await sb.from('portal_clientes_tokens').select('id, cliente, token, activo').order('cliente');
-  if (error) { console.warn('Tabla portal_clientes_tokens no disponible:', error.message); bdTokens = []; return; }
-  bdTokens = data || [];
 }
 
 // ─── Contadoras ───
@@ -5208,43 +5200,40 @@ async function bdAsigDeleteRow(id) {
 
 function bdRenderLinkDashboard() {
   var el = document.getElementById('cc-content');
+  var dashUrl = window.location.origin + '/dashboard-publico.html';
+  var canEdit = tengoPermiso('gerencia', 'basedatos', 'edicion', 'links-portal');
+
   var h = '';
-
-  if (bdTokens.length === 0) {
-    h += '<div class="cl-empty"><p>No hay tokens de portal de clientes configurados.</p></div>';
-    el.innerHTML = h;
-    return;
-  }
-
-  var baseUrl = window.location.origin + '/portal-clientes.html?token=';
-
-  h += '<div class="bd-summary">';
-  h += '<div class="bd-summary-item"><div class="bd-summary-count">' + bdTokens.length + '</div><div class="bd-summary-label">Total links</div></div>';
-  h += '<div class="bd-summary-item"><div class="bd-summary-count" style="color:var(--green)">' + bdTokens.filter(function(t) { return t.activo; }).length + '</div><div class="bd-summary-label">Activos</div></div>';
-  h += '<div class="bd-summary-item"><div class="bd-summary-count" style="color:var(--red)">' + bdTokens.filter(function(t) { return !t.activo; }).length + '</div><div class="bd-summary-label">Inactivos</div></div>';
+  h += '<div style="max-width:600px;margin:0 auto;padding:40px 20px">';
+  h += '<div style="text-align:center;margin-bottom:32px">';
+  h += '<div style="width:56px;height:56px;border-radius:14px;background:var(--blue);display:inline-flex;align-items:center;justify-content:center;margin-bottom:12px">';
+  h += '<svg width="24" height="24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>';
+  h += '</div>';
+  h += '<h3 style="margin:0 0 6px;font-size:1.1rem;color:var(--navy)">Dashboard para TV</h3>';
+  h += '<p style="margin:0;color:var(--muted);font-size:0.85rem">Este es el link del dashboard público que se muestra en la televisión de la oficina.</p>';
   h += '</div>';
 
-  h += '<table class="bd-cont-table">';
-  h += '<thead><tr><th style="width:36px">#</th><th>Cliente</th><th>Link</th><th>Estado</th><th></th></tr></thead><tbody>';
+  h += '<div style="background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:16px">';
+  h += '<label style="display:block;font-size:0.72rem;text-transform:uppercase;letter-spacing:0.5px;color:var(--muted);margin-bottom:6px;font-weight:600">URL del Dashboard</label>';
+  h += '<div style="display:flex;gap:8px;align-items:center">';
+  h += '<input type="text" id="bdDashUrl" value="' + esc(dashUrl) + '" readonly style="flex:1;padding:10px 12px;border:1px solid var(--border);border-radius:8px;font-size:0.85rem;color:var(--navy);background:white;outline:none">';
+  h += '<button onclick="bdCopyDashUrl()" style="padding:10px 16px;background:var(--blue);color:white;border:none;border-radius:8px;font-size:0.82rem;font-weight:600;cursor:pointer;white-space:nowrap">Copiar</button>';
+  h += '</div>';
+  h += '</div>';
 
-  bdTokens.forEach(function(t, idx) {
-    var link = baseUrl + t.token;
-    h += '<tr>';
-    h += '<td style="color:var(--muted);font-size:0.75rem">' + (idx + 1) + '</td>';
-    h += '<td style="font-weight:600;color:var(--navy)">' + esc(t.cliente) + '</td>';
-    h += '<td style="font-size:0.75rem;color:var(--muted);max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(link) + '</td>';
-    h += '<td><span class="' + (t.activo ? 'cl-badge-activo' : 'cl-badge-inactivo') + '">' + (t.activo ? 'Activo' : 'Inactivo') + '</span></td>';
-    h += '<td><button style="padding:4px 10px;border:1px solid var(--border);border-radius:6px;background:white;font-size:0.75rem;cursor:pointer;color:var(--blue)" onclick="bdCopyDashLink(\'' + esc(t.token) + '\')">Copiar</button></td>';
-    h += '</tr>';
-  });
+  h += '<div style="display:flex;gap:10px;margin-top:16px;justify-content:center">';
+  h += '<a href="' + esc(dashUrl) + '" target="_blank" style="display:inline-flex;align-items:center;gap:6px;padding:10px 20px;border:1px solid var(--border);border-radius:8px;font-size:0.82rem;color:var(--navy);text-decoration:none;background:white;cursor:pointer;font-weight:500">';
+  h += '<svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>';
+  h += 'Abrir en nueva pestaña</a>';
+  h += '</div>';
 
-  h += '</tbody></table>';
+  h += '</div>';
   el.innerHTML = h;
 }
 
-function bdCopyDashLink(token) {
-  var url = window.location.origin + '/portal-clientes.html?token=' + token;
-  navigator.clipboard.writeText(url).then(function() {
+function bdCopyDashUrl() {
+  var input = document.getElementById('bdDashUrl');
+  navigator.clipboard.writeText(input.value).then(function() {
     gerShowToast('Link copiado al portapapeles');
   }).catch(function() {
     gerShowToast('No se pudo copiar', 'error');
@@ -6323,7 +6312,6 @@ async function showApp() {
     ctdLoadContadoras(),
     bdLoadContadoras(),
     bdLoadAsignaciones(),
-    bdLoadTokens(),
     bdLoadPendientes()
   ]);
   // Load BD clients after ccLoadData so bdClientes (full select *) becomes the authoritative source
