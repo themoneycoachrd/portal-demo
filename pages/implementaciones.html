@@ -541,7 +541,7 @@ async function loadData() {
   var p1 = sb.from('impl_checklist_fe').select('*');
   var p2 = sb.from('impl_checklist_adm').select('*');
   var p3 = sb.from('clientes').select('nombre, fecha_inicio_impl_fe, fecha_fin_impl_fe, fecha_inicio_impl_adm, fecha_fin_impl_adm');
-  var p4 = sb.from('clientes_software').select('nombre, fecha_inicio_impl, fecha_fin_impl');
+  var p4 = sb.from('clientes_software').select('nombre, fecha_inicio_impl_fe, fecha_fin_impl_fe, fecha_inicio_impl_adm, fecha_fin_impl_adm');
   var results = await Promise.all([p1, p2, p3, p4]);
 
   allRows = results[0].data || [];
@@ -561,12 +561,13 @@ async function loadData() {
       };
     }
   });
-  // Software: par único, se copia a ambos
+  // Software: fechas separadas FE/Adm
   (results[3].data || []).forEach(function(r) {
-    if (r.fecha_inicio_impl || r.fecha_fin_impl) {
+    var has = r.fecha_inicio_impl_fe || r.fecha_fin_impl_fe || r.fecha_inicio_impl_adm || r.fecha_fin_impl_adm;
+    if (has) {
       implDates[r.nombre] = {
-        inicio_fe: r.fecha_inicio_impl, fin_fe: r.fecha_fin_impl,
-        inicio_adm: r.fecha_inicio_impl, fin_adm: r.fecha_fin_impl
+        inicio_fe: r.fecha_inicio_impl_fe, fin_fe: r.fecha_fin_impl_fe,
+        inicio_adm: r.fecha_inicio_impl_adm, fin_adm: r.fecha_fin_impl_adm
       };
     }
   });

@@ -832,13 +832,41 @@
         <input type="date" id="sw-m-fecha-entrada">
       </div>
       <div class="m-field">
-        <label>Inicio implementación</label>
-        <input type="date" id="sw-m-fecha-inicio-impl">
+        <label>Servicio de implementación</label>
+        <select id="sw-m-servicio-impl">
+          <option value="">No aplica</option>
+          <option value="Implementación Adm">Implementación Adm</option>
+          <option value="Implementación Facturación Electrónica">Implementación Facturación Electrónica</option>
+          <option value="Implementación Adm + Facturación Electrónica">Implementación Adm + Facturación Electrónica</option>
+        </select>
       </div>
-      <div class="m-field">
-        <label>Fin esperado implementación</label>
-        <input type="date" id="sw-m-fecha-fin-impl">
+    </div>
+    <!-- Fechas de implementación separadas -->
+    <div style="margin-top:8px;padding:10px 14px;background:#f8f9fb;border:1px solid var(--border);border-radius:8px">
+      <div style="font-size:0.65rem;font-weight:600;text-transform:uppercase;letter-spacing:0.3px;color:var(--muted);margin-bottom:8px">Facturación Electrónica</div>
+      <div class="m-row">
+        <div class="m-field">
+          <label>Fecha inicio FE</label>
+          <input type="date" id="sw-m-fecha-inicio-impl-fe">
+        </div>
+        <div class="m-field">
+          <label>Fecha fin esperado FE</label>
+          <input type="date" id="sw-m-fecha-fin-impl-fe">
+        </div>
       </div>
+      <div style="font-size:0.65rem;font-weight:600;text-transform:uppercase;letter-spacing:0.3px;color:var(--muted);margin:10px 0 8px">Adm</div>
+      <div class="m-row">
+        <div class="m-field">
+          <label>Fecha inicio Adm</label>
+          <input type="date" id="sw-m-fecha-inicio-impl-adm">
+        </div>
+        <div class="m-field">
+          <label>Fecha fin esperado Adm</label>
+          <input type="date" id="sw-m-fecha-fin-impl-adm">
+        </div>
+      </div>
+    </div>
+    <div class="m-row">
       <div class="m-field">
         <label>Estado</label>
         <div style="display:flex;align-items:center;gap:10px;margin-top:4px">
@@ -1115,13 +1143,14 @@ function ccBuildImplDates() {
       };
     }
   });
-  // From software clients (mantienen par único)
+  // From software clients (fechas separadas FE/Adm)
   (ccSOFTWARE_CLIENTES || []).forEach(r => {
     var name = r.n || r.nombre;
-    if (r.fecha_inicio_impl || r.fecha_fin_impl) {
+    var has = r.fecha_inicio_impl_fe || r.fecha_fin_impl_fe || r.fecha_inicio_impl_adm || r.fecha_fin_impl_adm;
+    if (has) {
       ccImplDates[name] = {
-        inicio_fe: r.fecha_inicio_impl, fin_fe: r.fecha_fin_impl,
-        inicio_adm: r.fecha_inicio_impl, fin_adm: r.fecha_fin_impl
+        inicio_fe: r.fecha_inicio_impl_fe, fin_fe: r.fecha_fin_impl_fe,
+        inicio_adm: r.fecha_inicio_impl_adm, fin_adm: r.fecha_fin_impl_adm
       };
     }
   });
@@ -1145,8 +1174,11 @@ async function ccLoadSoftwareClientes() {
     _id: r.id, n: r.nombre, licencia: r.tipo_licencia || '',
     monto: parseFloat(r.monto_mensual) || 0,
     fecha_entrada: r.fecha_entrada || null,
-    fecha_inicio_impl: r.fecha_inicio_impl || null,
-    fecha_fin_impl: r.fecha_fin_impl || null,
+    servicio_impl: r.servicio_impl || null,
+    fecha_inicio_impl_fe: r.fecha_inicio_impl_fe || null,
+    fecha_fin_impl_fe: r.fecha_fin_impl_fe || null,
+    fecha_inicio_impl_adm: r.fecha_inicio_impl_adm || null,
+    fecha_fin_impl_adm: r.fecha_fin_impl_adm || null,
     fecha_salida: r.fecha_salida || null,
     activo: r.activo !== false,
     descuento_pct: r.descuento_pct || null,
@@ -4330,8 +4362,11 @@ function swOpenModal(editId) {
     document.getElementById('sw-m-monto').value = c.monto_mensual || '';
     document.getElementById('sw-m-tipo-licencia').value = c.tipo_licencia || '';
     document.getElementById('sw-m-fecha-entrada').value = c.fecha_entrada || '';
-    document.getElementById('sw-m-fecha-inicio-impl').value = c.fecha_inicio_impl || '';
-    document.getElementById('sw-m-fecha-fin-impl').value = c.fecha_fin_impl || '';
+    document.getElementById('sw-m-servicio-impl').value = c.servicio_impl || '';
+    document.getElementById('sw-m-fecha-inicio-impl-fe').value = c.fecha_inicio_impl_fe || '';
+    document.getElementById('sw-m-fecha-fin-impl-fe').value = c.fecha_fin_impl_fe || '';
+    document.getElementById('sw-m-fecha-inicio-impl-adm').value = c.fecha_inicio_impl_adm || '';
+    document.getElementById('sw-m-fecha-fin-impl-adm').value = c.fecha_fin_impl_adm || '';
     document.getElementById('sw-m-fecha-salida').value = c.fecha_salida || '';
     document.getElementById('sw-m-motivo-salida').value = c.motivo_salida || '';
     document.getElementById('sw-m-nota-salida').value = c.nota_salida || '';
@@ -4350,8 +4385,11 @@ function swOpenModal(editId) {
     document.getElementById('sw-m-monto').value = '';
     document.getElementById('sw-m-tipo-licencia').value = '';
     document.getElementById('sw-m-fecha-entrada').value = '';
-    document.getElementById('sw-m-fecha-inicio-impl').value = '';
-    document.getElementById('sw-m-fecha-fin-impl').value = '';
+    document.getElementById('sw-m-servicio-impl').value = '';
+    document.getElementById('sw-m-fecha-inicio-impl-fe').value = '';
+    document.getElementById('sw-m-fecha-fin-impl-fe').value = '';
+    document.getElementById('sw-m-fecha-inicio-impl-adm').value = '';
+    document.getElementById('sw-m-fecha-fin-impl-adm').value = '';
     document.getElementById('sw-m-fecha-salida').value = '';
     document.getElementById('sw-m-motivo-salida').value = '';
     document.getElementById('sw-m-nota-salida').value = '';
@@ -4403,8 +4441,11 @@ async function swSaveClient() {
     monto_mensual: montoVal ? parseInt(montoVal) : null,
     tipo_licencia: document.getElementById('sw-m-tipo-licencia').value || null,
     fecha_entrada: document.getElementById('sw-m-fecha-entrada').value || null,
-    fecha_inicio_impl: document.getElementById('sw-m-fecha-inicio-impl').value || null,
-    fecha_fin_impl: document.getElementById('sw-m-fecha-fin-impl').value || null,
+    servicio_impl: document.getElementById('sw-m-servicio-impl').value || null,
+    fecha_inicio_impl_fe: document.getElementById('sw-m-fecha-inicio-impl-fe').value || null,
+    fecha_fin_impl_fe: document.getElementById('sw-m-fecha-fin-impl-fe').value || null,
+    fecha_inicio_impl_adm: document.getElementById('sw-m-fecha-inicio-impl-adm').value || null,
+    fecha_fin_impl_adm: document.getElementById('sw-m-fecha-fin-impl-adm').value || null,
     fecha_salida: document.getElementById('sw-m-fecha-salida').value || null,
     activo: swModalActivo,
     motivo_salida: !swModalActivo ? (document.getElementById('sw-m-motivo-salida').value || null) : null,
@@ -5361,8 +5402,11 @@ async function bdLoadSoftware() {
       _id: r.id, n: r.nombre, licencia: r.tipo_licencia || '',
       monto: parseFloat(r.monto_mensual) || 0,
       fecha_entrada: r.fecha_entrada || null,
-      fecha_inicio_impl: r.fecha_inicio_impl || null,
-      fecha_fin_impl: r.fecha_fin_impl || null,
+      servicio_impl: r.servicio_impl || null,
+      fecha_inicio_impl_fe: r.fecha_inicio_impl_fe || null,
+      fecha_fin_impl_fe: r.fecha_fin_impl_fe || null,
+      fecha_inicio_impl_adm: r.fecha_inicio_impl_adm || null,
+      fecha_fin_impl_adm: r.fecha_fin_impl_adm || null,
       fecha_salida: r.fecha_salida || null,
       activo: r.activo !== false,
       descuento_pct: r.descuento_pct || null,
@@ -6253,8 +6297,11 @@ function swOpenModal(editId) {
     document.getElementById('sw-m-monto').value = c.monto_mensual || '';
     document.getElementById('sw-m-tipo-licencia').value = c.tipo_licencia || '';
     document.getElementById('sw-m-fecha-entrada').value = c.fecha_entrada || '';
-    document.getElementById('sw-m-fecha-inicio-impl').value = c.fecha_inicio_impl || '';
-    document.getElementById('sw-m-fecha-fin-impl').value = c.fecha_fin_impl || '';
+    document.getElementById('sw-m-servicio-impl').value = c.servicio_impl || '';
+    document.getElementById('sw-m-fecha-inicio-impl-fe').value = c.fecha_inicio_impl_fe || '';
+    document.getElementById('sw-m-fecha-fin-impl-fe').value = c.fecha_fin_impl_fe || '';
+    document.getElementById('sw-m-fecha-inicio-impl-adm').value = c.fecha_inicio_impl_adm || '';
+    document.getElementById('sw-m-fecha-fin-impl-adm').value = c.fecha_fin_impl_adm || '';
     document.getElementById('sw-m-fecha-salida').value = c.fecha_salida || '';
     document.getElementById('sw-m-motivo-salida').value = c.motivo_salida || '';
     document.getElementById('sw-m-nota-salida').value = c.nota_salida || '';
@@ -6273,8 +6320,11 @@ function swOpenModal(editId) {
     document.getElementById('sw-m-monto').value = '';
     document.getElementById('sw-m-tipo-licencia').value = '';
     document.getElementById('sw-m-fecha-entrada').value = '';
-    document.getElementById('sw-m-fecha-inicio-impl').value = '';
-    document.getElementById('sw-m-fecha-fin-impl').value = '';
+    document.getElementById('sw-m-servicio-impl').value = '';
+    document.getElementById('sw-m-fecha-inicio-impl-fe').value = '';
+    document.getElementById('sw-m-fecha-fin-impl-fe').value = '';
+    document.getElementById('sw-m-fecha-inicio-impl-adm').value = '';
+    document.getElementById('sw-m-fecha-fin-impl-adm').value = '';
     document.getElementById('sw-m-fecha-salida').value = '';
     document.getElementById('sw-m-motivo-salida').value = '';
     document.getElementById('sw-m-nota-salida').value = '';
@@ -6326,8 +6376,11 @@ async function swSaveClient() {
     monto_mensual: montoVal ? parseInt(montoVal) : null,
     tipo_licencia: document.getElementById('sw-m-tipo-licencia').value || null,
     fecha_entrada: document.getElementById('sw-m-fecha-entrada').value || null,
-    fecha_inicio_impl: document.getElementById('sw-m-fecha-inicio-impl').value || null,
-    fecha_fin_impl: document.getElementById('sw-m-fecha-fin-impl').value || null,
+    servicio_impl: document.getElementById('sw-m-servicio-impl').value || null,
+    fecha_inicio_impl_fe: document.getElementById('sw-m-fecha-inicio-impl-fe').value || null,
+    fecha_fin_impl_fe: document.getElementById('sw-m-fecha-fin-impl-fe').value || null,
+    fecha_inicio_impl_adm: document.getElementById('sw-m-fecha-inicio-impl-adm').value || null,
+    fecha_fin_impl_adm: document.getElementById('sw-m-fecha-fin-impl-adm').value || null,
     fecha_salida: document.getElementById('sw-m-fecha-salida').value || null,
     activo: swModalActivo,
     motivo_salida: !swModalActivo ? (document.getElementById('sw-m-motivo-salida').value || null) : null,
