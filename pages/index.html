@@ -1030,18 +1030,20 @@ function toggleSidebar() {
   }
 })();
 
-async function goHome() {
+async function goHome(skipHash) {
   // Si el rol tiene módulo de inicio, ir a ese módulo
   var homeModule = ROLE_HOME_MODULE[userRole];
   if (homeModule) {
-    openModule(homeModule);
+    openModule(homeModule, skipHash);
     return;
   }
 
   activeModule = null;
   activeSection = null;
+  if (!skipHash) history.replaceState(null, '', '#inicio');
   hideAllViews();
   document.getElementById('home-view').style.display = '';
+  document.title = 'Account One — Portal Interno';
   renderSidebar();
 
   // Refrescar dashboard
@@ -1051,12 +1053,13 @@ async function goHome() {
   } catch(e) { console.error('Error refrescando dashboard:', e); }
 }
 
-function openSection(sectionId) {
+function openSection(sectionId, skipHash) {
   const section = MENU.find(s => s.id === sectionId);
   if (!section || !section.children) return;
 
   activeModule = null;
   activeSection = sectionId;
+  if (!skipHash) history.replaceState(null, '', '#' + sectionId);
   hideAllViews();
 
   // Mostrar landing con las tarjetas de sub-modulos
@@ -1085,7 +1088,7 @@ function openSection(sectionId) {
   renderSidebar();
 }
 
-function openModule(moduleId) {
+function openModule(moduleId, skipHash) {
   const m = findModule(moduleId);
   if (!m || !m.active) return;
 
@@ -1095,11 +1098,39 @@ function openModule(moduleId) {
   const parent = findParentSection(moduleId);
   activeSection = parent ? parent.id : null;
 
+  if (!skipHash) history.replaceState(null, '', '#' + moduleId);
   hideAllViews();
   document.getElementById('module-view').classList.add('active');
   document.getElementById('module-iframe').src = m.href + '?embed=1';
   renderSidebar();
+  // Actualizar título del browser tab
+  document.title = m.title + ' — Account One';
 }
+
+// Deep linking: navegar según el hash de la URL
+function navigateToHash() {
+  var hash = location.hash.replace('#', '');
+  if (!hash || hash === 'inicio') {
+    goHome(true);
+    return;
+  }
+  // Es un módulo directo?
+  var m = findModule(hash);
+  if (m && m.active && tieneAccesoModulo(hash)) {
+    openModule(hash, true);
+    return;
+  }
+  // Es una sección con hijos?
+  var section = MENU.find(function(s) { return s.id === hash && s.children; });
+  if (section && tieneAccesoModulo(hash)) {
+    openSection(hash, true);
+    return;
+  }
+  // Hash no reconocido, ir a inicio
+  goHome(true);
+}
+
+window.addEventListener('hashchange', function() { navigateToHash(); });
 
 function renderSidebar() {
   const nav = document.getElementById('sidebar-nav');
@@ -1375,19 +1406,25 @@ async function showApp() {
   }
   renderSidebar();
 
-  // Si el rol tiene un módulo de inicio, cargarlo directo
-  var homeModule = ROLE_HOME_MODULE[userRole];
-  if (homeModule) {
-    openModule(homeModule);
+  // Si hay hash en la URL, navegar a ese módulo
+  var hash = location.hash.replace('#', '');
+  if (hash && hash !== 'inicio') {
+    navigateToHash();
   } else {
-    // Admin: mostrar dashboard
-    renderWelcome();
-    try {
-      var dashData = await loadDashboardData();
-      renderDashboard(dashData);
-    } catch(e) {
-      console.error('Error cargando dashboard:', e);
-      document.getElementById('dashboard-kpis').innerHTML = '<div class="dash-loading">Error cargando datos.</div>';
+    // Si el rol tiene un módulo de inicio, cargarlo directo
+    var homeModule = ROLE_HOME_MODULE[userRole];
+    if (homeModule) {
+      openModule(homeModule);
+    } else {
+      // Admin: mostrar dashboard
+      renderWelcome();
+      try {
+        var dashData = await loadDashboardData();
+        renderDashboard(dashData);
+      } catch(e) {
+        console.error('Error cargando dashboard:', e);
+        document.getElementById('dashboard-kpis').innerHTML = '<div class="dash-loading">Error cargando datos.</div>';
+      }
     }
   }
 }
