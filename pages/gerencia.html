@@ -1105,6 +1105,18 @@ async function ccLoadImplementaciones() {
   ccIMPLEMENTACIONES_RIESGO = riesgo;
 }
 
+async function ccLoadImplFE() {
+  var { data, error } = await sb.from('impl_checklist_fe').select('*').order('cliente');
+  if (error) { console.warn('Error impl_checklist_fe:', error.message); ccImplFEData = []; return; }
+  ccImplFEData = data || [];
+}
+
+async function ccLoadImplAdm() {
+  var { data, error } = await sb.from('impl_checklist_adm').select('*').order('cliente');
+  if (error) { console.warn('Error impl_checklist_adm:', error.message); ccImplAdmData = []; return; }
+  ccImplAdmData = data || [];
+}
+
 async function ccLoadSoftwareClientes() {
   const { data } = await sb.from('clientes_software').select('*');
   ccSOFTWARE_CLIENTES = (data || []).map(r => ({
@@ -1247,6 +1259,10 @@ function ccDestroyCharts() { ccCharts.forEach(c=>c.destroy()); ccCharts=[]; }
 function ccNavigateMain(tab) {
   ccActiveMainTab = tab;
   ccActiveSubTab = null;
+  // Reset CRUD view toggles when switching tabs
+  ccServView = 'analytics';
+  ccSwView = 'analytics';
+  ccImplSubPill = 'resumen';
   ccRenderAll();
 }
 
@@ -1433,6 +1449,11 @@ var ccServMes = MESES[new Date().getMonth()]; // mes actual para tab Servicios
 var ccSwMes = MESES[new Date().getMonth()]; // mes actual para tab Software
 var ccSwFiltro = null; // null = todos, 'inicio','nuevos','churn','cierre'
 var ccSwLicFiltro = null; // null = todos, o nombre de licencia
+var ccServView = 'analytics'; // 'analytics' o 'crud'
+var ccSwView = 'analytics'; // 'analytics' o 'crud'
+var ccImplSubPill = 'resumen'; // 'resumen', 'fe', 'adm'
+var ccImplFEData = [];
+var ccImplAdmData = [];
 
 function ccSwGetActivosMes(mesKey) {
   var mesIdx = MESES.indexOf(mesKey);
@@ -1468,18 +1489,30 @@ function ccServGetActivosMes(mesKey) {
   });
 }
 
+function ccToggleServView() {
+  ccServView = ccServView === 'analytics' ? 'crud' : 'analytics';
+  ccRenderContent();
+}
+
 function ccRenderServicios(el) {
+  // If CRUD view is active, render the BD Clientes CRUD instead
+  if (ccServView === 'crud') {
+    bdRenderClientes();
+    return;
+  }
   var mesIdx = MESES.indexOf(ccServMes);
   var currentMonthIdx = new Date().getMonth();
 
-  // Month tabs
-  var html = '<div class="nav-area" style="padding:12px 24px;background:var(--bg);border-bottom:1px solid var(--border);margin:-24px -24px 20px -24px">';
+  // Month tabs + view toggle
+  var html = '<div class="nav-area" style="padding:12px 24px;background:var(--bg);border-bottom:1px solid var(--border);margin:-24px -24px 20px -24px;display:flex;align-items:center;justify-content:space-between">';
   html += '<div class="month-tabs">';
   MESES.forEach(function(m, i) {
     if (i > currentMonthIdx) return;
     html += '<button class="month-tab' + (m === ccServMes ? ' active' : '') + '" onclick="ccServMes=\'' + m + '\';ccRenderContent()">' + MESES_LABEL[i] + '</button>';
   });
-  html += '</div></div>';
+  html += '</div>';
+  html += '<button style="padding:6px 14px;border-radius:8px;font-size:0.78rem;font-weight:600;cursor:pointer;border:1px solid var(--border);background:white;color:var(--navy);white-space:nowrap" onclick="ccToggleServView()" title="Gestionar clientes">&#128221; Base de datos</button>';
+  html += '</div>';
 
   // Filter clients active in selected month
   var activos = ccServGetActivosMes(ccServMes);
@@ -1822,13 +1855,124 @@ function ccRenderImplCard(impl, opts) {
   </div>`;
 }
 
+var FE_ITEMS_GER = [
+  'Confirmar pago',
+  'Enviar acuerdo de servicios',
+  'Confirmar firma de acuerdo de servicios',
+  'Hacer cuenta Adm Cloud',
+  'Crear certificacion en portal Polaris',
+  'Enviar correo con requerimientos iniciales',
+  'Confirmar con cliente compra p12',
+  'Confirmar compra de Firma Electronica',
+  'Recibir credenciales DGII y archivo .p12',
+  'Crear portal de certificacion en DGII',
+  'Pasos del 1 al 8 FE',
+  'Espera 24 Horas',
+  'Pasos del 9 al 15 FE',
+  'Solicitar Delegacion Oficina Virtual Personal',
+  'Configuracion Final en Adm'
+];
+
+var ADM_ITEMS_GER = [
+  'Correo de presentacion y link para agendar',
+  'Primera sesion agendada',
+  'Creacion de cuenta en base',
+  'Creacion de cuenta en Adm',
+  'Sesion 1 impartida',
+  'Sesion 2 impartida',
+  'Sesion 3 impartida',
+  'Recepcion de Plantillas',
+  'Revision de plantillas',
+  'Carga de plantillas previo al go live',
+  'Sesion 4 (Go Live)',
+  'Firma de Actas 1-4',
+  'Firma de Go Live y aceptacion final',
+  'Reunion de asignacion de contadora',
+  'Correo de asignacion de contadora',
+  'Envio de correo al cliente con link',
+  'Sesion 5 de presentacion de contadora',
+  'Correo de encuesta de satisfaccion'
+];
+
+function ccImplSwitchPill(pill) {
+  ccImplSubPill = pill;
+  ccRenderContent();
+}
+
+function ccCalcImplProgress(datos, totalPasos) {
+  if (!datos) return { done: 0, total: totalPasos, pct: 0 };
+  var done = 0;
+  for (var i = 1; i <= totalPasos; i++) {
+    var key = 'paso_' + i;
+    if (datos[key] && datos[key].done) done++;
+  }
+  var pct = totalPasos > 0 ? Math.round((done / totalPasos) * 100) : 0;
+  return { done: done, total: totalPasos, pct: pct };
+}
+
+function ccImplProgressColor(pct) {
+  if (pct === 0) return 'var(--muted)';
+  if (pct < 50) return 'var(--red)';
+  if (pct < 100) return 'var(--amber)';
+  return 'var(--green)';
+}
+
+function ccRenderImplChecklist(el, tipo) {
+  var rows = tipo === 'fe' ? ccImplFEData : ccImplAdmData;
+  var items = tipo === 'fe' ? FE_ITEMS_GER : ADM_ITEMS_GER;
+  var totalPasos = items.length;
+  var label = tipo === 'fe' ? 'Checklist FE' : 'Checklist Adm';
+
+  if (!rows || rows.length === 0) {
+    el.innerHTML += '<div class="empty">No hay datos de ' + label + '</div>';
+    return;
+  }
+
+  var html = '<h3 style="font-size:14px;font-weight:700;color:var(--navy);margin:0 0 12px;">' + label + ' (' + rows.length + ' clientes)</h3>';
+  html += '<div class="table-wrap"><table>';
+  html += '<tr><th>Cliente</th><th>Implementadora</th><th style="width:200px">Progreso</th><th style="text-align:center">Pasos</th></tr>';
+
+  rows.forEach(function(row) {
+    var prog = ccCalcImplProgress(row.datos, totalPasos);
+    var color = ccImplProgressColor(prog.pct);
+    html += '<tr>';
+    html += '<td style="font-weight:600">' + (row.cliente || '') + '</td>';
+    html += '<td>' + (row.implementadora || '-') + '</td>';
+    html += '<td><div style="display:flex;align-items:center;gap:8px"><div style="flex:1;height:8px;background:#eef0f4;border-radius:4px;overflow:hidden"><div style="width:' + prog.pct + '%;height:100%;background:' + color + ';border-radius:4px"></div></div><span style="font-size:11px;font-weight:700;color:' + color + '">' + prog.pct + '%</span></div></td>';
+    html += '<td style="text-align:center;font-size:12px;color:var(--muted)">' + prog.done + '/' + prog.total + '</td>';
+    html += '</tr>';
+  });
+
+  html += '</table></div>';
+  el.innerHTML += html;
+}
+
 function ccRenderImplementacion(el) {
+  // Sub-pills bar
+  var subHtml = '<div style="display:flex;gap:6px;margin-bottom:16px">';
+  subHtml += '<button class="sub-tab' + (ccImplSubPill === 'resumen' ? ' active' : '') + '" onclick="ccImplSwitchPill(\'resumen\')">Resumen</button>';
+  subHtml += '<button class="sub-tab' + (ccImplSubPill === 'fe' ? ' active' : '') + '" onclick="ccImplSwitchPill(\'fe\')">Checklist FE (' + ccImplFEData.length + ')</button>';
+  subHtml += '<button class="sub-tab' + (ccImplSubPill === 'adm' ? ' active' : '') + '" onclick="ccImplSwitchPill(\'adm\')">Checklist Adm (' + ccImplAdmData.length + ')</button>';
+  subHtml += '</div>';
+
+  el.innerHTML = subHtml;
+
+  if (ccImplSubPill === 'fe') {
+    ccRenderImplChecklist(el, 'fe');
+    return;
+  }
+  if (ccImplSubPill === 'adm') {
+    ccRenderImplChecklist(el, 'adm');
+    return;
+  }
+
+  // Resumen (vista original)
   const allImpl = ccIMPLEMENTACIONES.concat(ccSOLO_IMPLEMENTACION);
   const enProgreso = allImpl.filter(i => { const s=ccGetImplStatus(i); return s.label==="En progreso"; }).length;
   const porIniciar = allImpl.filter(i => { const s=ccGetImplStatus(i); return s.label==="Por iniciar"; }).length;
   const completadas = allImpl.filter(i => { const s=ccGetImplStatus(i); return s.label==="Completada"; }).length;
 
-  let html = `
+  el.innerHTML += `
     <div class="stats" style="grid-template-columns:repeat(5,1fr);">
       <div class="stat"><div class="stat-label" style="font-size:10px;">Impl. activas</div><div class="stat-value">${ccIMPLEMENTACIONES.length + ccSOLO_IMPLEMENTACION.length}</div></div>
       <div class="stat"><div class="stat-label">En progreso</div><div class="stat-value" style="color:var(--amber)">${enProgreso}</div></div>
@@ -1850,21 +1994,32 @@ function ccRenderImplementacion(el) {
       borderColor: 'var(--red)', statusBg: '#fef2f2', statusColor: '#ef4444', statusLabel: 'En riesgo'
     })).join('')}
   `;
-  el.innerHTML = html;
+}
+
+function ccToggleSwView() {
+  ccSwView = ccSwView === 'analytics' ? 'crud' : 'analytics';
+  ccRenderContent();
 }
 
 function ccRenderSoftware(el) {
+  // If CRUD view is active, render the BD Software CRUD instead
+  if (ccSwView === 'crud') {
+    bdRenderSoftwareCrud();
+    return;
+  }
   var currentMonthIdx = new Date().getMonth();
   var swMesIdx = MESES.indexOf(ccSwMes);
 
-  // Month tabs
-  var html = '<div class="nav-area" style="padding:12px 24px;background:var(--bg);border-bottom:1px solid var(--border);margin:-24px -24px 20px -24px">';
+  // Month tabs + view toggle
+  var html = '<div class="nav-area" style="padding:12px 24px;background:var(--bg);border-bottom:1px solid var(--border);margin:-24px -24px 20px -24px;display:flex;align-items:center;justify-content:space-between">';
   html += '<div class="month-tabs">';
   MESES.forEach(function(m, i) {
     if (i > currentMonthIdx) return;
     html += '<button class="month-tab' + (m === ccSwMes ? ' active' : '') + '" onclick="ccSwMes=\'' + m + '\';ccRenderContent()">' + MESES_LABEL[i] + '</button>';
   });
-  html += '</div></div>';
+  html += '</div>';
+  html += '<button style="padding:6px 14px;border-radius:8px;font-size:0.78rem;font-weight:600;cursor:pointer;border:1px solid var(--border);background:white;color:var(--navy);white-space:nowrap" onclick="ccToggleSwView()" title="Gestionar clientes">&#128221; Base de datos</button>';
+  html += '</div>';
 
   // Clientes activos en el mes seleccionado
   var swActivos = ccSwGetActivosMes(ccSwMes);
@@ -5097,6 +5252,1058 @@ function bdCopyDashLink(token) {
 }
 
 // ══════════════════════════════════════════════════════════════
+// ██  BD MIGRADAS: Clientes Outsourcing + Software (CRUD)
+// ══════════════════════════════════════════════════════════════
+
+var bdClientes = [];
+var bdPendientes = [];
+var bdSoftwareClientes = [];
+var bdClMes = 'mayo';
+var bdSwMes = 'mayo';
+
+var clSearch = '';
+var clEditingId = null;
+var clFilter = 'todos';
+var clModalActivo = true;
+var clOrigContab = '';
+var clOrigImp = '';
+var clPendienteId = null;
+
+var swSearch = '';
+var swEditingId = null;
+var swFilter = 'todos';
+var swModalActivo = true;
+var swPendienteId = null;
+
+// ─── Data Loading (Clientes, Pendientes, Software) ───
+
+async function bdLoadClientes() {
+  var { data, error } = await sb.from('clientes').select('*').order('nombre');
+  if (error) { console.error('Error cargando clientes:', error); return; }
+  bdClientes = data || [];
+  // Sync ccAllClientes for analytics views
+  ccAllClientes = bdClientes;
+}
+
+async function bdLoadPendientes() {
+  var { data, error } = await sb.from('clientes_pendientes').select('*').eq('estado', 'pendiente').order('fecha_cierre', { ascending: false });
+  if (error) { console.warn('Tabla clientes_pendientes no disponible:', error.message); bdPendientes = []; return; }
+  bdPendientes = data || [];
+}
+
+async function bdLoadSoftware() {
+  var { data, error } = await sb.from('clientes_software').select('*').order('nombre');
+  if (error) { console.warn('Tabla clientes_software no disponible:', error.message); bdSoftwareClientes = []; return; }
+  bdSoftwareClientes = data || [];
+  // Sync ccSOFTWARE_CLIENTES for analytics views
+  ccSOFTWARE_CLIENTES = bdSoftwareClientes.map(function(r) {
+    return {
+      _id: r.id, n: r.nombre, licencia: r.tipo_licencia || '',
+      monto: parseFloat(r.monto_mensual) || 0,
+      fecha_entrada: r.fecha_entrada || null,
+      fecha_salida: r.fecha_salida || null,
+      activo: r.activo !== false,
+      descuento_pct: r.descuento_pct || null,
+      descuento_vence: r.descuento_vence || null,
+      descuento_nota: r.descuento_nota || null,
+      // Keep raw fields for CRUD
+      nombre: r.nombre, rnc: r.rnc, contacto: r.contacto, email: r.email, telefono: r.telefono,
+      monto_mensual: r.monto_mensual, tipo_licencia: r.tipo_licencia,
+      motivo_salida: r.motivo_salida, nota_salida: r.nota_salida, notas: r.notas, id: r.id
+    };
+  });
+}
+
+async function bdDismissPendientes(destino) {
+  var pends = bdPendientes.filter(function(p) { return p.destino === destino; });
+  if (!pends.length) return;
+  for (var i = 0; i < pends.length; i++) {
+    await sb.from('clientes_pendientes').update({ estado: 'desestimado' }).eq('id', pends[i].id);
+  }
+  await bdLoadPendientes();
+  ccRenderContent();
+}
+
+// ═══════════════════════════════════════════
+// CRUD OUTSOURCING: Clientes recurrentes
+// ═══════════════════════════════════════════
+
+function clFormatDate(d) {
+  if (!d) return '';
+  var p = d.split('-');
+  return p.length === 3 ? p[2] + '/' + p[1] + '/' + p[0] : d;
+}
+
+function bdGetClientesForMes(mesName) {
+  var mesIdx = BD_MESES.indexOf(mesName);
+  var lastDay = new Date(2026, mesIdx + 1, 0);
+  var lastDayStr = '2026-' + String(mesIdx + 1).padStart(2, '0') + '-' + String(lastDay.getDate()).padStart(2, '0');
+  return bdClientes.filter(function(c) {
+    var entered = !c.fecha_entrada || c.fecha_entrada <= lastDayStr;
+    var notLeft = !c.fecha_salida || c.fecha_salida > lastDayStr;
+    return entered && notLeft;
+  });
+}
+
+function bdSwitchClMes(mes) {
+  bdClMes = mes;
+  clFilter = 'todos';
+  bdRenderClientes();
+}
+
+function clSetFilter(f) {
+  clFilter = (clFilter === f) ? 'todos' : f;
+  bdRenderClientes();
+}
+
+function bdRenderClientes() {
+  var el = document.getElementById('cc-content');
+  var h = '';
+
+  // Back to analytics button
+  h += '<div style="margin-bottom:14px"><button style="padding:6px 14px;border-radius:8px;font-size:0.78rem;font-weight:600;cursor:pointer;border:1px solid var(--border);background:white;color:var(--navy)" onclick="ccToggleServView()">&#8592; Volver a vista analitica</button></div>';
+
+  // Pendientes alert (recurrentes)
+  var pendRec = bdPendientes.filter(function(p) { return p.destino === 'recurrente'; });
+  if (pendRec.length > 0) {
+    h += '<div style="background:#fef3c7;border:1px solid #f59e0b;border-radius:10px;padding:14px 18px;margin-bottom:16px;display:flex;align-items:center;gap:12px">';
+    h += '<span style="font-size:1.2rem">⚠️</span>';
+    h += '<div><span style="font-weight:600;font-size:0.85rem;color:#92400e">' + pendRec.length + ' cliente' + (pendRec.length > 1 ? 's' : '') + ' pendiente' + (pendRec.length > 1 ? 's' : '') + ' de crear</span>';
+    h += '<div style="font-size:0.78rem;color:#a16207;margin-top:2px">';
+    pendRec.forEach(function(p, i) {
+      h += (i > 0 ? ', ' : '') + '<b>' + esc(p.lead_nombre) + '</b> (' + (p.mes_cierre || '') + ')';
+    });
+    h += '</div></div>';
+    h += '<div style="margin-left:auto;display:flex;gap:6px">';
+    h += '<button style="padding:5px 12px;border-radius:6px;font-size:0.75rem;font-weight:600;cursor:pointer;border:1px solid var(--border);background:white;color:var(--muted)" onclick="bdDismissPendientes(\'recurrente\')">Desestimar</button>';
+    h += '<button style="padding:5px 12px;border-radius:6px;font-size:0.75rem;font-weight:600;cursor:pointer;border:1px solid #f59e0b;background:white;color:#92400e" onclick="clCreateFromPendiente()">Crear</button>';
+    h += '</div>';
+    h += '</div>';
+  }
+
+  // Month pills
+  h += '<div class="bd-month-pills">';
+  BD_MESES.forEach(function(m, i) {
+    h += '<button class="bd-month-pill ' + (bdClMes === m ? 'active' : '') + '" onclick="bdSwitchClMes(\'' + m + '\')">' + BD_MESES_SHORT[i] + '</button>';
+  });
+  h += '</div>';
+
+  // Combine active clients for selected month + inactive clients
+  var clActivosMes = bdGetClientesForMes(bdClMes);
+  var clMesIdx = BD_MESES.indexOf(bdClMes);
+  var clLastDayObj = new Date(2026, clMesIdx + 1, 0);
+  var clLastDayStr = '2026-' + String(clMesIdx + 1).padStart(2, '0') + '-' + String(clLastDayObj.getDate()).padStart(2, '0');
+  var clInactivosMes = bdClientes.filter(function(c) {
+    if (clActivosMes.indexOf(c) >= 0) return false;
+    var entered = !c.fecha_entrada || c.fecha_entrada <= clLastDayStr;
+    return entered;
+  });
+  var allForMes = clActivosMes.concat(clInactivosMes);
+
+  // Calcular nuevos y churn del mes
+  var clMesPrefix = '2026-' + String(clMesIdx + 1).padStart(2, '0');
+  var clNuevosMes = bdClientes.filter(function(c) {
+    return c.fecha_entrada && c.fecha_entrada.indexOf(clMesPrefix) === 0;
+  });
+  var clChurnMes = bdClientes.filter(function(c) {
+    return c.fecha_salida && c.fecha_salida.indexOf(clMesPrefix) === 0;
+  });
+  var clInicioMes = clActivosMes.length - clNuevosMes.length + clChurnMes.length;
+
+  h += '<div class="bd-summary">';
+  h += '<div class="bd-summary-item' + (clFilter === 'inicio' ? ' bd-summary-active' : '') + '" style="cursor:pointer;border:2px solid ' + (clFilter === 'inicio' ? 'var(--navy)' : 'transparent') + ';border-radius:10px" onclick="clSetFilter(\'inicio\')"><div class="bd-summary-count">' + clInicioMes + '</div><div class="bd-summary-label">Inicio</div></div>';
+  h += '<div class="bd-summary-item' + (clFilter === 'nuevos' ? ' bd-summary-active' : '') + '" style="cursor:pointer;border:2px solid ' + (clFilter === 'nuevos' ? 'var(--green)' : 'transparent') + ';border-radius:10px" onclick="clSetFilter(\'nuevos\')"><div class="bd-summary-count" style="color:var(--green)">' + clNuevosMes.length + '</div><div class="bd-summary-label">Nuevos</div></div>';
+  h += '<div class="bd-summary-item' + (clFilter === 'churn' ? ' bd-summary-active' : '') + '" style="cursor:pointer;border:2px solid ' + (clFilter === 'churn' ? 'var(--red)' : 'transparent') + ';border-radius:10px" onclick="clSetFilter(\'churn\')"><div class="bd-summary-count" style="color:var(--red)">' + clChurnMes.length + '</div><div class="bd-summary-label">Churn</div></div>';
+  h += '<div class="bd-summary-item' + (clFilter === 'cierre' ? ' bd-summary-active' : '') + '" style="cursor:pointer;border:2px solid ' + (clFilter === 'cierre' ? 'var(--navy)' : 'transparent') + ';border-radius:10px" onclick="clSetFilter(\'cierre\')"><div class="bd-summary-count" style="font-weight:700">' + clActivosMes.length + '</div><div class="bd-summary-label">Cierre</div></div>';
+  h += '</div>';
+  // Filter indicator
+  if (clFilter !== 'todos') {
+    var clFilterLabel, clFilterColor, clFilterBg;
+    if (clFilter === 'nuevos') { clFilterLabel = 'Mostrando solo nuevos de ' + bdClMes; clFilterColor = 'var(--green)'; clFilterBg = '#ecfdf5'; }
+    else if (clFilter === 'churn') { clFilterLabel = 'Mostrando churn de ' + bdClMes; clFilterColor = 'var(--red)'; clFilterBg = '#fef2f2'; }
+    else if (clFilter === 'inicio') { clFilterLabel = 'Clientes al inicio de ' + bdClMes; clFilterColor = 'var(--navy)'; clFilterBg = '#f0f2f5'; }
+    else { clFilterLabel = 'Clientes al cierre de ' + bdClMes; clFilterColor = 'var(--navy)'; clFilterBg = '#f0f2f5'; }
+    h += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;padding:8px 12px;background:' + clFilterBg + ';border-radius:8px;font-size:0.8rem;color:' + clFilterColor + ';font-weight:500">';
+    h += '<span>' + clFilterLabel + '</span>';
+    h += '<button style="margin-left:auto;padding:3px 10px;border-radius:5px;border:1px solid ' + clFilterColor + ';background:white;font-size:0.72rem;cursor:pointer;color:' + clFilterColor + '" onclick="clSetFilter(\'todos\')">Ver todos</button>';
+    h += '</div>';
+  }
+
+  h += '<div class="cl-toolbar">';
+  h += '<input class="cl-search" type="text" placeholder="Buscar cliente..." value="' + esc(clSearch) + '" oninput="clSearch=this.value;bdRenderClientes()">';
+  if (tengoPermiso('gerencia', 'basedatos', 'edicion', 'clientes')) {
+    h += '<button class="btn-add" onclick="clOpenModal()">+ Nuevo cliente</button>';
+  }
+  h += '</div>';
+
+  // Aplicar filtro
+  var filtered = allForMes;
+  if (clFilter === 'nuevos') {
+    filtered = clNuevosMes;
+  } else if (clFilter === 'churn') {
+    filtered = clChurnMes;
+  } else if (clFilter === 'inicio') {
+    if (clMesIdx > 0) {
+      filtered = bdGetClientesForMes(BD_MESES[clMesIdx - 1]);
+    } else {
+      filtered = bdClientes.filter(function(c) {
+        var entered = !c.fecha_entrada || c.fecha_entrada < '2026-01-01';
+        var notLeft = !c.fecha_salida || c.fecha_salida >= '2026-01-01';
+        return entered && notLeft;
+      });
+    }
+  } else if (clFilter === 'cierre') {
+    filtered = clActivosMes;
+  }
+  if (clSearch) {
+    var q = clSearch.toLowerCase();
+    filtered = allForMes.filter(function(c) {
+      return (c.nombre || '').toLowerCase().indexOf(q) >= 0
+        || (c.rnc || '').toLowerCase().indexOf(q) >= 0
+        || (c.contadora_contabilidad || '').toLowerCase().indexOf(q) >= 0
+        || (c.contadora_impuestos || '').toLowerCase().indexOf(q) >= 0
+        || (c.contacto || '').toLowerCase().indexOf(q) >= 0;
+    });
+  }
+
+  if (filtered.length === 0) {
+    if (bdClientes.length === 0) {
+      h += '<div class="cl-empty"><div class="emoji">👥</div><p>No hay clientes registrados.</p>';
+      if (tengoPermiso('gerencia', 'basedatos', 'edicion', 'clientes')) h += '<p style="font-size:0.82rem">Usa el boton de arriba para agregar el primero.</p>';
+      h += '</div>';
+    } else {
+      h += '<div class="cl-empty"><p>No se encontraron resultados para "' + esc(clSearch) + '"</p></div>';
+    }
+    el.innerHTML = h;
+    return;
+  }
+
+  // Ordenar: sin asignar primero, luego clientes asignados, inactivos al final
+  function clClientesSinAsignar(c) {
+    return !c.contadora_contabilidad && !c.contadora_impuestos;
+  }
+  var clActivosSet = clActivosMes;
+  filtered.sort(function(a, b) {
+    var aActivo = clActivosSet.indexOf(a) >= 0 ? 0 : 1;
+    var bActivo = clActivosSet.indexOf(b) >= 0 ? 0 : 1;
+    if (aActivo !== bActivo) return aActivo - bActivo;
+    if (aActivo === 0) {
+      var aSin = clClientesSinAsignar(a) ? 0 : 1;
+      var bSin = clClientesSinAsignar(b) ? 0 : 1;
+      if (aSin !== bSin) return aSin - bSin;
+    }
+    return (a.nombre || '').localeCompare(b.nombre || '', 'es');
+  });
+
+  h += '<table class="cl-table">';
+  h += '<thead><tr>';
+  var canEditCl = tengoPermiso('gerencia', 'basedatos', 'edicion', 'clientes');
+  h += '<th style="width:36px">#</th><th>Cliente</th><th>RNC</th><th>Servicio</th><th>Cont. contab</th><th>Cont. imp</th><th>Adm</th><th>Estado</th>';
+  if (canEditCl) h += '<th></th>';
+  h += '</tr></thead><tbody>';
+
+  var clLastGroup = null;
+  var colCount = canEditCl ? 9 : 8;
+  filtered.forEach(function(c, idx) {
+    var isInactivo = clActivosSet.indexOf(c) < 0;
+    var groupKey = isInactivo ? '__inactivo' : (clClientesSinAsignar(c) ? '__sin_asignar' : '__clientes');
+    if (groupKey !== clLastGroup) {
+      var groupLabel = groupKey === '__sin_asignar' ? 'Sin asignar' : groupKey === '__clientes' ? 'Clientes' : 'Inactivos';
+      h += '<tr style="background:#f1f5f9"><td colspan="' + colCount + '" style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--navy);padding:10px 12px">' + groupLabel + '</td></tr>';
+      clLastGroup = groupKey;
+    }
+    var rowStyle = isInactivo ? ' style="opacity:0.55"' : '';
+    h += '<tr' + rowStyle + '>';
+    h += '<td style="color:var(--muted);font-size:0.75rem">' + (idx + 1) + '</td>';
+    h += '<td class="cl-name">' + esc(c.nombre) + '</td>';
+    h += '<td style="font-size:0.8rem">' + (c.rnc ? esc(c.rnc) : '<span style="color:var(--light)">—</span>') + '</td>';
+    h += '<td style="font-size:0.8rem">' + (c.tipo_servicio ? esc(c.tipo_servicio) : '<span style="color:var(--light)">—</span>') + '</td>';
+    h += '<td>' + (c.responsabilidad_contabilidad === false ? '<span style="color:var(--light);font-size:0.75rem">N/A</span>' : (c.contadora_contabilidad ? esc(c.contadora_contabilidad) : '<span style="color:var(--light)">Sin asignar</span>')) + '</td>';
+    h += '<td>' + (c.responsabilidad_impuestos === false ? '<span style="color:var(--light);font-size:0.75rem">N/A</span>' : (c.contadora_impuestos ? esc(c.contadora_impuestos) : '<span style="color:var(--light)">Sin asignar</span>')) + '</td>';
+    h += '<td style="font-size:0.8rem">' + (c.monto_adm || '<span style="color:var(--light)">—</span>') + '</td>';
+    if (isInactivo) {
+      var salida = c.fecha_salida ? c.fecha_salida.split('-').reverse().join('/') : '';
+      var motivoTxt = c.motivo_salida ? ' · ' + esc(c.motivo_salida) : '';
+      h += '<td><span class="cl-badge-inactivo">Inactivo</span>' + (salida ? '<div style="font-size:0.7rem;color:var(--muted);margin-top:2px">Salida: ' + salida + motivoTxt + '</div>' : '') + '</td>';
+    } else {
+      h += '<td><span class="cl-badge-activo">Activo</span></td>';
+    }
+    if (canEditCl) {
+      h += '<td style="white-space:nowrap">';
+      h += '<button style="padding:4px 10px;border:1px solid var(--border);border-radius:6px;background:white;font-size:0.75rem;cursor:pointer;color:var(--muted)" onclick="clEditClient(\'' + c.id + '\')">Editar</button> ';
+      h += '<button style="padding:4px 8px;border:1px solid var(--border);border-radius:6px;background:white;font-size:0.75rem;cursor:pointer;color:var(--muted)" onclick="clShowHistory(\'' + c.id + '\',\'' + (c.nombre||'').replace(/'/g,"\\'") + '\')" title="Historial de contadoras">&#128337;</button>';
+      h += '</td>';
+    }
+    h += '</tr>';
+  });
+
+  h += '</tbody></table>';
+  el.innerHTML = h;
+}
+
+// ─── Outsourcing modal functions ───
+
+function clPopulateContadoraSelects() {
+  var selC = document.getElementById('cl-m-contadora-contab');
+  var selI = document.getElementById('cl-m-contadora-imp');
+  var base = '<option value="">Sin asignar</option>';
+  selC.innerHTML = base;
+  selI.innerHTML = base;
+  var names = {};
+  bdContadoras.forEach(function(c) { if (c.activa) names[c.nombre] = true; });
+  if (Object.keys(names).length === 0) {
+    bdClientes.forEach(function(c) {
+      if (c.contadora_contabilidad) names[c.contadora_contabilidad] = true;
+      if (c.contadora_impuestos) names[c.contadora_impuestos] = true;
+    });
+  }
+  Object.keys(names).sort().forEach(function(n) {
+    var opt = '<option value="' + n + '">' + n + '</option>';
+    selC.innerHTML += opt;
+    selI.innerHTML += opt;
+  });
+}
+
+function clRenderActivoBtn() {
+  var btn = document.getElementById('cl-m-activo-btn');
+  var salidaWrap = document.getElementById('cl-m-salida-wrap');
+  var motivoWrap = document.getElementById('cl-m-salida-motivo-wrap');
+  var quedaWrap = document.getElementById('cl-m-quedaadm-wrap');
+  if (clModalActivo) {
+    btn.textContent = 'Activo';
+    btn.style.background = 'var(--green)';
+    btn.style.color = 'white';
+    btn.style.borderColor = 'var(--green)';
+    salidaWrap.style.display = 'none';
+    motivoWrap.classList.add('hidden');
+    quedaWrap.style.display = 'none';
+    document.getElementById('cl-m-queda-adm').checked = false;
+    document.getElementById('cl-m-quedaadm-info').style.display = 'none';
+  } else {
+    btn.textContent = 'Inactivo';
+    btn.style.background = 'var(--red)';
+    btn.style.color = 'white';
+    btn.style.borderColor = 'var(--red)';
+    salidaWrap.style.display = 'block';
+    motivoWrap.classList.remove('hidden');
+    var softVal = document.getElementById('cl-m-software').value;
+    quedaWrap.style.display = softVal ? 'block' : 'none';
+  }
+}
+
+function clToggleQuedaAdm() {
+  var checked = document.getElementById('cl-m-queda-adm').checked;
+  var infoEl = document.getElementById('cl-m-quedaadm-info');
+  if (checked) {
+    var lic = document.getElementById('cl-m-software').value;
+    var precio = PRECIOS_SOFTWARE[lic] || 0;
+    infoEl.innerHTML = 'Se creara en Software: <b>' + lic + '</b> — US$' + precio + '/mes';
+    infoEl.style.display = 'block';
+  } else {
+    infoEl.style.display = 'none';
+  }
+}
+
+function clToggleActivo() {
+  clModalActivo = !clModalActivo;
+  if (clModalActivo) document.getElementById('cl-m-fecha-salida').value = '';
+  clRenderActivoBtn();
+}
+
+function clOnFechaSalidaChange() {
+  var val = document.getElementById('cl-m-fecha-salida').value;
+  if (val && clModalActivo) {
+    clModalActivo = false;
+    clRenderActivoBtn();
+  }
+}
+
+function clCheckContadoraChanged() {
+  if (!clEditingId) { document.getElementById('cl-m-motivo-wrap').classList.add('hidden'); return; }
+  var newC = document.getElementById('cl-m-contadora-contab').value || '';
+  var newI = document.getElementById('cl-m-contadora-imp').value || '';
+  if (newC !== clOrigContab || newI !== clOrigImp) {
+    document.getElementById('cl-m-motivo-wrap').classList.remove('hidden');
+  } else {
+    document.getElementById('cl-m-motivo-wrap').classList.add('hidden');
+    document.getElementById('cl-m-motivo').value = '';
+  }
+}
+
+function clOpenModal(editId) {
+  clEditingId = editId || null;
+  clPopulateContadoraSelects();
+
+  // Reset motivo
+  document.getElementById('cl-m-motivo-wrap').classList.add('hidden');
+  document.getElementById('cl-m-motivo').value = '';
+
+  if (clEditingId) {
+    var c = bdClientes.find(function(x) { return x.id === clEditingId; });
+    if (!c) return;
+    clOrigContab = c.contadora_contabilidad || '';
+    clOrigImp = c.contadora_impuestos || '';
+    document.getElementById('cl-modal-title').textContent = 'Editar cliente';
+    document.getElementById('cl-m-nombre').value = c.nombre || '';
+    document.getElementById('cl-m-rnc').value = c.rnc || '';
+    document.getElementById('cl-m-contacto').value = c.contacto || '';
+    document.getElementById('cl-m-email').value = c.email || '';
+    document.getElementById('cl-m-telefono').value = c.telefono || '';
+    document.getElementById('cl-m-tipo-servicio').value = c.tipo_servicio || '';
+    document.getElementById('cl-m-monto-adm').value = c.monto_adm || '';
+    document.getElementById('cl-m-fecha-salida').value = c.fecha_salida || '';
+    document.getElementById('cl-m-motivo-salida').value = c.motivo_salida || '';
+    document.getElementById('cl-m-nota-salida').value = c.nota_salida || '';
+    clModalActivo = c.activo !== false;
+    clRenderActivoBtn();
+    document.getElementById('cl-m-resp-contab').checked = c.responsabilidad_contabilidad !== false;
+    document.getElementById('cl-m-contadora-contab').value = c.contadora_contabilidad || '';
+    document.getElementById('cl-m-resp-imp').checked = c.responsabilidad_impuestos !== false;
+    document.getElementById('cl-m-contadora-imp').value = c.contadora_impuestos || '';
+    document.getElementById('cl-m-fecha-entrada').value = c.fecha_entrada || '';
+    document.getElementById('cl-m-inicio-fiscal').value = c.inicio_responsabilidad_fiscal || '';
+    document.getElementById('cl-m-software').value = c.software || '';
+    document.getElementById('cl-m-servicio-impl').value = c.servicio_impl || '';
+    document.getElementById('cl-m-fecha-inicio-impl').value = c.fecha_inicio_impl || '';
+    document.getElementById('cl-m-fecha-fin-impl').value = c.fecha_fin_impl || '';
+    document.getElementById('cl-m-tipo-empresa').value = c.tipo_empresa || '';
+    document.getElementById('cl-m-estado-contabilidad').value = c.estado_contabilidad || '';
+    document.getElementById('cl-m-notas').value = c.notas || '';
+    document.getElementById('cl-m-contadora-contab').onchange = clCheckContadoraChanged;
+    document.getElementById('cl-m-contadora-imp').onchange = clCheckContadoraChanged;
+  } else {
+    clOrigContab = '';
+    clOrigImp = '';
+    document.getElementById('cl-modal-title').textContent = 'Nuevo cliente';
+    document.getElementById('cl-m-nombre').value = '';
+    document.getElementById('cl-m-rnc').value = '';
+    document.getElementById('cl-m-contacto').value = '';
+    document.getElementById('cl-m-email').value = '';
+    document.getElementById('cl-m-telefono').value = '';
+    document.getElementById('cl-m-tipo-servicio').value = '';
+    document.getElementById('cl-m-monto-adm').value = '';
+    document.getElementById('cl-m-fecha-salida').value = '';
+    document.getElementById('cl-m-motivo-salida').value = '';
+    document.getElementById('cl-m-nota-salida').value = '';
+    clModalActivo = true;
+    clRenderActivoBtn();
+    document.getElementById('cl-m-resp-contab').checked = true;
+    document.getElementById('cl-m-contadora-contab').value = '';
+    document.getElementById('cl-m-resp-imp').checked = true;
+    document.getElementById('cl-m-contadora-imp').value = '';
+    document.getElementById('cl-m-fecha-entrada').value = '';
+    document.getElementById('cl-m-inicio-fiscal').value = '';
+    document.getElementById('cl-m-software').value = '';
+    document.getElementById('cl-m-servicio-impl').value = '';
+    document.getElementById('cl-m-fecha-inicio-impl').value = '';
+    document.getElementById('cl-m-fecha-fin-impl').value = '';
+    document.getElementById('cl-m-tipo-empresa').value = '';
+    document.getElementById('cl-m-estado-contabilidad').value = '';
+    document.getElementById('cl-m-notas').value = '';
+    document.getElementById('cl-m-contadora-contab').onchange = null;
+    document.getElementById('cl-m-contadora-imp').onchange = null;
+  }
+
+  // Reset checkboxes de implementacion
+  document.getElementById('cl-m-ck-fe').checked = false;
+  document.getElementById('cl-m-ck-fe').disabled = false;
+  document.getElementById('cl-m-ck-fe-exists').style.display = 'none';
+  document.getElementById('cl-m-ck-adm').checked = false;
+  document.getElementById('cl-m-ck-adm').disabled = false;
+  document.getElementById('cl-m-ck-adm-exists').style.display = 'none';
+
+  document.getElementById('cl-m-nombre-err').style.display = 'none';
+  document.getElementById('cl-modal-overlay').classList.remove('hidden');
+
+  // Si editando, verificar si ya tiene checklists
+  if (clEditingId) {
+    var cNombre = bdClientes.find(function(x) { return x.id === clEditingId; });
+    if (cNombre) {
+      sb.from('impl_checklist_fe').select('id').eq('cliente', cNombre.nombre).then(function(res) {
+        if (res.data && res.data.length > 0) {
+          document.getElementById('cl-m-ck-fe').checked = true;
+          document.getElementById('cl-m-ck-fe').disabled = true;
+          document.getElementById('cl-m-ck-fe-exists').style.display = 'block';
+        }
+      });
+      sb.from('impl_checklist_adm').select('id').eq('cliente', cNombre.nombre).then(function(res) {
+        if (res.data && res.data.length > 0) {
+          document.getElementById('cl-m-ck-adm').checked = true;
+          document.getElementById('cl-m-ck-adm').disabled = true;
+          document.getElementById('cl-m-ck-adm-exists').style.display = 'block';
+        }
+      });
+    }
+  }
+}
+
+function clEditClient(id) { clOpenModal(id); }
+
+function clCloseModal() {
+  document.getElementById('cl-modal-overlay').classList.add('hidden');
+  clEditingId = null;
+}
+
+async function clShowHistory(clienteId, clienteNombre) {
+  document.getElementById('cl-hist-title').textContent = 'Historial — ' + clienteNombre;
+  document.getElementById('cl-hist-body').innerHTML = '<div style="text-align:center;padding:20px;color:var(--muted)">Cargando...</div>';
+  document.getElementById('cl-hist-overlay').classList.remove('hidden');
+
+  var { data, error } = await sb.from('clientes_cambios_contadora')
+    .select('*')
+    .eq('cliente_id', clienteId)
+    .order('fecha', { ascending: false });
+
+  var rows = data || [];
+  var h = '';
+
+  if (rows.length === 0) {
+    h = '<div style="text-align:center;padding:30px;color:var(--muted);font-size:0.85rem">No hay cambios registrados para este cliente.</div>';
+  } else {
+    h += '<table style="width:100%;border-collapse:collapse;font-size:0.82rem">';
+    h += '<thead><tr style="border-bottom:2px solid var(--border)">';
+    h += '<th style="text-align:left;padding:8px;text-transform:uppercase;font-size:0.68rem;color:var(--muted)">Fecha</th>';
+    h += '<th style="text-align:left;padding:8px;text-transform:uppercase;font-size:0.68rem;color:var(--muted)">Area</th>';
+    h += '<th style="text-align:left;padding:8px;text-transform:uppercase;font-size:0.68rem;color:var(--muted)">Anterior</th>';
+    h += '<th style="text-align:left;padding:8px;text-transform:uppercase;font-size:0.68rem;color:var(--muted)">Nueva</th>';
+    h += '<th style="text-align:left;padding:8px;text-transform:uppercase;font-size:0.68rem;color:var(--muted)">Motivo</th>';
+    h += '</tr></thead><tbody>';
+    rows.forEach(function(r) {
+      var fecha = r.fecha ? new Date(r.fecha).toLocaleDateString('es-DO', { day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' }) : '—';
+      var areaLabel = r.area === 'contabilidad' ? 'Contab' : 'Imp';
+      var areaColor = r.area === 'contabilidad' ? 'var(--blue)' : 'var(--green)';
+      h += '<tr style="border-bottom:1px solid var(--border)">';
+      h += '<td style="padding:8px;white-space:nowrap">' + fecha + '</td>';
+      h += '<td style="padding:8px"><span style="background:' + areaColor + ';color:white;padding:2px 8px;border-radius:10px;font-size:0.72rem;font-weight:600">' + areaLabel + '</span></td>';
+      h += '<td style="padding:8px">' + (r.contadora_anterior || '<span style="color:var(--light)">—</span>') + '</td>';
+      h += '<td style="padding:8px;font-weight:600">' + (r.contadora_nueva || '<span style="color:var(--light)">Desasignada</span>') + '</td>';
+      h += '<td style="padding:8px;color:var(--muted);font-style:italic">' + (r.motivo || '—') + '</td>';
+      h += '</tr>';
+    });
+    h += '</tbody></table>';
+  }
+
+  document.getElementById('cl-hist-body').innerHTML = h;
+}
+
+async function clSaveClient() {
+  var nombre = document.getElementById('cl-m-nombre').value.trim();
+  if (!nombre) {
+    document.getElementById('cl-m-nombre-err').style.display = 'block';
+    return;
+  }
+  document.getElementById('cl-m-nombre-err').style.display = 'none';
+
+  var newContab = document.getElementById('cl-m-contadora-contab').value || null;
+  var newImp = document.getElementById('cl-m-contadora-imp').value || null;
+  var contadoraChanged = clEditingId && (
+    (newContab || '') !== clOrigContab || (newImp || '') !== clOrigImp
+  );
+  var motivo = document.getElementById('cl-m-motivo').value.trim() || null;
+
+  var record = {
+    nombre: nombre,
+    rnc: document.getElementById('cl-m-rnc').value.trim() || null,
+    contacto: document.getElementById('cl-m-contacto').value.trim() || null,
+    email: document.getElementById('cl-m-email').value.trim() || null,
+    telefono: document.getElementById('cl-m-telefono').value.trim() || null,
+    tipo_servicio: document.getElementById('cl-m-tipo-servicio').value || null,
+    software: document.getElementById('cl-m-software').value || null,
+    monto_adm: document.getElementById('cl-m-monto-adm').value ? parseInt(document.getElementById('cl-m-monto-adm').value) : null,
+    servicio_impl: document.getElementById('cl-m-servicio-impl').value.trim() || null,
+    responsabilidad_contabilidad: document.getElementById('cl-m-resp-contab').checked,
+    contadora_contabilidad: newContab,
+    responsabilidad_impuestos: document.getElementById('cl-m-resp-imp').checked,
+    contadora_impuestos: newImp,
+    fecha_entrada: document.getElementById('cl-m-fecha-entrada').value || null,
+    inicio_responsabilidad_fiscal: document.getElementById('cl-m-inicio-fiscal').value || null,
+    fecha_inicio_impl: document.getElementById('cl-m-fecha-inicio-impl').value || null,
+    fecha_fin_impl: document.getElementById('cl-m-fecha-fin-impl').value || null,
+    fecha_salida: document.getElementById('cl-m-fecha-salida').value || null,
+    activo: clModalActivo,
+    motivo_salida: !clModalActivo ? (document.getElementById('cl-m-motivo-salida').value || null) : null,
+    nota_salida: !clModalActivo ? (document.getElementById('cl-m-nota-salida').value.trim() || null) : null,
+    tipo_empresa: document.getElementById('cl-m-tipo-empresa').value.trim() || null,
+    estado_contabilidad: document.getElementById('cl-m-estado-contabilidad').value.trim() || null,
+    notas: document.getElementById('cl-m-notas').value.trim() || null
+  };
+
+  var btn = document.getElementById('cl-m-save');
+  btn.disabled = true; btn.textContent = 'Guardando...';
+
+  var result;
+  if (clEditingId) {
+    result = await sb.from('clientes').update(record).eq('id', clEditingId);
+  } else {
+    result = await sb.from('clientes').insert(record);
+  }
+
+  if (result.error) {
+    btn.disabled = false; btn.textContent = 'Guardar';
+    gerShowToast('Error: ' + result.error.message, 'error');
+    console.error(result.error);
+    return;
+  }
+
+  // Si cambio la contadora, actualizar el motivo en los registros del log
+  if (contadoraChanged && motivo && clEditingId) {
+    await sb.from('clientes_cambios_contadora')
+      .update({ motivo: motivo })
+      .eq('cliente_id', clEditingId)
+      .is('motivo', null)
+      .order('fecha', { ascending: false })
+      .limit(2);
+  }
+
+  // Si se inactivo y marco "Se queda con Adm", crear registro en clientes_software
+  if (!clModalActivo && document.getElementById('cl-m-queda-adm').checked) {
+    var swLic = document.getElementById('cl-m-software').value;
+    var swPrecio = PRECIOS_SOFTWARE[swLic] || 0;
+    var swNombre = record.nombre;
+    var existCheck = await sb.from('clientes_software').select('id').ilike('nombre', swNombre).limit(1);
+    if (!existCheck.data || existCheck.data.length === 0) {
+      var swRecord = {
+        nombre: swNombre,
+        rnc: record.rnc,
+        contacto: record.contacto,
+        email: record.email,
+        telefono: record.telefono,
+        tipo_licencia: swLic,
+        monto_mensual: swPrecio,
+        fecha_entrada: record.fecha_salida || new Date().toISOString().slice(0, 10),
+        activo: true
+      };
+      var swRes = await sb.from('clientes_software').insert(swRecord);
+      if (swRes.error) {
+        console.error('Error creando registro software:', swRes.error);
+      } else {
+        gerShowToast('Registro creado en Software: ' + swLic, 'success');
+      }
+    }
+  }
+
+  btn.disabled = false; btn.textContent = 'Guardar';
+
+  // Crear checklist de implementacion si el checkbox esta marcado
+  var ckFEChecked = document.getElementById('cl-m-ck-fe').checked;
+  var ckFEDisabled = document.getElementById('cl-m-ck-fe').disabled;
+  if (ckFEChecked && !ckFEDisabled) {
+    var existFE = await sb.from('impl_checklist_fe').select('id').eq('cliente', nombre);
+    if (!existFE.data || existFE.data.length === 0) {
+      var datosFE = {};
+      for (var fi = 1; fi <= 15; fi++) { datosFE['paso_' + fi] = { done: false, fecha: '' }; }
+      var resFE = await sb.from('impl_checklist_fe').insert({ cliente: nombre, implementadora: null, datos: datosFE });
+      if (!resFE.error) gerShowToast('Checklist FE creado para ' + nombre, 'success');
+      else console.error('Error creando checklist FE:', resFE.error);
+    }
+  }
+  var ckAdmChecked = document.getElementById('cl-m-ck-adm').checked;
+  var ckAdmDisabled = document.getElementById('cl-m-ck-adm').disabled;
+  if (ckAdmChecked && !ckAdmDisabled) {
+    var existAdm = await sb.from('impl_checklist_adm').select('id').eq('cliente', nombre);
+    if (!existAdm.data || existAdm.data.length === 0) {
+      var datosAdm = {};
+      for (var ai = 1; ai <= 18; ai++) { datosAdm['paso_' + ai] = { done: false, fecha: '' }; }
+      var resAdm = await sb.from('impl_checklist_adm').insert({ cliente: nombre, implementadora: null, datos: datosAdm });
+      if (!resAdm.error) gerShowToast('Checklist Adm creado para ' + nombre, 'success');
+      else console.error('Error creando checklist Adm:', resAdm.error);
+    }
+  }
+
+  var wasEditing = !!clEditingId;
+  clCloseModal();
+  await bdLoadClientes();
+  await bdLoadSoftware();
+  bdRenderClientes();
+  gerShowToast(wasEditing ? 'Cliente actualizado' : 'Cliente agregado');
+}
+
+// Wrapper para resolver pendiente despues de save exitoso
+var _clSaveClientOrig = clSaveClient;
+clSaveClient = async function() {
+  var pendId = clPendienteId;
+  var modalBefore = document.getElementById('cl-modal-overlay').classList.contains('hidden');
+  await _clSaveClientOrig();
+  var modalAfter = document.getElementById('cl-modal-overlay').classList.contains('hidden');
+  if (pendId && !modalBefore && modalAfter) {
+    await sb.from('clientes_pendientes').update({ estado: 'creado' }).eq('id', pendId);
+    clPendienteId = null;
+    await bdLoadPendientes();
+    bdRenderClientes();
+  }
+};
+
+function clCreateFromPendiente() {
+  var pend = bdPendientes.find(function(p) { return p.destino === 'recurrente'; });
+  if (!pend) return;
+  clPendienteId = pend.id;
+  clOpenModal();
+  document.getElementById('cl-m-nombre').value = pend.lead_nombre || pend.lead_empresa || '';
+}
+
+// ═══════════════════════════════════════════
+// CRUD SOFTWARE: Clientes software
+// ═══════════════════════════════════════════
+
+function bdSwitchSwMes(mes) {
+  bdSwMes = mes;
+  swFilter = 'todos';
+  bdRenderSoftwareCrud();
+}
+
+function swGetClientesForMes(mes) {
+  var mesIdx = BD_MESES.indexOf(mes);
+  var lastDay = new Date(2026, mesIdx + 1, 0);
+  var lastDayStr = '2026-' + String(mesIdx + 1).padStart(2, '0') + '-' + String(lastDay.getDate()).padStart(2, '0');
+  return bdSoftwareClientes.filter(function(c) {
+    var entered = !c.fecha_entrada || c.fecha_entrada <= lastDayStr;
+    var notExited = !c.fecha_salida || c.fecha_salida > lastDayStr;
+    return entered && notExited;
+  });
+}
+
+function swSetFilter(f) {
+  swFilter = (swFilter === f) ? 'todos' : f;
+  bdRenderSoftwareCrud();
+}
+
+function bdRenderSoftwareCrud() {
+  var el = document.getElementById('cc-content');
+  var h = '';
+
+  // Back to analytics button
+  h += '<div style="margin-bottom:14px"><button style="padding:6px 14px;border-radius:8px;font-size:0.78rem;font-weight:600;cursor:pointer;border:1px solid var(--border);background:white;color:var(--navy)" onclick="ccToggleSwView()">&#8592; Volver a vista analitica</button></div>';
+
+  // Pendientes alert
+  var pendSw = bdPendientes.filter(function(p) { return p.destino === 'software'; });
+  if (pendSw.length > 0) {
+    h += '<div style="background:#fef3c7;border:1px solid #f59e0b;border-radius:10px;padding:14px 18px;margin-bottom:16px;display:flex;align-items:center;gap:12px">';
+    h += '<span style="font-size:1.2rem">⚠️</span>';
+    h += '<div><span style="font-weight:600;font-size:0.85rem;color:#92400e">' + pendSw.length + ' cliente' + (pendSw.length > 1 ? 's' : '') + ' pendiente' + (pendSw.length > 1 ? 's' : '') + ' de crear</span>';
+    h += '<div style="font-size:0.78rem;color:#a16207;margin-top:2px">';
+    pendSw.forEach(function(p, i) {
+      h += (i > 0 ? ', ' : '') + '<b>' + esc(p.lead_nombre) + '</b> (' + (p.mes_cierre || '') + ')';
+    });
+    h += '</div></div>';
+    h += '<div style="margin-left:auto;display:flex;gap:6px">';
+    h += '<button style="padding:5px 12px;border-radius:6px;font-size:0.75rem;font-weight:600;cursor:pointer;border:1px solid var(--border);background:white;color:var(--muted)" onclick="bdDismissPendientes(\'software\')">Desestimar</button>';
+    h += '<button style="padding:5px 12px;border-radius:6px;font-size:0.75rem;font-weight:600;cursor:pointer;border:1px solid #f59e0b;background:white;color:#92400e" onclick="swCreateFromPendiente()">Crear</button>';
+    h += '</div>';
+    h += '</div>';
+  }
+
+  // Month pills
+  h += '<div class="bd-month-pills">';
+  BD_MESES.forEach(function(m, i) {
+    h += '<button class="bd-month-pill ' + (bdSwMes === m ? 'active' : '') + '" onclick="bdSwitchSwMes(\'' + m + '\')">' + BD_MESES_SHORT[i] + '</button>';
+  });
+  h += '</div>';
+
+  var swActivosMes = swGetClientesForMes(bdSwMes);
+  var swMesIdx = BD_MESES.indexOf(bdSwMes);
+  var swLastDayObj = new Date(2026, swMesIdx + 1, 0);
+  var swLastDayStr = '2026-' + String(swMesIdx + 1).padStart(2, '0') + '-' + String(swLastDayObj.getDate()).padStart(2, '0');
+  var swInactivosMes = bdSoftwareClientes.filter(function(c) {
+    if (swActivosMes.indexOf(c) >= 0) return false;
+    var entered = !c.fecha_entrada || c.fecha_entrada <= swLastDayStr;
+    return entered;
+  });
+  var allSwForMes = swActivosMes.concat(swInactivosMes);
+
+  var facturacionMes = swActivosMes.reduce(function(sum, c) { return sum + (c.monto_mensual || 0); }, 0);
+
+  var mesPrefix = '2026-' + String(swMesIdx + 1).padStart(2, '0');
+  var swNuevosMes = bdSoftwareClientes.filter(function(c) {
+    return c.fecha_entrada && c.fecha_entrada.indexOf(mesPrefix) === 0;
+  });
+  var swChurnMes = bdSoftwareClientes.filter(function(c) {
+    return c.fecha_salida && c.fecha_salida.indexOf(mesPrefix) === 0;
+  });
+  var swInicioMes = swActivosMes.length - swNuevosMes.length + swChurnMes.length;
+
+  h += '<div class="bd-summary">';
+  h += '<div class="bd-summary-item' + (swFilter === 'inicio' ? ' bd-summary-active' : '') + '" style="cursor:pointer;border:2px solid ' + (swFilter === 'inicio' ? 'var(--navy)' : 'transparent') + ';border-radius:10px" onclick="swSetFilter(\'inicio\')"><div class="bd-summary-count">' + swInicioMes + '</div><div class="bd-summary-label">Inicio</div></div>';
+  h += '<div class="bd-summary-item' + (swFilter === 'nuevos' ? ' bd-summary-active' : '') + '" style="cursor:pointer;border:2px solid ' + (swFilter === 'nuevos' ? 'var(--green)' : 'transparent') + ';border-radius:10px" onclick="swSetFilter(\'nuevos\')"><div class="bd-summary-count" style="color:var(--green)">' + swNuevosMes.length + '</div><div class="bd-summary-label">Nuevos</div></div>';
+  h += '<div class="bd-summary-item' + (swFilter === 'churn' ? ' bd-summary-active' : '') + '" style="cursor:pointer;border:2px solid ' + (swFilter === 'churn' ? 'var(--red)' : 'transparent') + ';border-radius:10px" onclick="swSetFilter(\'churn\')"><div class="bd-summary-count" style="color:var(--red)">' + swChurnMes.length + '</div><div class="bd-summary-label">Churn</div></div>';
+  h += '<div class="bd-summary-item' + (swFilter === 'cierre' ? ' bd-summary-active' : '') + '" style="cursor:pointer;border:2px solid ' + (swFilter === 'cierre' ? 'var(--navy)' : 'transparent') + ';border-radius:10px" onclick="swSetFilter(\'cierre\')"><div class="bd-summary-count" style="font-weight:700">' + swActivosMes.length + '</div><div class="bd-summary-label">Cierre</div></div>';
+  h += '<div class="bd-summary-item"><div class="bd-summary-count" style="font-size:1rem">US$ ' + facturacionMes.toLocaleString() + '</div><div class="bd-summary-label">Facturacion</div></div>';
+  h += '</div>';
+
+  if (swFilter !== 'todos') {
+    var fLabelsB = {inicio:'Mostrando clientes al inicio de ' + bdSwMes, nuevos:'Mostrando solo nuevos de ' + bdSwMes, churn:'Mostrando churn de ' + bdSwMes, cierre:'Mostrando clientes al cierre de ' + bdSwMes};
+    var fColorsB = {inicio:'var(--navy)', nuevos:'var(--green)', churn:'var(--red)', cierre:'var(--navy)'};
+    var fBgsB = {inicio:'#f0f4ff', nuevos:'#ecfdf5', churn:'#fef2f2', cierre:'#f0f4ff'};
+    var filterLabel = fLabelsB[swFilter] || '';
+    var filterColor = fColorsB[swFilter] || 'var(--navy)';
+    var filterBg = fBgsB[swFilter] || '#f0f4ff';
+    h += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;padding:8px 12px;background:' + filterBg + ';border-radius:8px;font-size:0.8rem;color:' + filterColor + ';font-weight:500">';
+    h += '<span>' + filterLabel + '</span>';
+    h += '<button style="margin-left:auto;padding:3px 10px;border-radius:5px;border:1px solid ' + filterColor + ';background:white;font-size:0.72rem;cursor:pointer;color:' + filterColor + '" onclick="swSetFilter(\'todos\')">Ver todos</button>';
+    h += '</div>';
+  }
+
+  h += '<div class="cl-toolbar">';
+  h += '<input class="cl-search" type="text" placeholder="Buscar cliente software..." value="' + esc(swSearch) + '" oninput="swSearch=this.value;bdRenderSoftwareCrud()">';
+  if (tengoPermiso('gerencia', 'basedatos', 'edicion', 'clientes')) {
+    h += '<button class="btn-add" onclick="swOpenModal()">+ Nuevo cliente</button>';
+  }
+  h += '</div>';
+
+  // Aplicar filtro
+  var filtered = allSwForMes;
+  if (swFilter === 'nuevos') {
+    filtered = swNuevosMes;
+  } else if (swFilter === 'churn') {
+    filtered = swChurnMes;
+  } else if (swFilter === 'inicio') {
+    if (swMesIdx > 0) {
+      var prevMes = BD_MESES[swMesIdx - 1];
+      filtered = swGetClientesForMes(prevMes);
+    } else {
+      filtered = bdSoftwareClientes.filter(function(c) {
+        var entered = !c.fecha_entrada || c.fecha_entrada < '2026-01-01';
+        var notLeft = !c.fecha_salida || c.fecha_salida >= '2026-01-01';
+        return entered && notLeft;
+      });
+    }
+  } else if (swFilter === 'cierre') {
+    filtered = swActivosMes;
+  }
+  if (swSearch) {
+    var q = swSearch.toLowerCase();
+    filtered = filtered.filter(function(c) {
+      return (c.nombre || '').toLowerCase().indexOf(q) >= 0
+        || (c.rnc || '').toLowerCase().indexOf(q) >= 0
+        || (c.contacto || '').toLowerCase().indexOf(q) >= 0;
+    });
+  }
+
+  if (filtered.length === 0) {
+    if (bdSoftwareClientes.length === 0) {
+      h += '<div class="cl-empty"><div class="emoji">💻</div><p>No hay clientes de software registrados.</p>';
+      if (tengoPermiso('gerencia', 'basedatos', 'edicion', 'clientes')) h += '<p style="font-size:0.82rem">Usa el boton de arriba para agregar el primero.</p>';
+      h += '</div>';
+    } else {
+      h += '<div class="cl-empty"><p>No se encontraron resultados para "' + esc(swSearch) + '"</p></div>';
+    }
+    el.innerHTML = h;
+    return;
+  }
+
+  filtered.sort(function(a, b) {
+    var aActivo = swActivosMes.indexOf(a) >= 0 ? 0 : 1;
+    var bActivo = swActivosMes.indexOf(b) >= 0 ? 0 : 1;
+    if (aActivo !== bActivo) return aActivo - bActivo;
+    return (a.nombre || '').localeCompare(b.nombre || '', 'es');
+  });
+
+  var canEditSw = tengoPermiso('gerencia', 'basedatos', 'edicion', 'clientes');
+  var colCount = canEditSw ? 9 : 8;
+  h += '<table class="cl-table">';
+  h += '<thead><tr>';
+  h += '<th style="width:36px">#</th><th>Cliente</th><th>Licencia</th><th>RNC</th><th>Contacto</th><th>Monto</th><th>Entrada</th><th>Estado</th>';
+  if (canEditSw) h += '<th></th>';
+  h += '</tr></thead><tbody>';
+
+  var lastGroup = null;
+  filtered.forEach(function(c, idx) {
+    var isInactivo = swActivosMes.indexOf(c) < 0;
+    var groupKey = isInactivo ? '__inactivo' : '__activos';
+    if (groupKey !== lastGroup) {
+      var groupLabel = groupKey === '__activos' ? 'Activos' : 'Inactivos';
+      h += '<tr style="background:#f1f5f9"><td colspan="' + colCount + '" style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--navy);padding:10px 12px">' + groupLabel + '</td></tr>';
+      lastGroup = groupKey;
+    }
+    var rowStyle = isInactivo ? ' style="opacity:0.55"' : '';
+    h += '<tr' + rowStyle + '>';
+    h += '<td style="color:var(--muted);font-size:0.75rem">' + (idx + 1) + '</td>';
+    h += '<td class="cl-name">' + esc(c.nombre) + '</td>';
+    h += '<td style="font-size:0.78rem">' + (c.tipo_licencia ? esc(c.tipo_licencia) : '<span style="color:var(--light)">—</span>') + '</td>';
+    h += '<td style="font-size:0.8rem">' + (c.rnc ? esc(c.rnc) : '<span style="color:var(--light)">—</span>') + '</td>';
+    h += '<td style="font-size:0.8rem">' + (c.contacto ? esc(c.contacto) : '<span style="color:var(--light)">—</span>') + '</td>';
+    h += '<td style="font-size:0.8rem;font-weight:600">' + (c.monto_mensual ? 'US$ ' + c.monto_mensual.toLocaleString() : '<span style="color:var(--light)">—</span>') + '</td>';
+    h += '<td style="font-size:0.78rem">' + (c.fecha_entrada ? c.fecha_entrada.split('-').reverse().join('/') : '<span style="color:var(--light)">—</span>') + '</td>';
+    if (isInactivo) {
+      var salida = c.fecha_salida ? c.fecha_salida.split('-').reverse().join('/') : '';
+      h += '<td><span class="cl-badge-inactivo">Inactivo</span>' + (salida ? '<div style="font-size:0.7rem;color:var(--muted);margin-top:2px">Salida: ' + salida + '</div>' : '') + '</td>';
+    } else {
+      h += '<td><span class="cl-badge-activo">Activo</span></td>';
+    }
+    if (canEditSw) {
+      h += '<td style="white-space:nowrap">';
+      h += '<button style="padding:4px 10px;border:1px solid var(--border);border-radius:6px;background:white;font-size:0.75rem;cursor:pointer;color:var(--muted)" onclick="swEditClient(\'' + c.id + '\')">Editar</button> ';
+      h += '<button style="padding:4px 8px;border:1px solid var(--border);border-radius:6px;background:white;font-size:0.75rem;cursor:pointer;color:var(--red)" onclick="swDeleteClient(\'' + c.id + '\',\'' + esc(c.nombre).replace(/'/g,"\\'") + '\')">Eliminar</button>';
+      h += '</td>';
+    }
+    h += '</tr>';
+  });
+
+  h += '</tbody></table>';
+  el.innerHTML = h;
+}
+
+// ─── Software modal functions ───
+
+function swToggleActivo() {
+  swModalActivo = !swModalActivo;
+  swRenderActivoBtn();
+}
+
+function swRenderActivoBtn() {
+  var btn = document.getElementById('sw-m-activo-btn');
+  var wrap = document.getElementById('sw-m-salida-wrap');
+  var motiWrapper = document.getElementById('sw-m-motivo-wrap');
+  if (swModalActivo) {
+    btn.textContent = 'Activo';
+    btn.style.background = 'var(--green)';
+    btn.style.color = 'white';
+    btn.style.borderColor = 'var(--green)';
+    wrap.style.display = 'none';
+    motiWrapper.classList.add('hidden');
+  } else {
+    btn.textContent = 'Inactivo';
+    btn.style.background = 'var(--red)';
+    btn.style.color = 'white';
+    btn.style.borderColor = 'var(--red)';
+    wrap.style.display = 'block';
+    motiWrapper.classList.remove('hidden');
+  }
+}
+
+function swOpenModal(editId) {
+  swEditingId = editId || null;
+  if (swEditingId) {
+    var c = bdSoftwareClientes.find(function(x) { return x.id === swEditingId; });
+    if (!c) return;
+    document.getElementById('sw-modal-title').textContent = 'Editar cliente software';
+    document.getElementById('sw-m-nombre').value = c.nombre || '';
+    document.getElementById('sw-m-rnc').value = c.rnc || '';
+    document.getElementById('sw-m-contacto').value = c.contacto || '';
+    document.getElementById('sw-m-email').value = c.email || '';
+    document.getElementById('sw-m-telefono').value = c.telefono || '';
+    document.getElementById('sw-m-monto').value = c.monto_mensual || '';
+    document.getElementById('sw-m-tipo-licencia').value = c.tipo_licencia || '';
+    document.getElementById('sw-m-fecha-entrada').value = c.fecha_entrada || '';
+    document.getElementById('sw-m-fecha-salida').value = c.fecha_salida || '';
+    document.getElementById('sw-m-motivo-salida').value = c.motivo_salida || '';
+    document.getElementById('sw-m-nota-salida').value = c.nota_salida || '';
+    document.getElementById('sw-m-descuento-pct').value = c.descuento_pct || '';
+    document.getElementById('sw-m-descuento-vence').value = c.descuento_vence || '';
+    document.getElementById('sw-m-descuento-nota').value = c.descuento_nota || '';
+    document.getElementById('sw-m-notas').value = c.notas || '';
+    swModalActivo = c.activo !== false;
+  } else {
+    document.getElementById('sw-modal-title').textContent = 'Nuevo cliente software';
+    document.getElementById('sw-m-nombre').value = '';
+    document.getElementById('sw-m-rnc').value = '';
+    document.getElementById('sw-m-contacto').value = '';
+    document.getElementById('sw-m-email').value = '';
+    document.getElementById('sw-m-telefono').value = '';
+    document.getElementById('sw-m-monto').value = '';
+    document.getElementById('sw-m-tipo-licencia').value = '';
+    document.getElementById('sw-m-fecha-entrada').value = '';
+    document.getElementById('sw-m-fecha-salida').value = '';
+    document.getElementById('sw-m-motivo-salida').value = '';
+    document.getElementById('sw-m-nota-salida').value = '';
+    document.getElementById('sw-m-descuento-pct').value = '';
+    document.getElementById('sw-m-descuento-vence').value = '';
+    document.getElementById('sw-m-descuento-nota').value = '';
+    document.getElementById('sw-m-notas').value = '';
+    swModalActivo = true;
+  }
+  swRenderActivoBtn();
+  document.getElementById('sw-m-nombre-err').style.display = 'none';
+  document.getElementById('sw-modal-overlay').classList.remove('hidden');
+}
+
+function swEditClient(id) { swOpenModal(id); }
+
+async function swDeleteClient(id, nombre) {
+  if (!confirm('Eliminar el cliente software "' + nombre + '"? Esta accion no se puede deshacer.')) return;
+  var { error } = await sb.from('clientes_software').delete().eq('id', id);
+  if (error) {
+    gerShowToast('Error: ' + error.message, 'error');
+    return;
+  }
+  await bdLoadSoftware();
+  bdRenderSoftwareCrud();
+  gerShowToast('Cliente "' + nombre + '" eliminado');
+}
+
+function swCloseModal() {
+  document.getElementById('sw-modal-overlay').classList.add('hidden');
+  swEditingId = null;
+}
+
+async function swSaveClient() {
+  var nombre = document.getElementById('sw-m-nombre').value.trim();
+  if (!nombre) {
+    document.getElementById('sw-m-nombre-err').style.display = 'block';
+    return;
+  }
+  document.getElementById('sw-m-nombre-err').style.display = 'none';
+
+  var montoVal = document.getElementById('sw-m-monto').value;
+  var record = {
+    nombre: nombre,
+    rnc: document.getElementById('sw-m-rnc').value.trim() || null,
+    contacto: document.getElementById('sw-m-contacto').value.trim() || null,
+    email: document.getElementById('sw-m-email').value.trim() || null,
+    telefono: document.getElementById('sw-m-telefono').value.trim() || null,
+    monto_mensual: montoVal ? parseInt(montoVal) : null,
+    tipo_licencia: document.getElementById('sw-m-tipo-licencia').value || null,
+    fecha_entrada: document.getElementById('sw-m-fecha-entrada').value || null,
+    fecha_salida: document.getElementById('sw-m-fecha-salida').value || null,
+    activo: swModalActivo,
+    motivo_salida: !swModalActivo ? (document.getElementById('sw-m-motivo-salida').value || null) : null,
+    nota_salida: !swModalActivo ? (document.getElementById('sw-m-nota-salida').value.trim() || null) : null,
+    descuento_pct: parseInt(document.getElementById('sw-m-descuento-pct').value) || null,
+    descuento_vence: document.getElementById('sw-m-descuento-vence').value || null,
+    descuento_nota: document.getElementById('sw-m-descuento-nota').value.trim() || null,
+    notas: document.getElementById('sw-m-notas').value.trim() || null
+  };
+
+  var btn = document.getElementById('sw-m-save');
+  btn.disabled = true; btn.textContent = 'Guardando...';
+
+  var result;
+  if (swEditingId) {
+    result = await sb.from('clientes_software').update(record).eq('id', swEditingId);
+  } else {
+    result = await sb.from('clientes_software').insert(record);
+  }
+
+  if (result.error) {
+    btn.disabled = false; btn.textContent = 'Guardar';
+    gerShowToast('Error: ' + result.error.message, 'error');
+    console.error(result.error);
+    return;
+  }
+
+  btn.disabled = false; btn.textContent = 'Guardar';
+  var wasEditing = !!swEditingId;
+
+  if (swPendienteId && !wasEditing) {
+    await sb.from('clientes_pendientes').update({ estado: 'creado' }).eq('id', swPendienteId);
+    swPendienteId = null;
+    await bdLoadPendientes();
+  }
+
+  swCloseModal();
+  await bdLoadSoftware();
+  bdRenderSoftwareCrud();
+  gerShowToast(wasEditing ? 'Cliente software actualizado' : 'Cliente software agregado');
+}
+
+function swCreateFromPendiente() {
+  var pend = bdPendientes.find(function(p) { return p.destino === 'software'; });
+  if (!pend) return;
+  swPendienteId = pend.id;
+  swOpenModal();
+  document.getElementById('sw-m-nombre').value = pend.lead_nombre || pend.lead_empresa || '';
+}
+
+// ══════════════════════════════════════════════════════════════
 // ██  SHOW APP
 // ══════════════════════════════════════════════════════════════
 
@@ -5109,13 +6316,18 @@ async function showApp() {
   await Promise.all([
     ccLoadData(),
     ccLoadImplementaciones(),
+    ccLoadImplFE(),
+    ccLoadImplAdm(),
     ccLoadSoftwareClientes(),
     ccLoadKpiFromDB(),
     ctdLoadContadoras(),
     bdLoadContadoras(),
     bdLoadAsignaciones(),
-    bdLoadTokens()
+    bdLoadTokens(),
+    bdLoadPendientes()
   ]);
+  // Load BD clients after ccLoadData so bdClientes (full select *) becomes the authoritative source
+  await Promise.all([bdLoadClientes(), bdLoadSoftware()]);
 
   // Init CC state
   ccActiveMainTab = 'dashboard';
