@@ -182,6 +182,29 @@ body { font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-se
 .toast { position:fixed; bottom:24px; right:24px; background:var(--navy); color:white; padding:12px 20px; border-radius:10px; font-size:0.85rem; font-weight:500; z-index:999; opacity:0; transform:translateY(10px); transition:all 0.3s; pointer-events:none; }
 .toast.show { opacity:1; transform:translateY(0); }
 
+/* ─── Notas Modal ─── */
+.notas-overlay { position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.4); z-index:900; display:flex; align-items:center; justify-content:center; }
+.notas-overlay.hidden { display:none; }
+.notas-modal { background:white; border-radius:14px; width:100%; max-width:480px; max-height:80vh; display:flex; flex-direction:column; box-shadow:0 8px 32px rgba(0,0,0,0.15); }
+.notas-modal-header { padding:16px 20px; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center; }
+.notas-modal-header h3 { font-size:0.95rem; color:var(--navy); }
+.notas-modal-close { background:none; border:none; font-size:1.3rem; color:var(--muted); cursor:pointer; padding:0 4px; }
+.notas-modal-close:hover { color:var(--navy); }
+.notas-historial { flex:1; overflow-y:auto; padding:16px 20px; min-height:80px; }
+.notas-historial .nota-entry { padding:10px 12px; background:#f8f9fb; border-radius:8px; margin-bottom:8px; border:1px solid var(--border); }
+.notas-historial .nota-entry:last-child { margin-bottom:0; }
+.notas-historial .nota-meta { font-size:0.7rem; color:var(--muted); margin-bottom:4px; }
+.notas-historial .nota-texto { font-size:0.82rem; color:var(--text); line-height:1.5; white-space:pre-wrap; }
+.notas-historial .nota-empty { text-align:center; color:var(--light); font-size:0.82rem; padding:20px 0; }
+.notas-input-area { padding:12px 20px 16px; border-top:1px solid var(--border); display:flex; gap:8px; }
+.notas-input-area textarea { flex:1; padding:8px 12px; border:1px solid var(--border); border-radius:8px; font-size:0.82rem; font-family:inherit; resize:none; min-height:38px; max-height:80px; }
+.notas-input-area textarea:focus { outline:none; border-color:var(--blue); box-shadow:0 0 0 3px rgba(67,97,238,0.1); }
+.notas-input-area button { padding:8px 16px; background:var(--blue); color:white; border:none; border-radius:8px; font-size:0.8rem; font-weight:600; cursor:pointer; font-family:inherit; white-space:nowrap; }
+.notas-input-area button:hover { background:#3451d1; }
+.btn-notas { background:none; border:1px solid var(--border); border-radius:6px; padding:3px 8px; font-size:0.68rem; font-weight:600; color:var(--muted); cursor:pointer; font-family:inherit; margin-left:6px; }
+.btn-notas:hover { border-color:var(--blue); color:var(--blue); }
+.btn-notas.has-notas { border-color:var(--blue); color:var(--blue); background:#eef2ff; }
+
 /* ─── Empty State ─── */
 .empty-state { text-align:center; padding:60px 20px; color:var(--muted); }
 .empty-state .emoji { font-size:2.5rem; margin-bottom:12px; }
@@ -259,6 +282,21 @@ body.embed .nav-area { margin-top:-12px; }
 
 <div class="toast" id="toast"></div>
 
+<!-- Modal de notas -->
+<div class="notas-overlay hidden" id="notasOverlay" onclick="if(event.target===this)closeNotas()">
+  <div class="notas-modal">
+    <div class="notas-modal-header">
+      <h3 id="notasTitle">Notas</h3>
+      <button class="notas-modal-close" onclick="closeNotas()">&times;</button>
+    </div>
+    <div class="notas-historial" id="notasHistorial"></div>
+    <div class="notas-input-area">
+      <textarea id="notasInput" placeholder="Escribe una nota..." rows="1"></textarea>
+      <button onclick="addNota()">Agregar</button>
+    </div>
+  </div>
+</div>
+
 <script>
 // ==================== CONFIG ====================
 var SUPABASE_URL = 'https://ouetusstqvpyjeycfdio.supabase.co';
@@ -305,6 +343,8 @@ var CHECKLIST_ITEMS = {
   'ITBIS': [
     { id: 'pago_a_cuenta', label: 'Es necesario solicitar pago a cuenta', special: 'select' },
     { id: 'borrador_presentado', label: 'Borrador presentado por contador/a' },
+    { id: 'borrador_devuelto', label: 'Borrador devuelto', hasNotas: true },
+    { id: 'borrador_recibido_corregido', label: 'Borrador recibido corregido', hasNotas: true },
     { id: 'aprobada_impuestos', label: 'Aprobada por Impuestos' },
     { id: 'aprobado_cliente', label: 'Aprobado por cliente' },
     { id: 'pagado', label: 'Pagado' }
@@ -1061,6 +1101,12 @@ function renderDetail() {
         h += '</select>';
       } else {
         h += it.label;
+        if (it.hasNotas) {
+          var notaCount = (d.notas && d.notas.length) ? d.notas.length : 0;
+          h += ' <button class="btn-notas' + (notaCount > 0 ? ' has-notas' : '') + '" onclick="openNotas(\'' + escJs(detCliente) + '\',\'' + selectedMes + '\',\'' + imp.id + '\',\'' + it.id + '\',\'' + escJs(it.label) + '\')">';
+          h += notaCount > 0 ? notaCount + ' nota' + (notaCount > 1 ? 's' : '') : 'Notas';
+          h += '</button>';
+        }
       }
       h += '</td>';
 
@@ -1144,6 +1190,61 @@ function updateImporte(cliente, mes, impuesto, val) {
   var parsed = parseFloat(val.replace(/,/g, ''));
   dirty.importe = isNaN(parsed) ? 0 : parsed;
   // Don't re-render here to keep cursor in place
+}
+
+// ==================== NOTAS ====================
+var notasCtx = null; // {cliente, mes, impuesto, itemId}
+
+function openNotas(cliente, mes, impuesto, itemId, label) {
+  notasCtx = { cliente: cliente, mes: mes, impuesto: impuesto, itemId: itemId };
+  document.getElementById('notasTitle').textContent = 'Notas — ' + label;
+  document.getElementById('notasInput').value = '';
+  renderNotasHistorial();
+  document.getElementById('notasOverlay').classList.remove('hidden');
+}
+
+function closeNotas() {
+  document.getElementById('notasOverlay').classList.add('hidden');
+  notasCtx = null;
+}
+
+function renderNotasHistorial() {
+  var el = document.getElementById('notasHistorial');
+  if (!notasCtx) { el.innerHTML = ''; return; }
+  var dirty = ensureDirty(notasCtx.cliente, notasCtx.mes, notasCtx.impuesto);
+  var d = dirty.datos[notasCtx.itemId];
+  if (!d) d = { done: false, fecha: null, notas: [] };
+  var notas = d.notas || [];
+  if (notas.length === 0) {
+    el.innerHTML = '<div class="nota-empty">Sin notas todavía</div>';
+    return;
+  }
+  var h = '';
+  // Mostrar de más reciente a más antigua
+  for (var i = notas.length - 1; i >= 0; i--) {
+    var n = notas[i];
+    h += '<div class="nota-entry">';
+    h += '<div class="nota-meta">' + esc(n.usuario || '?') + ' · ' + (n.fecha || '') + '</div>';
+    h += '<div class="nota-texto">' + esc(n.texto) + '</div>';
+    h += '</div>';
+  }
+  el.innerHTML = h;
+}
+
+function addNota() {
+  var texto = document.getElementById('notasInput').value.trim();
+  if (!texto || !notasCtx) return;
+  var dirty = ensureDirty(notasCtx.cliente, notasCtx.mes, notasCtx.impuesto);
+  if (!dirty.datos[notasCtx.itemId]) dirty.datos[notasCtx.itemId] = { done: false, fecha: null };
+  if (!dirty.datos[notasCtx.itemId].notas) dirty.datos[notasCtx.itemId].notas = [];
+  dirty.datos[notasCtx.itemId].notas.push({
+    texto: texto,
+    fecha: new Date().toISOString().slice(0, 16).replace('T', ' '),
+    usuario: userNameVal || '?'
+  });
+  document.getElementById('notasInput').value = '';
+  renderNotasHistorial();
+  renderDetail();
 }
 
 // ==================== SAVE ====================
