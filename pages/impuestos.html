@@ -1024,6 +1024,7 @@ function renderDetail() {
   h += '<th style="width:65px" class="center">Limite</th>';
   h += '<th style="width:100px" class="center">Estado</th>';
   h += '<th style="width:85px" class="center">Fecha</th>';
+  h += '<th style="width:60px" class="center">Notas</th>';
   h += '</tr></thead><tbody>';
 
   var rowNum = 0;
@@ -1050,7 +1051,7 @@ function renderDetail() {
     });
 
     // Group header (same style as contabilidad)
-    h += '<tr class="group-row"><td colspan="7">';
+    h += '<tr class="group-row"><td colspan="8">';
     h += imp.label + ' — Presentación día ' + imp.deadline;
     h += ' (' + doneCount + '/' + items.length + ')';
     h += ' <label style="margin-left:16px;font-size:0.72rem;color:var(--red);font-weight:500;cursor:pointer">';
@@ -1101,12 +1102,6 @@ function renderDetail() {
         h += '</select>';
       } else {
         h += it.label;
-        if (it.hasNotas) {
-          var notaCount = (d.notas && d.notas.length) ? d.notas.length : 0;
-          h += ' <button class="btn-notas' + (notaCount > 0 ? ' has-notas' : '') + '" onclick="openNotas(\'' + escJs(detCliente) + '\',\'' + selectedMes + '\',\'' + imp.id + '\',\'' + it.id + '\',\'' + escJs(it.label) + '\')">';
-          h += notaCount > 0 ? notaCount + ' nota' + (notaCount > 1 ? 's' : '') : 'Notas';
-          h += '</button>';
-        }
       }
       h += '</td>';
 
@@ -1132,6 +1127,16 @@ function renderDetail() {
 
       // Fecha
       h += '<td class="center" style="font-size:0.78rem">' + fechaDisplay + '</td>';
+
+      // Notas
+      if (it.hasNotas) {
+        var notaCount = (d.notas && d.notas.length) ? d.notas.length : 0;
+        h += '<td class="center"><button class="btn-notas' + (notaCount > 0 ? ' has-notas' : '') + '" onclick="openNotas(\'' + escJs(detCliente) + '\',\'' + selectedMes + '\',\'' + imp.id + '\',\'' + it.id + '\',\'' + escJs(it.label) + '\')">';
+        h += notaCount > 0 ? notaCount + ' nota' + (notaCount > 1 ? 's' : '') : 'Notas';
+        h += '</button></td>';
+      } else {
+        h += '<td></td>';
+      }
 
       h += '</tr>';
     });
