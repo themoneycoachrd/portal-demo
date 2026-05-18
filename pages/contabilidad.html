@@ -1347,6 +1347,16 @@ function renderMainTabs() {
 const AUTH_ITEM_IDS = ['autorizacion_tss_nomina','autorizacion_tss','autorizacion_ir3','notificacion_ir17','autorizacion_anticipo','enviar_itbis'];
 const AUTH_ITEMS = ITEMS.filter(it => AUTH_ITEM_IDS.includes(it.id));
 
+// Admin del resumen: tiene permiso de edicion Y no es contadora
+function isResAdmin() {
+  if (!tengoPermiso('contabilidad', 'checklist', 'edicion')) return false;
+  var contadoras = getContadoraNames();
+  for (var i = 0; i < contadoras.length; i++) {
+    if (userName.includes(contadoras[i])) return false;
+  }
+  return true;
+}
+
 function getGreeting() {
   const h = new Date().getHours();
   if (h < 12) return 'Buenos dias';
@@ -1362,7 +1372,7 @@ function getResFirstName() {
 // Collect all pending auth items across contadoras/clients/months
 function resBuildPendientes() {
   const hoy = new Date();
-  const isAdmin = tengoPermiso('contabilidad', 'checklist', 'edicion');
+  const isAdmin = isResAdmin();
   const pendientes = [];
   const proximos = [];
 
@@ -1427,7 +1437,7 @@ function resBuildPendientes() {
 
 function renderResNav() {
   const el = document.getElementById('navArea');
-  if (tengoPermiso('contabilidad', 'checklist', 'edicion')) {
+  if (isResAdmin()) {
     const contadoras = getContadoraNames();
     let html = '<div class="nav-area"><div class="contadora-pills" style="margin-top:10px">';
     html += '<button class="contadora-pill' + (resContadora === 'Todas' ? ' active' : '') + '" onclick="resSwitchContadora(\'Todas\')">Todas</button>';
@@ -1449,7 +1459,7 @@ function resSwitchContadora(name) {
 
 function renderResContent() {
   const el = document.getElementById('content');
-  const isAdmin = tengoPermiso('contabilidad', 'checklist', 'edicion');
+  const isAdmin = isResAdmin();
   const { pendientes, proximos } = resBuildPendientes();
 
   // Split pendientes into urgente (10+) and vencido (1-9)
@@ -1665,7 +1675,7 @@ function resRenderCharts(pendientes, proximos) {
 // ── Notas CRUD ──
 async function loadNotasContadora() {
   let query = sb.from('notas_contadora').select('*').order('created_at', { ascending: false });
-  if (!tengoPermiso('contabilidad', 'checklist', 'edicion')) {
+  if (!isResAdmin()) {
     query = query.eq('usuario_id', currentUserId);
   }
   const { data, error } = await query;
