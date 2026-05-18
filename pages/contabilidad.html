@@ -1347,6 +1347,36 @@ function renderMainTabs() {
 const AUTH_ITEM_IDS = ['autorizacion_tss_nomina','autorizacion_tss','autorizacion_ir3','notificacion_ir17','autorizacion_anticipo','enviar_itbis'];
 const AUTH_ITEMS = ITEMS.filter(it => AUTH_ITEM_IDS.includes(it.id));
 
+// Calendario interno de Account One: fecha "A tiempo" sugerida por obligación.
+// aTiempoDia = día del mes sugerido por AO para completar la tarea.
+// aTiempoMesRel = offset de mes relativo al mes de trabajo (0 = mismo mes, 1 = mes siguiente).
+// limiteDia y limiteMesRel ya están en ITEMS como dia/mesRel (Límite DGII).
+const AO_CALENDARIO = {
+  // TSS: A tiempo día 25 del mes de trabajo, Límite DGII día 3 del mes siguiente
+  'autorizacion_tss_nomina': { aTiempoDia: 25, aTiempoMesRel: 0 },
+  'autorizacion_tss':        { aTiempoDia: 25, aTiempoMesRel: 0 },
+  // IR-3: A tiempo día 25 del mes de trabajo, Límite DGII día 10 del mes siguiente
+  'autorizacion_ir3':        { aTiempoDia: 25, aTiempoMesRel: 0 },
+  // IR-17: A tiempo día 1 del mes siguiente, Límite DGII día 10 del mes siguiente
+  'notificacion_ir17':       { aTiempoDia: 1,  aTiempoMesRel: 1 },
+  // Anticipo ISR: A tiempo día 1 del mes siguiente, Límite DGII día 15 del mes siguiente
+  'autorizacion_anticipo':   { aTiempoDia: 1,  aTiempoMesRel: 1 },
+  // ITBIS: A tiempo día 5 del mes siguiente, Límite DGII día 20 del mes siguiente
+  'enviar_itbis':            { aTiempoDia: 5,  aTiempoMesRel: 1 }
+};
+
+// Calcula la fecha "A tiempo" de AO para un item en un mes dado
+function getATiempoDate(mesIdx, item) {
+  const cal = AO_CALENDARIO[item.id];
+  if (!cal) return getDeadlineDate(mesIdx, item); // fallback al límite DGII
+  let targetMonth = mesIdx + cal.aTiempoMesRel;
+  let targetYear = 2026;
+  if (targetMonth > 11) { targetMonth -= 12; targetYear++; }
+  const lastDay = new Date(targetYear, targetMonth + 1, 0).getDate();
+  const dia = Math.min(cal.aTiempoDia, lastDay);
+  return new Date(targetYear, targetMonth, dia, 12, 0, 0);
+}
+
 // Admin del resumen: tiene permiso de edicion Y no es contadora
 function isResAdmin() {
   if (!tengoPermiso('contabilidad', 'checklist', 'edicion')) return false;
@@ -1370,10 +1400,16 @@ function getResFirstName() {
 }
 
 // Collect all pending auth items across contadoras/clients/months
+// Clasifica según calendario interno de Account One:
+//   Próximo a vencer = 2 días antes de fecha AO hasta 5 días antes de Límite DGII
+//   Vencido = 5 días antes del Límite DGII hasta 2 días antes
+//   Urgente = últimos 2 días antes del Límite DGII y después
 function resBuildPendientes() {
   const hoy = new Date();
+  hoy.setHours(12, 0, 0, 0);
   const isAdmin = isResAdmin();
-  const pendientes = [];
+  const urgentes = [];
+  const vencidos = [];
   const proximos = [];
 
   // Meses: abril 2026 en adelante hasta mes actual + 1
@@ -1403,8 +1439,16 @@ function resBuildPendientes() {
           const estado = entry.datos[item.id];
           if (estado && (estado.done === true || estado.done === 'na')) return;
 
-          const deadline = getDeadlineDate(mesIdx, item);
-          const diffDias = Math.floor((hoy - deadline) / (1000 * 60 * 60 * 24));
+          const limiteDGII = getDeadlineDate(mesIdx, item);
+          const aTiempo = getATiempoDate(mesIdx, item);
+
+          // Fechas clave:
+          // proximoDesde = 2 días antes de "A tiempo" de AO
+          // vencidoDesde = 5 días antes del Límite DGII
+          // urgenteDesde = 2 días antes del Límite DGII
+          const proximoDesde = new Date(aTiempo.getTime() - 2 * 86400000);
+          const vencidoDesde = new Date(limiteDGII.getTime() - 5 * 86400000);
+          const urgenteDesde = new Date(limiteDGII.getTime() - 2 * 86400000);
 
           const obj = {
             contadora: contadora,
@@ -1414,25 +1458,32 @@ function resBuildPendientes() {
             label: item.label,
             mes: MESES_LABEL[mesIdx],
             mesKey: mes,
-            deadline: deadline,
-            diasAtraso: diffDias
+            deadline: limiteDGII,
+            fechaATiempo: aTiempo,
+            diasAtraso: Math.floor((hoy - limiteDGII) / 86400000)
           };
 
-          if (diffDias > 0) {
-            pendientes.push(obj);
-          } else if (diffDias >= -5) {
-            // Próximo a vencer (5 días antes del deadline)
+          if (hoy >= urgenteDesde) {
+            // Urgente: últimos 2 días antes del límite DGII y después
+            urgentes.push(obj);
+          } else if (hoy >= vencidoDesde) {
+            // Vencido: 5 días antes del límite DGII
+            vencidos.push(obj);
+          } else if (hoy >= proximoDesde) {
+            // Próximo a vencer: 2 días antes de fecha AO hasta 5 días antes de DGII
             proximos.push(obj);
           }
+          // Si hoy < proximoDesde, no se muestra (todavía falta)
         });
       });
     });
   });
 
-  pendientes.sort((a, b) => b.diasAtraso - a.diasAtraso);
-  proximos.sort((a, b) => a.diasAtraso - b.diasAtraso); // closest first
+  urgentes.sort((a, b) => b.diasAtraso - a.diasAtraso);
+  vencidos.sort((a, b) => b.diasAtraso - a.diasAtraso);
+  proximos.sort((a, b) => a.diasAtraso - b.diasAtraso);
 
-  return { pendientes, proximos };
+  return { urgentes, vencidos, proximos };
 }
 
 function renderResNav() {
@@ -1460,19 +1511,18 @@ function resSwitchContadora(name) {
 function renderResContent() {
   const el = document.getElementById('content');
   const isAdmin = isResAdmin();
-  const { pendientes, proximos } = resBuildPendientes();
-
-  // Split pendientes into urgente (10+) and vencido (1-9)
-  const urgentes = pendientes.filter(p => p.diasAtraso >= 10);
-  const vencidos = pendientes.filter(p => p.diasAtraso >= 1 && p.diasAtraso < 10);
+  const { urgentes, vencidos, proximos } = resBuildPendientes();
+  const totalAtrasadas = urgentes.length + vencidos.length;
 
   let html = '';
 
   // ── Greeting ──
   html += '<div class="res-greeting">';
   html += '<h2>' + getGreeting() + ', ' + getResFirstName() + '</h2>';
-  if (pendientes.length > 0) {
-    html += '<p>Tienes ' + pendientes.length + ' autorizacion' + (pendientes.length > 1 ? 'es' : '') + ' de pago atrasada' + (pendientes.length > 1 ? 's' : '') + '.</p>';
+  if (totalAtrasadas > 0) {
+    html += '<p>Tienes ' + totalAtrasadas + ' autorizacion' + (totalAtrasadas > 1 ? 'es' : '') + ' de pago que requieren atencion.</p>';
+  } else if (proximos.length > 0) {
+    html += '<p>' + proximos.length + ' autorizacion' + (proximos.length > 1 ? 'es' : '') + ' proxima' + (proximos.length > 1 ? 's' : '') + ' a vencer.</p>';
   } else {
     html += '<p>Estas al dia con todas las autorizaciones de pago.</p>';
   }
@@ -1480,13 +1530,13 @@ function renderResContent() {
 
   // ── Urgency cards ──
   html += '<div class="res-urgency">';
-  html += '<div class="res-urg-card res-urg-urgent"><p class="urg-label">Urgente (10+ dias)</p><p class="urg-num">' + urgentes.length + '</p><p class="urg-sub">autorizaciones</p></div>';
-  html += '<div class="res-urg-card res-urg-warn"><p class="urg-label">Vencido (1-9 dias)</p><p class="urg-num">' + vencidos.length + '</p><p class="urg-sub">autorizaciones</p></div>';
-  html += '<div class="res-urg-card res-urg-soon"><p class="urg-label">Proximo a vencer</p><p class="urg-num">' + proximos.length + '</p><p class="urg-sub">en los proximos 5 dias</p></div>';
+  html += '<div class="res-urg-card res-urg-urgent"><p class="urg-label">Urgente</p><p class="urg-num">' + urgentes.length + '</p><p class="urg-sub">a 2 dias o pasado limite</p></div>';
+  html += '<div class="res-urg-card res-urg-warn"><p class="urg-label">Vencido</p><p class="urg-num">' + vencidos.length + '</p><p class="urg-sub">a 5 dias del limite</p></div>';
+  html += '<div class="res-urg-card res-urg-soon"><p class="urg-label">Proximo a vencer</p><p class="urg-num">' + proximos.length + '</p><p class="urg-sub">cerca de fecha AO</p></div>';
   html += '</div>';
 
-  // ── Charts (solo si hay pendientes o proximos) ──
-  if (pendientes.length > 0 || proximos.length > 0) {
+  // ── Charts (solo si hay items) ──
+  if (urgentes.length > 0 || vencidos.length > 0 || proximos.length > 0) {
     html += '<div class="res-charts">';
     html += '<div class="res-chart-card"><h4>Por tipo de impuesto</h4><div style="position:relative;height:180px"><canvas id="resChartImpuesto"></canvas></div></div>';
     html += '<div class="res-chart-card"><h4>Por cliente</h4><div style="position:relative;height:180px"><canvas id="resChartCliente"></canvas></div></div>';
@@ -1509,7 +1559,7 @@ function renderResContent() {
   }
 
   // ── Al día ──
-  if (pendientes.length === 0 && proximos.length === 0) {
+  if (urgentes.length === 0 && vencidos.length === 0 && proximos.length === 0) {
     html += '<div class="res-section"><div class="res-ok">Al dia — todas las autorizaciones de pago estan subidas</div></div>';
   }
 
@@ -1541,8 +1591,9 @@ function renderResContent() {
   el.innerHTML = html;
 
   // Render charts after DOM is ready
-  if (pendientes.length > 0 || proximos.length > 0) {
-    resRenderCharts(pendientes, proximos);
+  const todosItems = urgentes.concat(vencidos).concat(proximos);
+  if (todosItems.length > 0) {
+    resRenderCharts(todosItems);
   }
 }
 
@@ -1622,9 +1673,8 @@ function resRenderProximoSection(items, isAdmin) {
 }
 
 // Charts
-function resRenderCharts(pendientes, proximos) {
-  if (typeof Chart === 'undefined') return; // Chart.js not loaded yet
-  const todos = pendientes.concat(proximos);
+function resRenderCharts(todos) {
+  if (typeof Chart === 'undefined') return;
   const CHART_COLORS = { 'TSS':'#4361ee', 'IR-3':'#8b5cf6', 'Proveedores':'#d97706', 'ITBIS':'#059669', 'Anticipo':'#db2777' };
 
   // Chart 1: by impuesto
