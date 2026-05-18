@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Contabilidad — Account One 2026</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <style>
 :root {
   --navy: #1a2332;
@@ -312,14 +313,45 @@ body { font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-se
 .bono-0 { background:#fef2f2; color:#dc2626; }
 
 /* ─── Resumen tab ─── */
+.res-greeting { background:var(--navy); border-radius:12px; padding:20px 24px; margin-bottom:16px; }
+.res-greeting h2 { font-size:1.1rem; font-weight:700; color:#fff; margin:0 0 4px; }
+.res-greeting p { font-size:0.78rem; color:rgba(255,255,255,0.55); margin:0; }
+.res-urgency { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; margin-bottom:16px; }
+.res-urg-card { border-radius:12px; padding:14px 16px; border-left:4px solid; }
+.res-urg-card .urg-label { font-size:0.65rem; text-transform:uppercase; letter-spacing:0.5px; margin:0 0 4px; }
+.res-urg-card .urg-num { font-size:1.6rem; font-weight:700; margin:0; }
+.res-urg-card .urg-sub { font-size:0.72rem; margin:2px 0 0; }
+.res-urg-urgent { background:#fef2f2; border-color:var(--red); }
+.res-urg-urgent .urg-label,.res-urg-urgent .urg-sub { color:#991b1b; }
+.res-urg-urgent .urg-num { color:#7f1d1d; }
+.res-urg-warn { background:#fffbeb; border-color:var(--amber); }
+.res-urg-warn .urg-label,.res-urg-warn .urg-sub { color:#92400e; }
+.res-urg-warn .urg-num { color:#78350f; }
+.res-urg-soon { background:#eff6ff; border-color:var(--blue); }
+.res-urg-soon .urg-label,.res-urg-soon .urg-sub { color:#1e40af; }
+.res-urg-soon .urg-num { color:#1e3a5f; }
+.res-charts { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:16px; }
+.res-chart-card { background:var(--card); border-radius:12px; padding:16px; border:1px solid var(--border); }
+.res-chart-card h4 { font-size:0.78rem; font-weight:600; color:var(--navy); margin:0 0 10px; }
 .res-section { background:var(--card); border-radius:12px; padding:20px; border:1px solid var(--border); margin-bottom:16px; }
-.res-section h3 { font-size:0.85rem; font-weight:700; color:var(--navy); margin-bottom:14px; text-transform:uppercase; letter-spacing:0.3px; }
-.res-table { width:100%; border-collapse:collapse; font-size:0.82rem; }
-.res-table th { text-align:left; padding:10px 12px; font-size:0.68rem; text-transform:uppercase; letter-spacing:0.5px; color:var(--muted); border-bottom:2px solid var(--border); }
-.res-table td { padding:10px 12px; border-bottom:1px solid #f1f3f7; }
-.res-table tr:hover td { background:#fafbfc; }
+.res-section-hdr { display:flex; align-items:center; gap:8px; margin-bottom:14px; }
+.res-section-hdr h3 { font-size:0.82rem; font-weight:700; margin:0; }
+.res-section-hdr .res-icon { width:22px; height:22px; border-radius:6px; display:flex; align-items:center; justify-content:center; font-size:0.72rem; color:#fff; }
 .res-ok { text-align:center; padding:30px; color:var(--green); font-weight:600; font-size:0.9rem; }
-.res-atraso { color:var(--red); font-weight:700; }
+.res-client-group { margin-bottom:14px; border:1px solid var(--border); border-radius:10px; overflow:hidden; }
+.res-client-hdr { display:flex; justify-content:space-between; align-items:center; padding:10px 14px; background:#f8f9fb; border-bottom:1px solid var(--border); cursor:pointer; }
+.res-client-hdr:hover { background:#f0f2f5; }
+.res-client-name { font-size:0.82rem; font-weight:600; color:var(--navy); }
+.res-client-count { font-size:0.72rem; font-weight:600; padding:2px 10px; border-radius:10px; }
+.res-client-count.urgent { background:#fef2f2; color:#dc2626; }
+.res-client-count.warn { background:#fffbeb; color:#d97706; }
+.res-client-count.soon { background:#eff6ff; color:#1d4ed8; }
+.res-client-items { padding:0; }
+.res-item { display:flex; align-items:center; gap:10px; padding:8px 14px; border-bottom:1px solid #f1f3f7; font-size:0.78rem; }
+.res-item:last-child { border-bottom:none; }
+.res-item-label { flex:1; }
+.res-item-mes { color:var(--muted); font-size:0.72rem; min-width:30px; }
+.res-item-dias { font-weight:700; font-size:0.78rem; min-width:50px; text-align:right; }
 .nota-row { display:flex; align-items:flex-start; gap:12px; padding:10px 0; border-bottom:1px solid #f1f3f7; }
 .nota-row:last-child { border-bottom:none; }
 .nota-text { flex:1; font-size:0.82rem; color:var(--text); }
@@ -1315,9 +1347,86 @@ function renderMainTabs() {
 const AUTH_ITEM_IDS = ['autorizacion_tss_nomina','autorizacion_tss','autorizacion_ir3','notificacion_ir17','autorizacion_anticipo','enviar_itbis'];
 const AUTH_ITEMS = ITEMS.filter(it => AUTH_ITEM_IDS.includes(it.id));
 
+function getGreeting() {
+  const h = new Date().getHours();
+  if (h < 12) return 'Buenos dias';
+  if (h < 18) return 'Buenas tardes';
+  return 'Buenas noches';
+}
+
+function getResFirstName() {
+  if (!userName) return '';
+  return userName.split(' ')[0];
+}
+
+// Collect all pending auth items across contadoras/clients/months
+function resBuildPendientes() {
+  const hoy = new Date();
+  const isAdmin = tengoPermiso('contabilidad', 'checklist', 'edicion');
+  const pendientes = [];
+  const proximos = [];
+
+  // Meses: abril 2026 en adelante hasta mes actual + 1
+  const mesActualIdx = hoy.getMonth();
+  const mesesRecorrer = [];
+  for (let i = 3; i <= mesActualIdx + 1 && i < 12; i++) {
+    mesesRecorrer.push(MESES[i]);
+  }
+
+  // Contadoras
+  let contadorasParaRecorrer;
+  if (isAdmin) {
+    contadorasParaRecorrer = resContadora === 'Todas' ? getContadoraNames() : [resContadora];
+  } else {
+    contadorasParaRecorrer = getContadoraNames().filter(c => userName.includes(c));
+    if (contadorasParaRecorrer.length === 0) contadorasParaRecorrer = [];
+  }
+
+  contadorasParaRecorrer.forEach(contadora => {
+    const clientes = getClientesForContadora(contadora);
+    clientes.forEach(cliente => {
+      mesesRecorrer.forEach(mes => {
+        const mesIdx = MESES.indexOf(mes);
+        const entry = getCheckData(contadora, cliente, mes);
+
+        AUTH_ITEMS.forEach(item => {
+          const estado = entry.datos[item.id];
+          if (estado && (estado.done === true || estado.done === 'na')) return;
+
+          const deadline = getDeadlineDate(mesIdx, item);
+          const diffDias = Math.floor((hoy - deadline) / (1000 * 60 * 60 * 24));
+
+          const obj = {
+            contadora: contadora,
+            cliente: cliente,
+            impuesto: item.impuesto,
+            tipoCss: item.tipoCss,
+            label: item.label,
+            mes: MESES_LABEL[mesIdx],
+            mesKey: mes,
+            deadline: deadline,
+            diasAtraso: diffDias
+          };
+
+          if (diffDias > 0) {
+            pendientes.push(obj);
+          } else if (diffDias >= -5) {
+            // Próximo a vencer (5 días antes del deadline)
+            proximos.push(obj);
+          }
+        });
+      });
+    });
+  });
+
+  pendientes.sort((a, b) => b.diasAtraso - a.diasAtraso);
+  proximos.sort((a, b) => a.diasAtraso - b.diasAtraso); // closest first
+
+  return { pendientes, proximos };
+}
+
 function renderResNav() {
   const el = document.getElementById('navArea');
-  // Admin: pills de contadora para filtrar
   if (tengoPermiso('contabilidad', 'checklist', 'edicion')) {
     const contadoras = getContadoraNames();
     let html = '<div class="nav-area"><div class="contadora-pills" style="margin-top:10px">';
@@ -1340,100 +1449,63 @@ function resSwitchContadora(name) {
 
 function renderResContent() {
   const el = document.getElementById('content');
+  const isAdmin = tengoPermiso('contabilidad', 'checklist', 'edicion');
+  const { pendientes, proximos } = resBuildPendientes();
+
+  // Split pendientes into urgente (10+) and vencido (1-9)
+  const urgentes = pendientes.filter(p => p.diasAtraso >= 10);
+  const vencidos = pendientes.filter(p => p.diasAtraso >= 1 && p.diasAtraso < 10);
+
   let html = '';
 
-  // ── Bloque 1: Autorizaciones pendientes ──
-  html += '<div class="res-section">';
-  html += '<h3>Autorizaciones de pago pendientes</h3>';
-
-  const hoy = new Date();
-  const pendientes = [];
-  const mesInicio = 'abril'; // desde abril 2026
-
-  // Determinar qué meses recorrer (abril 2026 en adelante hasta mes actual + 1)
-  const mesActualIdx = hoy.getMonth(); // 0-based
-  const mesesRecorrer = [];
-  for (let i = 3; i <= mesActualIdx + 1 && i < 12; i++) { // 3 = abril (0-based)
-    mesesRecorrer.push(MESES[i]);
-  }
-
-  // Determinar contadoras a recorrer
-  let contadorasParaRecorrer;
-  if (tengoPermiso('contabilidad', 'checklist', 'edicion')) {
-    contadorasParaRecorrer = resContadora === 'Todas' ? getContadoraNames() : [resContadora];
+  // ── Greeting ──
+  html += '<div class="res-greeting">';
+  html += '<h2>' + getGreeting() + ', ' + getResFirstName() + '</h2>';
+  if (pendientes.length > 0) {
+    html += '<p>Tienes ' + pendientes.length + ' autorizacion' + (pendientes.length > 1 ? 'es' : '') + ' de pago atrasada' + (pendientes.length > 1 ? 's' : '') + '.</p>';
   } else {
-    // Contadora: solo sus clientes
-    contadorasParaRecorrer = getContadoraNames().filter(c => userName.includes(c));
-    if (contadorasParaRecorrer.length === 0) contadorasParaRecorrer = getContadoraNames();
-  }
-
-  contadorasParaRecorrer.forEach(contadora => {
-    const clientes = getClientesForContadora(contadora);
-    clientes.forEach(cliente => {
-      mesesRecorrer.forEach(mes => {
-        const mesIdx = MESES.indexOf(mes);
-        const entry = getCheckData(contadora, cliente, mes);
-
-        AUTH_ITEMS.forEach(item => {
-          const estado = entry.datos[item.id];
-          if (estado && (estado.done === true || estado.done === 'na')) return; // completado o N/A
-
-          // Calcular deadline (usa mesRel para el mes correcto)
-          const deadline = getDeadlineDate(mesIdx, item);
-          if (deadline > hoy) return; // todavía no ha vencido
-
-          const diasAtraso = Math.floor((hoy - deadline) / (1000 * 60 * 60 * 24));
-          pendientes.push({
-            contadora: contadora,
-            cliente: cliente,
-            impuesto: item.impuesto,
-            label: item.label,
-            mes: MESES_LABEL[mesIdx],
-            mesKey: mes,
-            deadline: deadline,
-            diasAtraso: diasAtraso
-          });
-        });
-      });
-    });
-  });
-
-  // Ordenar por días de atraso descendente
-  pendientes.sort((a, b) => b.diasAtraso - a.diasAtraso);
-
-  if (pendientes.length === 0) {
-    html += '<div class="res-ok">✓ Al dia — todas las autorizaciones de pago estan subidas</div>';
-  } else {
-    html += '<div style="overflow-x:auto"><table class="res-table">';
-    html += '<thead><tr>';
-    if (resContadora === 'Todas' && tengoPermiso('contabilidad', 'checklist', 'edicion')) {
-      html += '<th>Contadora</th>';
-    }
-    html += '<th>Cliente</th><th>Impuesto</th><th>Mes</th><th>Deadline</th><th style="text-align:center">Dias atraso</th>';
-    html += '</tr></thead><tbody>';
-
-    pendientes.forEach(p => {
-      const deadlineStr = p.deadline.toLocaleDateString('es-DO', { day:'numeric', month:'short' });
-      html += '<tr>';
-      if (resContadora === 'Todas' && tengoPermiso('contabilidad', 'checklist', 'edicion')) {
-        html += '<td>' + esc(p.contadora) + '</td>';
-      }
-      html += '<td style="font-weight:600">' + esc(p.cliente) + '</td>';
-      html += '<td><span class="tipo-badge ' + (AUTH_ITEMS.find(it => it.impuesto === p.impuesto) || {}).tipoCss + '">' + esc(p.impuesto) + '</span></td>';
-      html += '<td>' + p.mes + '</td>';
-      html += '<td>' + deadlineStr + '</td>';
-      html += '<td style="text-align:center" class="res-atraso">' + p.diasAtraso + '</td>';
-      html += '</tr>';
-    });
-
-    html += '</tbody></table></div>';
-    html += '<div style="margin-top:8px;font-size:0.72rem;color:var(--light)">' + pendientes.length + ' autorizacion' + (pendientes.length > 1 ? 'es' : '') + ' pendiente' + (pendientes.length > 1 ? 's' : '') + '</div>';
+    html += '<p>Estas al dia con todas las autorizaciones de pago.</p>';
   }
   html += '</div>';
 
-  // ── Bloque 2: Notas importantes ──
+  // ── Urgency cards ──
+  html += '<div class="res-urgency">';
+  html += '<div class="res-urg-card res-urg-urgent"><p class="urg-label">Urgente (10+ dias)</p><p class="urg-num">' + urgentes.length + '</p><p class="urg-sub">autorizaciones</p></div>';
+  html += '<div class="res-urg-card res-urg-warn"><p class="urg-label">Vencido (1-9 dias)</p><p class="urg-num">' + vencidos.length + '</p><p class="urg-sub">autorizaciones</p></div>';
+  html += '<div class="res-urg-card res-urg-soon"><p class="urg-label">Proximo a vencer</p><p class="urg-num">' + proximos.length + '</p><p class="urg-sub">en los proximos 5 dias</p></div>';
+  html += '</div>';
+
+  // ── Charts (solo si hay pendientes o proximos) ──
+  if (pendientes.length > 0 || proximos.length > 0) {
+    html += '<div class="res-charts">';
+    html += '<div class="res-chart-card"><h4>Por tipo de impuesto</h4><div style="position:relative;height:180px"><canvas id="resChartImpuesto"></canvas></div></div>';
+    html += '<div class="res-chart-card"><h4>Por cliente</h4><div style="position:relative;height:180px"><canvas id="resChartCliente"></canvas></div></div>';
+    html += '</div>';
+  }
+
+  // ── Urgente section ──
+  if (urgentes.length > 0) {
+    html += resRenderCategorySection('Urgente', urgentes, 'urgent', '#ef4444', isAdmin);
+  }
+
+  // ── Vencido section ──
+  if (vencidos.length > 0) {
+    html += resRenderCategorySection('Vencido', vencidos, 'warn', '#f59e0b', isAdmin);
+  }
+
+  // ── Próximo a vencer section ──
+  if (proximos.length > 0) {
+    html += resRenderProximoSection(proximos, isAdmin);
+  }
+
+  // ── Al día ──
+  if (pendientes.length === 0 && proximos.length === 0) {
+    html += '<div class="res-section"><div class="res-ok">Al dia — todas las autorizaciones de pago estan subidas</div></div>';
+  }
+
+  // ── Notas ──
   html += '<div class="res-section">';
-  html += '<h3>Notas importantes</h3>';
+  html += '<div class="res-section-hdr"><div class="res-icon" style="background:var(--navy)">N</div><h3>Notas importantes</h3></div>';
 
   if (NOTAS_CONTADORA.length === 0) {
     html += '<div style="text-align:center;padding:16px;color:var(--light);font-size:0.82rem">Sin notas</div>';
@@ -1442,30 +1514,157 @@ function renderResContent() {
       html += '<div class="nota-row">';
       html += '<div class="nota-text">' + esc(n.texto) + '</div>';
       if (n.fecha) html += '<div class="nota-fecha">' + n.fecha + '</div>';
-      // Solo puede eliminar sus propias notas (o admin puede eliminar cualquiera)
-      if (n.usuario_id === currentUserId || tengoPermiso('contabilidad', 'checklist', 'edicion')) {
-        html += '<button class="nota-del" onclick="resDeleteNota(' + i + ')" title="Eliminar">✕</button>';
+      if (n.usuario_id === currentUserId || isAdmin) {
+        html += '<button class="nota-del" onclick="resDeleteNota(' + i + ')" title="Eliminar">&times;</button>';
       }
       html += '</div>';
     });
   }
 
-  // Form agregar nota
   html += '<div class="nota-add">';
   html += '<input type="text" id="resNotaTexto" placeholder="Agregar una nota...">';
   html += '<input type="date" id="resNotaFecha">';
   html += '<button class="btn btn-primary" onclick="resAddNota()">Agregar</button>';
   html += '</div>';
-
   html += '</div>';
 
   el.innerHTML = html;
+
+  // Render charts after DOM is ready
+  if (pendientes.length > 0 || proximos.length > 0) {
+    resRenderCharts(pendientes, proximos);
+  }
+}
+
+// Render urgente/vencido section grouped by client
+function resRenderCategorySection(titulo, items, colorClass, iconColor, isAdmin) {
+  let html = '<div class="res-section">';
+  html += '<div class="res-section-hdr"><div class="res-icon" style="background:' + iconColor + '">' + (colorClass === 'urgent' ? '!' : '⏱') + '</div>';
+  html += '<h3>' + titulo + '</h3></div>';
+
+  // Group by contadora+client
+  const groups = {};
+  items.forEach(p => {
+    const key = p.contadora + '|||' + p.cliente;
+    if (!groups[key]) groups[key] = { contadora: p.contadora, cliente: p.cliente, items: [] };
+    groups[key].items.push(p);
+  });
+
+  Object.values(groups).forEach(g => {
+    html += '<div class="res-client-group">';
+    html += '<div class="res-client-hdr">';
+    html += '<span class="res-client-name">';
+    if (isAdmin && resContadora === 'Todas') html += '<span style="font-weight:400;color:var(--muted);font-size:0.72rem">' + esc(g.contadora) + ' &rarr; </span>';
+    html += esc(g.cliente) + '</span>';
+    html += '<span class="res-client-count ' + colorClass + '">' + g.items.length + ' pendiente' + (g.items.length > 1 ? 's' : '') + '</span>';
+    html += '</div>';
+    html += '<div class="res-client-items">';
+    g.items.forEach(p => {
+      html += '<div class="res-item">';
+      html += '<span class="res-item-label"><span class="tipo-badge ' + p.tipoCss + '">' + esc(p.label) + '</span></span>';
+      html += '<span class="res-item-mes">' + p.mes + '</span>';
+      html += '<span class="res-item-dias" style="color:' + iconColor + '">' + p.diasAtraso + 'd</span>';
+      html += '</div>';
+    });
+    html += '</div></div>';
+  });
+
+  html += '</div>';
+  return html;
+}
+
+// Render próximo a vencer section
+function resRenderProximoSection(items, isAdmin) {
+  let html = '<div class="res-section">';
+  html += '<div class="res-section-hdr"><div class="res-icon" style="background:#4361ee">⏳</div>';
+  html += '<h3>Proximo a vencer</h3></div>';
+
+  const groups = {};
+  items.forEach(p => {
+    const key = p.contadora + '|||' + p.cliente;
+    if (!groups[key]) groups[key] = { contadora: p.contadora, cliente: p.cliente, items: [] };
+    groups[key].items.push(p);
+  });
+
+  Object.values(groups).forEach(g => {
+    html += '<div class="res-client-group">';
+    html += '<div class="res-client-hdr">';
+    html += '<span class="res-client-name">';
+    if (isAdmin && resContadora === 'Todas') html += '<span style="font-weight:400;color:var(--muted);font-size:0.72rem">' + esc(g.contadora) + ' &rarr; </span>';
+    html += esc(g.cliente) + '</span>';
+    html += '<span class="res-client-count soon">' + g.items.length + '</span>';
+    html += '</div>';
+    html += '<div class="res-client-items">';
+    g.items.forEach(p => {
+      const venceEn = Math.abs(p.diasAtraso);
+      const deadlineStr = p.deadline.toLocaleDateString('es-DO', { day:'numeric', month:'short' });
+      html += '<div class="res-item">';
+      html += '<span class="res-item-label"><span class="tipo-badge ' + p.tipoCss + '">' + esc(p.label) + '</span></span>';
+      html += '<span class="res-item-mes">' + p.mes + '</span>';
+      html += '<span class="res-item-dias" style="color:#4361ee">en ' + venceEn + 'd</span>';
+      html += '</div>';
+    });
+    html += '</div></div>';
+  });
+
+  html += '</div>';
+  return html;
+}
+
+// Charts
+function resRenderCharts(pendientes, proximos) {
+  if (typeof Chart === 'undefined') return; // Chart.js not loaded yet
+  const todos = pendientes.concat(proximos);
+  const CHART_COLORS = { 'TSS':'#4361ee', 'IR-3':'#8b5cf6', 'Proveedores':'#d97706', 'ITBIS':'#059669', 'Anticipo':'#db2777' };
+
+  // Chart 1: by impuesto
+  const impMap = {};
+  todos.forEach(p => { impMap[p.impuesto] = (impMap[p.impuesto] || 0) + 1; });
+  const impLabels = Object.keys(impMap).sort((a, b) => impMap[b] - impMap[a]);
+  const impData = impLabels.map(l => impMap[l]);
+  const impColors = impLabels.map(l => CHART_COLORS[l] || '#888');
+
+  var c1 = document.getElementById('resChartImpuesto');
+  if (c1) {
+    new Chart(c1, {
+      type: 'bar',
+      data: { labels: impLabels, datasets: [{ data: impData, backgroundColor: impColors, borderRadius: 4, barThickness: 16 }] },
+      options: {
+        indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { grid: { display: false }, ticks: { font: { size: 10 }, stepSize: 1 } },
+          y: { grid: { display: false }, ticks: { font: { size: 11 } } }
+        }
+      }
+    });
+  }
+
+  // Chart 2: by client (top 8)
+  const cliMap = {};
+  todos.forEach(p => { cliMap[p.cliente] = (cliMap[p.cliente] || 0) + 1; });
+  const cliSorted = Object.keys(cliMap).sort((a, b) => cliMap[b] - cliMap[a]).slice(0, 8);
+  const cliData = cliSorted.map(c => cliMap[c]);
+  const cliColors = ['#4361ee','#8b5cf6','#10b981','#f59e0b','#ef4444','#db2777','#059669','#6366f1'];
+
+  var c2 = document.getElementById('resChartCliente');
+  if (c2) {
+    new Chart(c2, {
+      type: 'doughnut',
+      data: { labels: cliSorted, datasets: [{ data: cliData, backgroundColor: cliColors.slice(0, cliSorted.length), borderWidth: 2, borderColor: '#fff' }] },
+      options: {
+        responsive: true, maintainAspectRatio: false, cutout: '55%',
+        plugins: {
+          legend: { display: true, position: 'right', labels: { font: { size: 10 }, padding: 6, usePointStyle: true, pointStyleWidth: 8 } }
+        }
+      }
+    });
+  }
 }
 
 // ── Notas CRUD ──
 async function loadNotasContadora() {
   let query = sb.from('notas_contadora').select('*').order('created_at', { ascending: false });
-  // Si no es admin, solo las suyas
   if (!tengoPermiso('contabilidad', 'checklist', 'edicion')) {
     query = query.eq('usuario_id', currentUserId);
   }
@@ -1494,7 +1693,7 @@ async function resAddNota() {
 async function resDeleteNota(idx) {
   const nota = NOTAS_CONTADORA[idx];
   if (!nota) return;
-  if (!confirm('¿Eliminar esta nota?')) return;
+  if (!confirm('Eliminar esta nota?')) return;
 
   const { error } = await sb.from('notas_contadora').delete().eq('id', nota.id);
   if (error) { showToast('Error al eliminar: ' + error.message); return; }
