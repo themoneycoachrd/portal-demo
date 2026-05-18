@@ -210,7 +210,7 @@ var sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 // ─── Estructura jerárquica de módulos ───
 var MODULOS = [
-  { id:'gerencia', label:'Gerencia', screens:[
+  { id:'gerencia', label:'Clientes', screens:[
     { id:'clientes', label:'Clientes', subtabs:[
       { id:'dashboard', label:'Dashboard' },
       { id:'servicios', label:'Outsourcing' },
@@ -310,7 +310,7 @@ var activeDeptFilter = 'todos'; // filtro de departamento en tab Usuarios
 
 var DEPT_PILLS = [
   { id:'todos', label:'Todos' },
-  { id:'gerencia', label:'Gerencia', grupos:['Admin'] },
+  { id:'gerencia', label:'Clientes', grupos:['Admin'] },
   { id:'contabilidad', label:'Contabilidad', grupos:['Contadores'] },
   { id:'impuestos', label:'Impuestos', grupos:['Impuestos'] },
   { id:'comercial', label:'Comercial', grupos:['Comercial'] },

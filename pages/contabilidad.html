@@ -1375,14 +1375,9 @@ function getATiempoDate(mesIdx, item) {
   return new Date(targetYear, targetMonth, dia, 12, 0, 0);
 }
 
-// Admin del resumen: tiene permiso de edicion Y no es contadora
+// Admin del resumen: tiene acceso a control-clientes (solo admins lo tienen)
 function isResAdmin() {
-  if (!tengoPermiso('contabilidad', 'checklist', 'edicion')) return false;
-  var contadoras = getContadoraNames();
-  for (var i = 0; i < contadoras.length; i++) {
-    if (userName.includes(contadoras[i])) return false;
-  }
-  return true;
+  return tengoPermiso('control-clientes', 'checklist', 'consulta');
 }
 
 function getGreeting() {
