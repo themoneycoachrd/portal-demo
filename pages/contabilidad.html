@@ -311,6 +311,25 @@ body { font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-se
 .bono-50 { background:#fffbeb; color:#d97706; }
 .bono-0 { background:#fef2f2; color:#dc2626; }
 
+/* ─── Resumen tab ─── */
+.res-section { background:var(--card); border-radius:12px; padding:20px; border:1px solid var(--border); margin-bottom:16px; }
+.res-section h3 { font-size:0.85rem; font-weight:700; color:var(--navy); margin-bottom:14px; text-transform:uppercase; letter-spacing:0.3px; }
+.res-table { width:100%; border-collapse:collapse; font-size:0.82rem; }
+.res-table th { text-align:left; padding:10px 12px; font-size:0.68rem; text-transform:uppercase; letter-spacing:0.5px; color:var(--muted); border-bottom:2px solid var(--border); }
+.res-table td { padding:10px 12px; border-bottom:1px solid #f1f3f7; }
+.res-table tr:hover td { background:#fafbfc; }
+.res-ok { text-align:center; padding:30px; color:var(--green); font-weight:600; font-size:0.9rem; }
+.res-atraso { color:var(--red); font-weight:700; }
+.nota-row { display:flex; align-items:flex-start; gap:12px; padding:10px 0; border-bottom:1px solid #f1f3f7; }
+.nota-row:last-child { border-bottom:none; }
+.nota-text { flex:1; font-size:0.82rem; color:var(--text); }
+.nota-fecha { font-size:0.72rem; color:var(--light); white-space:nowrap; }
+.nota-del { background:none; border:none; color:var(--red); cursor:pointer; font-size:0.78rem; padding:2px 6px; opacity:0.6; }
+.nota-del:hover { opacity:1; }
+.nota-add { display:flex; gap:8px; margin-top:12px; }
+.nota-add input[type="text"] { flex:1; padding:8px 12px; border:1px solid var(--border); border-radius:8px; font-size:0.82rem; font-family:inherit; }
+.nota-add input[type="date"] { padding:8px 10px; border:1px solid var(--border); border-radius:8px; font-size:0.78rem; font-family:inherit; }
+
 .card { background:var(--card); border-radius:12px; padding:20px; border:1px solid var(--border); margin-bottom:16px; }
 .card h3 { font-size:0.85rem; font-weight:700; color:var(--muted); margin-bottom:14px; text-transform:uppercase; letter-spacing:0.3px; }
 .stats { display:grid; grid-template-columns:repeat(auto-fit, minmax(140px,1fr)); gap:12px; margin-bottom:20px; }
@@ -332,6 +351,8 @@ body { font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-se
 .hidden { display:none; }
 .footer { text-align:center; font-size:0.75rem; color:var(--light); padding:20px; }
 .empty { text-align:center; padding:40px; color:var(--light); font-size:0.88rem; }
+.toast { position:fixed; bottom:24px; right:24px; background:var(--navy); color:white; padding:12px 20px; border-radius:10px; font-size:0.85rem; font-weight:500; z-index:999; opacity:0; transform:translateY(10px); transition:all 0.3s; pointer-events:none; }
+.toast.show { opacity:1; transform:translateY(0); }
 
 body.embed .login-overlay { display:none !important; }
 body.embed .header { display:none !important; }
@@ -517,6 +538,8 @@ body.embed .footer { display:none !important; }
 
 </div>
 
+<div class="toast" id="toast"></div>
+
 <script>
 // ==================== CONFIG ====================
 const SUPABASE_URL = 'https://ouetusstqvpyjeycfdio.supabase.co';
@@ -568,11 +591,11 @@ const ITEMS = [
   { id:'recepcion_nomina',        n:2,  label:'Recepcion de Nomina',                        tipoCss:'tipo-nomina',   impuesto:'TSS',           dia:3,  mesRel:1 },
   { id:'registro_nomina',         n:3,  label:'Registro de Nomina',                         tipoCss:'tipo-nomina',   impuesto:'TSS',           dia:3,  mesRel:1 },
   { id:'informar_impuestos',      n:4,  label:'Informar a Impuestos (via Trello)',           tipoCss:'tipo-nomina',   impuesto:'TSS',           dia:3,  mesRel:1 },
-  { id:'autorizacion_tss_nomina', n:5,  label:'Subir autorizacion de TSS al cliente',       tipoCss:'tipo-nomina',   impuesto:'TSS',           dia:3,  mesRel:1 },
-  { id:'autorizacion_tss',        n:6,  label:'Subir autorizacion al cliente (TSS)',        tipoCss:'tipo-tss',      impuesto:'TSS',           dia:3,  mesRel:1 },
+  { id:'autorizacion_tss_nomina', n:5,  label:'Subir autorizacion de pago de TSS (Nomina)', tipoCss:'tipo-nomina',   impuesto:'TSS',           dia:3,  mesRel:1 },
+  { id:'autorizacion_tss',        n:6,  label:'Subir autorizacion de pago de TSS',          tipoCss:'tipo-tss',      impuesto:'TSS',           dia:3,  mesRel:1 },
 
   // ── IR-3 (deadline dia 10) ──
-  { id:'autorizacion_ir3',        n:7,  label:'Subir autorizacion de IR-3 al cliente',      tipoCss:'tipo-ir3',      impuesto:'IR-3',          dia:10, mesRel:1 },
+  { id:'autorizacion_ir3',        n:7,  label:'Subir autorizacion de pago de IR-3',          tipoCss:'tipo-ir3',      impuesto:'IR-3',          dia:10, mesRel:1 },
 
   // ── Proveedores informales (deadline dia 10, firma dia 5) ──
   { id:'solicitar_proveedores',   n:8,  label:'Solicitar Proveedores Informales',           tipoCss:'tipo-ir17',     impuesto:'Proveedores',   dia:10, mesRel:1 },
@@ -580,17 +603,17 @@ const ITEMS = [
   { id:'registrar_proveedores',   n:10, label:'Registrar gastos de Proveedores Informales', tipoCss:'tipo-ir17',     impuesto:'Proveedores',   dia:10, mesRel:1 },
   { id:'borrador_ir17',           n:11, label:'Realizar Borrador de IR-17',                 tipoCss:'tipo-ir17',     impuesto:'Proveedores',   dia:10, mesRel:1 },
   { id:'enviar_ir17',             n:12, label:'Enviar borrador de IR-17 al cliente',        tipoCss:'tipo-ir17',     impuesto:'Proveedores',   dia:10, mesRel:1 },
-  { id:'notificacion_ir17',       n:13, label:'Subir Notificacion de pago IR-17',           tipoCss:'tipo-ir17',     impuesto:'Proveedores',   dia:10, mesRel:1 },
+  { id:'notificacion_ir17',       n:13, label:'Subir autorizacion de pago de IR-17',         tipoCss:'tipo-ir17',     impuesto:'Proveedores',   dia:10, mesRel:1 },
 
   // ── Anticipo (deadline dia 15, firma dia 10) ──
-  { id:'autorizacion_anticipo',   n:14, label:'Subir autorizacion de Anticipo al cliente',  tipoCss:'tipo-anticipo', impuesto:'Anticipo',      dia:15, mesRel:1 },
+  { id:'autorizacion_anticipo',   n:14, label:'Subir autorizacion de pago de Anticipo',      tipoCss:'tipo-anticipo', impuesto:'Anticipo',      dia:15, mesRel:1 },
 
   // ── ITBIS (deadline dia 20, firma dia 15) ──
   { id:'verificar_facturas',      n:15, label:'Verificar facturas de gastos pendientes',    tipoCss:'tipo-itbis',    impuesto:'ITBIS',         dia:20, mesRel:1 },
   { id:'solicitar_facturas',      n:16, label:'Solicitar o confirmar facturas de gastos',   tipoCss:'tipo-itbis',    impuesto:'ITBIS',         dia:20, mesRel:1 },
   { id:'facturas_registradas',    n:17, label:'Facturas de Gastos registradas',             tipoCss:'tipo-itbis',    impuesto:'ITBIS',         dia:20, mesRel:1 },
   { id:'borrador_itbis',          n:18, label:'Realizar Borrador ITBIS',                    tipoCss:'tipo-itbis',    impuesto:'ITBIS',         dia:20, mesRel:1 },
-  { id:'enviar_itbis',            n:19, label:'Enviar autorizacion de pago ITBIS',          tipoCss:'tipo-itbis',    impuesto:'ITBIS',         dia:20, mesRel:1 },
+  { id:'enviar_itbis',            n:19, label:'Subir autorizacion de pago de ITBIS',         tipoCss:'tipo-itbis',    impuesto:'ITBIS',         dia:20, mesRel:1 },
 
   // ── Presentacion mensual (registro gastos dia 5, lo demas dia 30) ──
   { id:'registros_realizados',    n:20, label:'Registrar gastos',                           tipoCss:'tipo-cierre',   impuesto:'Presentacion',  dia:5,  mesRel:1, firmaOffset:4 },
@@ -620,6 +643,13 @@ function getBarColor(pct) {
 }
 
 function esc(s) { return s.replace(/'/g, "\\'"); }
+
+function showToast(msg) {
+  var t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(function() { t.classList.remove('show'); }, 2500);
+}
 
 function isExcluida(name) {
   for (let i = 0; i < EXCLUIDAS.length; i++) {
@@ -656,6 +686,13 @@ function canEdit(contadoraNombre) {
 }
 
 // KPI-specific helpers
+// isKpiAdmin: true si puede ver/editar KPI de TODAS las contadoras (admin/gerencia).
+// false si el userName coincide con una contadora (solo ve su propio KPI).
+function isKpiAdmin() {
+  if (!tengoPermiso('contabilidad', 'kpi', 'edicion')) return false;
+  var esContadora = KPI_CONTADORAS.some(c => userName.includes(c.nombre));
+  return !esContadora;
+}
 function getEscala(score) { return KPI_ESCALA.find(e => score >= e.min && score <= e.max) || KPI_ESCALA[3]; }
 function getBonoBase(contadora) { const c = KPI_CONTADORAS.find(x => x.nombre === contadora); return c ? Math.round(c.salario / 3) : 0; }
 function formatMoney(n) { return 'RD$' + n.toLocaleString(); }
@@ -779,7 +816,12 @@ let userName = '';
 let saving = false;
 
 // Top-level tab
-let mainTab = 'checklist';
+let mainTab = 'resumen';
+
+// Resumen state
+let resContadora = 'Todas';
+let NOTAS_CONTADORA = [];
+let currentUserId = null;
 
 // Unified data stores
 let ASIGNACIONES = {};
@@ -852,6 +894,14 @@ function getClients(contadora, mes) {
 function getClientNames(contadora, mes) {
   const clients = getClients(contadora, mes);
   return clients.map(c => c.nombre).sort();
+}
+
+// Returns all client names for a contadora (across all months, from maestra)
+function getClientesForContadora(contadora) {
+  if (contadora === 'Sin asignar') {
+    return CLIENTES_CONTAB.filter(c => !c.contadora_contabilidad).map(c => c.nombre).sort();
+  }
+  return CLIENTES_CONTAB.filter(c => c.contadora_contabilidad === contadora).map(c => c.nombre).sort();
 }
 
 // Returns all unique contadora names from maestra
@@ -1127,7 +1177,7 @@ function getAvg(arr) {
 }
 
 function getVisibleContadoras() {
-  if (tengoPermiso('contabilidad', 'kpi', 'edicion')) return KPI_CONTADORAS;
+  if (isKpiAdmin()) return KPI_CONTADORAS;
   return KPI_CONTADORAS.filter(c => userName.includes(c.nombre));
 }
 
@@ -1158,6 +1208,7 @@ async function handleLogout() {
 async function loadUserProfile() {
   const { data: { user } } = await sb.auth.getUser();
   if (!user) return;
+  currentUserId = user.id;
   const { data: profile } = await sb.from('profiles').select('nombre, rol').eq('id', user.id).single();
   if (profile) { userRole = profile.rol; userName = profile.nombre || user.email; }
   else { userRole = 'contadora'; userName = user.email; }
@@ -1241,19 +1292,216 @@ function kpiGoBackToSelector() {
 
 function renderAll() {
   renderMainTabs();
-  if (mainTab === 'checklist') { renderCkNav(); renderCkContent(); }
+  if (mainTab === 'resumen') { renderResNav(); renderResContent(); }
+  else if (mainTab === 'checklist') { renderCkNav(); renderCkContent(); }
   else { renderKpiNav(); renderKpiContent(); }
 }
 
 function renderMainTabs() {
   const el = document.getElementById('mainTabs');
   const tabs = [
+    { id:'resumen', label:'Resumen' },
     { id:'checklist', label:'Checklist' },
     { id:'kpi', label:'KPI' }
   ];
   el.innerHTML = tabs.map(t =>
     '<button class="main-tab ' + (mainTab === t.id ? 'active' : '') + '" onclick="switchMainTab(\'' + t.id + '\')">' + t.label + '</button>'
   ).join('');
+}
+
+// ==================== RESUMEN RENDERING ====================
+
+// IDs de items de autorización de pago
+const AUTH_ITEM_IDS = ['autorizacion_tss_nomina','autorizacion_tss','autorizacion_ir3','notificacion_ir17','autorizacion_anticipo','enviar_itbis'];
+const AUTH_ITEMS = ITEMS.filter(it => AUTH_ITEM_IDS.includes(it.id));
+
+function renderResNav() {
+  const el = document.getElementById('navArea');
+  // Admin: pills de contadora para filtrar
+  if (tengoPermiso('contabilidad', 'checklist', 'edicion')) {
+    const contadoras = getContadoraNames();
+    let html = '<div class="nav-area"><div class="contadora-pills" style="margin-top:10px">';
+    html += '<button class="contadora-pill' + (resContadora === 'Todas' ? ' active' : '') + '" onclick="resSwitchContadora(\'Todas\')">Todas</button>';
+    contadoras.forEach(name => {
+      html += '<button class="contadora-pill' + (resContadora === name ? ' active' : '') + '" onclick="resSwitchContadora(\'' + esc(name) + '\')">' + name + '</button>';
+    });
+    html += '</div></div>';
+    el.innerHTML = html;
+  } else {
+    el.innerHTML = '';
+  }
+}
+
+function resSwitchContadora(name) {
+  resContadora = name;
+  renderResNav();
+  renderResContent();
+}
+
+function renderResContent() {
+  const el = document.getElementById('content');
+  let html = '';
+
+  // ── Bloque 1: Autorizaciones pendientes ──
+  html += '<div class="res-section">';
+  html += '<h3>Autorizaciones de pago pendientes</h3>';
+
+  const hoy = new Date();
+  const pendientes = [];
+  const mesInicio = 'abril'; // desde abril 2026
+
+  // Determinar qué meses recorrer (abril 2026 en adelante hasta mes actual + 1)
+  const mesActualIdx = hoy.getMonth(); // 0-based
+  const mesesRecorrer = [];
+  for (let i = 3; i <= mesActualIdx + 1 && i < 12; i++) { // 3 = abril (0-based)
+    mesesRecorrer.push(MESES[i]);
+  }
+
+  // Determinar contadoras a recorrer
+  let contadorasParaRecorrer;
+  if (tengoPermiso('contabilidad', 'checklist', 'edicion')) {
+    contadorasParaRecorrer = resContadora === 'Todas' ? getContadoraNames() : [resContadora];
+  } else {
+    // Contadora: solo sus clientes
+    contadorasParaRecorrer = getContadoraNames().filter(c => userName.includes(c));
+    if (contadorasParaRecorrer.length === 0) contadorasParaRecorrer = getContadoraNames();
+  }
+
+  contadorasParaRecorrer.forEach(contadora => {
+    const clientes = getClientesForContadora(contadora);
+    clientes.forEach(cliente => {
+      mesesRecorrer.forEach(mes => {
+        const mesIdx = MESES.indexOf(mes);
+        const entry = getCheckData(contadora, cliente, mes);
+
+        AUTH_ITEMS.forEach(item => {
+          const estado = entry.datos[item.id];
+          if (estado && (estado.done === true || estado.done === 'na')) return; // completado o N/A
+
+          // Calcular deadline (usa mesRel para el mes correcto)
+          const deadline = getDeadlineDate(mesIdx, item);
+          if (deadline > hoy) return; // todavía no ha vencido
+
+          const diasAtraso = Math.floor((hoy - deadline) / (1000 * 60 * 60 * 24));
+          pendientes.push({
+            contadora: contadora,
+            cliente: cliente,
+            impuesto: item.impuesto,
+            label: item.label,
+            mes: MESES_LABEL[mesIdx],
+            mesKey: mes,
+            deadline: deadline,
+            diasAtraso: diasAtraso
+          });
+        });
+      });
+    });
+  });
+
+  // Ordenar por días de atraso descendente
+  pendientes.sort((a, b) => b.diasAtraso - a.diasAtraso);
+
+  if (pendientes.length === 0) {
+    html += '<div class="res-ok">✓ Al dia — todas las autorizaciones de pago estan subidas</div>';
+  } else {
+    html += '<div style="overflow-x:auto"><table class="res-table">';
+    html += '<thead><tr>';
+    if (resContadora === 'Todas' && tengoPermiso('contabilidad', 'checklist', 'edicion')) {
+      html += '<th>Contadora</th>';
+    }
+    html += '<th>Cliente</th><th>Impuesto</th><th>Mes</th><th>Deadline</th><th style="text-align:center">Dias atraso</th>';
+    html += '</tr></thead><tbody>';
+
+    pendientes.forEach(p => {
+      const deadlineStr = p.deadline.toLocaleDateString('es-DO', { day:'numeric', month:'short' });
+      html += '<tr>';
+      if (resContadora === 'Todas' && tengoPermiso('contabilidad', 'checklist', 'edicion')) {
+        html += '<td>' + esc(p.contadora) + '</td>';
+      }
+      html += '<td style="font-weight:600">' + esc(p.cliente) + '</td>';
+      html += '<td><span class="tipo-badge ' + (AUTH_ITEMS.find(it => it.impuesto === p.impuesto) || {}).tipoCss + '">' + esc(p.impuesto) + '</span></td>';
+      html += '<td>' + p.mes + '</td>';
+      html += '<td>' + deadlineStr + '</td>';
+      html += '<td style="text-align:center" class="res-atraso">' + p.diasAtraso + '</td>';
+      html += '</tr>';
+    });
+
+    html += '</tbody></table></div>';
+    html += '<div style="margin-top:8px;font-size:0.72rem;color:var(--light)">' + pendientes.length + ' autorizacion' + (pendientes.length > 1 ? 'es' : '') + ' pendiente' + (pendientes.length > 1 ? 's' : '') + '</div>';
+  }
+  html += '</div>';
+
+  // ── Bloque 2: Notas importantes ──
+  html += '<div class="res-section">';
+  html += '<h3>Notas importantes</h3>';
+
+  if (NOTAS_CONTADORA.length === 0) {
+    html += '<div style="text-align:center;padding:16px;color:var(--light);font-size:0.82rem">Sin notas</div>';
+  } else {
+    NOTAS_CONTADORA.forEach((n, i) => {
+      html += '<div class="nota-row">';
+      html += '<div class="nota-text">' + esc(n.texto) + '</div>';
+      if (n.fecha) html += '<div class="nota-fecha">' + n.fecha + '</div>';
+      // Solo puede eliminar sus propias notas (o admin puede eliminar cualquiera)
+      if (n.usuario_id === currentUserId || tengoPermiso('contabilidad', 'checklist', 'edicion')) {
+        html += '<button class="nota-del" onclick="resDeleteNota(' + i + ')" title="Eliminar">✕</button>';
+      }
+      html += '</div>';
+    });
+  }
+
+  // Form agregar nota
+  html += '<div class="nota-add">';
+  html += '<input type="text" id="resNotaTexto" placeholder="Agregar una nota...">';
+  html += '<input type="date" id="resNotaFecha">';
+  html += '<button class="btn btn-primary" onclick="resAddNota()">Agregar</button>';
+  html += '</div>';
+
+  html += '</div>';
+
+  el.innerHTML = html;
+}
+
+// ── Notas CRUD ──
+async function loadNotasContadora() {
+  let query = sb.from('notas_contadora').select('*').order('created_at', { ascending: false });
+  // Si no es admin, solo las suyas
+  if (!tengoPermiso('contabilidad', 'checklist', 'edicion')) {
+    query = query.eq('usuario_id', currentUserId);
+  }
+  const { data, error } = await query;
+  if (error) { console.error('Error cargando notas:', error); return; }
+  NOTAS_CONTADORA = data || [];
+}
+
+async function resAddNota() {
+  const texto = document.getElementById('resNotaTexto').value.trim();
+  if (!texto) return;
+  const fecha = document.getElementById('resNotaFecha').value || null;
+
+  const { error } = await sb.from('notas_contadora').insert({
+    usuario_id: currentUserId,
+    texto: texto,
+    fecha: fecha
+  });
+  if (error) { showToast('Error al guardar nota: ' + error.message); return; }
+
+  await loadNotasContadora();
+  renderResContent();
+  showToast('Nota agregada');
+}
+
+async function resDeleteNota(idx) {
+  const nota = NOTAS_CONTADORA[idx];
+  if (!nota) return;
+  if (!confirm('¿Eliminar esta nota?')) return;
+
+  const { error } = await sb.from('notas_contadora').delete().eq('id', nota.id);
+  if (error) { showToast('Error al eliminar: ' + error.message); return; }
+
+  await loadNotasContadora();
+  renderResContent();
+  showToast('Nota eliminada');
 }
 
 // ==================== CHECKLIST RENDERING ====================
@@ -1561,15 +1809,15 @@ function renderKpiNav() {
   const el = document.getElementById('navArea');
   let html = '';
 
-  // Sub-tabs (edicion = ve selector y trimestral)
-  if (tengoPermiso('contabilidad', 'kpi', 'edicion')) {
+  // Sub-tabs (solo admin/gerencia ve selector y trimestral)
+  if (isKpiAdmin()) {
     html += '<div class="sub-tabs">';
     html += '<button class="sub-tab ' + (kpiSubTab === 'detalle' ? 'active' : '') + '" onclick="kpiSwitchSubTab(\'detalle\')">Detalle por Contadora</button>';
     html += '<button class="sub-tab ' + (kpiSubTab === 'trimestral' ? 'active' : '') + '" onclick="kpiSwitchSubTab(\'trimestral\')">Resumen Trimestral</button>';
     html += '</div>';
   }
 
-  if (kpiSubTab === 'trimestral' && tengoPermiso('contabilidad', 'kpi', 'edicion')) {
+  if (kpiSubTab === 'trimestral' && isKpiAdmin()) {
     html += '<div class="quarter-bar">' + QUARTERS.map(q =>
       '<button class="q-btn ' + (kpiQuarter === q.id ? 'active' : '') + '" onclick="kpiSwitchQuarter(' + q.id + ')"><div class="q-label">' + q.label + '</div><div class="q-months">' + q.meses.map(m => MESES_LABEL[MESES.indexOf(m)]).join(' · ') + '</div></button>'
     ).join('') + '</div>';
@@ -1585,8 +1833,8 @@ function renderKpiNav() {
   if (kpiContadora) {
     const q = QUARTERS[kpiQuarter - 1];
     html += '<div style="display:flex;align-items:center;gap:12px;padding:10px 24px;background:var(--bg);border-bottom:1px solid var(--border)">';
-    // Boton volver (edicion = puede navegar entre contadoras)
-    if (tengoPermiso('contabilidad', 'kpi', 'edicion')) {
+    // Boton volver (solo admin/gerencia puede navegar entre contadoras)
+    if (isKpiAdmin()) {
       html += '<button class="btn" style="padding:5px 12px;font-size:12px;background:white;color:var(--muted);border:1px solid var(--border)" onclick="kpiGoBackToSelector()">← Volver</button>';
     }
     html += '<div class="month-tabs">' + q.meses.map(m => {
@@ -1600,8 +1848,8 @@ function renderKpiNav() {
 
 function renderKpiContent() {
   const el = document.getElementById('content');
-  if (kpiSubTab === 'trimestral' && tengoPermiso('contabilidad', 'kpi', 'edicion')) return renderTrimestral(el);
-  if (!kpiContadora && tengoPermiso('contabilidad', 'kpi', 'edicion')) return renderKpiSelector(el);
+  if (kpiSubTab === 'trimestral' && isKpiAdmin()) return renderTrimestral(el);
+  if (!kpiContadora && isKpiAdmin()) return renderKpiSelector(el);
   if (!kpiContadora) { el.innerHTML = '<div class="empty">Cargando...</div>'; return; }
   renderKPIDetail(el);
 }
@@ -2061,19 +2309,21 @@ async function showApp() {
   document.getElementById('user-display-name').textContent = userName;
 
   // Load all data
-  await Promise.all([loadAsignaciones(), loadChecklistData(), loadDetalle()]);
+  await Promise.all([loadAsignaciones(), loadChecklistData(), loadDetalle(), loadNotasContadora()]);
 
   // Set initial states
   kpiQuarter = getCurrentQuarter();
   const qObj = QUARTERS[kpiQuarter - 1];
   kpiMes = qObj.meses[0];
 
-  // Contadora: auto-filter (sin edicion va directo a su nombre)
+  // Checklist: auto-filter contadora a su nombre si no tiene edicion de checklist
   if (!tengoPermiso('contabilidad', 'checklist', 'edicion')) {
-    // Checklist: filter to their name
     const contadoras = getContadoraNames();
     contadoras.forEach(c => { if (userName.includes(c)) ckContadora = c; });
-    // KPI: auto-select
+  }
+
+  // KPI: auto-select si es contadora (no admin/gerencia)
+  if (!isKpiAdmin()) {
     const match = KPI_CONTADORAS.find(c => userName.includes(c.nombre));
     if (match) kpiContadora = match.nombre;
   }
