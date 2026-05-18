@@ -2280,7 +2280,7 @@ function renderPresupuestoDetail() {
   return h;
 }
 
-// ── PRESUPUESTO MSH (simplificado: Ventas, Gastos, Beneficio + Obra) ──
+// ── PRESUPUESTO MSH (simplificado: Ventas, Gastos, Beneficio) ──
 function renderPresupuestoMSH() {
   var h = '<button class="pc-back-btn" onclick="pmCloseDetail()">← Volver</button>';
   var mesNum = pmGetMesIdx(selectedMes);
@@ -2310,10 +2310,9 @@ function renderPresupuestoMSH() {
   });
   h += '</tr></thead><tbody>';
 
-  var gastosPctLabel = (pSimpV && pSimpG) ? 'Gastos (' + (pSimpG / pSimpV * 100).toFixed(0) + '%)' : 'Gastos';
   var mshConceptos = [
     { key: 'ventas_simple', label: 'Ventas', tipo: 'ventas', meta: metaV },
-    { key: 'gastos_simple', label: gastosPctLabel, tipo: 'gasto', meta: metaG }
+    { key: 'gastos_simple', label: 'Gastos', tipo: 'gasto', meta: metaG }
   ];
   mshConceptos.forEach(function(c) {
     h += '<tr><td class="pm-font-bold">' + c.label + '</td>';
@@ -2344,52 +2343,7 @@ function renderPresupuestoMSH() {
   h += '</tr>';
   h += '</tbody></table></div></div>';
 
-  // ── 2. Ingreso de Obra vs Costos de Obra (violeta) ──
-  h += '<div class="pm-section-label">Ingreso de Obra vs Costos de Obra</div>';
-  h += '<div class="pm-panel" style="margin-bottom:16px">';
-  h += '<div class="pm-panel-hdr" style="background:#5b21b6;color:white;border-bottom:none">';
-  h += '<h3 style="color:white;text-transform:uppercase;font-size:0.78rem;letter-spacing:0.3px">Obra — Trimestre por mes</h3></div>';
-  h += '<div class="pm-panel-body" style="overflow-x:auto"><table>';
-  h += '<thead><tr><th style="min-width:110px">Concepto</th>';
-  qRange.forEach(function(m) {
-    h += '<th class="pm-text-right" style="border-right:' + (m < qRange[2] ? '2px solid var(--border)' : 'none') + '">' + MESES_FULL[m - 1] + '</th>';
-  });
-  h += '<th class="pm-text-right" style="font-weight:700">Total</th></tr></thead><tbody>';
-
-  var oTotIng = 0, oTotCost = 0;
-  h += '<tr><td class="pm-font-bold">Ingreso de Obra</td>';
-  qRange.forEach(function(m) {
-    var ej = pmGetEjecucionMes(m);
-    var val = ej ? (ej.ingreso_obra || 0) : 0;
-    oTotIng += val;
-    h += '<td class="pm-text-right" style="border-right:' + (m < qRange[2] ? '2px solid var(--border)' : 'none') + '">$' + pmFormatMoney(val) + '</td>';
-  });
-  h += '<td class="pm-text-right pm-font-bold">$' + pmFormatMoney(oTotIng) + '</td></tr>';
-
-  h += '<tr><td class="pm-font-bold">Costos de Obra</td>';
-  qRange.forEach(function(m) {
-    var ej = pmGetEjecucionMes(m);
-    var val = ej ? (ej.costos_obra || 0) : 0;
-    oTotCost += val;
-    h += '<td class="pm-text-right" style="border-right:' + (m < qRange[2] ? '2px solid var(--border)' : 'none') + '">$' + pmFormatMoney(val) + '</td>';
-  });
-  h += '<td class="pm-text-right pm-font-bold">$' + pmFormatMoney(oTotCost) + '</td></tr>';
-
-  var oTotal = oTotIng - oTotCost;
-  h += '<tr class="pm-row-total" style="background:#f5f3ff"><td class="pm-font-bold" style="color:#5b21b6">Resultado de Obra</td>';
-  qRange.forEach(function(m) {
-    var ej = pmGetEjecucionMes(m);
-    var ing = ej ? (ej.ingreso_obra || 0) : 0;
-    var cost = ej ? (ej.costos_obra || 0) : 0;
-    var res = ing - cost;
-    var color = res >= 0 ? 'var(--green)' : 'var(--red)';
-    h += '<td class="pm-text-right" style="color:' + color + ';border-right:' + (m < qRange[2] ? '2px solid var(--border)' : 'none') + '">$' + pmFormatMoney(res) + '</td>';
-  });
-  var oTotalColor = oTotal >= 0 ? 'var(--green)' : 'var(--red)';
-  h += '<td class="pm-text-right pm-font-bold" style="color:' + oTotalColor + '">$' + pmFormatMoney(oTotal) + '</td></tr>';
-  h += '</tbody></table></div></div>';
-
-  // ── 3. Mes en curso: Presupuesto vs Ejecución (dual panel) ──
+  // ── 2. Mes en curso: Presupuesto vs Ejecución (dual panel) ──
   h += '<div class="pm-section-label">Mes en curso</div>';
   h += '<div class="pm-dual">';
 
@@ -2402,7 +2356,7 @@ function renderPresupuestoMSH() {
 
   var mshPresRows = [
     { label: 'Ventas', anual: pSimpV },
-    { label: gastosPctLabel, anual: pSimpG }
+    { label: 'Gastos', anual: pSimpG }
   ];
   mshPresRows.forEach(function(r) {
     var anual = r.anual;
@@ -2472,7 +2426,7 @@ function renderPresupuestoMSH() {
 
   var qRows = [
     { label: 'Ventas', meta: qMetaV, ej: qTotV, tipo: 'ventas' },
-    { label: gastosPctLabel, meta: qMetaG, ej: qTotG, tipo: 'gasto' }
+    { label: 'Gastos', meta: qMetaG, ej: qTotG, tipo: 'gasto' }
   ];
   qRows.forEach(function(r) {
     var diff = r.ej - r.meta;
@@ -2986,7 +2940,7 @@ function renderAdminDatosSimple() {
   h += '<div class="pm-btn-row"><button class="pm-btn-save primary" onclick="pmSavePresupuestoSimple()">Guardar Presupuesto</button></div>';
   h += '</div>';
 
-  // Ejecución mensual: Ventas, Gastos, Obra
+  // Ejecución mensual: Ventas, Gastos
   h += '<div class="pm-admin-form"><h3>Ejecución Mensual <span class="pm-admin-badge">Simplificado</span></h3>';
   h += '<div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;flex-wrap:wrap">';
   h += '<div class="pm-form-group" style="margin:0"><label style="margin-bottom:4px">Mes a cargar</label>';
@@ -3002,13 +2956,6 @@ function renderAdminDatosSimple() {
   h += '<div class="pm-form-group"><label>Ventas</label><input type="number" class="pm-form-input" id="pmSimpEjVentas" value="' + (ej ? (ej.ventas_simple || '') : '') + '" placeholder="0.00" step="0.01"></div>';
   h += '<div class="pm-form-group"><label>Gastos</label><input type="number" class="pm-form-input" id="pmSimpEjGastos" value="' + (ej ? (ej.gastos_simple || '') : '') + '" placeholder="0.00" step="0.01"></div>';
   h += '</div>';
-
-  h += '<div style="margin-top:12px;padding-top:12px;border-top:2px solid #5b21b6">';
-  h += '<div style="font-size:0.78rem;font-weight:700;color:#5b21b6;margin-bottom:8px">Obra</div>';
-  h += '<div class="pm-form-grid">';
-  h += '<div class="pm-form-group"><label>Ingreso de Obra</label><input type="number" class="pm-form-input" id="pmSimpEjIngresoObra" value="' + (ej ? (ej.ingreso_obra || '') : '') + '" placeholder="0.00" step="0.01"></div>';
-  h += '<div class="pm-form-group"><label>Costos de Obra</label><input type="number" class="pm-form-input" id="pmSimpEjCostosObra" value="' + (ej ? (ej.costos_obra || '') : '') + '" placeholder="0.00" step="0.01"></div>';
-  h += '</div></div>';
 
   h += '<div class="pm-btn-row"><button class="pm-btn-save primary" onclick="pmSaveEjecucionSimple()">Guardar Ejecución</button></div>';
 
@@ -3031,8 +2978,6 @@ function pmUpdateSimpEjFields() {
   var ej = pmGetEjecucionMes(mes);
   document.getElementById('pmSimpEjVentas').value = ej ? (ej.ventas_simple || '') : '';
   document.getElementById('pmSimpEjGastos').value = ej ? (ej.gastos_simple || '') : '';
-  document.getElementById('pmSimpEjIngresoObra').value = ej ? (ej.ingreso_obra || '') : '';
-  document.getElementById('pmSimpEjCostosObra').value = ej ? (ej.costos_obra || '') : '';
 }
 
 async function pmSavePresupuestoSimple() {
@@ -3060,14 +3005,12 @@ async function pmSaveEjecucionSimple() {
   var mes = parseInt(document.getElementById('pmSimpEjMes').value);
   var v = parseFloat(document.getElementById('pmSimpEjVentas').value) || 0;
   var g = parseFloat(document.getElementById('pmSimpEjGastos').value) || 0;
-  var io = parseFloat(document.getElementById('pmSimpEjIngresoObra').value) || 0;
-  var co = parseFloat(document.getElementById('pmSimpEjCostosObra').value) || 0;
 
-  // Escribe a columnas _simple + obra. Preserva las columnas del form completo.
+  // Escribe a columnas _simple. Preserva las columnas del form completo.
   var existing = pmGetEjecucionMes(mes);
   var record = {
     cliente: clienteNombre, anio: pmYear, mes: mes,
-    ventas_simple: v, gastos_simple: g, ingreso_obra: io, costos_obra: co,
+    ventas_simple: v, gastos_simple: g,
     ventas_it1: existing ? (existing.ventas_it1 || 0) : 0,
     costos_operativos: existing ? (existing.costos_operativos || 0) : 0,
     gastos: existing ? (existing.gastos || 0) : 0,
@@ -3612,8 +3555,6 @@ async function pmSaveEjecucion() {
   var gno = parseFloat(document.getElementById('pmEjGNO').value) || 0;
   var gna = parseFloat(document.getElementById('pmEjGNA').value) || 0;
 
-  // Preservar campos de obra si ya existen (se editan desde Datos Simplificado)
-  var existing = pmGetEjecucionMes(mes);
   var record = {
     cliente: clienteNombre,
     anio: pmYear,
@@ -3623,9 +3564,7 @@ async function pmSaveEjecucion() {
     gastos: g,
     ingreso_no_operacional: ino,
     gasto_no_operacional: gno,
-    gastos_no_admitidos: gna,
-    ingreso_obra: existing ? (existing.ingreso_obra || 0) : 0,
-    costos_obra: existing ? (existing.costos_obra || 0) : 0
+    gastos_no_admitidos: gna
   };
   var { error } = await sb.from('portal_ejecucion').upsert(record, { onConflict: 'cliente,anio,mes' });
 
