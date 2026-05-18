@@ -1921,18 +1921,18 @@ function renderPresupuestoMSH() {
 
   h += '</tbody></table></div></div></div>';
 
-  // ── 2. Trimestre por mes con % Meta ──
+  // ── 2. Trimestre por mes con Meta/Mes ──
   h += '<div class="pm-panel" style="margin-bottom:16px">';
   h += '<div class="pm-panel-hdr" style="background:var(--navy);color:white;border-bottom:none">';
   h += '<h3 style="color:white;text-transform:uppercase;font-size:0.78rem;letter-spacing:0.3px">Trimestre por mes</h3></div>';
   h += '<div class="pm-panel-body" style="overflow-x:auto"><table>';
-  h += '<thead><tr><th style="min-width:90px"></th>';
+  h += '<thead><tr><th style="min-width:90px"></th><th></th>';
   qRange.forEach(function(m) {
     h += '<th colspan="2" class="pm-text-center" style="border-right:' + (m < qRange[2] ? '2px solid var(--border)' : 'none') + '">' + MESES_FULL[m - 1] + '</th>';
   });
-  h += '</tr><tr><th>Concepto</th>';
+  h += '</tr><tr><th>Concepto</th><th class="pm-text-right">Meta/Mes</th>';
   qRange.forEach(function(m) {
-    h += '<th class="pm-text-right">Ejecutado</th><th class="pm-text-right" style="border-right:' + (m < qRange[2] ? '2px solid var(--border)' : 'none') + '">% Meta</th>';
+    h += '<th class="pm-text-right">Ejecutado</th><th class="pm-text-right" style="border-right:' + (m < qRange[2] ? '2px solid var(--border)' : 'none') + '">%</th>';
   });
   h += '</tr></thead><tbody>';
 
@@ -1942,6 +1942,7 @@ function renderPresupuestoMSH() {
   ];
   mshConceptos.forEach(function(c) {
     h += '<tr><td class="pm-font-bold">' + c.label + '</td>';
+    h += '<td class="pm-text-right">' + pmFormatMoney(c.meta) + '</td>';
     qRange.forEach(function(m) {
       var ej = pmGetEjecucionMes(m);
       var val = ej ? (ej[c.key] || 0) : 0;
@@ -1955,6 +1956,7 @@ function renderPresupuestoMSH() {
 
   // Beneficio/Pérdida
   h += '<tr class="pm-row-total pm-row-ganancia"><td class="pm-font-bold" style="color:white">Beneficio / Pérdida</td>';
+  h += '<td class="pm-text-right" style="color:white">' + pmFormatMoney(metaBen) + '</td>';
   qRange.forEach(function(m) {
     var ej = pmGetEjecucionMes(m);
     var v = ej ? (ej.ventas_simple || 0) : 0;
