@@ -316,7 +316,10 @@ body { font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-se
 .res-greeting { background:var(--navy); border-radius:12px; padding:20px 24px; margin-bottom:16px; }
 .res-greeting h2 { font-size:1.1rem; font-weight:700; color:#fff; margin:0 0 4px; }
 .res-greeting p { font-size:0.78rem; color:rgba(255,255,255,0.55); margin:0; }
-.res-urgency { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; margin-bottom:16px; }
+.res-urgency { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; margin-bottom:12px; }
+.res-insights { background:#f8fafc; border:1px solid var(--border); border-radius:10px; padding:12px 16px; margin-bottom:16px; display:flex; flex-direction:column; gap:6px; }
+.res-insight-item { font-size:0.82rem; color:var(--navy); line-height:1.4; }
+.res-insight-icon { font-weight:700; margin-right:4px; }
 .res-urg-card { border-radius:12px; padding:14px 16px; border-left:4px solid; }
 .res-urg-card .urg-label { font-size:0.65rem; text-transform:uppercase; letter-spacing:0.5px; margin:0 0 4px; }
 .res-urg-card .urg-num { font-size:1.6rem; font-weight:700; margin:0; }
@@ -1527,6 +1530,24 @@ function renderResContent() {
   html += '<div class="res-urg-card res-urg-warn"><p class="urg-label">Vencido</p><p class="urg-num">' + vencidos.length + '</p><p class="urg-sub">a 5 dias del limite</p></div>';
   html += '<div class="res-urg-card res-urg-soon"><p class="urg-label">Proximo a vencer</p><p class="urg-num">' + proximos.length + '</p><p class="urg-sub">cerca de fecha AO</p></div>';
   html += '</div>';
+
+  // ── Insights rápidos (solo admins) ──
+  if (isAdmin && totalAtrasadas > 0) {
+    const todosAtrasados = urgentes.concat(vencidos);
+    // Contadora con más atrasos
+    const contMap = {};
+    todosAtrasados.forEach(p => { contMap[p.contadora] = (contMap[p.contadora] || 0) + 1; });
+    const topContadora = Object.keys(contMap).sort((a, b) => contMap[b] - contMap[a])[0];
+    // Cliente con más atrasos
+    const cliMap = {};
+    todosAtrasados.forEach(p => { cliMap[p.cliente] = (cliMap[p.cliente] || 0) + 1; });
+    const topCliente = Object.keys(cliMap).sort((a, b) => cliMap[b] - cliMap[a])[0];
+
+    html += '<div class="res-insights">';
+    html += '<div class="res-insight-item"><span class="res-insight-icon" style="color:#ef4444">▸</span> La contadora con mas atrasos es <strong>' + esc(topContadora) + '</strong> (' + contMap[topContadora] + ' pendiente' + (contMap[topContadora] > 1 ? 's' : '') + ')</div>';
+    html += '<div class="res-insight-item"><span class="res-insight-icon" style="color:#f59e0b">▸</span> El cliente con mas autorizaciones pendientes es <strong>' + esc(topCliente) + '</strong> (' + cliMap[topCliente] + ' pendiente' + (cliMap[topCliente] > 1 ? 's' : '') + ')</div>';
+    html += '</div>';
+  }
 
   // ── Charts (solo si hay items) ──
   if (urgentes.length > 0 || vencidos.length > 0 || proximos.length > 0) {
