@@ -431,22 +431,32 @@ function getCurrentMonth() {
 }
 
 var ANALISTAS_IMPUESTOS = ['Karina', 'Lovelis', 'Doriluz'];
-var CONTADORA_ORDER = ['Karina', 'Lovelis', 'Doriluz', 'Sin asignar'];
+
+function esAnalista(nombre) {
+  if (!nombre || nombre === 'Sin asignar') return nombre === 'Sin asignar';
+  var lower = nombre.toLowerCase();
+  for (var i = 0; i < ANALISTAS_IMPUESTOS.length; i++) {
+    if (lower.indexOf(ANALISTAS_IMPUESTOS[i].toLowerCase()) >= 0) return true;
+  }
+  return false;
+}
 
 function sortContadoras(names) {
   return names
     .filter(function(n) {
-      if (n === 'Sin asignar') return true;
-      for (var i = 0; i < ANALISTAS_IMPUESTOS.length; i++) {
-        if (n === ANALISTAS_IMPUESTOS[i] || n.indexOf(ANALISTAS_IMPUESTOS[i]) === 0) return true;
-      }
-      return false;
+      return n === 'Sin asignar' || esAnalista(n);
     })
     .sort(function(a, b) {
-      var ia = CONTADORA_ORDER.indexOf(a);
-      var ib = CONTADORA_ORDER.indexOf(b);
-      if (ia < 0) ia = 999;
-      if (ib < 0) ib = 999;
+      if (a === 'Sin asignar') return 1;
+      if (b === 'Sin asignar') return -1;
+      // Ordenar por posición en ANALISTAS_IMPUESTOS
+      var ia = 999, ib = 999;
+      var al = a.toLowerCase(), bl = b.toLowerCase();
+      for (var i = 0; i < ANALISTAS_IMPUESTOS.length; i++) {
+        var key = ANALISTAS_IMPUESTOS[i].toLowerCase();
+        if (al.indexOf(key) >= 0) ia = i;
+        if (bl.indexOf(key) >= 0) ib = i;
+      }
       return ia - ib;
     });
 }
