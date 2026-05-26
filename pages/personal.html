@@ -218,6 +218,63 @@ body.embed #app-wrapper { display: block !important; }
   padding: 6px 12px; border: 1px solid var(--border); border-radius: 8px;
   font-size: 0.82rem; font-family: inherit; background: white;
 }
+
+/* ==================== ORG CHART ==================== */
+.org-tree { display: flex; flex-direction: column; align-items: center; padding: 20px 0; }
+.org-root {
+  background: var(--navy); color: white; padding: 14px 28px; border-radius: 12px;
+  text-align: center; font-weight: 700; font-size: 0.95rem;
+}
+.org-root .org-cargo { font-size: 0.72rem; font-weight: 400; opacity: 0.8; margin-top: 2px; }
+.org-connector { width: 2px; height: 24px; background: var(--border); }
+.org-hline { height: 2px; background: var(--border); align-self: stretch; margin: 0 40px; }
+.org-departments { display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; width: 100%; margin-top: 0; }
+.org-dept {
+  background: var(--card); border: 1px solid var(--border); border-radius: 10px;
+  padding: 14px; min-width: 170px; flex: 1; max-width: 230px; position: relative;
+}
+.org-dept::before {
+  content: ''; position: absolute; top: -24px; left: 50%; width: 2px; height: 24px; background: var(--border);
+}
+.org-dept-title {
+  font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;
+  color: var(--blue); margin-bottom: 10px; padding-bottom: 6px; border-bottom: 2px solid var(--blue);
+}
+.org-member { padding: 5px 0; border-bottom: 1px solid #f3f4f6; }
+.org-member:last-child { border-bottom: none; }
+.org-member-name { font-size: 0.82rem; font-weight: 600; color: var(--text); }
+.org-member-cargo { font-size: 0.68rem; color: var(--muted); }
+.org-freelance-badge {
+  display: inline-block; font-size: 0.58rem; padding: 1px 5px; border-radius: 4px;
+  background: #fef3c7; color: #92400e; margin-left: 4px; font-weight: 600; vertical-align: middle;
+}
+
+/* ==================== DIRECTORY ==================== */
+.dir-actions { display: flex; justify-content: flex-end; margin-bottom: 14px; }
+.btn-copy-all {
+  padding: 8px 18px; background: var(--blue); color: white; border: none; border-radius: 8px;
+  font-size: 0.82rem; font-weight: 600; cursor: pointer; transition: background 0.2s;
+}
+.btn-copy-all:hover { background: #2d4a9e; }
+.btn-copy-all.copied { background: var(--green); }
+.dir-table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+.dir-table th {
+  text-align: left; font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.5px;
+  color: var(--muted); font-weight: 600; padding: 8px 10px; border-bottom: 2px solid var(--border);
+}
+.dir-table td { padding: 10px; border-bottom: 1px solid #f1f5f9; }
+.dir-table tr:hover td { background: #fafbfc; }
+.dir-email { color: var(--blue); cursor: pointer; font-weight: 500; }
+.dir-email:hover { text-decoration: underline; }
+.dir-dept-badge {
+  display: inline-block; font-size: 0.68rem; padding: 2px 8px; border-radius: 6px; font-weight: 600;
+}
+.copy-toast {
+  position: fixed; bottom: 24px; right: 24px; background: var(--navy); color: white;
+  padding: 10px 20px; border-radius: 8px; font-size: 0.85rem; font-weight: 600;
+  z-index: 999; opacity: 0; transition: opacity 0.3s; pointer-events: none;
+}
+.copy-toast.show { opacity: 1; }
 </style>
 </head>
 <body>
@@ -244,7 +301,7 @@ body.embed #app-wrapper { display: block !important; }
 <div id="app-wrapper" class="hidden">
   <div class="header">
     <h1>Personal</h1>
-    <p>Reconocimiento y puntos Wow del equipo</p>
+    <p>Equipo, directorio y reconocimiento</p>
     <div class="user-bar">
       <span class="user-name" id="user-display-name"></span>
       <button class="btn-logout" onclick="doLogout()">Cerrar sesión</button>
@@ -258,11 +315,15 @@ body.embed #app-wrapper { display: block !important; }
   </div>
 
   <div class="main-tabs">
+    <button class="main-tab" data-tab="organigrama" onclick="switchTab('organigrama')">Organigrama</button>
+    <button class="main-tab" data-tab="directorio" onclick="switchTab('directorio')">Directorio</button>
     <button class="main-tab active" data-tab="tablero" onclick="switchTab('tablero')">Wow Board</button>
     <button class="main-tab" data-tab="historial" onclick="switchTab('historial')">Historial</button>
   </div>
 
   <div class="container">
+    <div id="tab-organigrama" class="tab-content"></div>
+    <div id="tab-directorio" class="tab-content"></div>
     <div id="tab-tablero" class="tab-content active"></div>
     <div id="tab-historial" class="tab-content"></div>
   </div>
@@ -313,6 +374,8 @@ body.embed #app-wrapper { display: block !important; }
   </div>
 </div>
 
+<div class="copy-toast" id="copy-toast"></div>
+
 <script>
 // ==================== CONFIG ====================
 var isEmbed = new URLSearchParams(window.location.search).get('embed') === '1';
@@ -334,6 +397,53 @@ const TEAM_DEPARTMENTS = [
   { name: 'Contadoras', members: ['Beliani Brito', 'Yessica Diaz', 'Victoria Vasquez', 'Taina Ramirez', 'Morelia Matos'] }
 ];
 const TEAM_ROSTER = TEAM_DEPARTMENTS.reduce(function(arr, dept) { return arr.concat(dept.members); }, []);
+
+// Directorio completo del equipo (para organigrama y directorio)
+const TEAM_DIRECTORY = [
+  {
+    name: 'Dirección',
+    color: '#1e3a5f',
+    members: [
+      { nombre: 'Felix Rosa', cargo: 'Director', email: 'frosa@accountone.do' }
+    ]
+  },
+  {
+    name: 'Comercial',
+    color: '#3b82f6',
+    members: [
+      { nombre: 'Naomi Villar', cargo: 'Ejecutiva comercial', email: 'nvillar@accountone.do' }
+    ]
+  },
+  {
+    name: 'Implementación',
+    color: '#8b5cf6',
+    members: [
+      { nombre: 'Claudia Carrion', cargo: 'Enc. implementaciones', email: 'ccarrion@accountone.do' },
+      { nombre: 'Lissette Peña', cargo: 'Implementadora', email: 'lpena@accountone.do' }
+    ]
+  },
+  {
+    name: 'Impuestos',
+    color: '#f59e0b',
+    members: [
+      { nombre: 'Karina Sánchez', cargo: 'Gerente de impuestos', email: 'ksanchez@accountone.do' },
+      { nombre: 'Lovelis Guzman', cargo: 'Analista de impuestos', email: 'lguzman@accountone.do' },
+      { nombre: 'Doriluz Crisóstomo', cargo: 'Analista de impuestos', email: 'dcrisostomo@accountone.do', freelance: true }
+    ]
+  },
+  {
+    name: 'Contabilidad',
+    color: '#10b981',
+    members: [
+      { nombre: 'Beliani Brito', cargo: 'Contadora', email: 'bbrito@accountone.do' },
+      { nombre: 'Yessica Diaz', cargo: 'Contadora', email: 'ydiaz@accountone.do' },
+      { nombre: 'Victoria Vasquez', cargo: 'Contadora', email: 'vvasquez@accountone.do' },
+      { nombre: 'Taina Ramirez', cargo: 'Contadora', email: 'tramirez@accountone.do' },
+      { nombre: 'Morelia Matos', cargo: 'Contadora', email: 'mmatos@accountone.do' },
+      { nombre: 'Milka Paulino', cargo: 'Contadora', email: 'mpaulino@accountone.do', freelance: true }
+    ]
+  }
+];
 
 // ==================== PERMISOS POR GRUPO ====================
 
@@ -489,6 +599,8 @@ function getEmployeeStats() {
 
 // ==================== RENDER ====================
 function render() {
+  renderOrgChart();
+  renderDirectorio();
   renderTablero();
   renderHistorial();
 }
@@ -645,6 +757,125 @@ function renderHistorial() {
 
   html += '</div>';
   container.innerHTML = html;
+}
+
+// ==================== ORG CHART ====================
+function renderOrgChart() {
+  var container = document.getElementById('tab-organigrama');
+  var director = TEAM_DIRECTORY[0].members[0];
+  var depts = TEAM_DIRECTORY.slice(1); // sin Dirección
+
+  var html = '<div class="org-tree">';
+
+  // Nodo raíz: Director
+  html += '<div class="org-root">';
+  html += '<div>' + esc(director.nombre) + '</div>';
+  html += '<div class="org-cargo">' + esc(director.cargo) + '</div>';
+  html += '</div>';
+
+  // Conector vertical
+  html += '<div class="org-connector"></div>';
+
+  // Línea horizontal
+  html += '<div class="org-hline"></div>';
+
+  // Departamentos
+  html += '<div class="org-departments">';
+  depts.forEach(function(dept) {
+    html += '<div class="org-dept">';
+    html += '<div class="org-dept-title" style="color:' + dept.color + '; border-bottom-color:' + dept.color + '">' + esc(dept.name) + '</div>';
+    dept.members.forEach(function(m) {
+      html += '<div class="org-member">';
+      html += '<div class="org-member-name">' + esc(m.nombre);
+      if (m.freelance) html += ' <span class="org-freelance-badge">Freelance</span>';
+      html += '</div>';
+      html += '<div class="org-member-cargo">' + esc(m.cargo) + '</div>';
+      html += '</div>';
+    });
+    html += '</div>';
+  });
+  html += '</div>';
+
+  html += '</div>';
+
+  // Total del equipo
+  var total = TEAM_DIRECTORY.reduce(function(s, d) { return s + d.members.length; }, 0);
+  var freelancers = 0;
+  TEAM_DIRECTORY.forEach(function(d) { d.members.forEach(function(m) { if (m.freelance) freelancers++; }); });
+  html += '<div style="text-align:center; margin-top:16px; font-size:0.8rem; color:var(--muted)">';
+  html += total + ' personas en el equipo';
+  if (freelancers > 0) html += ' (' + freelancers + ' freelance)';
+  html += '</div>';
+
+  container.innerHTML = html;
+}
+
+// ==================== DIRECTORY ====================
+function renderDirectorio() {
+  var container = document.getElementById('tab-directorio');
+  var DEPT_COLORS = {};
+  TEAM_DIRECTORY.forEach(function(d) { DEPT_COLORS[d.name] = d.color; });
+
+  var html = '<div class="card-section">';
+
+  // Botón copiar todos
+  html += '<div class="dir-actions">';
+  html += '<button class="btn-copy-all" id="btn-copy-all" onclick="copyAllEmails()">Copiar todos los correos</button>';
+  html += '</div>';
+
+  // Tabla
+  html += '<table class="dir-table">';
+  html += '<thead><tr><th>Nombre</th><th>Cargo</th><th>Departamento</th><th>Correo</th></tr></thead>';
+  html += '<tbody>';
+
+  TEAM_DIRECTORY.forEach(function(dept) {
+    dept.members.forEach(function(m) {
+      html += '<tr>';
+      html += '<td style="font-weight:600">' + esc(m.nombre);
+      if (m.freelance) html += ' <span class="org-freelance-badge">Freelance</span>';
+      html += '</td>';
+      html += '<td>' + esc(m.cargo) + '</td>';
+      html += '<td><span class="dir-dept-badge" style="background:' + dept.color + '15; color:' + dept.color + '">' + esc(dept.name) + '</span></td>';
+      html += '<td><span class="dir-email" onclick="copyEmail(\'' + m.email + '\')" title="Clic para copiar">' + esc(m.email) + '</span></td>';
+      html += '</tr>';
+    });
+  });
+
+  html += '</tbody></table>';
+  html += '</div>';
+
+  container.innerHTML = html;
+}
+
+function copyAllEmails() {
+  var emails = [];
+  TEAM_DIRECTORY.forEach(function(d) {
+    d.members.forEach(function(m) { emails.push(m.email); });
+  });
+  var text = emails.join('; ');
+  navigator.clipboard.writeText(text).then(function() {
+    var btn = document.getElementById('btn-copy-all');
+    btn.classList.add('copied');
+    btn.textContent = '✓ Copiados ' + emails.length + ' correos';
+    showCopyToast(emails.length + ' correos copiados al portapapeles');
+    setTimeout(function() {
+      btn.classList.remove('copied');
+      btn.textContent = 'Copiar todos los correos';
+    }, 2500);
+  });
+}
+
+function copyEmail(email) {
+  navigator.clipboard.writeText(email).then(function() {
+    showCopyToast(email + ' copiado');
+  });
+}
+
+function showCopyToast(msg) {
+  var toast = document.getElementById('copy-toast');
+  toast.textContent = msg;
+  toast.classList.add('show');
+  setTimeout(function() { toast.classList.remove('show'); }, 2000);
 }
 
 // ==================== MODALS ====================
