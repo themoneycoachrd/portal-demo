@@ -49,6 +49,15 @@ body { font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-se
 .dash-status.rojo { background:#fee2e2; color:#991b1b; }
 .dash-status.verde { background:#d1fae5; color:#065f46; }
 
+.fechas-strip { display:flex; gap:8px; margin-bottom:16px; flex-wrap:wrap; }
+.fecha-item { flex:1; min-width:110px; text-align:center; padding:8px 10px; border-radius:8px; background:#f8fafc; border:1px solid var(--border); }
+.fecha-lbl { display:block; font-size:0.65rem; text-transform:uppercase; font-weight:600; color:var(--muted); margin-bottom:3px; letter-spacing:0.3px; }
+.fecha-val { display:block; font-size:0.82rem; font-weight:700; }
+.fecha-val.fv-green { color:#059669; }
+.fecha-val.fv-amber { color:#d97706; }
+.fecha-val.fv-blue { color:#2563eb; }
+.fecha-val.fv-red { color:#dc2626; }
+
 .task-section { background:white; border-radius:12px; border:1px solid var(--border); overflow:hidden; }
 .task-row { display:flex; align-items:center; justify-content:space-between; padding:14px 20px; border-bottom:1px solid #f1f5f9; gap:12px; }
 .task-row:last-child { border-bottom:none; }
@@ -1681,8 +1690,9 @@ function renderDashboard(el, backHtml) {
     h += '</div></div>';
   });
 
-  // Botón para marcar todo el checklist como completado (temporal, para meses pasados)
-  h += '<div style="margin-top:16px;text-align:right">';
+  // Botones de acción
+  h += '<div style="margin-top:16px;display:flex;justify-content:flex-end;gap:10px;flex-wrap:wrap">';
+  h += '<button style="background:var(--blue);color:white;border:none;padding:8px 18px;border-radius:8px;font-size:0.85rem;font-weight:600;cursor:pointer" onclick="generarCorreo()">✉ Enviar correo de responsabilidades</button>';
   h += '<button id="btn-mark-all-ck" style="background:var(--green);color:white;border:none;padding:8px 18px;border-radius:8px;font-size:0.85rem;font-weight:600;cursor:pointer" onclick="markAllChecklistDone()">✓ Marcar todo como realizado</button>';
   h += '</div>';
 
@@ -1734,7 +1744,114 @@ async function markAllChecklistDone() {
   render();
 }
 
+// ==================== GENERAR CORREO ====================
+var TAREA_DONE_MAP = {
+  'tss': [
+    {k:'TSS',id:'novedades_nomina'},{k:'TSS',id:'cargar_nomina'},{k:'TSS',id:'cargar_volantes_nomina'},
+    {k:'TSS',id:'autorizacion_tss'},{k:'TSS',id:'pague_tss'}
+  ],
+  'ir3': [{k:'IR-3',id:'autorizacion_ir3'},{k:'IR-3',id:'pague_ir3'}],
+  'ir17': [
+    {k:'IR-17',id:'pagos_informales'},{k:'IR-17',id:'cargar_excel_informales'},{k:'IR-17',id:'cargar_volantes_informales'},
+    null,null,null,null
+  ],
+  'anticipo': [{k:'Anticipo',id:'autorizacion_anticipo'},{k:'Anticipo',id:'pague_anticipo'}],
+  'itbis': [
+    {k:'ITBIS',id:'facturas_mes'},null,{k:'ITBIS',id:'cargar_excel_facturas'},
+    {k:'ITBIS',id:'ncf_bancos'},{k:'ITBIS',id:'facturas_atrasadas'},
+    {k:'ITBIS',id:'borrador_itbis'},{k:'ITBIS',id:'aprobo_borrador'},{k:'ITBIS',id:'pague_itbis'}
+  ]
+};
+
+function generarCorreo() {
+  var mesIdx = MESES_KEY.indexOf(selectedMes);
+  var mesNombre = MESES_FULL[mesIdx];
+
+  var clienteSecciones = [];
+  var aoSecciones = [];
+
+  OBLIGACIONES.forEach(function(obl) {
+    var oblMap = TAREA_DONE_MAP[obl.id];
+    var pendCliente = [];
+    var pendAO = [];
+
+    obl.tareas.forEach(function(tarea, i) {
+      var done = false;
+      if (oblMap && oblMap[i]) {
+        done = isItemDone(oblMap[i].k, selectedMes, oblMap[i].id);
+      }
+      if (done) return;
+
+      var fechaStr = tarea.fecha || '';
+      if (tarea.fechaTarde) fechaStr += ' (tarde: ' + tarea.fechaTarde + ')';
+      var item = { text: tarea.t, fecha: fechaStr };
+
+      if (tarea.quien === 'cliente') {
+        pendCliente.push(item);
+      } else {
+        pendAO.push(item);
+      }
+    });
+
+    if (pendCliente.length > 0) {
+      clienteSecciones.push({ nombre: obl.nombre, limite: obl.fechas.dgii, tareas: pendCliente });
+    }
+    if (pendAO.length > 0) {
+      aoSecciones.push({ nombre: obl.nombre, tareas: pendAO });
+    }
+  });
+
+  if (clienteSecciones.length === 0 && aoSecciones.length === 0) {
+    showToast('No hay responsabilidades pendientes para ' + mesNombre);
+    return;
+  }
+
+  var body = 'Hola,\n\n';
+  body += 'Te comparto el resumen de responsabilidades fiscales pendientes para ' + mesNombre + ' 2026.\n\n';
+
+  if (clienteSecciones.length > 0) {
+    body += 'LO QUE NECESITAMOS DE TI:\n\n';
+    clienteSecciones.forEach(function(sec) {
+      body += sec.nombre + ' (limite DGII: ' + sec.limite + ')\n';
+      sec.tareas.forEach(function(t) {
+        body += '  - ' + t.text;
+        if (t.fecha) body += ' // ' + t.fecha;
+        body += '\n';
+      });
+      body += '\n';
+    });
+  }
+
+  if (aoSecciones.length > 0) {
+    body += 'LO QUE HACEMOS NOSOTROS:\n\n';
+    aoSecciones.forEach(function(sec) {
+      body += sec.nombre + '\n';
+      sec.tareas.forEach(function(t) {
+        body += '  - ' + t.text;
+        if (t.fecha) body += ' // ' + t.fecha;
+        body += '\n';
+      });
+      body += '\n';
+    });
+  }
+
+  body += 'Cualquier duda quedo atento.\n\nSaludos,\nAccount One';
+
+  var subject = 'Responsabilidades fiscales pendientes - ' + mesNombre + ' 2026 - ' + clienteNombre;
+  window.open('mailto:?subject=' + encodeURIComponent(subject) + '&body=' + encodeURIComponent(body));
+}
+
 // ==================== CHECKLIST TABS ====================
+var OBL_MAP = { 'TSS': 'tss', 'IR-3': 'ir3', 'IR-17': 'ir17', 'Anticipo': 'anticipo', 'ITBIS': 'itbis' };
+function getObligacion(impId) {
+  var oblId = OBL_MAP[impId];
+  if (!oblId) return null;
+  for (var i = 0; i < OBLIGACIONES.length; i++) {
+    if (OBLIGACIONES[i].id === oblId) return OBLIGACIONES[i];
+  }
+  return null;
+}
+
 function renderChecklist(el, impuesto, backHtml) {
   var items = CHECKLIST[impuesto];
   if (!items) { el.innerHTML = ''; return; }
@@ -1747,6 +1864,16 @@ function renderChecklist(el, impuesto, backHtml) {
   }
   h += '<div style="margin-bottom:16px"><span style="font-size:1.1rem;font-weight:700">' + esc(impuesto) + '</span>';
   h += '<span style="font-size:0.85rem;color:var(--muted);margin-left:12px">' + MESES_FULL[MESES_KEY.indexOf(selectedMes)] + ' 2026</span></div>';
+
+  var obl = getObligacion(impuesto);
+  if (obl) {
+    h += '<div class="fechas-strip">';
+    h += '<div class="fecha-item"><span class="fecha-lbl">A tiempo</span><span class="fecha-val fv-green">' + esc(obl.fechas.aTiempo) + '</span></div>';
+    h += '<div class="fecha-item"><span class="fecha-lbl">Tarde</span><span class="fecha-val fv-amber">' + esc(obl.fechas.tarde) + '</span></div>';
+    h += '<div class="fecha-item"><span class="fecha-lbl">AO procesa</span><span class="fecha-val fv-blue">' + esc(obl.fechas.ao) + '</span></div>';
+    h += '<div class="fecha-item"><span class="fecha-lbl">Límite DGII</span><span class="fecha-val fv-red">' + esc(obl.fechas.dgii) + '</span></div>';
+    h += '</div>';
+  }
 
   h += '<div class="task-section">';
 
