@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Impuestos — Account One</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <style>
 :root {
   --navy: #1a2332; --navy-mid: #2a3a4e; --blue: #4361ee; --green: #10b981;
@@ -235,6 +236,52 @@ body.embed .nav-area { margin-top:-12px; }
 
 /* ─── Loading ─── */
 .loading { text-align:center; padding:40px; color:var(--muted); font-size:0.85rem; }
+
+/* ─── Resumen tab ─── */
+.res-greeting { background:var(--navy); border-radius:12px; padding:20px 24px; margin-bottom:16px; }
+.res-greeting h2 { font-size:1.1rem; font-weight:700; color:#fff; margin:0 0 4px; }
+.res-greeting p { font-size:0.78rem; color:rgba(255,255,255,0.55); margin:0; }
+.res-urgency { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; margin-bottom:12px; }
+.res-insights { background:#f8fafc; border:1px solid var(--border); border-radius:10px; padding:12px 16px; margin-bottom:16px; display:flex; flex-direction:column; gap:6px; }
+.res-insight-item { font-size:0.82rem; color:var(--navy); line-height:1.4; }
+.res-insight-icon { font-weight:700; margin-right:4px; }
+.res-urg-card { border-radius:12px; padding:14px 16px; border-left:4px solid; }
+.res-urg-card .urg-label { font-size:0.65rem; text-transform:uppercase; letter-spacing:0.5px; margin:0 0 4px; }
+.res-urg-card .urg-num { font-size:1.6rem; font-weight:700; margin:0; }
+.res-urg-card .urg-sub { font-size:0.72rem; margin:2px 0 0; }
+.res-urg-urgent { background:#fef2f2; border-color:var(--red); }
+.res-urg-urgent .urg-label,.res-urg-urgent .urg-sub { color:#991b1b; }
+.res-urg-urgent .urg-num { color:#7f1d1d; }
+.res-urg-warn { background:#fffbeb; border-color:var(--amber); }
+.res-urg-warn .urg-label,.res-urg-warn .urg-sub { color:#92400e; }
+.res-urg-warn .urg-num { color:#78350f; }
+.res-urg-soon { background:#eff6ff; border-color:var(--blue); }
+.res-urg-soon .urg-label,.res-urg-soon .urg-sub { color:#1e40af; }
+.res-urg-soon .urg-num { color:#1e3a5f; }
+.res-charts { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:16px; }
+.res-chart-card { background:var(--card); border-radius:12px; padding:16px; border:1px solid var(--border); }
+.res-chart-card h4 { font-size:0.78rem; font-weight:600; color:var(--navy); margin:0 0 10px; }
+.res-section { background:var(--card); border-radius:12px; padding:20px; border:1px solid var(--border); margin-bottom:16px; }
+.res-section-hdr { display:flex; align-items:center; gap:8px; margin-bottom:14px; }
+.res-section-hdr h3 { font-size:0.82rem; font-weight:700; margin:0; }
+.res-section-hdr .res-icon { width:22px; height:22px; border-radius:6px; display:flex; align-items:center; justify-content:center; font-size:0.72rem; color:#fff; }
+.res-ok { text-align:center; padding:30px; color:var(--green); font-weight:600; font-size:0.9rem; }
+.res-client-group { margin-bottom:14px; border:1px solid var(--border); border-radius:10px; overflow:hidden; }
+.res-client-hdr { display:flex; justify-content:space-between; align-items:center; padding:10px 14px; background:#f8f9fb; border-bottom:1px solid var(--border); cursor:pointer; }
+.res-client-hdr:hover { background:#f0f2f5; }
+.res-client-name { font-size:0.82rem; font-weight:600; color:var(--navy); }
+.res-client-count { font-size:0.72rem; font-weight:600; padding:2px 10px; border-radius:10px; }
+.res-client-count.urgent { background:#fef2f2; color:#dc2626; }
+.res-client-count.warn { background:#fffbeb; color:#d97706; }
+.res-client-count.soon { background:#eff6ff; color:#1d4ed8; }
+.res-client-items { padding:0; }
+.res-items-table { width:100%; border-collapse:collapse; font-size:0.78rem; }
+.res-items-table thead th { font-size:0.62rem; text-transform:uppercase; letter-spacing:0.4px; color:var(--muted); font-weight:600; padding:6px 8px; border-bottom:1px solid var(--border); text-align:left; }
+.res-items-table thead th:not(:first-child) { text-align:center; }
+.res-items-table tbody td { padding:7px 8px; border-bottom:1px solid #f1f3f7; }
+.res-items-table tbody tr:last-child td { border-bottom:none; }
+.res-td-center { text-align:center; font-size:0.74rem; color:var(--muted); }
+.res-items-table tbody tr:hover td { background:#fafbfc; }
 </style>
 </head>
 <body>
@@ -275,14 +322,16 @@ body.embed .nav-area { margin-top:-12px; }
   </div>
 
   <div class="main-tabs" id="mainTabs">
-    <button class="main-tab active" id="tab-checklist" onclick="switchMainTab('checklist')">Checklist</button>
+    <button class="main-tab active" id="tab-resumen" onclick="switchMainTab('resumen')">Resumen</button>
+    <button class="main-tab" id="tab-checklist" onclick="switchMainTab('checklist')">Checklist</button>
     <button class="main-tab" id="tab-kpi" onclick="switchMainTab('kpi')">KPI</button>
   </div>
 
   <div id="navArea"></div>
 
   <div class="content">
-    <div id="checklistPanel">
+    <div id="resumenPanel"></div>
+    <div id="checklistPanel" style="display:none">
       <div id="mainView"></div>
       <div id="detailView" style="display:none"></div>
     </div>
@@ -407,7 +456,8 @@ var selectedMes = '';
 var selectedContadora = 'Todas';
 var currentView = 'main'; // 'main' or 'detail'
 var impViewMode = 'table'; // 'table' or 'cards'
-var mainTab = 'checklist'; // 'checklist' or 'kpi'
+var mainTab = 'resumen'; // 'resumen', 'checklist' or 'kpi'
+var resAnalista = 'Todas'; // pill filter for resumen
 
 // Data
 var asignacionesRaw = []; // all raw assignment rows
@@ -553,11 +603,15 @@ function mapKey(cliente, mes, impuesto) {
 
 function switchMainTab(tab) {
   mainTab = tab;
+  document.getElementById('tab-resumen').className = 'main-tab' + (tab === 'resumen' ? ' active' : '');
   document.getElementById('tab-checklist').className = 'main-tab' + (tab === 'checklist' ? ' active' : '');
   document.getElementById('tab-kpi').className = 'main-tab' + (tab === 'kpi' ? ' active' : '');
+  document.getElementById('resumenPanel').style.display = tab === 'resumen' ? '' : 'none';
   document.getElementById('checklistPanel').style.display = tab === 'checklist' ? '' : 'none';
   document.getElementById('kpiPanel').style.display = tab === 'kpi' ? '' : 'none';
-  document.getElementById('navArea').style.display = tab === 'checklist' ? '' : 'none';
+  document.getElementById('navArea').style.display = (tab === 'checklist' || tab === 'resumen') ? '' : 'none';
+  if (tab === 'resumen') { renderResNav(); renderResContent(); }
+  if (tab === 'checklist') { renderNav(); renderMain(); }
   if (tab === 'kpi') renderKpi();
 }
 
@@ -625,8 +679,9 @@ async function initApp() {
     });
   }
 
-  renderNav();
-  renderMain();
+  // Resumen tab by default
+  renderResNav();
+  renderResContent();
 }
 
 // ==================== DATA ====================
@@ -1376,6 +1431,349 @@ async function handleSave() {
   await loadImpuestos();
   showToast('Cambios guardados');
   renderDetail();
+}
+
+// ==================== RESUMEN ====================
+
+// Admin del resumen: tiene acceso a edicion de impuestos
+function isImpResAdmin() {
+  return tengoPermiso('impuestos', 'checklist', 'edicion');
+}
+
+function getImpResGreeting() {
+  var h = new Date().getHours();
+  if (h < 12) return 'Buenos dias';
+  if (h < 18) return 'Buenas tardes';
+  return 'Buenas noches';
+}
+
+function getImpResFirstName() {
+  if (!userNameVal) return '';
+  return userNameVal.split(' ')[0];
+}
+
+// Get sorted analyst names from _maestra
+function getAnalistaNames() {
+  var maestra = contadorasMap._maestra || {};
+  return sortContadoras(Object.keys(maestra));
+}
+
+// Build all pending obligations across analysts/clients/months
+// Urgencia basada en deadline del impuesto:
+//   Próximo a vencer = 7 dias antes del deadline
+//   Vencido = 3 dias antes del deadline hasta deadline
+//   Urgente = pasado el deadline
+function impResBuildPendientes() {
+  var hoy = new Date();
+  hoy.setHours(12, 0, 0, 0);
+  var isAdmin = isImpResAdmin();
+  var urgentes = [];
+  var vencidos = [];
+  var proximos = [];
+
+  // Meses: enero hasta mes actual + 1 (para ver lo que viene)
+  var mesActualIdx = hoy.getMonth();
+  var mesesRecorrer = [];
+  for (var i = 0; i <= mesActualIdx + 1 && i < 12; i++) {
+    mesesRecorrer.push(i);
+  }
+
+  // Analistas a recorrer
+  var analistasParaRecorrer;
+  if (isAdmin) {
+    if (resAnalista === 'Todas') {
+      analistasParaRecorrer = getAnalistaNames();
+    } else {
+      analistasParaRecorrer = [resAnalista];
+    }
+  } else {
+    // Individual: solo sus clientes
+    var maestra = contadorasMap._maestra || {};
+    analistasParaRecorrer = Object.keys(maestra).filter(function(c) {
+      return userNameVal.indexOf(c) >= 0 || c.indexOf(userNameVal) >= 0;
+    });
+  }
+
+  var anio = new Date().getFullYear();
+
+  analistasParaRecorrer.forEach(function(analista) {
+    var maestra = contadorasMap._maestra || {};
+    var clientes = maestra[analista] || [];
+
+    clientes.forEach(function(cliente) {
+      mesesRecorrer.forEach(function(mesIdx) {
+        var mesKey = MESES_KEY[mesIdx];
+
+        IMPUESTOS.forEach(function(imp) {
+          var items = getItemsForTax(imp.id);
+          var lastItem = items[items.length - 1];
+          if (!lastItem) return;
+
+          // Verificar si el ultimo paso esta hecho
+          var row = getImpuestoRow(cliente, mesKey, imp.id);
+          var datos = row ? (row.datos || {}) : {};
+          var lastState = datos[lastItem.id];
+
+          // Si el ultimo paso esta completado, esta declaracion esta lista
+          if (lastState) {
+            if (lastItem.special === 'select') {
+              if (lastState.valor === 'si' || lastState.valor === 'n/a') return;
+            } else {
+              if (lastState.done === true || lastState.done === 'na') return;
+            }
+          }
+
+          var deadline = getDeadlineDate(imp.id, mesKey, anio);
+          if (!deadline) return;
+          var deadlineCopy = new Date(deadline);
+          deadlineCopy.setHours(12, 0, 0, 0);
+
+          var diasHastaDeadline = Math.ceil((deadlineCopy - hoy) / (1000 * 60 * 60 * 24));
+
+          // Tipo badge CSS
+          var tipoCss = 'tipo-' + imp.id.toLowerCase().replace('-', '');
+
+          var obj = {
+            analista: analista,
+            cliente: cliente,
+            impuesto: imp.label,
+            tipoCss: tipoCss,
+            label: imp.label,
+            mes: MESES_LABEL[mesIdx],
+            mesKey: mesKey,
+            deadline: deadline,
+            diasAtraso: -diasHastaDeadline
+          };
+
+          if (diasHastaDeadline < 0) {
+            // Pasado el deadline = urgente
+            urgentes.push(obj);
+          } else if (diasHastaDeadline <= 3) {
+            // 0-3 dias = vencido (a punto de vencer)
+            vencidos.push(obj);
+          } else if (diasHastaDeadline <= 7) {
+            // 4-7 dias = proximo a vencer
+            proximos.push(obj);
+          }
+        });
+      });
+    });
+  });
+
+  urgentes.sort(function(a, b) { return b.diasAtraso - a.diasAtraso; });
+  vencidos.sort(function(a, b) { return b.diasAtraso - a.diasAtraso; });
+  proximos.sort(function(a, b) { return a.diasAtraso - b.diasAtraso; });
+
+  return { urgentes: urgentes, vencidos: vencidos, proximos: proximos };
+}
+
+function renderResNav() {
+  var el = document.getElementById('navArea');
+  if (mainTab !== 'resumen') return;
+  if (isImpResAdmin()) {
+    var analistas = getAnalistaNames();
+    var h = '<div class="nav-area"><div class="contadora-pills" style="margin-top:10px">';
+    h += '<button class="contadora-pill' + (resAnalista === 'Todas' ? ' active' : '') + '" onclick="resSwitchAnalista(\'Todas\')">Todas</button>';
+    analistas.forEach(function(name) {
+      h += '<button class="contadora-pill' + (resAnalista === name ? ' active' : '') + '" onclick="resSwitchAnalista(\'' + escJs(name) + '\')">' + esc(name) + '</button>';
+    });
+    h += '</div></div>';
+    el.innerHTML = h;
+  } else {
+    el.innerHTML = '';
+  }
+}
+
+function resSwitchAnalista(name) {
+  resAnalista = name;
+  renderResNav();
+  renderResContent();
+}
+
+function renderResContent() {
+  var el = document.getElementById('resumenPanel');
+  var isAdmin = isImpResAdmin();
+  var pendientes = impResBuildPendientes();
+  var urgentes = pendientes.urgentes;
+  var vencidos = pendientes.vencidos;
+  var proximos = pendientes.proximos;
+  var totalAtrasadas = urgentes.length + vencidos.length;
+
+  var h = '';
+
+  // ── Greeting ──
+  h += '<div class="res-greeting">';
+  h += '<h2>' + getImpResGreeting() + ', ' + getImpResFirstName() + '</h2>';
+  if (totalAtrasadas > 0) {
+    h += '<p>Tienes ' + totalAtrasadas + ' declaracion' + (totalAtrasadas > 1 ? 'es' : '') + ' que requieren atencion.</p>';
+  } else if (proximos.length > 0) {
+    h += '<p>' + proximos.length + ' declaracion' + (proximos.length > 1 ? 'es' : '') + ' proxima' + (proximos.length > 1 ? 's' : '') + ' a vencer.</p>';
+  } else {
+    h += '<p>Estas al dia con todas las declaraciones fiscales.</p>';
+  }
+  h += '</div>';
+
+  // ── Urgency cards ──
+  h += '<div class="res-urgency">';
+  h += '<div class="res-urg-card res-urg-urgent"><p class="urg-label">Urgente</p><p class="urg-num">' + urgentes.length + '</p><p class="urg-sub">pasado el limite</p></div>';
+  h += '<div class="res-urg-card res-urg-warn"><p class="urg-label">Por vencer</p><p class="urg-num">' + vencidos.length + '</p><p class="urg-sub">a 3 dias del limite</p></div>';
+  h += '<div class="res-urg-card res-urg-soon"><p class="urg-label">Proximo</p><p class="urg-num">' + proximos.length + '</p><p class="urg-sub">a 7 dias del limite</p></div>';
+  h += '</div>';
+
+  // ── Insights (solo admins) ──
+  if (isAdmin && totalAtrasadas > 0) {
+    var todosAtrasados = urgentes.concat(vencidos);
+    var anaMap = {};
+    todosAtrasados.forEach(function(p) { anaMap[p.analista] = (anaMap[p.analista] || 0) + 1; });
+    var topAnalista = Object.keys(anaMap).sort(function(a, b) { return anaMap[b] - anaMap[a]; })[0];
+    var cliMap = {};
+    todosAtrasados.forEach(function(p) { cliMap[p.cliente] = (cliMap[p.cliente] || 0) + 1; });
+    var topCliente = Object.keys(cliMap).sort(function(a, b) { return cliMap[b] - cliMap[a]; })[0];
+
+    h += '<div class="res-insights">';
+    if (topAnalista) h += '<div class="res-insight-item"><span class="res-insight-icon" style="color:#ef4444">▸</span> La analista con mas atrasos es <strong>' + esc(topAnalista) + '</strong> (' + anaMap[topAnalista] + ' pendiente' + (anaMap[topAnalista] > 1 ? 's' : '') + ')</div>';
+    if (topCliente) h += '<div class="res-insight-item"><span class="res-insight-icon" style="color:#f59e0b">▸</span> El cliente con mas declaraciones pendientes es <strong>' + esc(topCliente) + '</strong> (' + cliMap[topCliente] + ' pendiente' + (cliMap[topCliente] > 1 ? 's' : '') + ')</div>';
+    h += '</div>';
+  }
+
+  // ── Charts ──
+  var todosItems = urgentes.concat(vencidos).concat(proximos);
+  if (todosItems.length > 0) {
+    h += '<div class="res-charts">';
+    h += '<div class="res-chart-card"><h4>Por tipo de impuesto</h4><div style="position:relative;height:180px"><canvas id="impResChartImpuesto"></canvas></div></div>';
+    h += '<div class="res-chart-card"><h4>Por cliente</h4><div style="position:relative;height:180px"><canvas id="impResChartCliente"></canvas></div></div>';
+    h += '</div>';
+  }
+
+  // ── Urgente section ──
+  if (urgentes.length > 0) {
+    h += impResRenderSection('Urgente', urgentes, 'urgent', '#ef4444', isAdmin);
+  }
+
+  // ── Vencido section ──
+  if (vencidos.length > 0) {
+    h += impResRenderSection('Por vencer', vencidos, 'warn', '#f59e0b', isAdmin);
+  }
+
+  // ── Próximo section ──
+  if (proximos.length > 0) {
+    h += impResRenderSection('Proximo a vencer', proximos, 'soon', '#4361ee', isAdmin);
+  }
+
+  // ── Al dia ──
+  if (urgentes.length === 0 && vencidos.length === 0 && proximos.length === 0) {
+    h += '<div class="res-section"><div class="res-ok">Al dia — todas las declaraciones fiscales estan completadas</div></div>';
+  }
+
+  el.innerHTML = h;
+
+  // Charts after DOM
+  if (todosItems.length > 0) {
+    impResRenderCharts(todosItems);
+  }
+}
+
+function impResFmtDate(d) {
+  if (!d) return '';
+  return d.toLocaleDateString('es-DO', { day: 'numeric', month: 'short' });
+}
+
+function impResDiasColor(dias) {
+  if (dias > 0) return '#ef4444';
+  return '#f59e0b';
+}
+
+function impResRenderSection(titulo, items, colorClass, iconColor, isAdmin) {
+  var icon = colorClass === 'urgent' ? '!' : (colorClass === 'soon' ? '⏳' : '⏱');
+  var h = '<div class="res-section">';
+  h += '<div class="res-section-hdr"><div class="res-icon" style="background:' + iconColor + '">' + icon + '</div>';
+  h += '<h3>' + titulo + '</h3></div>';
+
+  // Group by analista+client
+  var groups = {};
+  items.forEach(function(p) {
+    var key = p.analista + '|||' + p.cliente;
+    if (!groups[key]) groups[key] = { analista: p.analista, cliente: p.cliente, items: [] };
+    groups[key].items.push(p);
+  });
+
+  var groupKeys = Object.keys(groups).sort();
+  groupKeys.forEach(function(key) {
+    var g = groups[key];
+    h += '<div class="res-client-group">';
+    h += '<div class="res-client-hdr">';
+    h += '<span class="res-client-name">';
+    if (isAdmin && resAnalista === 'Todas') h += '<span style="font-weight:400;color:var(--muted);font-size:0.72rem">' + esc(g.analista) + ' &rarr; </span>';
+    h += esc(g.cliente) + '</span>';
+    h += '<span class="res-client-count ' + colorClass + '">' + g.items.length + ' pendiente' + (g.items.length > 1 ? 's' : '') + '</span>';
+    h += '</div>';
+    h += '<table class="res-items-table"><thead><tr>';
+    h += '<th>Impuesto</th><th>Mes</th><th>Limite</th><th>Dias</th>';
+    h += '</tr></thead><tbody>';
+    g.items.forEach(function(p) {
+      var diasColor = impResDiasColor(p.diasAtraso);
+      h += '<tr>';
+      h += '<td><span class="tipo-badge ' + p.tipoCss + '">' + esc(p.label) + '</span></td>';
+      h += '<td class="res-td-center">' + p.mes + '</td>';
+      h += '<td class="res-td-center">' + impResFmtDate(p.deadline) + '</td>';
+      h += '<td class="res-td-center" style="font-weight:700;color:' + diasColor + '">' + (p.diasAtraso > 0 ? '+' : '') + p.diasAtraso + 'd</td>';
+      h += '</tr>';
+    });
+    h += '</tbody></table>';
+    h += '</div>';
+  });
+
+  h += '</div>';
+  return h;
+}
+
+function impResRenderCharts(todos) {
+  if (typeof Chart === 'undefined') return;
+  var CHART_COLORS = { 'TSS': '#4361ee', 'IR-3': '#8b5cf6', 'IR-17': '#d97706', 'Anticipo': '#db2777', 'ITBIS': '#059669' };
+
+  // Chart 1: by impuesto
+  var impMap = {};
+  todos.forEach(function(p) { impMap[p.impuesto] = (impMap[p.impuesto] || 0) + 1; });
+  var impLabels = Object.keys(impMap).sort(function(a, b) { return impMap[b] - impMap[a]; });
+  var impData = impLabels.map(function(l) { return impMap[l]; });
+  var impColors = impLabels.map(function(l) { return CHART_COLORS[l] || '#888'; });
+
+  var c1 = document.getElementById('impResChartImpuesto');
+  if (c1) {
+    new Chart(c1, {
+      type: 'bar',
+      data: { labels: impLabels, datasets: [{ data: impData, backgroundColor: impColors, borderRadius: 4, barThickness: 16 }] },
+      options: {
+        indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { grid: { display: false }, ticks: { font: { size: 10 }, stepSize: 1 } },
+          y: { grid: { display: false }, ticks: { font: { size: 11 } } }
+        }
+      }
+    });
+  }
+
+  // Chart 2: by client (top 8)
+  var cliMap = {};
+  todos.forEach(function(p) { cliMap[p.cliente] = (cliMap[p.cliente] || 0) + 1; });
+  var cliSorted = Object.keys(cliMap).sort(function(a, b) { return cliMap[b] - cliMap[a]; }).slice(0, 8);
+  var cliData = cliSorted.map(function(c) { return cliMap[c]; });
+  var cliColors = ['#4361ee', '#8b5cf6', '#10b981', '#f59e0b', '#ef4444', '#db2777', '#059669', '#6366f1'];
+
+  var c2 = document.getElementById('impResChartCliente');
+  if (c2) {
+    new Chart(c2, {
+      type: 'doughnut',
+      data: { labels: cliSorted, datasets: [{ data: cliData, backgroundColor: cliColors.slice(0, cliSorted.length), borderWidth: 2, borderColor: '#fff' }] },
+      options: {
+        responsive: true, maintainAspectRatio: false, cutout: '55%',
+        plugins: {
+          legend: { display: true, position: 'right', labels: { font: { size: 10 }, padding: 6, usePointStyle: true, pointStyleWidth: 8 } }
+        }
+      }
+    });
+  }
 }
 
 // ==================== BOOT ====================
