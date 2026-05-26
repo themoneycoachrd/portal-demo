@@ -491,6 +491,35 @@ function getWeekQty(weekObj) {
   return weekObj || 0;
 }
 
+// Calcula rangos de fechas para las 5 semanas de un mes (año 2026)
+// Semanas por lunes: sem 1 = primer lunes hasta domingo, etc.
+// Si el mes empieza mid-week, sem 1 incluye esos días iniciales.
+function getWeekRanges(mesIdx) {
+  const year = 2026;
+  const lastDay = new Date(year, mesIdx + 1, 0).getDate();
+  const MESES_CORTOS = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+  const mc = MESES_CORTOS[mesIdx];
+
+  // Encontrar primer lunes
+  let firstMon = 1;
+  while (new Date(year, mesIdx, firstMon).getDay() !== 1 && firstMon <= 7) firstMon++;
+
+  const ranges = [];
+  // Si el mes no empieza en lunes, sem 1 = día 1 al domingo antes del primer lunes
+  if (firstMon > 1) {
+    ranges.push('1-' + (firstMon - 1) + ' ' + mc);
+  }
+  // Semanas completas desde el primer lunes
+  let cursor = firstMon;
+  while (ranges.length < 5) {
+    if (cursor > lastDay) { ranges.push(''); continue; }
+    const wEnd = Math.min(cursor + 6, lastDay);
+    ranges.push(cursor + '-' + wEnd + ' ' + mc);
+    cursor = wEnd + 1;
+  }
+  return ranges;
+}
+
 async function saveDetalle(contadora, mes) {
   if (saving) return;
   saving = true;
@@ -813,7 +842,13 @@ function renderKPIDetail(el) {
   html += '<div class="dig-stat"><div class="dig-stat-label">Tx digitadas</div><div class="dig-stat-value" style="color:' + getBarColor(digPct) + '">' + scores.digActual + '</div></div></div>';
 
   // Client x Week table with Contratado + Adm columns
-  html += '<div style="overflow-x:auto"><table class="dig-table"><thead><tr><th style="text-align:left">Cliente</th><th>Contratado</th><th>Adm</th><th>Sem 1</th><th>Sem 2</th><th>Sem 3</th><th>Sem 4</th><th>Sem 5</th><th>Total</th></tr></thead><tbody>';
+  const weekRanges = getWeekRanges(mesIdx);
+  html += '<div style="overflow-x:auto"><table class="dig-table"><thead><tr><th style="text-align:left">Cliente</th><th>Contratado</th><th>Adm</th>';
+  for (let wi = 0; wi < 5; wi++) {
+    const rng = weekRanges[wi];
+    html += '<th>S' + (wi + 1) + (rng ? '<br><span style="font-weight:400;font-size:0.65rem;color:var(--muted)">' + rng + '</span>' : '') + '</th>';
+  }
+  html += '<th>Total</th></tr></thead><tbody>';
 
   let grandTotal = 0;
   clients.forEach(cl => {

@@ -430,16 +430,17 @@ function getCurrentMonth() {
   return MESES_KEY[new Date().getMonth()];
 }
 
-var CONTADORA_EXCLUIDAS = ['Milka', 'Milka (freelance)', 'Yolenny'];
-var CONTADORA_ORDER = ['Taina', 'Beliani', 'Victoria', 'Yessica', 'Karina', 'Sin asignar'];
+var ANALISTAS_IMPUESTOS = ['Karina', 'Lovelis', 'Doriluz'];
+var CONTADORA_ORDER = ['Karina', 'Lovelis', 'Doriluz', 'Sin asignar'];
 
 function sortContadoras(names) {
   return names
     .filter(function(n) {
-      for (var i = 0; i < CONTADORA_EXCLUIDAS.length; i++) {
-        if (n === CONTADORA_EXCLUIDAS[i] || n.indexOf(CONTADORA_EXCLUIDAS[i]) === 0) return false;
+      if (n === 'Sin asignar') return true;
+      for (var i = 0; i < ANALISTAS_IMPUESTOS.length; i++) {
+        if (n === ANALISTAS_IMPUESTOS[i] || n.indexOf(ANALISTAS_IMPUESTOS[i]) === 0) return true;
       }
-      return true;
+      return false;
     })
     .sort(function(a, b) {
       var ia = CONTADORA_ORDER.indexOf(a);
@@ -674,17 +675,18 @@ function getContadorasForMes(mes) {
 }
 
 function isContadoraExcluida(name) {
-  for (var i = 0; i < CONTADORA_EXCLUIDAS.length; i++) {
-    if (name === CONTADORA_EXCLUIDAS[i] || name.indexOf(CONTADORA_EXCLUIDAS[i]) === 0) return true;
+  if (name === 'Sin asignar') return false;
+  for (var i = 0; i < ANALISTAS_IMPUESTOS.length; i++) {
+    if (name === ANALISTAS_IMPUESTOS[i] || name.indexOf(ANALISTAS_IMPUESTOS[i]) === 0) return false;
   }
-  return false;
+  return true;
 }
 
 function getClientsForMonth() {
   var mesMap = getContadorasForMes(selectedMes);
   var clients = {};
   Object.keys(mesMap).forEach(function(contadora) {
-    if (isContadoraExcluida(contadora)) return;
+    // Si hay una pill seleccionada, filtrar por ella
     if (selectedContadora !== 'Todas' && contadora !== selectedContadora) return;
     mesMap[contadora].forEach(function(cliente) {
       if (!clients[cliente]) clients[cliente] = contadora;

@@ -5192,11 +5192,16 @@ function bdRenderAsignaciones() {
   var sinAsignarTotal = totalActivos - asignadosEnTabla;
   var contadorasActivas = Object.keys(contadoraCounts).filter(function(k) { return k !== 'Sin asignar'; }).length;
 
+  // Impuestos summary
+  var impAsignados = ccAllClientes.filter(function(c) { return c.activo !== false && c.responsabilidad_impuestos !== false && c.contadora_impuestos; }).length;
+  var impSinAsignar = ccAllClientes.filter(function(c) { return c.activo !== false && c.responsabilidad_impuestos !== false && !c.contadora_impuestos; }).length;
+
   h += '<div class="bd-summary">';
   h += '<div class="bd-summary-item"><div class="bd-summary-count">' + totalActivos + '</div><div class="bd-summary-label">Total clientes</div></div>';
-  h += '<div class="bd-summary-item"><div class="bd-summary-count">' + asignadosEnTabla + '</div><div class="bd-summary-label">Asignados</div></div>';
-  h += '<div class="bd-summary-item"><div class="bd-summary-count" style="color:' + (sinAsignarTotal > 0 ? 'var(--red)' : 'var(--green)') + '">' + sinAsignarTotal + '</div><div class="bd-summary-label">Sin asignar</div></div>';
-  h += '<div class="bd-summary-item"><div class="bd-summary-count">' + contadorasActivas + '</div><div class="bd-summary-label">Contadoras activas</div></div>';
+  h += '<div class="bd-summary-item"><div class="bd-summary-count">' + asignadosEnTabla + '</div><div class="bd-summary-label">Contab. asignados</div></div>';
+  h += '<div class="bd-summary-item"><div class="bd-summary-count" style="color:' + (sinAsignarTotal > 0 ? 'var(--red)' : 'var(--green)') + '">' + sinAsignarTotal + '</div><div class="bd-summary-label">Contab. sin asignar</div></div>';
+  h += '<div class="bd-summary-item"><div class="bd-summary-count">' + impAsignados + '</div><div class="bd-summary-label">Imp. asignados</div></div>';
+  h += '<div class="bd-summary-item"><div class="bd-summary-count" style="color:' + (impSinAsignar > 0 ? 'var(--red)' : 'var(--green)') + '">' + impSinAsignar + '</div><div class="bd-summary-label">Imp. sin asignar</div></div>';
   h += '</div>';
 
   if (rows.length === 0) {
@@ -5217,19 +5222,29 @@ function bdRenderAsignaciones() {
     h += '</div>';
   }
 
+  // Build lookup: cliente name → contadora_impuestos from master table
+  var impLookup = {};
+  var impRespLookup = {};
+  ccAllClientes.forEach(function(c) {
+    impLookup[c.nombre] = c.contadora_impuestos || '';
+    impRespLookup[c.nombre] = c.responsabilidad_impuestos;
+  });
+
   // Table
   h += '<div class="table-wrap"><table class="bd-asig-table">';
-  h += '<thead><tr><th>#</th><th>Cliente</th><th>Contadora</th><th style="text-align:right">Serv</th><th style="text-align:right">Adm</th>';
+  h += '<thead><tr><th>#</th><th>Cliente</th><th>Contadora</th><th>Analista Imp.</th><th style="text-align:right">Serv</th><th style="text-align:right">Adm</th>';
   if (canEditAsig) h += '<th></th>';
   h += '</tr></thead><tbody>';
 
   var asigLastGroup = null;
-  var asigColCount = canEditAsig ? 6 : 5;
+  var asigColCount = canEditAsig ? 7 : 6;
   rows.forEach(function(r, idx) {
     var edited = bdAsigEdits[idx];
     var contVal = edited ? edited.contadora : r.contadora;
     var servVal = edited ? edited.serv : r.serv;
     var admVal = edited ? edited.adm : r.adm;
+    var impVal = impLookup[r.cliente] || '';
+    var impResp = impRespLookup[r.cliente];
     var isSinAsignar = !contVal || contVal === 'Sin asignar';
     var groupKey = isSinAsignar ? '__sin' : '__asig';
     if (groupKey !== asigLastGroup) {
@@ -5243,17 +5258,32 @@ function bdRenderAsignaciones() {
     h += '<td style="font-weight:600;color:var(--navy)">' + esc(r.cliente) + '</td>';
 
     if (canEditAsig) {
+      // Contadora contabilidad dropdown
       h += '<td><select onchange="bdAsigEdit(' + idx + ',\'contadora\',this.value)">';
       h += '<option value="Sin asignar"' + (contVal === 'Sin asignar' ? ' selected' : '') + '>Sin asignar</option>';
       contadoraNames.forEach(function(cn) {
         h += '<option value="' + esc(cn) + '"' + (contVal === cn ? ' selected' : '') + '>' + esc(cn) + '</option>';
       });
       h += '</select></td>';
+
+      // Analista impuestos dropdown
+      if (impResp === false) {
+        h += '<td><span style="color:var(--light);font-size:0.75rem">N/A</span></td>';
+      } else {
+        h += '<td><select onchange="bdAsigImpChange(\'' + esc(r.cliente).replace(/'/g, "\\'") + '\',this.value)">';
+        h += '<option value=""' + (!impVal ? ' selected' : '') + '>Sin asignar</option>';
+        contadoraNames.forEach(function(cn) {
+          h += '<option value="' + esc(cn) + '"' + (impVal === cn ? ' selected' : '') + '>' + esc(cn) + '</option>';
+        });
+        h += '</select></td>';
+      }
+
       h += '<td><input type="number" value="' + (servVal || 0) + '" onchange="bdAsigEdit(' + idx + ',\'serv\',this.value)" style="text-align:right"></td>';
       h += '<td><input type="number" value="' + (admVal || 0) + '" onchange="bdAsigEdit(' + idx + ',\'adm\',this.value)" style="text-align:right"></td>';
       h += '<td><button style="padding:3px 8px;border:1px solid #fecaca;border-radius:6px;background:white;font-size:0.72rem;cursor:pointer;color:var(--red)" onclick="bdAsigDeleteRow(' + r.id + ')">x</button></td>';
     } else {
       h += '<td>' + esc(contVal || 'Sin asignar') + '</td>';
+      h += '<td>' + (impResp === false ? '<span style="color:var(--light);font-size:0.75rem">N/A</span>' : esc(impVal || 'Sin asignar')) + '</td>';
       h += '<td style="text-align:right">' + (servVal || 0) + '</td>';
       h += '<td style="text-align:right">' + (admVal || 0) + '</td>';
     }
@@ -5263,6 +5293,21 @@ function bdRenderAsignaciones() {
 
   h += '</tbody></table></div>';
   el.innerHTML = h;
+}
+
+// Cambiar analista de impuestos directo en tabla clientes
+async function bdAsigImpChange(clienteNombre, value) {
+  var { error } = await sb.from('clientes')
+    .update({ contadora_impuestos: value || null })
+    .eq('nombre', clienteNombre);
+  if (error) {
+    gerShowToast('Error: ' + error.message, 'error');
+    return;
+  }
+  // Actualizar data local
+  var c = ccAllClientes.find(function(x) { return x.nombre === clienteNombre; });
+  if (c) c.contadora_impuestos = value || null;
+  gerShowToast('Analista de impuestos actualizado: ' + clienteNombre);
 }
 
 function bdAsigEdit(idx, field, value) {
