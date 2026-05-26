@@ -884,15 +884,32 @@ let kpiMes = null;
 var CLIENTES_CONTAB = []; // clientes con responsabilidad_contabilidad = true
 var CLIENTES_SIN_RESP = []; // clientes activos sin responsabilidad contable
 var ASIG_ADM = {};        // { "cliente_mes": adm } — transacciones digitadas por mes
+var INICIO_FISCAL = {};   // { "NombreCliente": "2026-06-01" } — inicio de responsabilidad fiscal
+
+// Verifica si un cliente tiene responsabilidad fiscal activa para un mes dado (0=ene, 11=dic)
+function clienteActivoEnMes(clienteNombre, mesIdx) {
+  var inicio = INICIO_FISCAL[clienteNombre];
+  if (!inicio) return true; // sin fecha = siempre activo
+  var inicioDate = new Date(inicio + 'T00:00:00');
+  var year = new Date().getFullYear();
+  var primerDiaMes = new Date(year, mesIdx, 1);
+  return primerDiaMes >= inicioDate;
+}
 
 async function loadAsignaciones() {
   // 1. Cargar clientes de la maestra
   const { data: cData, error: cErr } = await sb.from('clientes')
-    .select('nombre, contadora_contabilidad, monto_adm, responsabilidad_contabilidad, activo');
+    .select('nombre, contadora_contabilidad, monto_adm, responsabilidad_contabilidad, activo, inicio_responsabilidad_fiscal');
   if (cErr) { console.error('Error cargando clientes:', cErr); return; }
   var activos = (cData || []).filter(c => c.activo !== false);
   CLIENTES_CONTAB = activos.filter(c => c.responsabilidad_contabilidad === true);
   CLIENTES_SIN_RESP = activos.filter(c => c.responsabilidad_contabilidad !== true);
+
+  // Lookup de fecha inicio fiscal por cliente (para filtrar por mes)
+  INICIO_FISCAL = {};
+  CLIENTES_CONTAB.forEach(c => {
+    if (c.inicio_responsabilidad_fiscal) INICIO_FISCAL[c.nombre] = c.inicio_responsabilidad_fiscal;
+  });
 
   // 2. Cargar asignaciones para datos mensuales de digitación (KPI)
   const { data: aData } = await sb.from('asignaciones').select('cliente, mes, adm');
@@ -907,7 +924,9 @@ async function loadAsignaciones() {
     const cont = c.contadora_contabilidad;
     if (cont && isExcluida(cont)) return;
     var grupo = cont || 'Sin asignar';
-    MESES.forEach(mes => {
+    MESES.forEach((mes, idx) => {
+      // No incluir si la responsabilidad fiscal no ha iniciado para este mes
+      if (!clienteActivoEnMes(c.nombre, idx)) return;
       const key = grupo + '_' + mes;
       if (!ASIGNACIONES[key]) ASIGNACIONES[key] = [];
       const adm = ASIG_ADM[c.nombre + '_' + mes] || 0;
@@ -1431,6 +1450,8 @@ function resBuildPendientes() {
     clientes.forEach(cliente => {
       mesesRecorrer.forEach(mes => {
         const mesIdx = MESES.indexOf(mes);
+        // Saltar si la responsabilidad fiscal no aplica para este mes
+        if (!clienteActivoEnMes(cliente, mesIdx)) return;
         const entry = getCheckData(contadora, cliente, mes);
 
         AUTH_ITEMS.forEach(item => {
