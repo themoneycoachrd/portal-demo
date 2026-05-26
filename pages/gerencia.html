@@ -346,6 +346,7 @@
   .bd-cont-table tr:hover td { background:#fafbfc; }
   .bd-cont-table tr:last-child td { border-bottom:none; }
   .bd-tipo-plena { display:inline-block; padding:2px 8px; border-radius:10px; font-size:0.7rem; font-weight:600; background:#dbeafe; color:#1e40af; }
+  .bd-tipo-impuestos { display:inline-block; padding:2px 8px; border-radius:10px; font-size:0.7rem; font-weight:600; background:#fef3c7; color:#92400e; }
   .bd-tipo-facturacion { display:inline-block; padding:2px 8px; border-radius:10px; font-size:0.7rem; font-weight:600; background:#fef3c7; color:#92400e; }
   .bd-tipo-freelance { display:inline-block; padding:2px 8px; border-radius:10px; font-size:0.7rem; font-weight:600; background:#ede9fe; color:#5b21b6; }
 
@@ -727,23 +728,31 @@
 <div class="modal-overlay hidden" id="bd-cont-modal-overlay" onclick="if(event.target===this)bdContCloseModal()">
   <div class="modal">
     <div class="modal-header">
-      <h3 id="bd-cont-modal-title">Nueva contadora</h3>
+      <h3 id="bd-cont-modal-title">Agregar personal</h3>
       <button class="modal-close" onclick="bdContCloseModal()" title="Cerrar">✕</button>
     </div>
     <div class="m-field">
       <label>Nombre *</label>
-      <input type="text" id="bd-cont-m-nombre" placeholder="Nombre de la contadora">
+      <input type="text" id="bd-cont-m-nombre" placeholder="Nombre completo">
       <div class="m-error" id="bd-cont-m-nombre-err">Campo obligatorio</div>
     </div>
     <div class="m-row">
       <div class="m-field">
-        <label>Tipo</label>
-        <select id="bd-cont-m-tipo">
-          <option value="plena">Plena (contabilidad completa)</option>
-          <option value="facturacion">Facturación electrónica</option>
+        <label>Rol</label>
+        <select id="bd-cont-m-rol">
+          <option value="contadora">Contadora</option>
+          <option value="analista">Analista de impuestos</option>
+        </select>
+      </div>
+      <div class="m-field">
+        <label>Dedicación</label>
+        <select id="bd-cont-m-dedicacion">
+          <option value="tiempo_completo">Tiempo completo</option>
           <option value="freelance">Freelance</option>
         </select>
       </div>
+    </div>
+    <div class="m-row">
       <div class="m-field">
         <label>Capacidad mensual</label>
         <input type="number" id="bd-cont-m-capacidad" placeholder="Ej: 1000">
@@ -992,7 +1001,7 @@ function renderGerMainTabs() {
   const el = document.getElementById('mainTabs');
   var tabs = [
     { id:'clientes', label:'Clientes' },
-    { id:'contadoras', label:'Contadoras' }
+    { id:'contadoras', label:'Personal' }
   ];
   if (!tengoPermiso('gerencia', 'contadoras', 'consulta')) {
     tabs = tabs.filter(t => t.id !== 'contadoras');
@@ -1449,7 +1458,7 @@ function ccRenderMainTabs() {
     {id:'servicios', label:'Outsourcing', perm:'clientes'},
     {id:'software', label:'Software', perm:'clientes'},
     {id:'implementacion', label:'Implementaciones', perm:'clientes'},
-    {id:'contadoras-maestra', label:'Contadoras', perm:'basedatos', permKey:'contadoras'},
+    {id:'contadoras-maestra', label:'Personal', perm:'basedatos', permKey:'contadoras'},
     {id:'asignaciones', label:'Asignaciones', perm:'basedatos', permKey:'asignaciones'},
     {id:'link-dashboard', label:'Link Dashboard', perm:'basedatos', permKey:'links-portal'},
     {id:'facturacion', label:'Facturación', perm:'facturacion'}
@@ -4608,35 +4617,42 @@ function bdRenderContadoras() {
   var totalAsigMes = asigMes.filter(function(a) { return a.contadora && a.contadora !== 'Sin asignar'; }).length;
 
   var activas = bdContadoras.filter(function(c) { return c.activa; }).length;
-  var plenas = bdContadoras.filter(function(c) { return c.activa && c.tipo === 'plena'; }).length;
+  var contadoras = bdContadoras.filter(function(c) { return c.activa && c.rol === 'contadora'; }).length;
+  var analistas = bdContadoras.filter(function(c) { return c.activa && c.rol === 'analista'; }).length;
 
   h += '<div class="bd-summary">';
-  h += '<div class="bd-summary-item"><div class="bd-summary-count">' + activas + '</div><div class="bd-summary-label">Activas</div></div>';
-  h += '<div class="bd-summary-item"><div class="bd-summary-count">' + plenas + '</div><div class="bd-summary-label">Plenas</div></div>';
-  h += '<div class="bd-summary-item"><div class="bd-summary-count">' + (bdContadoras.length - activas) + '</div><div class="bd-summary-label">Inactivas</div></div>';
+  h += '<div class="bd-summary-item"><div class="bd-summary-count">' + activas + '</div><div class="bd-summary-label">Activos</div></div>';
+  h += '<div class="bd-summary-item"><div class="bd-summary-count">' + contadoras + '</div><div class="bd-summary-label">Contadoras</div></div>';
+  h += '<div class="bd-summary-item"><div class="bd-summary-count">' + analistas + '</div><div class="bd-summary-label">Analistas imp.</div></div>';
+  h += '<div class="bd-summary-item"><div class="bd-summary-count">' + (bdContadoras.length - activas) + '</div><div class="bd-summary-label">Inactivos</div></div>';
   h += '<div class="bd-summary-item"><div class="bd-summary-count">' + totalAsigMes + '</div><div class="bd-summary-label">Clientes asignados</div></div>';
   h += '</div>';
 
   var canEditCont = tengoPermiso('gerencia', 'basedatos', 'edicion', 'contadoras');
   if (canEditCont) {
-    h += '<div style="margin-bottom:14px"><button class="btn-add" onclick="bdContOpenModal()">+ Nueva contadora</button></div>';
+    h += '<div style="margin-bottom:14px"><button class="btn-add" onclick="bdContOpenModal()">+ Agregar personal</button></div>';
   }
 
   bdContadoras.sort(function(a, b) { return (a.nombre || '').localeCompare(b.nombre || '', 'es'); });
 
   h += '<table class="bd-cont-table">';
-  h += '<thead><tr><th style="width:36px">#</th><th>Nombre</th><th>Tipo</th><th>Clientes</th><th>Capacidad</th><th>Estado</th><th>Notas</th>';
+  h += '<thead><tr><th style="width:36px">#</th><th>Nombre</th><th>Rol</th><th>Dedicación</th><th>Clientes</th><th>Capacidad</th><th>Estado</th><th>Notas</th>';
   if (canEditCont) h += '<th></th>';
   h += '</tr></thead><tbody>';
 
   bdContadoras.forEach(function(c, idx) {
-    var tipoCls = 'bd-tipo-' + c.tipo;
-    var tipoLabel = c.tipo === 'plena' ? 'Plena' : (c.tipo === 'facturacion' ? 'Facturación' : 'Freelance');
+    var ROL_LABELS = { contadora: 'Contadora', analista: 'Analista' };
+    var DED_LABELS = { tiempo_completo: 'Tiempo completo', freelance: 'Freelance' };
+    var rolLabel = ROL_LABELS[c.rol] || c.rol || 'Contadora';
+    var dedLabel = DED_LABELS[c.dedicacion] || c.dedicacion || 'Tiempo completo';
+    var rolCls = c.rol === 'analista' ? 'bd-tipo-impuestos' : 'bd-tipo-plena';
+    var dedCls = c.dedicacion === 'freelance' ? 'bd-tipo-freelance' : '';
     var clientesAsig = contClientCount[c.nombre] || 0;
     h += '<tr>';
     h += '<td style="color:var(--muted);font-size:0.75rem">' + (idx + 1) + '</td>';
     h += '<td style="font-weight:600;color:var(--navy)">' + esc(c.nombre) + '</td>';
-    h += '<td><span class="' + tipoCls + '">' + tipoLabel + '</span></td>';
+    h += '<td><span class="' + rolCls + '">' + rolLabel + '</span></td>';
+    h += '<td>' + (dedCls ? '<span class="' + dedCls + '">' + dedLabel + '</span>' : dedLabel) + '</td>';
     h += '<td style="font-weight:600">' + clientesAsig + '</td>';
     h += '<td>' + (c.capacidad ? c.capacidad.toLocaleString() : '<span style="color:var(--light)">—</span>') + '</td>';
     h += '<td><span class="' + (c.activa ? 'cl-badge-activo' : 'cl-badge-inactivo') + '">' + (c.activa ? 'Activa' : 'Inactiva') + '</span></td>';
@@ -4656,16 +4672,18 @@ function bdContOpenModal(editId) {
   if (bdContEditingId) {
     var c = bdContadoras.find(function(x) { return x.id === bdContEditingId; });
     if (!c) return;
-    document.getElementById('bd-cont-modal-title').textContent = 'Editar contadora';
+    document.getElementById('bd-cont-modal-title').textContent = 'Editar personal';
     document.getElementById('bd-cont-m-nombre').value = c.nombre || '';
-    document.getElementById('bd-cont-m-tipo').value = c.tipo || 'plena';
+    document.getElementById('bd-cont-m-rol').value = c.rol || 'contadora';
+    document.getElementById('bd-cont-m-dedicacion').value = c.dedicacion || 'tiempo_completo';
     document.getElementById('bd-cont-m-capacidad').value = c.capacidad || '';
     document.getElementById('bd-cont-m-activa').value = c.activa ? 'true' : 'false';
     document.getElementById('bd-cont-m-notas').value = c.notas || '';
   } else {
-    document.getElementById('bd-cont-modal-title').textContent = 'Nueva contadora';
+    document.getElementById('bd-cont-modal-title').textContent = 'Agregar personal';
     document.getElementById('bd-cont-m-nombre').value = '';
-    document.getElementById('bd-cont-m-tipo').value = 'plena';
+    document.getElementById('bd-cont-m-rol').value = 'contadora';
+    document.getElementById('bd-cont-m-dedicacion').value = 'tiempo_completo';
     document.getElementById('bd-cont-m-capacidad').value = '';
     document.getElementById('bd-cont-m-activa').value = 'true';
     document.getElementById('bd-cont-m-notas').value = '';
@@ -4690,7 +4708,8 @@ async function bdContSave() {
   var capVal = document.getElementById('bd-cont-m-capacidad').value;
   var record = {
     nombre: nombre,
-    tipo: document.getElementById('bd-cont-m-tipo').value,
+    rol: document.getElementById('bd-cont-m-rol').value,
+    dedicacion: document.getElementById('bd-cont-m-dedicacion').value,
     activa: document.getElementById('bd-cont-m-activa').value === 'true',
     capacidad: capVal ? parseInt(capVal) : null,
     notas: document.getElementById('bd-cont-m-notas').value.trim() || ''
@@ -5020,35 +5039,42 @@ function bdRenderContadoras() {
   var totalAsigMes = asigMes.filter(function(a) { return a.contadora && a.contadora !== 'Sin asignar'; }).length;
 
   var activas = bdContadoras.filter(function(c) { return c.activa; }).length;
-  var plenas = bdContadoras.filter(function(c) { return c.activa && c.tipo === 'plena'; }).length;
+  var contadoras = bdContadoras.filter(function(c) { return c.activa && c.rol === 'contadora'; }).length;
+  var analistas = bdContadoras.filter(function(c) { return c.activa && c.rol === 'analista'; }).length;
 
   h += '<div class="bd-summary">';
-  h += '<div class="bd-summary-item"><div class="bd-summary-count">' + activas + '</div><div class="bd-summary-label">Activas</div></div>';
-  h += '<div class="bd-summary-item"><div class="bd-summary-count">' + plenas + '</div><div class="bd-summary-label">Plenas</div></div>';
-  h += '<div class="bd-summary-item"><div class="bd-summary-count">' + (bdContadoras.length - activas) + '</div><div class="bd-summary-label">Inactivas</div></div>';
+  h += '<div class="bd-summary-item"><div class="bd-summary-count">' + activas + '</div><div class="bd-summary-label">Activos</div></div>';
+  h += '<div class="bd-summary-item"><div class="bd-summary-count">' + contadoras + '</div><div class="bd-summary-label">Contadoras</div></div>';
+  h += '<div class="bd-summary-item"><div class="bd-summary-count">' + analistas + '</div><div class="bd-summary-label">Analistas imp.</div></div>';
+  h += '<div class="bd-summary-item"><div class="bd-summary-count">' + (bdContadoras.length - activas) + '</div><div class="bd-summary-label">Inactivos</div></div>';
   h += '<div class="bd-summary-item"><div class="bd-summary-count">' + totalAsigMes + '</div><div class="bd-summary-label">Clientes asignados</div></div>';
   h += '</div>';
 
   var canEditCont = tengoPermiso('gerencia', 'basedatos', 'edicion', 'contadoras');
   if (canEditCont) {
-    h += '<div style="margin-bottom:14px"><button class="btn-add" onclick="bdContOpenModal()">+ Nueva contadora</button></div>';
+    h += '<div style="margin-bottom:14px"><button class="btn-add" onclick="bdContOpenModal()">+ Agregar personal</button></div>';
   }
 
   bdContadoras.sort(function(a, b) { return (a.nombre || '').localeCompare(b.nombre || '', 'es'); });
 
   h += '<table class="bd-cont-table">';
-  h += '<thead><tr><th style="width:36px">#</th><th>Nombre</th><th>Tipo</th><th>Clientes</th><th>Capacidad</th><th>Estado</th><th>Notas</th>';
+  h += '<thead><tr><th style="width:36px">#</th><th>Nombre</th><th>Rol</th><th>Dedicación</th><th>Clientes</th><th>Capacidad</th><th>Estado</th><th>Notas</th>';
   if (canEditCont) h += '<th></th>';
   h += '</tr></thead><tbody>';
 
   bdContadoras.forEach(function(c, idx) {
-    var tipoCls = 'bd-tipo-' + c.tipo;
-    var tipoLabel = c.tipo === 'plena' ? 'Plena' : (c.tipo === 'facturacion' ? 'Facturación' : 'Freelance');
+    var ROL_LABELS = { contadora: 'Contadora', analista: 'Analista' };
+    var DED_LABELS = { tiempo_completo: 'Tiempo completo', freelance: 'Freelance' };
+    var rolLabel = ROL_LABELS[c.rol] || c.rol || 'Contadora';
+    var dedLabel = DED_LABELS[c.dedicacion] || c.dedicacion || 'Tiempo completo';
+    var rolCls = c.rol === 'analista' ? 'bd-tipo-impuestos' : 'bd-tipo-plena';
+    var dedCls = c.dedicacion === 'freelance' ? 'bd-tipo-freelance' : '';
     var clientesAsig = contClientCount[c.nombre] || 0;
     h += '<tr>';
     h += '<td style="color:var(--muted);font-size:0.75rem">' + (idx + 1) + '</td>';
     h += '<td style="font-weight:600;color:var(--navy)">' + esc(c.nombre) + '</td>';
-    h += '<td><span class="' + tipoCls + '">' + tipoLabel + '</span></td>';
+    h += '<td><span class="' + rolCls + '">' + rolLabel + '</span></td>';
+    h += '<td>' + (dedCls ? '<span class="' + dedCls + '">' + dedLabel + '</span>' : dedLabel) + '</td>';
     h += '<td style="font-weight:600">' + clientesAsig + '</td>';
     h += '<td>' + (c.capacidad ? c.capacidad.toLocaleString() : '<span style="color:var(--light)">—</span>') + '</td>';
     h += '<td><span class="' + (c.activa ? 'cl-badge-activo' : 'cl-badge-inactivo') + '">' + (c.activa ? 'Activa' : 'Inactiva') + '</span></td>';
@@ -5068,16 +5094,18 @@ function bdContOpenModal(editId) {
   if (bdContEditingId) {
     var c = bdContadoras.find(function(x) { return x.id === bdContEditingId; });
     if (!c) return;
-    document.getElementById('bd-cont-modal-title').textContent = 'Editar contadora';
+    document.getElementById('bd-cont-modal-title').textContent = 'Editar personal';
     document.getElementById('bd-cont-m-nombre').value = c.nombre || '';
-    document.getElementById('bd-cont-m-tipo').value = c.tipo || 'plena';
+    document.getElementById('bd-cont-m-rol').value = c.rol || 'contadora';
+    document.getElementById('bd-cont-m-dedicacion').value = c.dedicacion || 'tiempo_completo';
     document.getElementById('bd-cont-m-capacidad').value = c.capacidad || '';
     document.getElementById('bd-cont-m-activa').value = c.activa ? 'true' : 'false';
     document.getElementById('bd-cont-m-notas').value = c.notas || '';
   } else {
-    document.getElementById('bd-cont-modal-title').textContent = 'Nueva contadora';
+    document.getElementById('bd-cont-modal-title').textContent = 'Agregar personal';
     document.getElementById('bd-cont-m-nombre').value = '';
-    document.getElementById('bd-cont-m-tipo').value = 'plena';
+    document.getElementById('bd-cont-m-rol').value = 'contadora';
+    document.getElementById('bd-cont-m-dedicacion').value = 'tiempo_completo';
     document.getElementById('bd-cont-m-capacidad').value = '';
     document.getElementById('bd-cont-m-activa').value = 'true';
     document.getElementById('bd-cont-m-notas').value = '';
@@ -5102,7 +5130,8 @@ async function bdContSave() {
   var capVal = document.getElementById('bd-cont-m-capacidad').value;
   var record = {
     nombre: nombre,
-    tipo: document.getElementById('bd-cont-m-tipo').value,
+    rol: document.getElementById('bd-cont-m-rol').value,
+    dedicacion: document.getElementById('bd-cont-m-dedicacion').value,
     activa: document.getElementById('bd-cont-m-activa').value === 'true',
     capacidad: capVal ? parseInt(capVal) : null,
     notas: document.getElementById('bd-cont-m-notas').value.trim() || ''
@@ -5230,6 +5259,12 @@ function bdRenderAsignaciones() {
     impRespLookup[c.nombre] = c.responsabilidad_impuestos;
   });
 
+  // Analistas de impuestos: solo personal con rol 'analista' en tabla contadoras
+  var analistaNames = bdContadoras
+    .filter(function(c) { return c.activa && c.rol === 'analista'; })
+    .map(function(c) { return c.nombre; })
+    .sort(function(a, b) { return a.localeCompare(b, 'es'); });
+
   // Table
   h += '<div class="table-wrap"><table class="bd-asig-table">';
   h += '<thead><tr><th>#</th><th>Cliente</th><th>Contadora</th><th>Analista Imp.</th><th style="text-align:right">Serv</th><th style="text-align:right">Adm</th>';
@@ -5266,13 +5301,13 @@ function bdRenderAsignaciones() {
       });
       h += '</select></td>';
 
-      // Analista impuestos dropdown
+      // Analista impuestos dropdown (solo tipo 'impuestos')
       if (impResp === false) {
         h += '<td><span style="color:var(--light);font-size:0.75rem">N/A</span></td>';
       } else {
         h += '<td><select onchange="bdAsigImpChange(\'' + esc(r.cliente).replace(/'/g, "\\'") + '\',this.value)">';
         h += '<option value=""' + (!impVal ? ' selected' : '') + '>Sin asignar</option>';
-        contadoraNames.forEach(function(cn) {
+        analistaNames.forEach(function(cn) {
           h += '<option value="' + esc(cn) + '"' + (impVal === cn ? ' selected' : '') + '>' + esc(cn) + '</option>';
         });
         h += '</select></td>';
