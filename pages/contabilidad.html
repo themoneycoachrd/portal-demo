@@ -260,6 +260,25 @@ body { font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-se
 .dig-input:focus { outline:none; border-color:var(--blue); box-shadow:0 0 0 3px rgba(67,97,238,0.1); }
 .dig-cell { display:flex; flex-direction:column; align-items:center; gap:2px; }
 .fri-dot { width:7px; height:7px; border-radius:50%; display:inline-block; }
+.dig-confirm-btn { padding:4px 8px; font-size:10px; font-weight:600; border:1px solid var(--border); border-radius:6px; background:white; color:var(--muted); cursor:pointer; font-family:inherit; white-space:nowrap; transition:all 0.15s; }
+.dig-confirm-btn:hover { border-color:var(--blue); color:var(--blue); background:#f0f4ff; }
+.dig-confirmed { font-size:9px; color:var(--light); margin-top:1px; }
+.dig-confirmed-no { font-size:10px; font-weight:700; color:var(--red); }
+.dig-week-th { font-size:0.58rem !important; line-height:1.3; }
+
+/* ─── Email template modal (KPI) ─── */
+.kpi-tpl-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.4); z-index:9000; display:none; align-items:center; justify-content:center; }
+.kpi-tpl-overlay.open { display:flex; }
+.kpi-tpl-modal { background:white; border-radius:12px; width:90%; max-width:600px; max-height:80vh; display:flex; flex-direction:column; box-shadow:0 8px 30px rgba(0,0,0,0.2); }
+.kpi-tpl-header { display:flex; align-items:center; justify-content:space-between; padding:16px 20px; border-bottom:1px solid #f1f5f9; }
+.kpi-tpl-header h3 { font-size:15px; font-weight:700; margin:0; }
+.kpi-tpl-close { background:none; border:none; font-size:22px; cursor:pointer; color:var(--muted); padding:0 4px; }
+.kpi-tpl-body { padding:20px; overflow-y:auto; flex:1; }
+.kpi-tpl-body pre { white-space:pre-wrap; font-family:inherit; font-size:13px; line-height:1.6; margin:0; color:var(--navy); }
+.kpi-tpl-footer { display:flex; justify-content:flex-end; gap:8px; padding:14px 20px; border-top:1px solid #f1f5f9; }
+.kpi-tpl-btn { padding:8px 18px; border-radius:8px; font-size:13px; font-weight:600; cursor:pointer; font-family:inherit; border:none; }
+.kpi-tpl-btn-cancel { background:#f1f5f9; color:var(--muted); }
+.kpi-tpl-btn-copy { background:var(--blue); color:white; }
 
 /* ─── Stats row (KPI) ─── */
 .dig-stats { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-bottom:14px; }
@@ -577,6 +596,17 @@ body.embed .footer { display:none !important; }
 
 <div class="toast" id="toast"></div>
 
+<div class="kpi-tpl-overlay" id="kpiTplOverlay" onclick="if(event.target===this)cerrarTplCorreo()">
+  <div class="kpi-tpl-modal">
+    <div class="kpi-tpl-header"><h3>Template de correo mensual</h3><button class="kpi-tpl-close" onclick="cerrarTplCorreo()">&times;</button></div>
+    <div class="kpi-tpl-body"><pre id="kpiTplTexto"></pre></div>
+    <div class="kpi-tpl-footer">
+      <button class="kpi-tpl-btn kpi-tpl-btn-cancel" onclick="cerrarTplCorreo()">Cerrar</button>
+      <button class="kpi-tpl-btn kpi-tpl-btn-copy" onclick="copiarTplCorreo()">Copiar al portapapeles</button>
+    </div>
+  </div>
+</div>
+
 <script>
 // ==================== CONFIG ====================
 const SUPABASE_URL = 'https://ouetusstqvpyjeycfdio.supabase.co';
@@ -738,6 +768,24 @@ function getCategoriaColor(total) { if (total >= 90) return '#10b981'; if (total
 function isMonthPast(mesIdx) { const now = new Date(); const end = new Date(2026, mesIdx + 1, 0, 23, 59, 59); return now > end; }
 function isMvException(contadora, cliente) { return contadora === MV_EXCEPTION.contadora && cliente === MV_EXCEPTION.cliente; }
 function isFriday(dateStr) { if (!dateStr) return null; return new Date(dateStr + 'T12:00:00').getDay() === 5; }
+
+function getWeekRanges(mesIdx) {
+  const year = 2026;
+  const lastDay = new Date(year, mesIdx + 1, 0).getDate();
+  const mc = MESES_LABEL[mesIdx].toLowerCase();
+  let firstMon = 1;
+  while (new Date(year, mesIdx, firstMon).getDay() !== 1 && firstMon <= 7) firstMon++;
+  const ranges = [];
+  if (firstMon > 1) ranges.push('1-' + (firstMon - 1) + ' ' + mc);
+  let cursor = firstMon;
+  while (ranges.length < 5) {
+    if (cursor > lastDay) { ranges.push(''); continue; }
+    const wEnd = Math.min(cursor + 6, lastDay);
+    ranges.push(cursor + '-' + wEnd + ' ' + mc);
+    cursor = wEnd + 1;
+  }
+  return ranges;
+}
 
 // Checklist-specific helpers
 function getDeadlineDate(mesIdx, item) {
@@ -1048,7 +1096,7 @@ async function loadDetalle() {
 }
 
 function emptyWeeks() {
-  return [{qty:0,fecha:''},{qty:0,fecha:''},{qty:0,fecha:''},{qty:0,fecha:''},{qty:0,fecha:''}];
+  return [{qty:0,fecha:'',fecha_respuesta:''},{qty:0,fecha:'',fecha_respuesta:''},{qty:0,fecha:'',fecha_respuesta:''},{qty:0,fecha:'',fecha_respuesta:''},{qty:0,fecha:'',fecha_respuesta:''}];
 }
 
 function getDetalle(contadora, mes) {
@@ -1069,10 +1117,16 @@ function getDetalle(contadora, mes) {
     } else {
       const arr = d.digitacion[c.nombre];
       if (arr.length > 0 && typeof arr[0] === 'number') {
-        d.digitacion[c.nombre] = arr.map(qty => ({qty: qty || 0, fecha: ''}));
+        d.digitacion[c.nombre] = arr.map(qty => ({qty: qty || 0, fecha: '', fecha_respuesta: ''}));
+      } else {
+        // Ensure fecha_respuesta exists on each week object
+        d.digitacion[c.nombre] = arr.map(w => {
+          if (typeof w === 'object' && w.fecha_respuesta === undefined) w.fecha_respuesta = '';
+          return w;
+        });
       }
       // Pad to 5 weeks if short
-      while (d.digitacion[c.nombre].length < 5) d.digitacion[c.nombre].push({qty:0,fecha:''});
+      while (d.digitacion[c.nombre].length < 5) d.digitacion[c.nombre].push({qty:0,fecha:'',fecha_respuesta:''});
     }
     // Resumenes: migrate foto → link
     if (!d.resumenes[c.nombre]) {
@@ -2223,8 +2277,8 @@ function renderKPIDetail(el) {
   html += '<div class="score-big"><div class="num" style="color:' + escala.color + '">' + total + '</div><div class="of">de 100 · ' + MESES_FULL[mesIdx] + '</div><div class="label" style="background:' + escala.bg + ';color:' + escala.color + '">' + escala.label + '</div></div>';
   html += '<div class="score-breakdown">';
   html += '<div class="score-row"><span class="score-row-label">Digitacion (50%)</span><div class="score-row-bar"><div class="score-row-fill" style="width:' + (scores.digScore * 10) + '%;background:' + col + '"></div></div><span class="score-row-pts">' + Math.round(scores.digScore * 5) + ' pts</span></div>';
-  html += '<div class="score-row"><span class="score-row-label">Resumenes (30%)</span><div class="score-row-bar"><div class="score-row-fill" style="width:' + (scores.resScore * 10) + '%;background:' + col + '"></div></div><span class="score-row-pts">' + Math.round(scores.resScore * 3) + ' pts</span></div>';
-  html += '<div class="score-row"><span class="score-row-label">' + vidTipo + ' (20%)</span><div class="score-row-bar"><div class="score-row-fill" style="width:' + (scores.vidScore * 10) + '%;background:' + col + '"></div></div><span class="score-row-pts">' + Math.round(scores.vidScore * 2) + ' pts</span></div>';
+  html += '<div class="score-row"><span class="score-row-label">Llenado Portal (30%)</span><div class="score-row-bar"><div class="score-row-fill" style="width:' + (scores.resScore * 10) + '%;background:' + col + '"></div></div><span class="score-row-pts">' + Math.round(scores.resScore * 3) + ' pts</span></div>';
+  html += '<div class="score-row"><span class="score-row-label">' + (vidTipo === 'Reunion' ? 'Reunion' : 'Correo') + ' (20%)</span><div class="score-row-bar"><div class="score-row-fill" style="width:' + (scores.vidScore * 10) + '%;background:' + col + '"></div></div><span class="score-row-pts">' + Math.round(scores.vidScore * 2) + ' pts</span></div>';
   html += '<div class="escala-mini">';
   KPI_ESCALA.forEach(e => {
     const active = total >= e.min && total <= e.max;
@@ -2269,7 +2323,13 @@ function renderKPIDetail(el) {
   html += '<div class="dig-stat"><div class="dig-stat-label">Tx digitadas</div><div class="dig-stat-value" style="color:' + getBarColor(digPct) + '">' + scores.digActual + '</div></div></div>';
 
   // Client x Week table with Contratado + Adm columns
-  html += '<div style="overflow-x:auto"><table class="dig-table"><thead><tr><th style="text-align:left">Cliente</th><th>Contratado</th><th>Adm</th><th>Sem 1</th><th>Sem 2</th><th>Sem 3</th><th>Sem 4</th><th>Sem 5</th><th>Total</th></tr></thead><tbody>';
+  const weekRanges = getWeekRanges(mesIdx);
+  html += '<div style="overflow-x:auto"><table class="dig-table"><thead><tr><th style="text-align:left">Cliente</th><th>Contratado</th><th>Adm</th>';
+  for (let wi = 0; wi < 5; wi++) {
+    const wLabel = weekRanges[wi] || ('S' + (wi+1));
+    html += '<th class="dig-week-th">' + wLabel + '</th>';
+  }
+  html += '<th>Total</th></tr></thead><tbody>';
 
   let grandTotal = 0;
   clients.forEach(cl => {
@@ -2286,16 +2346,30 @@ function renderKPIDetail(el) {
     html += '<td>' + admLabel + '</td>';
 
     for (let w = 0; w < 5; w++) {
-      const wObj = weeks[w] || {qty:0,fecha:''};
+      const wObj = weeks[w] || {qty:0,fecha:'',fecha_respuesta:''};
       const qty = getWeekQty(wObj);
       const fecha = typeof wObj === 'object' ? (wObj.fecha || '') : '';
+      const fechaResp = typeof wObj === 'object' ? (wObj.fecha_respuesta || '') : '';
       const friCheck = isFriday(fecha);
       const dotHtml = fecha ? '<span class="fri-dot" style="background:' + (friCheck ? 'var(--green)' : 'var(--red)') + '" title="' + formatDateShort(fecha) + (friCheck ? ' (viernes)' : ' (no viernes)') + '"></span>' : '';
 
       if (editable && !isMv) {
-        html += '<td><div class="dig-cell"><input type="number" class="dig-input" value="' + (qty || '') + '" min="0" data-contadora="' + c + '" data-mes="' + mes + '" data-client="' + cln + '" data-week="' + w + '" onchange="handleDigChange(this)">' + dotHtml + '</div></td>';
+        if (!fechaResp) {
+          // Not confirmed yet: show confirm button
+          html += '<td><div class="dig-cell"><button class="dig-confirm-btn" onclick="handleDigConfirm(\'' + cln + '\',' + w + ')">¿Cargo?</button></div></td>';
+        } else if (qty === 0 && fechaResp) {
+          // Confirmed No: show "No" label + date
+          html += '<td><div class="dig-cell"><span class="dig-confirmed-no">No</span><span class="dig-confirmed">' + formatDateShort(fechaResp) + '</span>' + (editable ? '<button style="font-size:9px;border:none;background:none;color:var(--blue);cursor:pointer;padding:0;text-decoration:underline" onclick="handleDigConfirm(\'' + cln + '\',' + w + ')">Cambiar</button>' : '') + '</div></td>';
+        } else {
+          // Confirmed Yes with qty
+          html += '<td><div class="dig-cell"><input type="number" class="dig-input" value="' + (qty || '') + '" min="0" data-contadora="' + c + '" data-mes="' + mes + '" data-client="' + cln + '" data-week="' + w + '" onchange="handleDigChange(this)">' + dotHtml + '<span class="dig-confirmed">' + formatDateShort(fechaResp) + '</span></div></td>';
+        }
       } else {
-        html += '<td><div class="dig-cell">' + (qty || 0) + dotHtml + '</div></td>';
+        if (fechaResp && qty === 0) {
+          html += '<td><div class="dig-cell"><span class="dig-confirmed-no">No</span></div></td>';
+        } else {
+          html += '<td><div class="dig-cell">' + (qty || 0) + dotHtml + '</div></td>';
+        }
       }
     }
     const pctClient = effAdm > 0 ? Math.round(clientTotal / effAdm * 100) : 0;
@@ -2318,9 +2392,9 @@ function renderKPIDetail(el) {
   html += '<div style="display:flex;align-items:center;gap:8px;margin-top:10px"><span style="font-size:12px;color:var(--muted)">Avance:</span><div class="progress-bar" style="flex:1"><div class="progress-fill" style="width:' + digPct + '%;background:' + getBarColor(digPct) + '"></div></div><span style="font-size:12px;font-weight:700;color:' + getBarColor(digPct) + '">' + digPct + '%</span></div>';
   html += '</div></div>';
 
-  // ── 2. Resumenes ──
+  // ── 2. Llenado del Portal de Clientes ──
   const mesAnteriorLabel = mesIdx > 0 ? MESES_FULL[mesIdx - 1] : MESES_FULL[11];
-  html += '<div class="comp-card"><div class="comp-header"><div class="comp-header-left"><div class="comp-num" style="background:' + col + '">2</div><div><div class="comp-title">Resumenes de declaracion · ' + mesAnteriorLabel + '</div><div class="comp-weight">Peso: 30% · Maximo: 30 puntos · Limite: dia 30 de ' + MESES_FULL[mesIdx] + '</div></div></div>';
+  html += '<div class="comp-card"><div class="comp-header"><div class="comp-header-left"><div class="comp-num" style="background:' + col + '">2</div><div><div class="comp-title">Llenado del Portal de Clientes · ' + mesAnteriorLabel + '</div><div class="comp-weight">Peso: 30% · Maximo: 30 puntos · Limite: dia 30 de ' + MESES_FULL[mesIdx] + '</div></div></div>';
   html += '<span class="comp-score-pill" style="background:' + escala.bg + ';color:' + col + '">' + scores.resScore + '/10 → ' + Math.round(scores.resScore * 3) + ' pts</span></div>';
   html += '<div class="comp-body">';
   html += '<div class="res-progress"><div class="res-count">' + scores.resDone + ' de ' + scores.resTotal + ' clientes</div><div class="progress-bar" style="flex:1"><div class="progress-fill" style="width:' + resPct + '%;background:' + getBarColor(resPct) + '"></div></div><span style="font-size:12px;font-weight:700;color:' + getBarColor(resPct) + '">' + resPct + '%</span></div>';
@@ -2351,8 +2425,9 @@ function renderKPIDetail(el) {
   });
   html += '</table></div></div>';
 
-  // ── 3. Video / Reunion ──
-  html += '<div class="comp-card"><div class="comp-header"><div class="comp-header-left"><div class="comp-num" style="background:' + col + '">3</div><div><div class="comp-title">' + vidTipo + ' con clientes · ' + mesAnteriorLabel + '</div><div class="comp-weight">Peso: 20% · Maximo: 20 puntos · Limite: dia 30 de ' + MESES_FULL[mesIdx] + '</div></div></div>';
+  // ── 3. Video / Reunion / Correo ──
+  const vidLabel = vidTipo === 'Reunion' ? 'Reunion con clientes' : 'Correo mensual a clientes';
+  html += '<div class="comp-card"><div class="comp-header"><div class="comp-header-left"><div class="comp-num" style="background:' + col + '">3</div><div><div class="comp-title">' + vidLabel + ' · ' + mesAnteriorLabel + '</div><div class="comp-weight">Peso: 20% · Maximo: 20 puntos · Limite: dia 30 de ' + MESES_FULL[mesIdx] + '</div></div></div>';
   html += '<span class="comp-score-pill" style="background:' + escala.bg + ';color:' + col + '">' + scores.vidScore + '/10 → ' + Math.round(scores.vidScore * 2) + ' pts</span></div>';
   html += '<div class="comp-body">';
 
@@ -2360,7 +2435,8 @@ function renderKPIDetail(el) {
 
   html += '<div class="res-progress"><div class="res-count">' + scores.vidDone + ' de ' + scores.vidTotal + ' clientes</div><div class="progress-bar" style="flex:1"><div class="progress-fill" style="width:' + vidPct + '%;background:' + getBarColor(vidPct) + '"></div></div><span style="font-size:12px;font-weight:700;color:' + getBarColor(vidPct) + '">' + vidPct + '%</span></div>';
 
-  html += '<table class="client-table"><tr><th>Cliente</th><th style="width:60px">Tx</th><th style="width:120px">Se realizo?</th><th style="width:100px">Fecha</th><th style="width:120px">Link</th></tr>';
+  const isCorreoMonth = vidTipo !== 'Reunion';
+  html += '<table class="client-table"><tr><th>Cliente</th><th style="width:60px">Tx</th><th style="width:120px">' + (isCorreoMonth ? 'Correo enviado?' : 'Se realizo?') + '</th><th style="width:100px">Fecha</th><th style="width:120px">Link</th>' + (isCorreoMonth ? '<th style="width:80px">Correo</th>' : '') + '</tr>';
   clients.forEach(cl => {
     const vd = entry.datos.video[cl.nombre] || { done: false, fecha: '', link: '' };
     const vcln = cl.nombre.replace(/'/g, "\\'");
@@ -2382,7 +2458,11 @@ function renderKPIDetail(el) {
     } else {
       html += vd.done ? '<span style="color:var(--green);font-weight:600">Si</span>' : '<span style="color:var(--light)">No</span>';
     }
-    html += '</td><td style="font-size:0.78rem">' + fechaDisplay + '</td><td>' + linkHtml + '</td></tr>';
+    html += '</td><td style="font-size:0.78rem">' + fechaDisplay + '</td><td>' + linkHtml + '</td>';
+    if (isCorreoMonth) {
+      html += '<td><button style="font-size:10px;padding:4px 8px;border:1px solid var(--blue);border-radius:6px;background:white;color:var(--blue);cursor:pointer;font-weight:600;white-space:nowrap" onclick="verTplCorreo(\'' + vcln + '\')">Ver template</button></td>';
+    }
+    html += '</tr>';
   });
   html += '</table></div></div>';
 
@@ -2525,6 +2605,21 @@ async function saveNota() {
 
 // ==================== KPI EVENT HANDLERS ====================
 
+function handleDigConfirm(clientName, weekIdx) {
+  const respuesta = confirm('¿' + clientName + ' cargo facturas en esta semana?');
+  const entry = getDetalle(kpiContadora, kpiMes);
+  if (!entry.datos.digitacion[clientName]) entry.datos.digitacion[clientName] = emptyWeeks();
+  const now = todayStr();
+  if (respuesta) {
+    const cantStr = prompt('¿Cuantas facturas cargo ' + clientName + '?', '');
+    const cant = parseInt(cantStr) || 0;
+    entry.datos.digitacion[clientName][weekIdx] = { qty: cant, fecha: cant > 0 ? now : '', fecha_respuesta: now };
+  } else {
+    entry.datos.digitacion[clientName][weekIdx] = { qty: 0, fecha: '', fecha_respuesta: now };
+  }
+  renderKpiContent();
+}
+
 function handleDigChange(input) {
   const contadora = input.dataset.contadora;
   const mes = input.dataset.mes;
@@ -2533,7 +2628,9 @@ function handleDigChange(input) {
   const value = parseInt(input.value) || 0;
   const entry = getDetalle(contadora, mes);
   if (!entry.datos.digitacion[client]) entry.datos.digitacion[client] = emptyWeeks();
-  entry.datos.digitacion[client][week] = { qty: value, fecha: value > 0 ? todayStr() : '' };
+  const existing = entry.datos.digitacion[client][week];
+  const prevResp = typeof existing === 'object' ? (existing.fecha_respuesta || '') : '';
+  entry.datos.digitacion[client][week] = { qty: value, fecha: value > 0 ? todayStr() : '', fecha_respuesta: prevResp || todayStr() };
 }
 
 function handleRes(clientName, done) {
@@ -2584,6 +2681,43 @@ function promptVidLink(clientName) {
   if (link && link.trim()) handleVidLink(clientName, link.trim());
 }
 
+function verTplCorreo(clientName) {
+  const contadoraNombre = kpiContadora || '';
+  const texto = 'Hola ' + clientName + ',\n\n'
+    + 'Te comparto el resumen de lo que sucedio este mes en tu empresa. Este correo tiene tres componentes:\n\n'
+    + '1. Tu presupuesto vs. ejecucion\n'
+    + '2. Tu proyeccion de impuestos\n'
+    + '3. Un comparativo de lo que has pagado de impuestos en los ultimos dos meses\n\n'
+    + 'Aqui debajo estan las capturas de cada componente. Cualquier duda, estoy a tu orden.\n\n'
+    + '[Espacio para pegar fotos]\n\n'
+    + 'Saludos,\n' + contadoraNombre;
+  document.getElementById('kpiTplTexto').textContent = texto;
+  document.getElementById('kpiTplOverlay').classList.add('open');
+}
+
+function copiarTplCorreo() {
+  const texto = document.getElementById('kpiTplTexto').textContent;
+  navigator.clipboard.writeText(texto).then(function() {
+    showToast('Texto copiado al portapapeles');
+    cerrarTplCorreo();
+  }).catch(function() {
+    const ta = document.createElement('textarea');
+    ta.value = texto;
+    ta.style.position = 'fixed';
+    ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+    showToast('Texto copiado al portapapeles');
+    cerrarTplCorreo();
+  });
+}
+
+function cerrarTplCorreo() {
+  document.getElementById('kpiTplOverlay').classList.remove('open');
+}
+
 async function handleKpiSave() {
   const btn = document.getElementById('btn-kpi-save');
   if (!btn) return;
@@ -2600,11 +2734,12 @@ async function handleKpiSave() {
     if (!entry.datos.digitacion[client]) entry.datos.digitacion[client] = emptyWeeks();
     const existing = entry.datos.digitacion[client][week];
     const oldQty = typeof existing === 'object' ? (existing.qty || 0) : (existing || 0);
+    const prevResp = typeof existing === 'object' ? (existing.fecha_respuesta || '') : '';
     // Only update fecha if value changed
     if (value !== oldQty) {
-      entry.datos.digitacion[client][week] = { qty: value, fecha: value > 0 ? todayStr() : '' };
+      entry.datos.digitacion[client][week] = { qty: value, fecha: value > 0 ? todayStr() : '', fecha_respuesta: prevResp || todayStr() };
     } else if (typeof existing !== 'object') {
-      entry.datos.digitacion[client][week] = { qty: value, fecha: '' };
+      entry.datos.digitacion[client][week] = { qty: value, fecha: '', fecha_respuesta: '' };
     }
   });
 
