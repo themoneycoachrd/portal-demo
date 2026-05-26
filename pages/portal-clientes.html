@@ -48,14 +48,14 @@ body { font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-se
 .dash-status.rojo { background:#fee2e2; color:#991b1b; }
 .dash-status.verde { background:#d1fae5; color:#065f46; }
 
-.fechas-strip { display:flex; gap:8px; margin-bottom:16px; flex-wrap:wrap; }
-.fecha-item { flex:1; min-width:110px; text-align:center; padding:8px 10px; border-radius:8px; background:#f8fafc; border:1px solid var(--border); }
-.fecha-lbl { display:block; font-size:0.65rem; text-transform:uppercase; font-weight:600; color:var(--muted); margin-bottom:3px; letter-spacing:0.3px; }
-.fecha-val { display:block; font-size:0.82rem; font-weight:700; }
-.fecha-val.fv-green { color:#059669; }
-.fecha-val.fv-amber { color:#d97706; }
-.fecha-val.fv-blue { color:#2563eb; }
-.fecha-val.fv-red { color:#dc2626; }
+.fechas-row { display:flex; border-bottom:1px solid #e2e8f0; background:#f8fafc; }
+.fecha-col { flex:1; text-align:center; padding:10px 6px; font-size:0.82rem; font-weight:700; border-right:1px solid #e2e8f0; }
+.fecha-col:last-child { border-right:none; }
+.fecha-col .fecha-lbl { display:block; font-size:0.62rem; text-transform:uppercase; font-weight:600; color:var(--muted); margin-bottom:2px; letter-spacing:0.3px; }
+.fecha-col.fv-green { color:#059669; }
+.fecha-col.fv-amber { color:#d97706; }
+.fecha-col.fv-blue { color:#2563eb; }
+.fecha-col.fv-red { color:#dc2626; }
 
 .task-section { background:white; border-radius:12px; border:1px solid var(--border); overflow:hidden; }
 .task-row { display:flex; align-items:center; justify-content:space-between; padding:14px 20px; border-bottom:1px solid #f1f5f9; gap:12px; }
@@ -1344,17 +1344,17 @@ function renderChecklist(el, impuesto) {
   h += '<div style="margin-bottom:16px"><span style="font-size:1.1rem;font-weight:700">' + esc(impuesto) + '</span>';
   h += '<span style="font-size:0.85rem;color:var(--muted);margin-left:12px">' + MESES_FULL[MESES_KEY.indexOf(selectedMes)] + ' 2026</span></div>';
 
+  h += '<div class="task-section">';
+
   var obl = getObligacion(impuesto);
   if (obl) {
-    h += '<div class="fechas-strip">';
-    h += '<div class="fecha-item"><span class="fecha-lbl">A tiempo</span><span class="fecha-val fv-green">' + esc(obl.fechas.aTiempo) + '</span></div>';
-    h += '<div class="fecha-item"><span class="fecha-lbl">Tarde</span><span class="fecha-val fv-amber">' + esc(obl.fechas.tarde) + '</span></div>';
-    h += '<div class="fecha-item"><span class="fecha-lbl">AO procesa</span><span class="fecha-val fv-blue">' + esc(obl.fechas.ao) + '</span></div>';
-    h += '<div class="fecha-item"><span class="fecha-lbl">Límite DGII</span><span class="fecha-val fv-red">' + esc(obl.fechas.dgii) + '</span></div>';
+    h += '<div class="fechas-row">';
+    h += '<div class="fecha-col fv-green"><span class="fecha-lbl">A tiempo</span>' + esc(obl.fechas.aTiempo) + '</div>';
+    h += '<div class="fecha-col fv-amber"><span class="fecha-lbl">Tarde</span>' + esc(obl.fechas.tarde) + '</div>';
+    h += '<div class="fecha-col fv-blue"><span class="fecha-lbl">AO procesa</span>' + esc(obl.fechas.ao) + '</div>';
+    h += '<div class="fecha-col fv-red"><span class="fecha-lbl">Límite DGII</span>' + esc(obl.fechas.dgii) + '</div>';
     h += '</div>';
   }
-
-  h += '<div class="task-section">';
 
   h += '<div class="section-progress">';
   h += '<div class="section-progress-label">Progreso</div>';

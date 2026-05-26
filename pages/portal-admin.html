@@ -49,14 +49,14 @@ body { font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-se
 .dash-status.rojo { background:#fee2e2; color:#991b1b; }
 .dash-status.verde { background:#d1fae5; color:#065f46; }
 
-.fechas-strip { display:flex; gap:8px; margin-bottom:16px; flex-wrap:wrap; }
-.fecha-item { flex:1; min-width:110px; text-align:center; padding:8px 10px; border-radius:8px; background:#f8fafc; border:1px solid var(--border); }
-.fecha-lbl { display:block; font-size:0.65rem; text-transform:uppercase; font-weight:600; color:var(--muted); margin-bottom:3px; letter-spacing:0.3px; }
-.fecha-val { display:block; font-size:0.82rem; font-weight:700; }
-.fecha-val.fv-green { color:#059669; }
-.fecha-val.fv-amber { color:#d97706; }
-.fecha-val.fv-blue { color:#2563eb; }
-.fecha-val.fv-red { color:#dc2626; }
+.fechas-row { display:flex; border-bottom:1px solid #e2e8f0; background:#f8fafc; }
+.fecha-col { flex:1; text-align:center; padding:10px 6px; font-size:0.82rem; font-weight:700; border-right:1px solid #e2e8f0; }
+.fecha-col:last-child { border-right:none; }
+.fecha-col .fecha-lbl { display:block; font-size:0.62rem; text-transform:uppercase; font-weight:600; color:var(--muted); margin-bottom:2px; letter-spacing:0.3px; }
+.fecha-col.fv-green { color:#059669; }
+.fecha-col.fv-amber { color:#d97706; }
+.fecha-col.fv-blue { color:#2563eb; }
+.fecha-col.fv-red { color:#dc2626; }
 
 .task-section { background:white; border-radius:12px; border:1px solid var(--border); overflow:hidden; }
 .task-row { display:flex; align-items:center; justify-content:space-between; padding:14px 20px; border-bottom:1px solid #f1f5f9; gap:12px; }
@@ -903,7 +903,7 @@ async function initAdmin(isEmbed) {
 
   var [tokensRes, clientesRes, portalDataRes, presBulkRes, ejBulkRes, icBulkRes, declBulkRes] = await Promise.all([
     sb.from('portal_clientes_tokens').select('cliente, token').eq('activo', true).order('cliente'),
-    sb.from('clientes').select('nombre, contadora_impuestos, responsabilidad_impuestos, activo').eq('activo', true).order('nombre'),
+    sb.from('clientes').select('nombre, contadora_contabilidad, contadora_impuestos, responsabilidad_impuestos, activo').eq('activo', true).order('nombre'),
     sb.from('portal_clientes_data').select('*'),
     sb.from('portal_presupuesto').select('*').eq('anio', pmYear),
     sb.from('portal_ejecucion').select('*').eq('anio', pmYear),
@@ -919,10 +919,10 @@ async function initAdmin(isEmbed) {
   allImpConfigBulk = icBulkRes.data || [];
   allDeclaracionesBulk = declBulkRes.data || [];
 
-  // Si no es admin, pre-filtrar por su nombre en contadora_impuestos
+  // Si no es admin, pre-filtrar por su nombre en contadora_contabilidad
   if (!isAdminMode && userNombrePortal) {
     var contNames = {};
-    allClientes.forEach(function(c) { if (c.contadora_impuestos) contNames[c.contadora_impuestos] = true; });
+    allClientes.forEach(function(c) { if (c.contadora_contabilidad) contNames[c.contadora_contabilidad] = true; });
     Object.keys(contNames).forEach(function(c) {
       if (userNombrePortal.indexOf(c) >= 0 || c.indexOf(userNombrePortal) >= 0) selectedContadora = c;
     });
@@ -1017,7 +1017,7 @@ function getClienteTaxStatus(nombre, mes, impuestoId) {
 function getContadorasFromClientes() {
   var map = {};
   allClientes.forEach(function(c) {
-    var ct = c.contadora_impuestos || 'Sin asignar';
+    var ct = c.contadora_contabilidad || 'Sin asignar';
     if (!map[ct]) map[ct] = [];
     map[ct].push(c);
   });
@@ -1315,14 +1315,14 @@ function renderAdminIndex() {
   var clientes = allClientes.slice();
   if (selectedContadora !== 'Todas') {
     clientes = clientes.filter(function(c) {
-      var ct = c.contadora_impuestos || 'Sin asignar';
+      var ct = c.contadora_contabilidad || 'Sin asignar';
       return ct === selectedContadora;
     });
   }
 
   clientes.sort(function(a, b) {
-    var ca = a.contadora_impuestos || 'Sin asignar';
-    var cb = b.contadora_impuestos || 'Sin asignar';
+    var ca = a.contadora_contabilidad || 'Sin asignar';
+    var cb = b.contadora_contabilidad || 'Sin asignar';
     if (ca === 'Sin asignar' && cb !== 'Sin asignar') return 1;
     if (cb === 'Sin asignar' && ca !== 'Sin asignar') return -1;
     return a.nombre.localeCompare(b.nombre);
@@ -1377,7 +1377,7 @@ function renderAdminIndex() {
       h += '</tr></thead><tbody>';
 
       clientes.forEach(function(c, i) {
-        var ct = c.contadora_impuestos || 'Sin asignar';
+        var ct = c.contadora_contabilidad || 'Sin asignar';
         var hasPres = hasPresupuesto(c.nombre);
         var hasEj = hasEjecucionMes(c.nombre, selectedMes);
         var hasConf = hasImpConfig(c.nombre);
@@ -1409,7 +1409,7 @@ function renderAdminIndex() {
       // Cards view - Presentación
       h += '<div class="pc-client-grid">';
       clientes.forEach(function(c) {
-        var ct = c.contadora_impuestos || 'Sin asignar';
+        var ct = c.contadora_contabilidad || 'Sin asignar';
         var hasPres = hasPresupuesto(c.nombre);
         var hasEj = hasEjecucionMes(c.nombre, selectedMes);
         var hasConf = hasImpConfig(c.nombre);
@@ -1475,7 +1475,7 @@ function renderAdminIndex() {
 
       clientes.forEach(function(c, i) {
         var overall = getClienteOverallProgress(c.nombre, selectedMes);
-        var ct = c.contadora_impuestos || 'Sin asignar';
+        var ct = c.contadora_contabilidad || 'Sin asignar';
 
         h += '<tr onclick="idxOpenCliente(\'' + esc(c.nombre).replace(/'/g, "\\'") + '\')">';
         h += '<td style="color:var(--light);font-size:0.75rem">' + (i + 1) + '</td>';
@@ -1508,7 +1508,7 @@ function renderAdminIndex() {
       h += '<div class="pc-client-grid">';
       clientes.forEach(function(c) {
         var overall = getClienteOverallProgress(c.nombre, selectedMes);
-        var ct = c.contadora_impuestos || 'Sin asignar';
+        var ct = c.contadora_contabilidad || 'Sin asignar';
         var barColor = overall.pct === 100 ? 'var(--green)' : overall.pct > 0 ? 'var(--amber)' : '#e2e8f0';
 
         h += '<div class="pc-client-card" onclick="idxOpenCliente(\'' + esc(c.nombre).replace(/'/g, "\\'") + '\')">';
@@ -1865,17 +1865,17 @@ function renderChecklist(el, impuesto, backHtml) {
   h += '<div style="margin-bottom:16px"><span style="font-size:1.1rem;font-weight:700">' + esc(impuesto) + '</span>';
   h += '<span style="font-size:0.85rem;color:var(--muted);margin-left:12px">' + MESES_FULL[MESES_KEY.indexOf(selectedMes)] + ' 2026</span></div>';
 
+  h += '<div class="task-section">';
+
   var obl = getObligacion(impuesto);
   if (obl) {
-    h += '<div class="fechas-strip">';
-    h += '<div class="fecha-item"><span class="fecha-lbl">A tiempo</span><span class="fecha-val fv-green">' + esc(obl.fechas.aTiempo) + '</span></div>';
-    h += '<div class="fecha-item"><span class="fecha-lbl">Tarde</span><span class="fecha-val fv-amber">' + esc(obl.fechas.tarde) + '</span></div>';
-    h += '<div class="fecha-item"><span class="fecha-lbl">AO procesa</span><span class="fecha-val fv-blue">' + esc(obl.fechas.ao) + '</span></div>';
-    h += '<div class="fecha-item"><span class="fecha-lbl">Límite DGII</span><span class="fecha-val fv-red">' + esc(obl.fechas.dgii) + '</span></div>';
+    h += '<div class="fechas-row">';
+    h += '<div class="fecha-col fv-green"><span class="fecha-lbl">A tiempo</span>' + esc(obl.fechas.aTiempo) + '</div>';
+    h += '<div class="fecha-col fv-amber"><span class="fecha-lbl">Tarde</span>' + esc(obl.fechas.tarde) + '</div>';
+    h += '<div class="fecha-col fv-blue"><span class="fecha-lbl">AO procesa</span>' + esc(obl.fechas.ao) + '</div>';
+    h += '<div class="fecha-col fv-red"><span class="fecha-lbl">Límite DGII</span>' + esc(obl.fechas.dgii) + '</div>';
     h += '</div>';
   }
-
-  h += '<div class="task-section">';
 
   h += '<div class="section-progress">';
   h += '<div class="section-progress-label">Progreso</div>';
