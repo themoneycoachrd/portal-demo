@@ -101,6 +101,19 @@ body { font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-se
 .toast { position:fixed; bottom:24px; right:24px; background:var(--navy); color:white; padding:12px 20px; border-radius:10px; font-size:0.85rem; font-weight:500; z-index:999; opacity:0; transform:translateY(10px); transition:all 0.3s; pointer-events:none; }
 .toast.show { opacity:1; transform:translateY(0); }
 
+.correo-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.4); z-index:900; display:none; align-items:center; justify-content:center; }
+.correo-overlay.open { display:flex; }
+.correo-modal { background:white; border-radius:12px; width:90%; max-width:600px; max-height:80vh; display:flex; flex-direction:column; box-shadow:0 8px 30px rgba(0,0,0,0.2); }
+.correo-header { padding:16px 20px; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center; }
+.correo-header h3 { margin:0; font-size:1rem; color:var(--navy); }
+.correo-close { background:none; border:none; font-size:1.4rem; cursor:pointer; color:var(--muted); padding:0 4px; }
+.correo-body { padding:20px; overflow-y:auto; flex:1; }
+.correo-body pre { white-space:pre-wrap; word-wrap:break-word; font-family:inherit; font-size:0.85rem; line-height:1.6; margin:0; color:#334155; }
+.correo-footer { padding:12px 20px; border-top:1px solid var(--border); display:flex; justify-content:flex-end; gap:10px; }
+.correo-btn { padding:8px 20px; border-radius:8px; font-size:0.85rem; font-weight:600; cursor:pointer; border:none; font-family:inherit; }
+.correo-btn-copy { background:var(--blue); color:white; }
+.correo-btn-cancel { background:#f1f5f9; color:var(--muted); }
+
 .footer { text-align:center; padding:20px; font-size:0.75rem; color:var(--light); }
 
 /* Admin index */
@@ -422,6 +435,16 @@ body.embed .content { padding-top:12px; }
 </div>
 
 <div class="toast" id="toast"></div>
+<div class="correo-overlay" id="correoOverlay" onclick="if(event.target===this)cerrarCorreo()">
+  <div class="correo-modal">
+    <div class="correo-header"><h3 id="correoTitle">Correo de responsabilidades</h3><button class="correo-close" onclick="cerrarCorreo()">&times;</button></div>
+    <div class="correo-body"><pre id="correoTexto"></pre></div>
+    <div class="correo-footer">
+      <button class="correo-btn correo-btn-cancel" onclick="cerrarCorreo()">Cerrar</button>
+      <button class="correo-btn correo-btn-copy" onclick="copiarCorreo()">Copiar al portapapeles</button>
+    </div>
+  </div>
+</div>
 
 <script>
 var SUPABASE_URL = 'https://ouetusstqvpyjeycfdio.supabase.co';
@@ -1837,8 +1860,33 @@ function generarCorreo() {
 
   body += 'Cualquier duda quedo atento.\n\nSaludos,\nAccount One';
 
-  var subject = 'Responsabilidades fiscales pendientes - ' + mesNombre + ' 2026 - ' + clienteNombre;
-  window.open('mailto:?subject=' + encodeURIComponent(subject) + '&body=' + encodeURIComponent(body));
+  document.getElementById('correoTitle').textContent = 'Responsabilidades pendientes - ' + clienteNombre + ' (' + mesNombre + ')';
+  document.getElementById('correoTexto').textContent = body;
+  document.getElementById('correoOverlay').classList.add('open');
+}
+
+function copiarCorreo() {
+  var texto = document.getElementById('correoTexto').textContent;
+  navigator.clipboard.writeText(texto).then(function() {
+    showToast('Texto copiado al portapapeles');
+    cerrarCorreo();
+  }).catch(function() {
+    // fallback para navegadores que no soporten clipboard API
+    var ta = document.createElement('textarea');
+    ta.value = texto;
+    ta.style.position = 'fixed';
+    ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+    showToast('Texto copiado al portapapeles');
+    cerrarCorreo();
+  });
+}
+
+function cerrarCorreo() {
+  document.getElementById('correoOverlay').classList.remove('open');
 }
 
 // ==================== CHECKLIST TABS ====================
