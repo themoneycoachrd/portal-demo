@@ -97,7 +97,7 @@ body { font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-se
 .ck-table-name { font-weight:700; color:var(--navy); }
 .ck-table-contadora { font-size:0.75rem; color:var(--light); }
 .ck-progress-bar { width:100px; height:8px; background:#eef0f4; border-radius:4px; overflow:hidden; display:inline-block; vertical-align:middle; margin-right:6px; }
-.ck-progress-fill { height:100%; border-radius:4px; }
+.ck-progress-fill { height:100%; border-radius:4px; display:block; transition:width 0.4s ease; }
 .ck-progress-text { font-size:0.75rem; color:var(--muted); }
 .ck-status-badge { display:inline-block; padding:3px 10px; border-radius:12px; font-size:0.72rem; font-weight:600; }
 .ck-status-completo { background:#d1fae5; color:#065f46; }
@@ -510,7 +510,12 @@ function formatDateShort(dateStr) {
 }
 
 function getBarColor(pct) {
-  return pct >= 100 ? 'var(--green)' : pct > 0 ? 'var(--amber)' : '#cbd5e1';
+  if (pct >= 100) return '#10b981';
+  if (pct <= 0) return '#cbd5e1';
+  if (pct < 30) return '#ef4444';
+  if (pct < 60) return '#f59e0b';
+  if (pct < 85) return '#3b82f6';
+  return '#10b981';
 }
 
 function esc(s) { return s ? s.replace(/'/g, "\\'") : ''; }
@@ -913,7 +918,7 @@ function renderResumen(el) {
       html += '<td style="text-align:center">' + (row.implementadora || '-') + '</td>';
       html += '<td style="text-align:center;font-size:0.74rem">' + row.fase + '</td>';
       html += '<td style="text-align:center;font-size:0.74rem;' + finStyle + '">' + fmtDate(row.fechas.fin) + diasTxt + '</td>';
-      html += '<td style="text-align:center"><span class="ck-progress-bar"><span class="ck-progress-fill" style="width:' + row.pct + '%;background:' + (row.pct >= 100 ? 'var(--green)' : row.pct > 0 ? 'var(--amber)' : '#cbd5e1') + '"></span></span><span class="ck-progress-text">' + row.done + '/' + row.total + '</span></td>';
+      html += '<td style="text-align:center"><span class="ck-progress-bar"><span class="ck-progress-fill" style="width:' + row.pct + '%;background:' + getBarColor(row.pct) + '"></span></span><span class="ck-progress-text">' + row.done + '/' + row.total + '</span></td>';
       html += '<td style="text-align:center"><span class="ck-status-badge" style="' + badgeColor + '">' + badgeLabel + '</span></td>';
       html += '</tr>';
     });
