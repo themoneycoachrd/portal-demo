@@ -1313,6 +1313,7 @@ function renderCalGrid() {
   filters.forEach(function(f) {
     h += '<button class="cal-filter-pill ' + f.css + (calActiveFilter === f.id ? ' active' : '') + '" onclick="calSwitchFilter(\'' + f.id + '\')">' + f.label + '</button>';
   });
+  h += '<button style="margin-left:auto;background:var(--blue);color:white;border:none;padding:8px 18px;border-radius:8px;font-size:0.85rem;font-weight:600;cursor:pointer" onclick="generarCorreo()">✉ Template correo responsabilidades</button>';
   h += '</div>';
 
   h += '<div class="cal-grid-wrap">';
@@ -1932,7 +1933,6 @@ function renderDashboard(el, backHtml) {
 
   // Botones de acción
   h += '<div style="margin-top:16px;display:flex;justify-content:flex-end;gap:10px;flex-wrap:wrap">';
-  h += '<button style="background:var(--blue);color:white;border:none;padding:8px 18px;border-radius:8px;font-size:0.85rem;font-weight:600;cursor:pointer" onclick="generarCorreo()">✉ Enviar correo de responsabilidades</button>';
   h += '<button id="btn-mark-all-ck" style="background:var(--green);color:white;border:none;padding:8px 18px;border-radius:8px;font-size:0.85rem;font-weight:600;cursor:pointer" onclick="markAllChecklistDone()">✓ Marcar todo como realizado</button>';
   h += '</div>';
 
