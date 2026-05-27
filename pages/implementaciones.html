@@ -5,7 +5,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Implementaciones — Account One</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <style>
 :root {
   --navy: #1a2332;
@@ -791,12 +790,7 @@ function resRenderSection(titulo, items, colorClass, iconColor) {
   return html;
 }
 
-var resChartInstances = [];
-
 function renderResumen(el) {
-  // Destroy previous chart instances
-  resChartInstances.forEach(function(c) { c.destroy(); });
-  resChartInstances = [];
 
   var rows = resBuildUnifiedRows();
   var urg = resClassifyUrgency(rows);
@@ -850,8 +844,36 @@ function renderResumen(el) {
   var phaseColors = { 'SERVICIO': '#8b5cf6', 'ONBOARDING': '#6366f1', 'GERENCIA': '#4361ee', 'IMPLEMENTACION': '#059669', 'TRANSICION': '#d97706' };
   var phaseLabels = { 'SERVICIO': 'Servicio', 'ONBOARDING': 'Onboarding', 'GERENCIA': 'Gerencia', 'IMPLEMENTACION': 'Implementacion', 'TRANSICION': 'Transicion' };
 
+  // Count by type
+  var feActivas = 0, feCompletas = 0, admActivas = 0, admCompletas = 0;
+  rows.forEach(function(r) {
+    if (r.tipo === 'FE') { if (r.pct >= 100) feCompletas++; else feActivas++; }
+    else { if (r.pct >= 100) admCompletas++; else admActivas++; }
+  });
+  var feTotal = feActivas + feCompletas;
+  var admTotal = admActivas + admCompletas;
+  var maxTipo = Math.max(feTotal, admTotal) || 1;
+
   html += '<div class="res-charts">';
-  html += '<div class="res-chart-card"><h4>Por tipo de implementacion</h4><canvas id="resChartTipo" height="160"></canvas></div>';
+  html += '<div class="res-chart-card"><h4>Por tipo de implementacion</h4>';
+  // FE bar
+  var fePct = Math.round((feTotal / maxTipo) * 100);
+  if (fePct < 8 && feTotal > 0) fePct = 8;
+  html += '<div class="res-funnel-bar">';
+  html += '<div class="res-funnel-label">Facturacion Electronica</div>';
+  html += '<div class="res-funnel-track"><div class="res-funnel-fill" style="width:' + fePct + '%;background:#4361ee"><span class="res-funnel-num">' + feTotal + '</span></div></div>';
+  html += '<div style="font-size:0.68rem;color:var(--muted);margin-top:2px">' + feActivas + ' en proceso · ' + feCompletas + ' completadas</div>';
+  html += '</div>';
+  // Adm bar
+  var admPct = Math.round((admTotal / maxTipo) * 100);
+  if (admPct < 8 && admTotal > 0) admPct = 8;
+  html += '<div class="res-funnel-bar">';
+  html += '<div class="res-funnel-label">Adm Cloud</div>';
+  html += '<div class="res-funnel-track"><div class="res-funnel-fill" style="width:' + admPct + '%;background:#8b5cf6"><span class="res-funnel-num">' + admTotal + '</span></div></div>';
+  html += '<div style="font-size:0.68rem;color:var(--muted);margin-top:2px">' + admActivas + ' en proceso · ' + admCompletas + ' completadas</div>';
+  html += '</div>';
+  html += '</div>';
+
   html += '<div class="res-chart-card"><h4>Pipeline por fase</h4>';
   allPhases.forEach(function(p) {
     var c = phaseCounts[p];
@@ -922,31 +944,6 @@ function renderResumen(el) {
   html += '</div>';
 
   el.innerHTML = html;
-
-  // ===== RENDER CHARTS =====
-  // Bar chart: FE vs Adm (activas vs completadas)
-  var feActivas = 0, feCompletas = 0, admActivas = 0, admCompletas = 0;
-  rows.forEach(function(r) {
-    if (r.tipo === 'FE') { if (r.pct >= 100) feCompletas++; else feActivas++; }
-    else { if (r.pct >= 100) admCompletas++; else admActivas++; }
-  });
-
-  var ctxTipo = document.getElementById('resChartTipo');
-  if (ctxTipo) {
-    var ch1 = new Chart(ctxTipo, {
-      type: 'bar',
-      data: {
-        labels: ['Facturacion Electronica', 'Adm Cloud'],
-        datasets: [
-          { label: 'En proceso', data: [feActivas, admActivas], backgroundColor: ['rgba(67,97,238,0.7)', 'rgba(139,92,246,0.7)'] },
-          { label: 'Completadas', data: [feCompletas, admCompletas], backgroundColor: ['rgba(16,185,129,0.7)', 'rgba(16,185,129,0.5)'] }
-        ]
-      },
-      options: { indexAxis: 'y', responsive: true, plugins: { legend: { position: 'bottom', labels: { font: { size: 10 } } } }, scales: { x: { beginAtZero: true, ticks: { stepSize: 1, font: { size: 10 } } }, y: { ticks: { font: { size: 11 } } } } }
-    });
-    resChartInstances.push(ch1);
-  }
-
 }
 
 // ==================== MAIN TAB SWITCH ====================
