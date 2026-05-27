@@ -160,10 +160,9 @@ async function init() {
       return d.getFullYear() === 2026 && d.getMonth() === m;
     });
     var activos = clientes.filter(function(c) {
-      if (!c.fecha_entrada) return false;
-      if (c.fecha_entrada > lastDayStr) return false;
-      if (c.fecha_salida && c.fecha_salida <= lastDayStr) return false;
-      return true;
+      var entered = !c.fecha_entrada || c.fecha_entrada <= lastDayStr;
+      var notLeft = !c.fecha_salida || c.fecha_salida > lastDayStr;
+      return entered && notLeft;
     });
     var servTotal = activos.reduce(function(sum, c) {
       if (c.responsabilidad_contabilidad === false) return sum;
