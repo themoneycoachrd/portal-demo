@@ -305,7 +305,7 @@ body.embed .footer { display:none !important; }
 .res-items-table tbody tr:last-child td { border-bottom:none; }
 .res-items-table tbody tr:hover td { background:#fafbfc; }
 .res-funnel-bar { display:flex; align-items:center; gap:10px; margin-bottom:8px; }
-.res-funnel-label { font-size:0.72rem; font-weight:600; color:var(--navy); min-width:110px; text-align:right; }
+.res-funnel-label { font-size:0.72rem; font-weight:600; color:var(--navy); min-width:120px; text-align:right; white-space:nowrap; }
 .res-funnel-track { flex:1; background:#f1f5f9; border-radius:8px; height:28px; position:relative; overflow:hidden; }
 .res-funnel-fill { height:100%; border-radius:8px; display:flex; align-items:center; padding:0 10px; transition:width 0.4s ease; }
 .res-funnel-num { font-size:0.72rem; font-weight:700; color:#fff; }
@@ -850,28 +850,24 @@ function renderResumen(el) {
     if (r.tipo === 'FE') { if (r.pct >= 100) feCompletas++; else feActivas++; }
     else { if (r.pct >= 100) admCompletas++; else admActivas++; }
   });
-  var feTotal = feActivas + feCompletas;
-  var admTotal = admActivas + admCompletas;
-  var maxTipo = Math.max(feTotal, admTotal) || 1;
+  var maxTipo = Math.max(feActivas, feCompletas, admActivas, admCompletas) || 1;
+  var tipoRows = [
+    { label: 'FE en proceso', val: feActivas, color: '#4361ee' },
+    { label: 'FE completada', val: feCompletas, color: '#10b981' },
+    { label: 'Adm en proceso', val: admActivas, color: '#8b5cf6' },
+    { label: 'Adm completada', val: admCompletas, color: '#10b981' }
+  ];
 
   html += '<div class="res-charts">';
   html += '<div class="res-chart-card"><h4>Por tipo de implementacion</h4>';
-  // FE bar
-  var fePct = Math.round((feTotal / maxTipo) * 100);
-  if (fePct < 8 && feTotal > 0) fePct = 8;
-  html += '<div class="res-funnel-bar">';
-  html += '<div class="res-funnel-label">Facturacion Electronica</div>';
-  html += '<div class="res-funnel-track"><div class="res-funnel-fill" style="width:' + fePct + '%;background:#4361ee"><span class="res-funnel-num">' + feTotal + '</span></div></div>';
-  html += '<div style="font-size:0.68rem;color:var(--muted);margin-top:2px">' + feActivas + ' en proceso · ' + feCompletas + ' completadas</div>';
-  html += '</div>';
-  // Adm bar
-  var admPct = Math.round((admTotal / maxTipo) * 100);
-  if (admPct < 8 && admTotal > 0) admPct = 8;
-  html += '<div class="res-funnel-bar">';
-  html += '<div class="res-funnel-label">Adm Cloud</div>';
-  html += '<div class="res-funnel-track"><div class="res-funnel-fill" style="width:' + admPct + '%;background:#8b5cf6"><span class="res-funnel-num">' + admTotal + '</span></div></div>';
-  html += '<div style="font-size:0.68rem;color:var(--muted);margin-top:2px">' + admActivas + ' en proceso · ' + admCompletas + ' completadas</div>';
-  html += '</div>';
+  tipoRows.forEach(function(t) {
+    var pct = Math.round((t.val / maxTipo) * 100);
+    if (pct < 8 && t.val > 0) pct = 8;
+    html += '<div class="res-funnel-bar">';
+    html += '<div class="res-funnel-label">' + t.label + '</div>';
+    html += '<div class="res-funnel-track"><div class="res-funnel-fill" style="width:' + pct + '%;background:' + t.color + '"><span class="res-funnel-num">' + t.val + '</span></div></div>';
+    html += '</div>';
+  });
   html += '</div>';
 
   html += '<div class="res-chart-card"><h4>Pipeline por fase</h4>';
