@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Implementaciones — Account One</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <style>
 :root {
   --navy: #1a2332;
@@ -261,6 +262,57 @@ body.embed .footer { display:none !important; }
   .summary-stats { grid-template-columns:repeat(2, 1fr); }
   .header h1 { font-size:1rem; }
 }
+
+/* ===== RESUMEN ===== */
+.res-greeting { background:var(--navy); border-radius:12px; padding:20px 24px; margin-bottom:16px; }
+.res-greeting h2 { font-size:1.1rem; font-weight:700; color:#fff; margin:0 0 4px; }
+.res-greeting p { font-size:0.78rem; color:rgba(255,255,255,0.55); margin:0; }
+.res-urgency { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; margin-bottom:12px; }
+.res-urg-card { border-radius:12px; padding:14px 16px; border-left:4px solid; }
+.res-urg-card .urg-label { font-size:0.65rem; text-transform:uppercase; letter-spacing:0.5px; margin:0 0 4px; }
+.res-urg-card .urg-num { font-size:1.6rem; font-weight:700; margin:0; }
+.res-urg-card .urg-sub { font-size:0.72rem; margin:2px 0 0; }
+.res-urg-urgent { background:#fef2f2; border-color:var(--red); }
+.res-urg-urgent .urg-label,.res-urg-urgent .urg-sub { color:#991b1b; }
+.res-urg-urgent .urg-num { color:#7f1d1d; }
+.res-urg-warn { background:#fffbeb; border-color:var(--amber); }
+.res-urg-warn .urg-label,.res-urg-warn .urg-sub { color:#92400e; }
+.res-urg-warn .urg-num { color:#78350f; }
+.res-urg-soon { background:#eff6ff; border-color:var(--blue); }
+.res-urg-soon .urg-label,.res-urg-soon .urg-sub { color:#1e40af; }
+.res-urg-soon .urg-num { color:#1e3a5f; }
+.res-charts { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:16px; }
+.res-chart-card { background:var(--card); border-radius:12px; padding:16px; border:1px solid var(--border); }
+.res-chart-card h4 { font-size:0.78rem; font-weight:600; color:var(--navy); margin:0 0 10px; }
+.res-chart-card.full-width { grid-column:1/-1; }
+.res-section { background:var(--card); border-radius:12px; padding:20px; border:1px solid var(--border); margin-bottom:16px; }
+.res-section-hdr { display:flex; align-items:center; gap:8px; margin-bottom:14px; }
+.res-section-hdr h3 { font-size:0.82rem; font-weight:700; margin:0; }
+.res-section-hdr .res-icon { width:22px; height:22px; border-radius:6px; display:flex; align-items:center; justify-content:center; font-size:0.72rem; color:#fff; }
+.res-ok { text-align:center; padding:30px; color:var(--green); font-weight:600; font-size:0.9rem; }
+.res-client-group { margin-bottom:14px; border:1px solid var(--border); border-radius:10px; overflow:hidden; }
+.res-client-hdr { display:flex; justify-content:space-between; align-items:center; padding:10px 14px; background:#f8f9fb; border-bottom:1px solid var(--border); cursor:pointer; }
+.res-client-hdr:hover { background:#f0f2f5; }
+.res-client-name { font-size:0.82rem; font-weight:600; color:var(--navy); }
+.res-client-count { font-size:0.72rem; font-weight:600; padding:2px 10px; border-radius:10px; }
+.res-client-count.urgent { background:#fef2f2; color:#dc2626; }
+.res-client-count.warn { background:#fffbeb; color:#d97706; }
+.res-client-count.soon { background:#eff6ff; color:#1d4ed8; }
+.res-client-items { padding:0; }
+.res-items-table { width:100%; border-collapse:collapse; font-size:0.78rem; }
+.res-items-table thead th { font-size:0.62rem; text-transform:uppercase; letter-spacing:0.4px; color:var(--muted); font-weight:600; padding:6px 8px; border-bottom:1px solid var(--border); text-align:left; }
+.res-items-table thead th:not(:first-child) { text-align:center; }
+.res-items-table tbody td { padding:7px 8px; border-bottom:1px solid #f1f3f7; }
+.res-items-table tbody tr:last-child td { border-bottom:none; }
+.res-items-table tbody tr:hover td { background:#fafbfc; }
+.res-funnel-bar { display:flex; align-items:center; gap:10px; margin-bottom:8px; }
+.res-funnel-label { font-size:0.72rem; font-weight:600; color:var(--navy); min-width:110px; text-align:right; }
+.res-funnel-track { flex:1; background:#f1f5f9; border-radius:8px; height:28px; position:relative; overflow:hidden; }
+.res-funnel-fill { height:100%; border-radius:8px; display:flex; align-items:center; padding:0 10px; transition:width 0.4s ease; }
+.res-funnel-num { font-size:0.72rem; font-weight:700; color:#fff; }
+.res-insights { background:#f8fafc; border:1px solid var(--border); border-radius:10px; padding:12px 16px; margin-bottom:16px; display:flex; flex-direction:column; gap:6px; }
+.res-insight-item { font-size:0.82rem; color:var(--navy); line-height:1.4; }
+.res-insight-icon { font-weight:700; margin-right:4px; }
 </style>
 </head>
 <body>
@@ -628,90 +680,296 @@ function getImplFechas(cliente, tipo) {
   return { inicio: dates['inicio_' + t] || null, fin: dates['fin_' + t] || null };
 }
 
-function renderResumen(el) {
-  var feItems = FE_ITEMS;
-  var admItems = ADM_ITEMS;
+function resGetGreeting() {
+  var h = new Date().getHours();
+  if (h < 12) return 'Buenos dias';
+  if (h < 18) return 'Buenas tardes';
+  return 'Buenas noches';
+}
+function resGetFirstName() {
+  return userName ? userName.split(' ')[0] : '';
+}
 
-  // Build unified rows
-  var unifiedRows = [];
+// Determina en qué grupo/fase está un cliente según su último paso completado
+function resGetCurrentPhase(datos, items, groups) {
+  var lastDoneIdx = -1;
+  for (var i = items.length - 1; i >= 0; i--) {
+    var val = datos[items[i].id];
+    if (val && (val.done === true || val.done === 'na')) { lastDoneIdx = i; break; }
+  }
+  // Si completó todo, está en la última fase
+  if (lastDoneIdx === items.length - 1) return groups[groups.length - 1].label;
+  // El siguiente paso pendiente determina la fase actual
+  var nextIdx = lastDoneIdx + 1;
+  for (var g = 0; g < groups.length; g++) {
+    if (nextIdx >= groups[g].from && nextIdx <= groups[g].to) return groups[g].label;
+  }
+  return groups[0].label;
+}
+
+function resBuildUnifiedRows() {
+  var rows = [];
   allRows.forEach(function(row) {
     var datos = row.datos || {};
-    var done = resumenCountDone(datos, feItems);
-    var pct = Math.round((done / feItems.length) * 100);
-    var riesgo = resumenIsEnRiesgo(row.cliente, pct, feItems.length, 'fe');
+    var done = resumenCountDone(datos, FE_ITEMS);
+    var pct = Math.round((done / FE_ITEMS.length) * 100);
+    var riesgo = resumenIsEnRiesgo(row.cliente, pct, FE_ITEMS.length, 'fe');
     var fechas = getImplFechas(row.cliente, 'fe');
-    unifiedRows.push({ cliente: row.cliente, implementadora: row.implementadora, done: done, total: feItems.length, pct: pct, riesgo: riesgo, tipo: 'FE', fechas: fechas });
+    var dr = diasRestantes(fechas.fin);
+    var fase = resGetCurrentPhase(datos, FE_ITEMS, FE_GROUPS);
+    rows.push({ cliente: row.cliente, implementadora: row.implementadora, done: done, total: FE_ITEMS.length, pct: pct, riesgo: riesgo, tipo: 'FE', fechas: fechas, dr: dr, fase: fase });
   });
   allRowsAdm.forEach(function(row) {
     var datos = row.datos || {};
-    var done = resumenCountDone(datos, admItems);
-    var pct = Math.round((done / admItems.length) * 100);
-    var riesgo = resumenIsEnRiesgo(row.cliente, pct, admItems.length, 'adm');
+    var done = resumenCountDone(datos, ADM_ITEMS);
+    var pct = Math.round((done / ADM_ITEMS.length) * 100);
+    var riesgo = resumenIsEnRiesgo(row.cliente, pct, ADM_ITEMS.length, 'adm');
     var fechas = getImplFechas(row.cliente, 'adm');
-    unifiedRows.push({ cliente: row.cliente, implementadora: row.implementadora, done: done, total: admItems.length, pct: pct, riesgo: riesgo, tipo: 'Adm', fechas: fechas });
+    var dr = diasRestantes(fechas.fin);
+    var fase = resGetCurrentPhase(datos, ADM_ITEMS, ADM_GROUPS);
+    rows.push({ cliente: row.cliente, implementadora: row.implementadora, done: done, total: ADM_ITEMS.length, pct: pct, riesgo: riesgo, tipo: 'Adm', fechas: fechas, dr: dr, fase: fase });
+  });
+  return rows;
+}
+
+function resClassifyUrgency(rows) {
+  var vencidos = [], proximos = [], enRiesgo = [];
+  rows.forEach(function(r) {
+    if (r.pct >= 100) return; // completado, no aplica
+    if (r.dr !== null && r.dr < 0) vencidos.push(r);
+    else if (r.dr !== null && r.dr <= 7) proximos.push(r);
+    if (r.riesgo) enRiesgo.push(r);
+  });
+  return { vencidos: vencidos, proximos: proximos, enRiesgo: enRiesgo };
+}
+
+function resRenderSection(titulo, items, colorClass, iconColor) {
+  if (!items.length) return '<div class="res-section"><div class="res-section-hdr"><div class="res-icon" style="background:' + iconColor + '">✓</div><h3>' + titulo + '</h3></div><div class="res-ok">Todo al dia</div></div>';
+
+  // Group by client
+  var groups = {};
+  items.forEach(function(r) {
+    var key = r.cliente;
+    if (!groups[key]) groups[key] = [];
+    groups[key].push(r);
   });
 
-  var totalActivas = unifiedRows.length;
-  var totalFE = allRows.length;
-  var totalAdm = allRowsAdm.length;
-  var enRiesgo = unifiedRows.filter(function(r) { return r.riesgo; }).length;
+  var html = '<div class="res-section"><div class="res-section-hdr"><div class="res-icon" style="background:' + iconColor + '">!</div><h3>' + titulo + ' (' + items.length + ')</h3></div>';
 
-  // Stats cards
-  var html = '<div class="summary-stats" style="grid-template-columns:repeat(4,1fr)">';
-  html += '<div class="summary-stat"><div class="summary-stat-label">Total activas</div><div class="summary-stat-value" style="color:var(--navy)">' + totalActivas + '</div></div>';
-  html += '<div class="summary-stat"><div class="summary-stat-label">Impl. FE</div><div class="summary-stat-value" style="color:var(--blue)">' + totalFE + '</div></div>';
-  html += '<div class="summary-stat"><div class="summary-stat-label">Impl. Adm</div><div class="summary-stat-value" style="color:var(--purple)">' + totalAdm + '</div></div>';
-  html += '<div class="summary-stat"><div class="summary-stat-label">En riesgo</div><div class="summary-stat-value" style="color:var(--red)">' + enRiesgo + '</div></div>';
+  Object.keys(groups).forEach(function(cliente) {
+    var clientItems = groups[cliente];
+    html += '<div class="res-client-group">';
+    html += '<div class="res-client-hdr"><span class="res-client-name">' + cliente + '</span><span class="res-client-count ' + colorClass + '">' + clientItems.length + '</span></div>';
+    html += '<div class="res-client-items"><table class="res-items-table"><thead><tr>';
+    html += '<th>Tipo</th><th>Fase</th><th>Progreso</th><th>Fin esperado</th><th>Dias</th>';
+    html += '</tr></thead><tbody>';
+
+    clientItems.forEach(function(r) {
+      var tipoBg = r.tipo === 'FE' ? 'background:#eff6ff;color:var(--blue)' : 'background:#f3e8ff;color:#8b5cf6';
+      var diasTxt = '', diasColor = '';
+      if (r.dr !== null) {
+        if (r.dr < 0) { diasTxt = '+' + Math.abs(r.dr) + 'd'; diasColor = 'color:var(--red);font-weight:600'; }
+        else { diasTxt = r.dr + 'd'; diasColor = r.dr <= 7 ? 'color:var(--amber);font-weight:600' : 'color:var(--muted)'; }
+      }
+      html += '<tr style="cursor:pointer" onclick="switchMainTab(\'' + (r.tipo === 'FE' ? 'fe' : 'adm') + '\');setTimeout(function(){openDetail(\'' + esc(r.cliente) + '\')},50)">';
+      html += '<td style="text-align:center"><span style="display:inline-block;padding:2px 8px;border-radius:6px;font-size:0.7rem;font-weight:600;' + tipoBg + '">' + r.tipo + '</span></td>';
+      html += '<td style="text-align:center;font-size:0.74rem">' + r.fase + '</td>';
+      html += '<td style="text-align:center;font-size:0.74rem">' + r.done + '/' + r.total + ' (' + r.pct + '%)</td>';
+      html += '<td style="text-align:center;font-size:0.74rem">' + fmtDate(r.fechas.fin) + '</td>';
+      html += '<td style="text-align:center;' + diasColor + '">' + diasTxt + '</td>';
+      html += '</tr>';
+    });
+    html += '</tbody></table></div></div>';
+  });
+
+  html += '</div>';
+  return html;
+}
+
+var resChartInstances = [];
+
+function renderResumen(el) {
+  // Destroy previous chart instances
+  resChartInstances.forEach(function(c) { c.destroy(); });
+  resChartInstances = [];
+
+  var rows = resBuildUnifiedRows();
+  var urg = resClassifyUrgency(rows);
+  var totalPendientes = urg.vencidos.length + urg.proximos.length + urg.enRiesgo.length;
+  var totalActivas = rows.filter(function(r) { return r.pct < 100; }).length;
+
+  // ===== GREETING =====
+  var html = '<div class="res-greeting">';
+  html += '<h2>' + resGetGreeting() + ', ' + resGetFirstName() + '</h2>';
+  if (totalPendientes === 0) {
+    html += '<p>Todas las implementaciones van segun lo previsto</p>';
+  } else {
+    html += '<p>Hay ' + totalActivas + ' implementaciones activas, ' + totalPendientes + ' requieren atencion</p>';
+  }
   html += '</div>';
 
-  // Table
-  if (totalActivas === 0) {
-    html += '<div class="empty" style="margin-top:20px">No hay checklists de implementacion activos.</div>';
+  // ===== URGENCY CARDS =====
+  html += '<div class="res-urgency">';
+  html += '<div class="res-urg-card res-urg-urgent"><p class="urg-label">Vencidas</p><p class="urg-num">' + urg.vencidos.length + '</p><p class="urg-sub">pasaron la fecha fin</p></div>';
+  html += '<div class="res-urg-card res-urg-warn"><p class="urg-label">Proximas a vencer</p><p class="urg-num">' + urg.proximos.length + '</p><p class="urg-sub">a 7 dias o menos</p></div>';
+  html += '<div class="res-urg-card res-urg-soon"><p class="urg-label">En riesgo</p><p class="urg-num">' + urg.enRiesgo.length + '</p><p class="urg-sub">progreso bajo vs tiempo</p></div>';
+  html += '</div>';
+
+  // ===== INSIGHTS =====
+  if (totalPendientes > 0) {
+    // Implementadora con más atrasos
+    var implCount = {};
+    urg.vencidos.concat(urg.enRiesgo).forEach(function(r) {
+      var key = r.implementadora || 'Sin asignar';
+      implCount[key] = (implCount[key] || 0) + 1;
+    });
+    var topImpl = null, topImplN = 0;
+    Object.keys(implCount).forEach(function(k) { if (implCount[k] > topImplN) { topImpl = k; topImplN = implCount[k]; } });
+
+    if (topImpl) {
+      html += '<div class="res-insights">';
+      html += '<div class="res-insight-item"><span class="res-insight-icon">⚡</span> ' + topImpl + ' tiene ' + topImplN + ' implementacion' + (topImplN > 1 ? 'es' : '') + ' con atencion requerida</div>';
+      html += '</div>';
+    }
+  }
+
+  // ===== FUNNEL CHART =====
+  // Merge all phases: count how many active (not completed) clients are in each phase
+  var allPhases = ['SERVICIO', 'ONBOARDING', 'GERENCIA', 'IMPLEMENTACION', 'TRANSICION'];
+  var phaseCounts = {};
+  allPhases.forEach(function(p) { phaseCounts[p] = 0; });
+  rows.forEach(function(r) {
+    if (r.pct >= 100) return;
+    if (phaseCounts[r.fase] !== undefined) phaseCounts[r.fase]++;
+  });
+  var maxPhase = Math.max.apply(null, allPhases.map(function(p) { return phaseCounts[p]; })) || 1;
+  var phaseColors = { 'SERVICIO': '#8b5cf6', 'ONBOARDING': '#6366f1', 'GERENCIA': '#4361ee', 'IMPLEMENTACION': '#059669', 'TRANSICION': '#d97706' };
+  var phaseLabels = { 'SERVICIO': 'Servicio', 'ONBOARDING': 'Onboarding', 'GERENCIA': 'Gerencia', 'IMPLEMENTACION': 'Implementacion', 'TRANSICION': 'Transicion' };
+
+  html += '<div class="res-chart-card full-width" style="margin-bottom:12px">';
+  html += '<h4>Pipeline por fase (implementaciones activas)</h4>';
+  allPhases.forEach(function(p) {
+    var c = phaseCounts[p];
+    var pct = Math.round((c / maxPhase) * 100);
+    if (pct < 8 && c > 0) pct = 8;
+    html += '<div class="res-funnel-bar">';
+    html += '<div class="res-funnel-label">' + phaseLabels[p] + '</div>';
+    html += '<div class="res-funnel-track"><div class="res-funnel-fill" style="width:' + pct + '%;background:' + phaseColors[p] + '"><span class="res-funnel-num">' + c + '</span></div></div>';
+    html += '</div>';
+  });
+  html += '</div>';
+
+  // ===== CHARTS ROW: Barras por tipo + Donut por implementadora =====
+  html += '<div class="res-charts">';
+  html += '<div class="res-chart-card"><h4>Por tipo de implementacion</h4><canvas id="resChartTipo" height="160"></canvas></div>';
+  html += '<div class="res-chart-card"><h4>Carga por implementadora</h4><canvas id="resChartImpl" height="160"></canvas></div>';
+  html += '</div>';
+
+  // ===== SECTIONS: Vencidas, Próximas, En riesgo =====
+  html += resRenderSection('Vencidas', urg.vencidos, 'urgent', 'var(--red)');
+  html += resRenderSection('Proximas a vencer', urg.proximos, 'warn', 'var(--amber)');
+  html += resRenderSection('En riesgo', urg.enRiesgo, 'soon', 'var(--blue)');
+
+  // ===== TABLE: all implementations =====
+  html += '<div class="res-section"><div class="res-section-hdr"><h3>Todas las implementaciones (' + rows.length + ')</h3></div>';
+  if (rows.length === 0) {
+    html += '<div class="res-ok">No hay implementaciones activas</div>';
   } else {
-    // Sort: riesgo first, then by pct ascending
-    unifiedRows.sort(function(a, b) {
+    rows.sort(function(a, b) {
       if (a.riesgo && !b.riesgo) return -1;
       if (!a.riesgo && b.riesgo) return 1;
+      if (a.pct >= 100 && b.pct < 100) return 1;
+      if (a.pct < 100 && b.pct >= 100) return -1;
       return a.pct - b.pct;
     });
 
-    html += '<table class="ck-client-table" style="margin-top:16px"><thead><tr>';
-    html += '<th>#</th><th>Cliente</th><th>Tipo</th><th>Implementadora</th><th>Inicio</th><th>Fin esperado</th><th>Progreso</th><th>Estado</th>';
+    html += '<table class="res-items-table"><thead><tr>';
+    html += '<th>#</th><th>Cliente</th><th>Tipo</th><th>Implementadora</th><th>Fase</th><th>Fin</th><th>Progreso</th><th>Estado</th>';
     html += '</tr></thead><tbody>';
 
-    unifiedRows.forEach(function(row, idx) {
-      var barColor = row.pct >= 100 ? 'var(--green)' : row.pct > 0 ? 'var(--amber)' : '#cbd5e1';
+    rows.forEach(function(row, idx) {
       var tipoBg = row.tipo === 'FE' ? 'background:#eff6ff;color:var(--blue)' : 'background:#f3e8ff;color:#8b5cf6';
       var badgeColor, badgeLabel;
-      if (row.riesgo) { badgeColor = 'background:#fef2f2;color:var(--red)'; badgeLabel = 'En riesgo'; }
-      else if (row.pct === 100) { badgeColor = 'background:#ecfdf5;color:var(--green)'; badgeLabel = 'Completado'; }
+      if (row.dr !== null && row.dr < 0 && row.pct < 100) { badgeColor = 'background:#fef2f2;color:var(--red)'; badgeLabel = 'Vencida'; }
+      else if (row.riesgo) { badgeColor = 'background:#fef2f2;color:var(--red)'; badgeLabel = 'En riesgo'; }
+      else if (row.pct >= 100) { badgeColor = 'background:#ecfdf5;color:var(--green)'; badgeLabel = 'Completado'; }
       else if (row.pct === 0) { badgeColor = 'background:#f3f4f6;color:#6b7280'; badgeLabel = 'Sin iniciar'; }
       else { badgeColor = 'background:#eff6ff;color:var(--blue)'; badgeLabel = 'En progreso'; }
 
-      // Días restantes para color
-      var dr = diasRestantes(row.fechas.fin);
       var finStyle = '';
-      if (dr !== null && row.pct < 100) {
-        if (dr < 0) finStyle = 'color:var(--red);font-weight:600';
-        else if (dr <= 7) finStyle = 'color:var(--amber);font-weight:600';
+      if (row.dr !== null && row.pct < 100) {
+        if (row.dr < 0) finStyle = 'color:var(--red);font-weight:600';
+        else if (row.dr <= 7) finStyle = 'color:var(--amber);font-weight:600';
+      }
+      var diasTxt = '';
+      if (row.dr !== null && row.pct < 100) {
+        diasTxt = row.dr < 0 ? ' <span style="font-size:0.65rem">(' + Math.abs(row.dr) + 'd atraso)</span>' : ' <span style="font-size:0.65rem;color:var(--muted)">(' + row.dr + 'd)</span>';
       }
 
       html += '<tr style="cursor:pointer" onclick="switchMainTab(\'' + (row.tipo === 'FE' ? 'fe' : 'adm') + '\');setTimeout(function(){openDetail(\'' + esc(row.cliente) + '\')},50)">';
       html += '<td>' + (idx + 1) + '</td>';
       html += '<td style="font-weight:600">' + (row.cliente || '') + '</td>';
-      html += '<td><span style="display:inline-block;padding:2px 8px;border-radius:6px;font-size:0.7rem;font-weight:600;' + tipoBg + '">' + row.tipo + '</span></td>';
-      html += '<td>' + (row.implementadora || '-') + '</td>';
-      html += '<td style="font-size:0.78rem">' + fmtDate(row.fechas.inicio) + '</td>';
-      html += '<td style="font-size:0.78rem;' + finStyle + '">' + fmtDate(row.fechas.fin) + (dr !== null && dr < 0 && row.pct < 100 ? ' <span style="font-size:0.68rem">(' + Math.abs(dr) + 'd atraso)</span>' : dr !== null && dr >= 0 && row.pct < 100 ? ' <span style="font-size:0.68rem;color:var(--muted)">(' + dr + 'd)</span>' : '') + '</td>';
-      html += '<td><span class="ck-progress-bar"><span class="ck-progress-fill" style="width:' + row.pct + '%;background:' + barColor + '"></span></span><span class="ck-progress-text">' + row.done + '/' + row.total + '</span></td>';
-      html += '<td><span class="ck-status-badge" style="' + badgeColor + '">' + badgeLabel + '</span></td>';
+      html += '<td style="text-align:center"><span style="display:inline-block;padding:2px 8px;border-radius:6px;font-size:0.7rem;font-weight:600;' + tipoBg + '">' + row.tipo + '</span></td>';
+      html += '<td style="text-align:center">' + (row.implementadora || '-') + '</td>';
+      html += '<td style="text-align:center;font-size:0.74rem">' + row.fase + '</td>';
+      html += '<td style="text-align:center;font-size:0.74rem;' + finStyle + '">' + fmtDate(row.fechas.fin) + diasTxt + '</td>';
+      html += '<td style="text-align:center"><span class="ck-progress-bar"><span class="ck-progress-fill" style="width:' + row.pct + '%;background:' + (row.pct >= 100 ? 'var(--green)' : row.pct > 0 ? 'var(--amber)' : '#cbd5e1') + '"></span></span><span class="ck-progress-text">' + row.done + '/' + row.total + '</span></td>';
+      html += '<td style="text-align:center"><span class="ck-status-badge" style="' + badgeColor + '">' + badgeLabel + '</span></td>';
       html += '</tr>';
     });
-
     html += '</tbody></table>';
   }
+  html += '</div>';
 
   el.innerHTML = html;
+
+  // ===== RENDER CHARTS =====
+  // Bar chart: FE vs Adm (activas vs completadas)
+  var feActivas = 0, feCompletas = 0, admActivas = 0, admCompletas = 0;
+  rows.forEach(function(r) {
+    if (r.tipo === 'FE') { if (r.pct >= 100) feCompletas++; else feActivas++; }
+    else { if (r.pct >= 100) admCompletas++; else admActivas++; }
+  });
+
+  var ctxTipo = document.getElementById('resChartTipo');
+  if (ctxTipo) {
+    var ch1 = new Chart(ctxTipo, {
+      type: 'bar',
+      data: {
+        labels: ['Facturacion Electronica', 'Adm Cloud'],
+        datasets: [
+          { label: 'En proceso', data: [feActivas, admActivas], backgroundColor: ['rgba(67,97,238,0.7)', 'rgba(139,92,246,0.7)'] },
+          { label: 'Completadas', data: [feCompletas, admCompletas], backgroundColor: ['rgba(16,185,129,0.7)', 'rgba(16,185,129,0.5)'] }
+        ]
+      },
+      options: { indexAxis: 'y', responsive: true, plugins: { legend: { position: 'bottom', labels: { font: { size: 10 } } } }, scales: { x: { beginAtZero: true, ticks: { stepSize: 1, font: { size: 10 } } }, y: { ticks: { font: { size: 11 } } } } }
+    });
+    resChartInstances.push(ch1);
+  }
+
+  // Donut: por implementadora
+  var implMap = {};
+  rows.forEach(function(r) {
+    if (r.pct >= 100) return;
+    var key = r.implementadora || 'Sin asignar';
+    implMap[key] = (implMap[key] || 0) + 1;
+  });
+  var implLabels = Object.keys(implMap);
+  var implData = implLabels.map(function(k) { return implMap[k]; });
+  var implColors = ['#4361ee', '#8b5cf6', '#d97706', '#059669', '#ef4444'];
+
+  var ctxImpl = document.getElementById('resChartImpl');
+  if (ctxImpl) {
+    var ch2 = new Chart(ctxImpl, {
+      type: 'doughnut',
+      data: {
+        labels: implLabels,
+        datasets: [{ data: implData, backgroundColor: implColors.slice(0, implLabels.length) }]
+      },
+      options: { responsive: true, cutout: '55%', plugins: { legend: { position: 'bottom', labels: { font: { size: 10 } } } } }
+    });
+    resChartInstances.push(ch2);
+  }
 }
 
 // ==================== MAIN TAB SWITCH ====================
