@@ -263,10 +263,17 @@ body { font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-se
 .dig-table td:first-child { text-align:left; font-weight:600; }
 .dig-table tr:hover td { background:#fafbfc; }
 .dig-table .total-row td { border-top:2px solid var(--border); font-weight:700; background:#f8fafc; }
-.dig-input { width:56px; padding:5px 4px; border:1px solid var(--border); border-radius:6px; font-size:0.85rem; text-align:center; font-family:inherit; -moz-appearance:textfield; }
+.dig-input { width:44px; padding:3px 2px; border:1px solid var(--border); border-radius:5px; font-size:0.78rem; text-align:center; font-family:inherit; -moz-appearance:textfield; }
 .dig-input::-webkit-outer-spin-button, .dig-input::-webkit-inner-spin-button { -webkit-appearance:none; margin:0; }
 .dig-input:focus { outline:none; border-color:var(--blue); box-shadow:0 0 0 3px rgba(67,97,238,0.1); }
 .dig-cell { display:flex; flex-direction:column; align-items:center; gap:2px; }
+.dig-dual { display:flex; flex-direction:column; gap:3px; }
+.dig-dual-row { display:flex; align-items:center; gap:3px; justify-content:center; }
+.dig-dual-label { font-size:8px; font-weight:700; width:12px; text-align:right; flex-shrink:0; }
+.dig-dual-val { font-size:0.78rem; font-weight:600; min-width:20px; text-align:center; }
+.carga-input { width:44px; padding:3px 2px; border:1px solid var(--border); border-radius:5px; font-size:0.78rem; text-align:center; font-family:inherit; -moz-appearance:textfield; }
+.carga-input::-webkit-outer-spin-button, .carga-input::-webkit-inner-spin-button { -webkit-appearance:none; margin:0; }
+.carga-input:focus { outline:none; border-color:var(--green); box-shadow:0 0 0 2px rgba(16,185,129,0.15); }
 .fri-dot { width:7px; height:7px; border-radius:50%; display:inline-block; }
 .dig-confirm-btn { padding:4px 8px; font-size:10px; font-weight:600; border:1px solid var(--border); border-radius:6px; background:white; color:var(--muted); cursor:pointer; font-family:inherit; white-space:nowrap; transition:all 0.15s; }
 .dig-confirm-btn:hover { border-color:var(--blue); color:var(--blue); background:#f0f4ff; }
@@ -508,7 +515,7 @@ body.embed .footer { display:none !important; }
   /* KPI: Digitacion table */
   .dig-table { display:block; overflow-x:auto; -webkit-overflow-scrolling:touch; }
   .dig-input { width:44px; font-size:0.78rem; padding:4px 2px; }
-  .dig-stats { grid-template-columns:repeat(3,1fr); gap:6px; }
+  .dig-stats { grid-template-columns:repeat(2,1fr); gap:6px; }
   .dig-stat { padding:8px; }
   .dig-stat-value { font-size:16px; }
 
@@ -1104,7 +1111,7 @@ async function loadDetalle() {
 }
 
 function emptyWeeks() {
-  return [{qty:0,fecha:'',fecha_respuesta:''},{qty:0,fecha:'',fecha_respuesta:''},{qty:0,fecha:'',fecha_respuesta:''},{qty:0,fecha:'',fecha_respuesta:''},{qty:0,fecha:'',fecha_respuesta:''}];
+  return [{carga:0,dig:0,fecha:'',fecha_respuesta:''},{carga:0,dig:0,fecha:'',fecha_respuesta:''},{carga:0,dig:0,fecha:'',fecha_respuesta:''},{carga:0,dig:0,fecha:'',fecha_respuesta:''},{carga:0,dig:0,fecha:'',fecha_respuesta:''}];
 }
 
 function getDetalle(contadora, mes) {
@@ -1119,22 +1126,31 @@ function getDetalle(contadora, mes) {
 
   const clients = getClients(contadora, mes);
   clients.forEach(c => {
-    // Digitacion: migrate old [number] format to [{qty,fecha}]
+    // Digitacion: migrate old formats to {carga,dig,fecha,fecha_respuesta}
     if (!d.digitacion[c.nombre]) {
       d.digitacion[c.nombre] = emptyWeeks();
     } else {
       const arr = d.digitacion[c.nombre];
-      if (arr.length > 0 && typeof arr[0] === 'number') {
-        d.digitacion[c.nombre] = arr.map(qty => ({qty: qty || 0, fecha: '', fecha_respuesta: ''}));
-      } else {
-        // Ensure fecha_respuesta exists on each week object
-        d.digitacion[c.nombre] = arr.map(w => {
-          if (typeof w === 'object' && w.fecha_respuesta === undefined) w.fecha_respuesta = '';
+      d.digitacion[c.nombre] = arr.map(w => {
+        if (typeof w === 'number') {
+          // Very old format: plain number → treat as both carga and dig
+          return {carga: w || 0, dig: w || 0, fecha: '', fecha_respuesta: ''};
+        }
+        if (typeof w === 'object') {
+          // Old format with qty → migrate to carga+dig
+          if (w.qty !== undefined && w.carga === undefined) {
+            return {carga: w.qty || 0, dig: w.qty || 0, fecha: w.fecha || '', fecha_respuesta: w.fecha_respuesta || ''};
+          }
+          // Current format: ensure all fields exist
+          if (w.carga === undefined) w.carga = 0;
+          if (w.dig === undefined) w.dig = 0;
+          if (w.fecha_respuesta === undefined) w.fecha_respuesta = '';
           return w;
-        });
-      }
+        }
+        return {carga:0, dig:0, fecha:'', fecha_respuesta:''};
+      });
       // Pad to 5 weeks if short
-      while (d.digitacion[c.nombre].length < 5) d.digitacion[c.nombre].push({qty:0,fecha:'',fecha_respuesta:''});
+      while (d.digitacion[c.nombre].length < 5) d.digitacion[c.nombre].push({carga:0,dig:0,fecha:'',fecha_respuesta:''});
     }
     // Resumenes: migrate foto → link
     if (!d.resumenes[c.nombre]) {
@@ -1153,7 +1169,13 @@ function getDetalle(contadora, mes) {
 }
 
 function getWeekQty(weekObj) {
-  if (typeof weekObj === 'object') return weekObj.qty || 0;
+  // Returns digitado (what contadora processed) — used for scoring
+  if (typeof weekObj === 'object') return weekObj.dig || 0;
+  return weekObj || 0;
+}
+function getWeekCarga(weekObj) {
+  // Returns carga (what client uploaded) — for reference
+  if (typeof weekObj === 'object') return weekObj.carga || 0;
   return weekObj || 0;
 }
 
@@ -1168,7 +1190,7 @@ function getEffectiveAdm(contadora, mes, clientName) {
     if (prevEntry && prevEntry.datos && prevEntry.datos.digitacion && prevEntry.datos.digitacion[clientName]) {
       const weeks = prevEntry.datos.digitacion[clientName];
       let total = 0;
-      weeks.forEach(w => { total += (typeof w === 'object' ? (w.qty || 0) : (w || 0)); });
+      weeks.forEach(w => { total += (typeof w === 'object' ? (w.dig || w.qty || 0) : (w || 0)); });
       if (total > 0) return total;
     }
   }
@@ -2349,8 +2371,9 @@ function renderKPIDetail(el) {
   html += '<div class="score-row"><span class="score-row-label">Llenado Portal (30%)</span><div class="score-row-bar" style="background:' + col + '20"><div class="score-row-fill" style="width:' + (scores.resScore * 10) + '%;background:' + col + '"></div></div><span class="score-row-pts">' + (resLost > 0 ? '<span style="color:#ef4444">-' + resLost + '</span>' : '30') + ' pts</span></div>';
   html += '<div class="score-row"><span class="score-row-label">' + (vidTipo === 'Reunion' ? 'Reunion' : 'Correo') + ' (20%)</span><div class="score-row-bar" style="background:' + col + '20"><div class="score-row-fill" style="width:' + (scores.vidScore * 10) + '%;background:' + col + '"></div></div><span class="score-row-pts">' + (vidLost > 0 ? '<span style="color:#ef4444">-' + vidLost + '</span>' : '20') + ' pts</span></div>';
   html += '<div class="escala-mini">';
+  const scoreParaEscala = bono.avgProjected;
   KPI_ESCALA.forEach(e => {
-    const active = total >= e.min && total <= e.max;
+    const active = scoreParaEscala >= e.min && scoreParaEscala <= e.max;
     const montoNivel = Math.round(bono.bonoBase * e.bonoPct / 100);
     html += '<div class="escala-item ' + (active ? 'active' : '') + '" style="' + (active ? 'border-color:' + e.color + ';border-width:2px;background:' + e.bg : '') + '"><div class="escala-range" style="color:' + e.color + '">' + e.min + '-' + e.max + '</div><div class="escala-name" style="color:' + e.color + '">' + e.label + '</div><div style="font-size:9px;color:' + e.color + ';margin-top:1px;opacity:0.8">' + e.bonoPct + '%</div><div style="font-size:11px;color:' + e.color + ';font-weight:800;margin-top:3px">' + formatMoney(montoNivel) + '</div></div>';
   });
@@ -2407,75 +2430,98 @@ function renderKPIDetail(el) {
   html += '<span class="comp-score-pill" style="background:' + escala.bg + ';color:' + col + '">' + Math.round(scores.digScore * 5) + '/50 pts' + (digLost > 0 ? ' <span style="color:#ef4444;font-size:0.75rem">(-' + digLost + ')</span>' : '') + '</span></div>';
   html += '<div class="comp-body">';
 
-  html += '<div class="dig-stats"><div class="dig-stat"><div class="dig-stat-label">Objetivo</div><div class="dig-stat-value">' + cfg.objetivo.toLocaleString() + '</div></div>';
-  html += '<div class="dig-stat"><div class="dig-stat-label">Tx meta (Adm)</div><div class="dig-stat-value">' + scores.admTotal + '</div></div>';
-  html += '<div class="dig-stat"><div class="dig-stat-label">Tx digitadas</div><div class="dig-stat-value" style="color:' + getBarColor(digPct) + '">' + scores.digActual + '</div></div></div>';
-
-  // Client x Week table with Contratado + Adm columns
-  const weekRanges = getWeekRanges(mesIdx);
-  html += '<div style="overflow-x:auto"><table class="dig-table"><thead><tr><th style="text-align:left">Cliente</th><th>Contratado</th><th>Adm</th>';
-  for (let wi = 0; wi < 5; wi++) {
-    const wLabel = weekRanges[wi] || ('S' + (wi+1));
-    html += '<th class="dig-week-th">' + wLabel + '</th>';
-  }
-  html += '<th>Total</th></tr></thead><tbody>';
-
-  let grandTotal = 0;
-  clients.forEach(cl => {
-    const weeks = entry.datos.digitacion[cl.nombre] || emptyWeeks();
-    const clientTotal = weeks.reduce((s, w) => s + getWeekQty(w), 0);
-    if (!isMvException(c, cl.nombre)) grandTotal += clientTotal;
-    const cln = cl.nombre.replace(/'/g, "\\'");
-    const effAdm = getEffectiveAdm(c, mes, cl.nombre);
-    const isMv = isMvException(c, cl.nombre);
-    const admLabel = isMv ? '<span style="color:var(--purple);font-weight:600">MV 0</span>' : effAdm;
-
-    html += '<tr' + (isMv ? ' style="opacity:0.6"' : '') + '><td style="font-weight:600">' + cl.nombre + '</td>';
-    html += '<td>' + cl.contratado + '</td>';
-    html += '<td>' + admLabel + '</td>';
-
-    for (let w = 0; w < 5; w++) {
-      const wObj = weeks[w] || {qty:0,fecha:'',fecha_respuesta:''};
-      const qty = getWeekQty(wObj);
-      const fecha = typeof wObj === 'object' ? (wObj.fecha || '') : '';
-      const fechaResp = typeof wObj === 'object' ? (wObj.fecha_respuesta || '') : '';
-      const friCheck = isFriday(fecha);
-      const dotHtml = fecha ? '<span class="fri-dot" style="background:' + (friCheck ? 'var(--green)' : 'var(--red)') + '" title="' + formatDateShort(fecha) + (friCheck ? ' (viernes)' : ' (no viernes)') + '"></span>' : '';
-
-      if (editable && !isMv) {
-        if (!fechaResp) {
-          // Not confirmed yet: show confirm button
-          html += '<td><div class="dig-cell"><button class="dig-confirm-btn" onclick="handleDigConfirm(\'' + cln + '\',' + w + ')">¿Cargo?</button></div></td>';
-        } else if (qty === 0 && fechaResp) {
-          // Confirmed No: show "No" label + date
-          html += '<td><div class="dig-cell"><span class="dig-confirmed-no">No</span><span class="dig-confirmed">' + formatDateShort(fechaResp) + '</span>' + (editable ? '<button style="font-size:9px;border:none;background:none;color:var(--blue);cursor:pointer;padding:0;text-decoration:underline" onclick="handleDigConfirm(\'' + cln + '\',' + w + ')">Cambiar</button>' : '') + '</div></td>';
-        } else {
-          // Confirmed Yes with qty
-          html += '<td><div class="dig-cell"><input type="number" class="dig-input" value="' + (qty || '') + '" min="0" data-contadora="' + c + '" data-mes="' + mes + '" data-client="' + cln + '" data-week="' + w + '" onchange="handleDigChange(this)">' + dotHtml + '<span class="dig-confirmed">' + formatDateShort(fechaResp) + '</span></div></td>';
-        }
-      } else {
-        if (fechaResp && qty === 0) {
-          html += '<td><div class="dig-cell"><span class="dig-confirmed-no">No</span></div></td>';
-        } else {
-          html += '<td><div class="dig-cell">' + (qty || 0) + dotHtml + '</div></td>';
-        }
-      }
-    }
-    const pctClient = effAdm > 0 ? Math.round(clientTotal / effAdm * 100) : 0;
-    const totalColor = isMv ? 'var(--light)' : getBarColor(pctClient);
-    html += '<td style="font-weight:700;color:' + totalColor + '">' + clientTotal + '</td></tr>';
-  });
-
-  // Total row
-  html += '<tr class="total-row"><td>Total</td><td></td><td>' + scores.admTotal + '</td>';
-  const weekTotals = [0,0,0,0,0];
+  // Calculate carga total for stats
+  let cargaTotal = 0;
   clients.forEach(cl => {
     if (isMvException(c, cl.nombre)) return;
     const weeks = entry.datos.digitacion[cl.nombre] || emptyWeeks();
-    weeks.forEach((w, i) => { weekTotals[i] += getWeekQty(w); });
+    weeks.forEach(w => { cargaTotal += getWeekCarga(w); });
   });
-  weekTotals.forEach(wt => { html += '<td>' + wt + '</td>'; });
-  html += '<td style="color:' + getBarColor(digPct) + '">' + grandTotal + '</td></tr>';
+
+  html += '<div class="dig-stats" style="grid-template-columns:repeat(4,1fr)">';
+  html += '<div class="dig-stat"><div class="dig-stat-label">Objetivo</div><div class="dig-stat-value">' + cfg.objetivo.toLocaleString() + '</div></div>';
+  html += '<div class="dig-stat"><div class="dig-stat-label">Tx meta (Adm)</div><div class="dig-stat-value">' + scores.admTotal + '</div></div>';
+  html += '<div class="dig-stat"><div class="dig-stat-label">Tx cargadas</div><div class="dig-stat-value" style="color:var(--green)">' + cargaTotal + '</div></div>';
+  html += '<div class="dig-stat"><div class="dig-stat-label">Tx digitadas</div><div class="dig-stat-value" style="color:' + getBarColor(digPct) + '">' + scores.digActual + '</div></div></div>';
+
+  // Client x Week table with dual carga/dig per cell
+  const weekRanges = getWeekRanges(mesIdx);
+  html += '<div style="overflow-x:auto"><table class="dig-table"><thead><tr><th style="text-align:left;min-width:100px">Cliente</th><th style="min-width:40px">Adm</th>';
+  for (let wi = 0; wi < 5; wi++) {
+    const wLabel = weekRanges[wi] || ('S' + (wi+1));
+    html += '<th class="dig-week-th">' + wLabel + '<div style="display:flex;gap:4px;justify-content:center;margin-top:3px;font-size:7px;letter-spacing:0"><span style="color:var(--green)">Carga</span><span style="color:var(--blue)">Dig</span></div></th>';
+  }
+  html += '<th style="min-width:48px">Total<div style="display:flex;gap:4px;justify-content:center;margin-top:3px;font-size:7px"><span style="color:var(--green)">C</span><span style="color:var(--blue)">D</span></div></th></tr></thead><tbody>';
+
+  let grandDigTotal = 0;
+  let grandCargaTotal = 0;
+  clients.forEach(cl => {
+    const weeks = entry.datos.digitacion[cl.nombre] || emptyWeeks();
+    const clientDigTotal = weeks.reduce((s, w) => s + getWeekQty(w), 0);
+    const clientCargaTotal = weeks.reduce((s, w) => s + getWeekCarga(w), 0);
+    if (!isMvException(c, cl.nombre)) { grandDigTotal += clientDigTotal; grandCargaTotal += clientCargaTotal; }
+    const cln = cl.nombre.replace(/'/g, "\\'");
+    const effAdm = getEffectiveAdm(c, mes, cl.nombre);
+    const isMv = isMvException(c, cl.nombre);
+    const admLabel = isMv ? '<span style="color:var(--purple);font-weight:600">MV</span>' : effAdm;
+
+    html += '<tr' + (isMv ? ' style="opacity:0.6"' : '') + '><td style="font-weight:600;font-size:0.78rem">' + cl.nombre + '</td>';
+    html += '<td>' + admLabel + '</td>';
+
+    for (let w = 0; w < 5; w++) {
+      const wObj = weeks[w] || {carga:0,dig:0,fecha:'',fecha_respuesta:''};
+      const carga = getWeekCarga(wObj);
+      const dig = getWeekQty(wObj);
+      const fechaResp = typeof wObj === 'object' ? (wObj.fecha_respuesta || '') : '';
+
+      html += '<td><div class="dig-dual">';
+
+      // Row 1: Carga del cliente
+      if (editable && !isMv) {
+        if (!fechaResp) {
+          html += '<div class="dig-dual-row"><button class="dig-confirm-btn" onclick="handleDigConfirm(\'' + cln + '\',' + w + ')" style="font-size:9px;padding:2px 6px">¿Cargo?</button></div>';
+        } else if (carga === 0 && fechaResp) {
+          html += '<div class="dig-dual-row"><span class="dig-confirmed-no" style="font-size:9px">No cargo</span><button style="font-size:8px;border:none;background:none;color:var(--blue);cursor:pointer;padding:0;text-decoration:underline" onclick="handleDigConfirm(\'' + cln + '\',' + w + ')">↺</button></div>';
+        } else {
+          html += '<div class="dig-dual-row"><input type="number" class="carga-input" value="' + (carga || '') + '" min="0" data-contadora="' + c + '" data-mes="' + mes + '" data-client="' + cln + '" data-week="' + w + '" onchange="handleCargaChange(this)" style="border-color:var(--green);width:38px"></div>';
+        }
+      } else {
+        if (fechaResp && carga === 0) {
+          html += '<div class="dig-dual-row"><span style="font-size:9px;color:var(--red);font-weight:600">No</span></div>';
+        } else {
+          html += '<div class="dig-dual-row"><span class="dig-dual-val" style="color:var(--green)">' + (carga || 0) + '</span></div>';
+        }
+      }
+
+      // Row 2: Digitado por contadora
+      if (editable && !isMv && fechaResp) {
+        html += '<div class="dig-dual-row"><input type="number" class="dig-input" value="' + (dig || '') + '" min="0" data-contadora="' + c + '" data-mes="' + mes + '" data-client="' + cln + '" data-week="' + w + '" onchange="handleDigChange(this)" style="width:38px"></div>';
+      } else if (fechaResp) {
+        html += '<div class="dig-dual-row"><span class="dig-dual-val" style="color:var(--blue)">' + (dig || 0) + '</span></div>';
+      } else {
+        html += '<div class="dig-dual-row"><span style="font-size:8px;color:var(--light)">—</span></div>';
+      }
+
+      html += '</div></td>';
+    }
+    const pctClient = effAdm > 0 ? Math.round(clientDigTotal / effAdm * 100) : 0;
+    const totalColor = isMv ? 'var(--light)' : getBarColor(pctClient);
+    html += '<td><div class="dig-dual"><div class="dig-dual-row"><span class="dig-dual-val" style="color:var(--green)">' + clientCargaTotal + '</span></div><div class="dig-dual-row"><span class="dig-dual-val" style="font-weight:700;color:' + totalColor + '">' + clientDigTotal + '</span></div></div></td></tr>';
+  });
+
+  // Total row
+  const weekCargaTotals = [0,0,0,0,0];
+  const weekDigTotals = [0,0,0,0,0];
+  clients.forEach(cl => {
+    if (isMvException(c, cl.nombre)) return;
+    const weeks = entry.datos.digitacion[cl.nombre] || emptyWeeks();
+    weeks.forEach((w, i) => { weekCargaTotals[i] += getWeekCarga(w); weekDigTotals[i] += getWeekQty(w); });
+  });
+  html += '<tr class="total-row"><td>Total</td><td>' + scores.admTotal + '</td>';
+  for (let ti = 0; ti < 5; ti++) {
+    html += '<td><div class="dig-dual"><div class="dig-dual-row"><span style="color:var(--green);font-weight:600">' + weekCargaTotals[ti] + '</span></div><div class="dig-dual-row"><span style="color:var(--blue);font-weight:600">' + weekDigTotals[ti] + '</span></div></div></td>';
+  }
+  html += '<td><div class="dig-dual"><div class="dig-dual-row"><span style="color:var(--green);font-weight:700">' + grandCargaTotal + '</span></div><div class="dig-dual-row"><span style="color:' + getBarColor(digPct) + ';font-weight:700">' + grandDigTotal + '</span></div></div></td></tr>';
   html += '</tbody></table></div>';
 
   html += '<div style="display:flex;align-items:center;gap:8px;margin-top:10px"><span style="font-size:12px;color:var(--muted)">Avance:</span><div class="progress-bar" style="flex:1"><div class="progress-fill" style="width:' + digPct + '%;background:' + getBarColor(digPct) + '"></div></div><span style="font-size:12px;font-weight:700;color:' + getBarColor(digPct) + '">' + digPct + '%</span></div>';
@@ -2520,7 +2566,7 @@ function renderKPIDetail(el) {
   html += '<span class="comp-score-pill" style="background:' + escala.bg + ';color:' + col + '">' + Math.round(scores.vidScore * 2) + '/20 pts' + (vidLost > 0 ? ' <span style="color:#ef4444;font-size:0.75rem">(-' + vidLost + ')</span>' : '') + '</span></div>';
   html += '<div class="comp-body">';
 
-  html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px"><div style="background:#f8fafc;border-radius:8px;padding:10px"><div style="font-size:10px;text-transform:uppercase;color:var(--light);letter-spacing:0.3px">Ciclo trimestral</div><div style="font-size:14px;font-weight:700;margin-top:2px">' + getQuarterInfo(mes).label + '</div></div><div style="background:#f8fafc;border-radius:8px;padding:10px"><div style="font-size:10px;text-transform:uppercase;color:var(--light);letter-spacing:0.3px">Tipo requerido</div><div style="font-size:14px;font-weight:700;margin-top:2px;color:' + (vidTipo === 'Reunion' ? 'var(--purple)' : 'var(--blue)') + '">' + vidTipo + '</div></div></div>';
+  html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px"><div style="background:#f8fafc;border-radius:8px;padding:10px"><div style="font-size:10px;text-transform:uppercase;color:var(--light);letter-spacing:0.3px">Ciclo trimestral</div><div style="font-size:14px;font-weight:700;margin-top:2px">' + getQuarterInfo(mes).label + '</div></div><div style="background:#f8fafc;border-radius:8px;padding:10px"><div style="font-size:10px;text-transform:uppercase;color:var(--light);letter-spacing:0.3px">Tipo requerido: ' + vidTipo + '</div></div></div>';
 
   html += '<div class="res-progress"><div class="res-count">' + scores.vidDone + ' de ' + scores.vidTotal + ' clientes</div><div class="progress-bar" style="flex:1"><div class="progress-fill" style="width:' + vidPct + '%;background:' + getBarColor(vidPct) + '"></div></div><span style="font-size:12px;font-weight:700;color:' + getBarColor(vidPct) + '">' + vidPct + '%</span></div>';
 
@@ -2698,13 +2744,15 @@ function handleDigConfirm(clientName, weekIdx) {
   const respuesta = confirm('¿' + clientName + ' cargo facturas en esta semana?');
   const entry = getDetalle(kpiContadora, kpiMes);
   if (!entry.datos.digitacion[clientName]) entry.datos.digitacion[clientName] = emptyWeeks();
+  const existing = entry.datos.digitacion[clientName][weekIdx] || {};
+  const prevDig = existing.dig || 0;
   const now = todayStr();
   if (respuesta) {
     const cantStr = prompt('¿Cuantas facturas cargo ' + clientName + '?', '');
     const cant = parseInt(cantStr) || 0;
-    entry.datos.digitacion[clientName][weekIdx] = { qty: cant, fecha: cant > 0 ? now : '', fecha_respuesta: now };
+    entry.datos.digitacion[clientName][weekIdx] = { carga: cant, dig: prevDig, fecha: cant > 0 ? now : '', fecha_respuesta: now };
   } else {
-    entry.datos.digitacion[clientName][weekIdx] = { qty: 0, fecha: '', fecha_respuesta: now };
+    entry.datos.digitacion[clientName][weekIdx] = { carga: 0, dig: prevDig, fecha: '', fecha_respuesta: now };
   }
   renderKpiContent();
 }
@@ -2717,9 +2765,20 @@ function handleDigChange(input) {
   const value = parseInt(input.value) || 0;
   const entry = getDetalle(contadora, mes);
   if (!entry.datos.digitacion[client]) entry.datos.digitacion[client] = emptyWeeks();
-  const existing = entry.datos.digitacion[client][week];
-  const prevResp = typeof existing === 'object' ? (existing.fecha_respuesta || '') : '';
-  entry.datos.digitacion[client][week] = { qty: value, fecha: value > 0 ? todayStr() : '', fecha_respuesta: prevResp || todayStr() };
+  const existing = entry.datos.digitacion[client][week] || {};
+  entry.datos.digitacion[client][week] = Object.assign({}, existing, { dig: value });
+}
+function handleCargaChange(input) {
+  const contadora = input.dataset.contadora;
+  const mes = input.dataset.mes;
+  const client = input.dataset.client;
+  const week = parseInt(input.dataset.week);
+  const value = parseInt(input.value) || 0;
+  const entry = getDetalle(contadora, mes);
+  if (!entry.datos.digitacion[client]) entry.datos.digitacion[client] = emptyWeeks();
+  const existing = entry.datos.digitacion[client][week] || {};
+  const prevResp = existing.fecha_respuesta || '';
+  entry.datos.digitacion[client][week] = Object.assign({}, existing, { carga: value, fecha: value > 0 ? todayStr() : '', fecha_respuesta: prevResp || todayStr() });
 }
 
 function handleRes(clientName, done) {
@@ -2813,6 +2872,7 @@ async function handleKpiSave() {
   btn.disabled = true;
   btn.textContent = 'Guardando...';
 
+  // Collect dig inputs
   document.querySelectorAll('.dig-input').forEach(input => {
     const contadora = input.dataset.contadora;
     const mes = input.dataset.mes;
@@ -2821,15 +2881,21 @@ async function handleKpiSave() {
     const value = parseInt(input.value) || 0;
     const entry = getDetalle(contadora, mes);
     if (!entry.datos.digitacion[client]) entry.datos.digitacion[client] = emptyWeeks();
-    const existing = entry.datos.digitacion[client][week];
-    const oldQty = typeof existing === 'object' ? (existing.qty || 0) : (existing || 0);
-    const prevResp = typeof existing === 'object' ? (existing.fecha_respuesta || '') : '';
-    // Only update fecha if value changed
-    if (value !== oldQty) {
-      entry.datos.digitacion[client][week] = { qty: value, fecha: value > 0 ? todayStr() : '', fecha_respuesta: prevResp || todayStr() };
-    } else if (typeof existing !== 'object') {
-      entry.datos.digitacion[client][week] = { qty: value, fecha: '', fecha_respuesta: '' };
-    }
+    const existing = entry.datos.digitacion[client][week] || {};
+    entry.datos.digitacion[client][week] = Object.assign({}, existing, { dig: value });
+  });
+  // Collect carga inputs
+  document.querySelectorAll('.carga-input').forEach(input => {
+    const contadora = input.dataset.contadora;
+    const mes = input.dataset.mes;
+    const client = input.dataset.client;
+    const week = parseInt(input.dataset.week);
+    const value = parseInt(input.value) || 0;
+    const entry = getDetalle(contadora, mes);
+    if (!entry.datos.digitacion[client]) entry.datos.digitacion[client] = emptyWeeks();
+    const existing = entry.datos.digitacion[client][week] || {};
+    const prevResp = existing.fecha_respuesta || '';
+    entry.datos.digitacion[client][week] = Object.assign({}, existing, { carga: value, fecha: value > 0 ? todayStr() : '', fecha_respuesta: prevResp || todayStr() });
   });
 
   await saveDetalle(kpiContadora, kpiMes);
