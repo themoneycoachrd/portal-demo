@@ -2003,81 +2003,70 @@ var TAREA_DONE_MAP = {
   ]
 };
 
+function formatFechaCorreo(year, monthIdx, day) {
+  var DIAS_SEMANA = ['domingo','lunes','martes','miércoles','jueves','viernes','sábado'];
+  var MESES_CORREO = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+  var d = new Date(year, monthIdx, day);
+  return DIAS_SEMANA[d.getDay()] + ' ' + day + ' de ' + MESES_CORREO[monthIdx] + ' de ' + year;
+}
+
 function generarCorreo() {
   var mesIdx = MESES_KEY.indexOf(selectedMes);
   var mesNombre = MESES_FULL[mesIdx];
+  var year = 2026;
+  var nextMonth = (mesIdx + 1) % 12;
+  var nextYear = mesIdx === 11 ? 2027 : 2026;
 
-  var clienteSecciones = [];
-  var aoSecciones = [];
+  // Fechas de pago del calendario fiscal
+  var dgii = CALENDARIO_DGII_2026[mesIdx];
+  var tss = CALENDARIO_TSS_2026[mesIdx];
+  var tssYear = mesIdx === 11 ? 2027 : 2026;
 
-  OBLIGACIONES.forEach(function(obl) {
-    var oblMap = TAREA_DONE_MAP[obl.id];
-    var pendCliente = [];
-    var pendAO = [];
+  var fTss = formatFechaCorreo(tssYear, tss.m, tss.d);
+  var fIr3 = formatFechaCorreo(dgii.ir3.m === 0 && mesIdx === 11 ? 2027 : 2026, dgii.ir3.m, dgii.ir3.d);
+  var fIr17 = formatFechaCorreo(dgii.ir17.m === 0 && mesIdx === 11 ? 2027 : 2026, dgii.ir17.m, dgii.ir17.d);
+  var fAnticipo = formatFechaCorreo(dgii.anticipo.m === 0 && mesIdx === 11 ? 2027 : 2026, dgii.anticipo.m, dgii.anticipo.d);
+  var fItbis = formatFechaCorreo(dgii.itbis.m === 0 && mesIdx === 11 ? 2027 : 2026, dgii.itbis.m, dgii.itbis.d);
 
-    obl.tareas.forEach(function(tarea, i) {
-      var done = false;
-      if (oblMap && oblMap[i]) {
-        done = isItemDone(oblMap[i].k, selectedMes, oblMap[i].id);
-      }
-      if (done) return;
+  // Fechas relativas al mes de trabajo
+  var f25 = formatFechaCorreo(year, mesIdx, 25);
+  var f30 = formatFechaCorreo(year, mesIdx, 30);
+  var f1 = formatFechaCorreo(nextYear, nextMonth, 1);
+  var f5 = formatFechaCorreo(nextYear, nextMonth, 5);
+  var f18 = formatFechaCorreo(nextYear, nextMonth, 18);
 
-      var fechaStr = tarea.fecha || '';
-      if (tarea.fechaTarde) fechaStr += ' (tarde: ' + tarea.fechaTarde + ')';
-      var item = { text: tarea.t, fecha: fechaStr };
+  var body = 'Hola ' + clienteNombre + ':\n\n';
+  body += 'Con la intención de seguir mejorando el servicio de Account One y los tiempos de presentación de impuestos, repasamos el calendario de obligaciones fiscales de este mes y las fechas límite de cada una:\n\n';
 
-      if (tarea.quien === 'cliente') {
-        pendCliente.push(item);
-      } else {
-        pendAO.push(item);
-      }
-    });
+  body += 'TSS\n';
+  body += '  • Envío de nómina: ' + f25 + '\n';
+  body += '  • Envío de volantes de pago de la nómina: ' + f30 + '\n';
+  body += '  • Pagar TSS: ' + fTss + '\n\n';
 
-    if (pendCliente.length > 0) {
-      clienteSecciones.push({ nombre: obl.nombre, limite: obl.fechas.dgii, tareas: pendCliente });
-    }
-    if (pendAO.length > 0) {
-      aoSecciones.push({ nombre: obl.nombre, tareas: pendAO });
-    }
-  });
+  body += 'IR-3\n';
+  body += '  • Recibir autorización de pago de IR-3: entre el ' + f5 + ' y el ' + fIr3 + '\n';
+  body += '  • Pagar IR-3: ' + fIr3 + '\n\n';
 
-  if (clienteSecciones.length === 0 && aoSecciones.length === 0) {
-    showToast('No hay responsabilidades pendientes para ' + mesNombre);
-    return;
-  }
+  body += 'IR-17\n';
+  body += '  • Informar si hubo pagos a informales: ' + f1 + '\n';
+  body += '  • Cargar el Excel y los volantes de pago a informales: ' + f1 + '\n';
+  body += '  • Aprobar el borrador de IR-17: ' + f5 + '\n';
+  body += '  • Pagar IR-17: ' + fIr17 + '\n\n';
 
-  var body = 'Hola,\n\n';
-  body += 'Te comparto el resumen de responsabilidades fiscales pendientes para ' + mesNombre + ' 2026.\n\n';
+  body += 'Anticipo ISR\n';
+  body += '  • Pagar el anticipo: ' + fAnticipo + '\n\n';
 
-  if (clienteSecciones.length > 0) {
-    body += 'LO QUE NECESITAMOS DE TI:\n\n';
-    clienteSecciones.forEach(function(sec) {
-      body += sec.nombre + ' (limite DGII: ' + sec.limite + ')\n';
-      sec.tareas.forEach(function(t) {
-        body += '  - ' + t.text;
-        if (t.fecha) body += ' // ' + t.fecha;
-        body += '\n';
-      });
-      body += '\n';
-    });
-  }
+  body += 'ITBIS\n';
+  body += '  • Enviar todas las facturas del mes: ' + f30 + ' (dentro del mismo mes corriente)\n';
+  body += '  • Cargar Excel con facturas: ' + f30 + ' o último día del mes\n';
+  body += '  • Cargar los estados de cuenta y NCF de los bancos: ' + f5 + '\n';
+  body += '  • Confirmar si va a haber facturas atrasadas (para pedir pago a cuenta): ' + f5 + '\n';
+  body += '  • Recibir el borrador de ITBIS, aprobar y pagar: a más tardar el ' + f18 + '\n\n';
 
-  if (aoSecciones.length > 0) {
-    body += 'LO QUE HACEMOS NOSOTROS:\n\n';
-    aoSecciones.forEach(function(sec) {
-      body += sec.nombre + '\n';
-      sec.tareas.forEach(function(t) {
-        body += '  - ' + t.text;
-        if (t.fecha) body += ' // ' + t.fecha;
-        body += '\n';
-      });
-      body += '\n';
-    });
-  }
+  body += 'Si necesitas cualquier apoyo o explicación sobre alguna de estas tareas, déjanos saber. La intención es que no estemos pagando impuestos corriendo.\n\n';
+  body += 'Saludos,\nFelix Rosa\nAccount One';
 
-  body += 'Cualquier duda quedo atento.\n\nSaludos,\nAccount One';
-
-  document.getElementById('correoTitle').textContent = 'Responsabilidades pendientes - ' + clienteNombre + ' (' + mesNombre + ')';
+  document.getElementById('correoTitle').textContent = 'Calendario de obligaciones - ' + clienteNombre + ' (' + mesNombre + ')';
   document.getElementById('correoTexto').textContent = body;
   document.getElementById('correoOverlay').classList.add('open');
 }
