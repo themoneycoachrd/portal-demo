@@ -1269,13 +1269,13 @@ function getCalendarEvents(mesIdx) {
   if (dgii) {
     var tssDate = CALENDARIO_TSS_2026[mesIdx];
     var tssYear = mesIdx === 11 ? 2027 : 2026;
-    addEvent(tssYear, tssDate.m, tssDate.d, 'dgii', 'TSS');
+    addEvent(tssYear, tssDate.m, tssDate.d, 'dgii', 'Pagar TSS');
     var irYear = mesIdx === 11 && dgii.ir3.m === 0 ? 2027 : 2026;
-    addEvent(irYear, dgii.ir3.m, dgii.ir3.d, 'dgii', 'IR-3 / IR-17');
+    addEvent(irYear, dgii.ir3.m, dgii.ir3.d, 'dgii', 'Pagar IR-3 / IR-17');
     var antYear = mesIdx === 11 && dgii.anticipo.m === 0 ? 2027 : 2026;
-    addEvent(antYear, dgii.anticipo.m, dgii.anticipo.d, 'dgii', 'Anticipo ISR');
+    addEvent(antYear, dgii.anticipo.m, dgii.anticipo.d, 'dgii', 'Pagar Anticipo ISR');
     var itbYear = mesIdx === 11 && dgii.itbis.m === 0 ? 2027 : 2026;
-    addEvent(itbYear, dgii.itbis.m, dgii.itbis.d, 'dgii', 'ITBIS');
+    addEvent(itbYear, dgii.itbis.m, dgii.itbis.d, 'dgii', 'Pagar ITBIS');
   }
 
   return events;
@@ -1346,7 +1346,8 @@ function renderCalGrid() {
       h += '<div class="cal-grid-day cal-day-' + primaryTipo + '">';
       h += '<div class="cal-grid-day-num">' + cd + ' <span class="cal-grid-day-month">' + monthLabel + '</span></div>';
       dayEvents.forEach(function(ev) {
-        h += '<div class="cal-grid-day-item" style="' + getEventStyle(ev.tipo) + '">' + ev.label + '</div>';
+        var prefix = ev.tipo === 'cliente' ? '<b>Cliente:</b> ' : ev.tipo === 'ao' ? '<b>AO:</b> ' : '';
+        h += '<div class="cal-grid-day-item" style="' + getEventStyle(ev.tipo) + '">' + prefix + ev.label + '</div>';
       });
       h += '</div>';
     }
