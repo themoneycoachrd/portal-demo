@@ -838,12 +838,7 @@ function renderResumen(el) {
     }
   }
 
-  // ===== CHART: Por tipo de implementación =====
-  html += '<div class="res-chart-card full-width" style="margin-bottom:12px">';
-  html += '<h4>Por tipo de implementacion</h4><canvas id="resChartTipo" height="140"></canvas>';
-  html += '</div>';
-
-  // ===== FUNNEL: Pipeline por fase =====
+  // ===== CHARTS ROW: Barras por tipo + Funnel por fase (side by side) =====
   var allPhases = ['SERVICIO', 'ONBOARDING', 'GERENCIA', 'IMPLEMENTACION', 'TRANSICION'];
   var phaseCounts = {};
   allPhases.forEach(function(p) { phaseCounts[p] = 0; });
@@ -855,8 +850,9 @@ function renderResumen(el) {
   var phaseColors = { 'SERVICIO': '#8b5cf6', 'ONBOARDING': '#6366f1', 'GERENCIA': '#4361ee', 'IMPLEMENTACION': '#059669', 'TRANSICION': '#d97706' };
   var phaseLabels = { 'SERVICIO': 'Servicio', 'ONBOARDING': 'Onboarding', 'GERENCIA': 'Gerencia', 'IMPLEMENTACION': 'Implementacion', 'TRANSICION': 'Transicion' };
 
-  html += '<div class="res-chart-card full-width" style="margin-bottom:12px">';
-  html += '<h4>Pipeline por fase (implementaciones activas)</h4>';
+  html += '<div class="res-charts">';
+  html += '<div class="res-chart-card"><h4>Por tipo de implementacion</h4><canvas id="resChartTipo" height="160"></canvas></div>';
+  html += '<div class="res-chart-card"><h4>Pipeline por fase</h4>';
   allPhases.forEach(function(p) {
     var c = phaseCounts[p];
     var pct = Math.round((c / maxPhase) * 100);
@@ -866,6 +862,7 @@ function renderResumen(el) {
     html += '<div class="res-funnel-track"><div class="res-funnel-fill" style="width:' + pct + '%;background:' + phaseColors[p] + '"><span class="res-funnel-num">' + c + '</span></div></div>';
     html += '</div>';
   });
+  html += '</div>';
   html += '</div>';
 
   // ===== SECTIONS: Vencidas, Próximas, En riesgo =====
