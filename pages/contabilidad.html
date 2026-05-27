@@ -267,11 +267,12 @@ body { font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-se
 .dig-input::-webkit-outer-spin-button, .dig-input::-webkit-inner-spin-button { -webkit-appearance:none; margin:0; }
 .dig-input:focus { outline:none; border-color:var(--blue); box-shadow:0 0 0 3px rgba(67,97,238,0.1); }
 .dig-cell { display:flex; flex-direction:column; align-items:center; gap:2px; }
-.dig-dual { display:flex; flex-direction:column; gap:2px; }
-.dig-dual-row { display:flex; align-items:center; gap:2px; justify-content:center; }
-.dig-dual-label { font-size:7px; font-weight:700; flex-shrink:0; line-height:1; }
+.dig-dual { display:flex; flex-direction:column; gap:3px; position:relative; }
+.dig-dual-row { display:flex; align-items:center; gap:3px; justify-content:center; }
 .dig-dual-val { font-size:0.78rem; font-weight:600; min-width:20px; text-align:center; }
-.dig-date { font-size:7px; color:var(--muted); line-height:1; text-align:center; }
+.dig-dual:hover .dig-tip { display:block; }
+.dig-tip { display:none; position:absolute; bottom:100%; left:50%; transform:translateX(-50%); background:#1a2332; color:#fff; font-size:10px; padding:6px 10px; border-radius:6px; white-space:nowrap; z-index:50; pointer-events:none; line-height:1.5; margin-bottom:4px; }
+.dig-tip::after { content:''; position:absolute; top:100%; left:50%; transform:translateX(-50%); border:5px solid transparent; border-top-color:#1a2332; }
 .carga-input { width:44px; padding:3px 2px; border:1px solid var(--border); border-radius:5px; font-size:0.78rem; text-align:center; font-family:inherit; -moz-appearance:textfield; }
 .carga-input::-webkit-outer-spin-button, .carga-input::-webkit-inner-spin-button { -webkit-appearance:none; margin:0; }
 .carga-input:focus { outline:none; border-color:var(--green); box-shadow:0 0 0 2px rgba(16,185,129,0.15); }
@@ -2479,32 +2480,37 @@ function renderKPIDetail(el) {
       const isFuera = w === 5;
       const bgStyle = isFuera ? 'background:#fdf8f0;' : '';
 
+      // Build tooltip text
+      var tipParts = [];
+      if (fechaResp) tipParts.push('Resp: ' + fechaResp);
+      if (fechaCarga) tipParts.push('Carga: ' + fechaCarga);
+      const tipHtml = tipParts.length ? '<div class="dig-tip">' + tipParts.join('<br>') + '</div>' : '';
+
       html += '<td style="' + bgStyle + '"><div class="dig-dual">';
+      html += tipHtml;
 
       // Row 1: Carga del cliente
       if (editable && !isMv) {
         if (!isFuera && !fechaResp) {
           html += '<div class="dig-dual-row"><button class="dig-confirm-btn" onclick="handleDigConfirm(\'' + cln + '\',' + w + ')" style="font-size:9px;padding:2px 6px">¿Cargo?</button></div>';
         } else if (!isFuera && carga === 0 && fechaResp) {
-          html += '<div class="dig-dual-row"><span class="dig-confirmed-no" style="font-size:9px">No</span><button style="font-size:8px;border:none;background:none;color:var(--blue);cursor:pointer;padding:0;text-decoration:underline" onclick="handleDigConfirm(\'' + cln + '\',' + w + ')">↺</button></div>';
+          html += '<div class="dig-dual-row"><span class="dig-confirmed-no" style="font-size:9px">No cargo</span><button style="font-size:8px;border:none;background:none;color:var(--blue);cursor:pointer;padding:0;text-decoration:underline" onclick="handleDigConfirm(\'' + cln + '\',' + w + ')">↺</button></div>';
         } else {
-          html += '<div class="dig-dual-row"><span class="dig-dual-label" style="color:var(--green)">C:</span><input type="number" class="carga-input" value="' + (carga || '') + '" min="0" data-contadora="' + c + '" data-mes="' + mes + '" data-client="' + cln + '" data-week="' + w + '" onchange="handleCargaChange(this)" style="border-color:var(--green);width:34px"></div>';
-          if (fechaCarga) html += '<div class="dig-date" style="color:var(--green)">' + fechaCarga.slice(5) + '</div>';
+          html += '<div class="dig-dual-row"><input type="number" class="carga-input" value="' + (carga || '') + '" min="0" data-contadora="' + c + '" data-mes="' + mes + '" data-client="' + cln + '" data-week="' + w + '" onchange="handleCargaChange(this)" style="border-color:var(--green);width:38px"></div>';
         }
       } else {
         if (!isFuera && fechaResp && carga === 0) {
           html += '<div class="dig-dual-row"><span style="font-size:9px;color:var(--red);font-weight:600">No</span></div>';
         } else {
-          html += '<div class="dig-dual-row"><span class="dig-dual-label" style="color:var(--green)">C:</span><span class="dig-dual-val" style="color:var(--green)">' + (carga || 0) + '</span></div>';
-          if (fechaCarga) html += '<div class="dig-date" style="color:var(--green)">' + fechaCarga.slice(5) + '</div>';
+          html += '<div class="dig-dual-row"><span class="dig-dual-val" style="color:var(--green)">' + (carga || 0) + '</span></div>';
         }
       }
 
       // Row 2: Digitado por contadora
       if (editable && !isMv && (fechaResp || isFuera)) {
-        html += '<div class="dig-dual-row"><span class="dig-dual-label" style="color:var(--blue)">D:</span><input type="number" class="dig-input" value="' + (dig || '') + '" min="0" data-contadora="' + c + '" data-mes="' + mes + '" data-client="' + cln + '" data-week="' + w + '" onchange="handleDigChange(this)" style="width:34px"></div>';
+        html += '<div class="dig-dual-row"><input type="number" class="dig-input" value="' + (dig || '') + '" min="0" data-contadora="' + c + '" data-mes="' + mes + '" data-client="' + cln + '" data-week="' + w + '" onchange="handleDigChange(this)" style="width:38px"></div>';
       } else if (fechaResp || isFuera) {
-        html += '<div class="dig-dual-row"><span class="dig-dual-label" style="color:var(--blue)">D:</span><span class="dig-dual-val" style="color:var(--blue)">' + (dig || 0) + '</span></div>';
+        html += '<div class="dig-dual-row"><span class="dig-dual-val" style="color:var(--blue)">' + (dig || 0) + '</span></div>';
       } else {
         html += '<div class="dig-dual-row"><span style="font-size:8px;color:var(--light)">—</span></div>';
       }
@@ -2513,7 +2519,7 @@ function renderKPIDetail(el) {
     }
     const pctClient = effAdm > 0 ? Math.round(clientDigTotal / effAdm * 100) : 0;
     const totalColor = isMv ? 'var(--light)' : getBarColor(pctClient);
-    html += '<td><div class="dig-dual"><div class="dig-dual-row"><span class="dig-dual-label" style="color:var(--green)">C:</span><span class="dig-dual-val" style="color:var(--green)">' + clientCargaTotal + '</span></div><div class="dig-dual-row"><span class="dig-dual-label" style="color:var(--blue)">D:</span><span class="dig-dual-val" style="font-weight:700;color:' + totalColor + '">' + clientDigTotal + '</span></div></div></td></tr>';
+    html += '<td><div class="dig-dual"><div class="dig-dual-row"><span class="dig-dual-val" style="color:var(--green)">' + clientCargaTotal + '</span></div><div class="dig-dual-row"><span class="dig-dual-val" style="font-weight:700;color:' + totalColor + '">' + clientDigTotal + '</span></div></div></td></tr>';
   });
 
   // Total row
@@ -2526,10 +2532,10 @@ function renderKPIDetail(el) {
   });
   html += '<tr class="total-row"><td>Total</td><td>' + scores.admTotal + '</td>';
   for (let ti = 0; ti < 5; ti++) {
-    html += '<td><div class="dig-dual"><div class="dig-dual-row"><span class="dig-dual-label" style="color:var(--green)">C:</span><span style="color:var(--green);font-weight:600">' + weekCargaTotals[ti] + '</span></div><div class="dig-dual-row"><span class="dig-dual-label" style="color:var(--blue)">D:</span><span style="color:var(--blue);font-weight:600">' + weekDigTotals[ti] + '</span></div></div></td>';
+    html += '<td><div class="dig-dual"><div class="dig-dual-row"><span style="color:var(--green);font-weight:600">' + weekCargaTotals[ti] + '</span></div><div class="dig-dual-row"><span style="color:var(--blue);font-weight:600">' + weekDigTotals[ti] + '</span></div></div></td>';
   }
-  html += '<td style="background:#fdf8f0"><div class="dig-dual"><div class="dig-dual-row"><span class="dig-dual-label" style="color:var(--green)">C:</span><span style="color:var(--green);font-weight:600">' + weekCargaTotals[5] + '</span></div><div class="dig-dual-row"><span class="dig-dual-label" style="color:var(--blue)">D:</span><span style="color:var(--blue);font-weight:600">' + weekDigTotals[5] + '</span></div></div></td>';
-  html += '<td><div class="dig-dual"><div class="dig-dual-row"><span class="dig-dual-label" style="color:var(--green)">C:</span><span style="color:var(--green);font-weight:700">' + grandCargaTotal + '</span></div><div class="dig-dual-row"><span class="dig-dual-label" style="color:var(--blue)">D:</span><span style="color:' + getBarColor(digPct) + ';font-weight:700">' + grandDigTotal + '</span></div></div></td></tr>';
+  html += '<td style="background:#fdf8f0"><div class="dig-dual"><div class="dig-dual-row"><span style="color:var(--green);font-weight:600">' + weekCargaTotals[5] + '</span></div><div class="dig-dual-row"><span style="color:var(--blue);font-weight:600">' + weekDigTotals[5] + '</span></div></div></td>';
+  html += '<td><div class="dig-dual"><div class="dig-dual-row"><span style="color:var(--green);font-weight:700">' + grandCargaTotal + '</span></div><div class="dig-dual-row"><span style="color:' + getBarColor(digPct) + ';font-weight:700">' + grandDigTotal + '</span></div></div></td></tr>';
   html += '</tbody></table></div>';
 
   html += '<div style="display:flex;align-items:center;gap:8px;margin-top:10px"><span style="font-size:12px;color:var(--muted)">Avance:</span><div class="progress-bar" style="flex:1"><div class="progress-fill" style="width:' + digPct + '%;background:' + getBarColor(digPct) + '"></div></div><span style="font-size:12px;font-weight:700;color:' + getBarColor(digPct) + '">' + digPct + '%</span></div>';
