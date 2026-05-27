@@ -838,8 +838,12 @@ function renderResumen(el) {
     }
   }
 
-  // ===== FUNNEL CHART =====
-  // Merge all phases: count how many active (not completed) clients are in each phase
+  // ===== CHART: Por tipo de implementación =====
+  html += '<div class="res-chart-card full-width" style="margin-bottom:12px">';
+  html += '<h4>Por tipo de implementacion</h4><canvas id="resChartTipo" height="140"></canvas>';
+  html += '</div>';
+
+  // ===== FUNNEL: Pipeline por fase =====
   var allPhases = ['SERVICIO', 'ONBOARDING', 'GERENCIA', 'IMPLEMENTACION', 'TRANSICION'];
   var phaseCounts = {};
   allPhases.forEach(function(p) { phaseCounts[p] = 0; });
@@ -862,12 +866,6 @@ function renderResumen(el) {
     html += '<div class="res-funnel-track"><div class="res-funnel-fill" style="width:' + pct + '%;background:' + phaseColors[p] + '"><span class="res-funnel-num">' + c + '</span></div></div>';
     html += '</div>';
   });
-  html += '</div>';
-
-  // ===== CHARTS ROW: Barras por tipo + Donut por implementadora =====
-  html += '<div class="res-charts">';
-  html += '<div class="res-chart-card"><h4>Por tipo de implementacion</h4><canvas id="resChartTipo" height="160"></canvas></div>';
-  html += '<div class="res-chart-card"><h4>Carga por implementadora</h4><canvas id="resChartImpl" height="160"></canvas></div>';
   html += '</div>';
 
   // ===== SECTIONS: Vencidas, Próximas, En riesgo =====
@@ -952,29 +950,6 @@ function renderResumen(el) {
     resChartInstances.push(ch1);
   }
 
-  // Donut: por implementadora
-  var implMap = {};
-  rows.forEach(function(r) {
-    if (r.pct >= 100) return;
-    var key = r.implementadora || 'Sin asignar';
-    implMap[key] = (implMap[key] || 0) + 1;
-  });
-  var implLabels = Object.keys(implMap);
-  var implData = implLabels.map(function(k) { return implMap[k]; });
-  var implColors = ['#4361ee', '#8b5cf6', '#d97706', '#059669', '#ef4444'];
-
-  var ctxImpl = document.getElementById('resChartImpl');
-  if (ctxImpl) {
-    var ch2 = new Chart(ctxImpl, {
-      type: 'doughnut',
-      data: {
-        labels: implLabels,
-        datasets: [{ data: implData, backgroundColor: implColors.slice(0, implLabels.length) }]
-      },
-      options: { responsive: true, cutout: '55%', plugins: { legend: { position: 'bottom', labels: { font: { size: 10 } } } } }
-    });
-    resChartInstances.push(ch2);
-  }
 }
 
 // ==================== MAIN TAB SWITCH ====================
