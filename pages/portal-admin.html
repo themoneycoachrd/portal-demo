@@ -1241,9 +1241,10 @@ var CAL_RESPONSABILIDADES = [
   { day:5,  periodo:'sig', tipo:'ao', short:'Enviar borrador de IR-17' },
   { day:5,  periodo:'sig', tipo:'ao', short:'Recordar pago de IR-3' },
   { day:10, periodo:'sig', tipo:'ao', short:'Confirmar que tenemos todas las facturas y NCF de bancos' },
-  { day:15, periodo:'sig', tipo:'ao', short:'Enviar borrador de ITBIS y formatos 606/607 para aprobación' },
-  { day:18, periodo:'sig', tipo:'cliente', short:'Último día para revisar ITBIS y pagar sin prisa' },
-  { day:22, periodo:'sig', tipo:'ao', short:'Último recordatorio: confirmar que ITBIS se pagó' }
+  { day:14, periodo:'sig', tipo:'ao', short:'Contabilidad envía borrador de ITBIS y formatos 606/607 a Impuestos' },
+  { day:19, periodo:'sig', tipo:'ao', short:'Impuestos devuelve borrador de ITBIS y formato 607 aprobados a Contabilidad' },
+  { day:19, periodo:'sig', tipo:'cliente', short:'Último día para revisar ITBIS y pagar sin prisa' }
+  // "Último recordatorio ITBIS" se agrega dinámicamente en getCalendarEvents() usando la fecha real de CALENDARIO_DGII_2026
 ];
 
 function getCalendarEvents(mesIdx) {
@@ -1265,6 +1266,15 @@ function getCalendarEvents(mesIdx) {
       addEvent(nextYear, nextMonth, r.day, r.tipo, r.short);
     }
   });
+
+  // Último recordatorio ITBIS: siempre cae en la fecha límite de pago de ITBIS (varía por mes)
+  var dgiiForReminder = CALENDARIO_DGII_2026[mesIdx];
+  if (dgiiForReminder) {
+    var itbisDay = dgiiForReminder.itbis.d;
+    var itbisMonth = dgiiForReminder.itbis.m;
+    var itbisYear = (mesIdx === 11 && itbisMonth === 0) ? 2027 : 2026;
+    addEvent(itbisYear, itbisMonth, itbisDay, 'ao', 'Último recordatorio: confirmar que ITBIS se pagó');
+  }
 
   // DGII dates
   var dgii = CALENDARIO_DGII_2026[mesIdx];
@@ -1389,8 +1399,9 @@ var TIMELINE_ENTRIES = [
   { day: 10, periodo: 'sig', tipo: 'dgii', label: 'LÍMITE', titulo: 'Fecha límite de pago IR-3 e IR-17', desc: 'Presentación y pago de retenciones de asalariados y otras retenciones.' },
   { day: 10, periodo: 'sig', tipo: 'ao', label: 'FIRMA', titulo: 'Confirmar que el cliente no tiene facturas atrasadas y que tenemos NCF de bancos', desc: 'Verificar con el cliente que no hay facturas pendientes y que se recibieron los comprobantes fiscales bancarios.' },
   { day: 15, periodo: 'sig', tipo: 'dgii', label: 'LÍMITE', titulo: 'Fecha límite de pago anticipo ISR', desc: 'Pago del anticipo mensual del impuesto sobre la renta.' },
-  { day: 15, periodo: 'sig', tipo: 'ao', label: 'FIRMA', titulo: 'Enviar borrador ITBIS', desc: 'Declaración ITBIS y formatos 606/607 listos para aprobación final del cliente.' },
-  { day: 18, periodo: 'sig', tipo: 'cliente', label: 'DEL MES', titulo: 'Aprobación de borrador y pago de ITBIS', desc: 'Aprobar el borrador de ITBIS y realizar el pago antes de la fecha límite.' },
+  { day: 14, periodo: 'sig', tipo: 'ao', label: 'FIRMA', titulo: 'Contabilidad envía borrador ITBIS a Impuestos', desc: 'Departamento de Contabilidad envía borrador de ITBIS y formatos 606/607 al Departamento de Impuestos para revisión.' },
+  { day: 19, periodo: 'sig', tipo: 'ao', label: 'FIRMA', titulo: 'Impuestos devuelve borrador ITBIS aprobado', desc: 'Departamento de Impuestos devuelve borrador de ITBIS y formato 607 aprobados a Contabilidad.' },
+  { day: 19, periodo: 'sig', tipo: 'cliente', label: 'DEL MES', titulo: 'Revisión y pago de ITBIS', desc: 'Último día para revisar el borrador de ITBIS y pagar sin prisa, antes de la fecha límite DGII.' },
   { day: 20, periodo: 'sig', tipo: 'dgii', label: 'LÍMITE', titulo: 'Fecha límite de pago de ITBIS', desc: 'Declaración IT-1, pago del ITBIS y envío de formatos 606/607.' }
 ];
 
@@ -2033,7 +2044,7 @@ function generarCorreo() {
   var f30 = formatFechaCorreo(year, mesIdx, 30);
   var f1 = formatFechaCorreo(nextYear, nextMonth, 1);
   var f5 = formatFechaCorreo(nextYear, nextMonth, 5);
-  var f18 = formatFechaCorreo(nextYear, nextMonth, 18);
+  var f19 = formatFechaCorreo(nextYear, nextMonth, 19);
 
   var body = 'Hola ' + clienteNombre + ':\n\n';
   body += 'Con la intención de seguir mejorando el servicio de Account One y los tiempos de presentación de impuestos, repasamos el calendario de obligaciones fiscales de este mes y las fechas límite de cada una:\n\n';
@@ -2061,7 +2072,7 @@ function generarCorreo() {
   body += '  • Cargar Excel con facturas: ' + f30 + ' o último día del mes\n';
   body += '  • Cargar los estados de cuenta y NCF de los bancos: ' + f5 + '\n';
   body += '  • Confirmar si va a haber facturas atrasadas (para pedir pago a cuenta): ' + f5 + '\n';
-  body += '  • Recibir el borrador de ITBIS, aprobar y pagar: a más tardar el ' + f18 + '\n\n';
+  body += '  • Recibir el borrador de ITBIS, aprobar y pagar: a más tardar el ' + f19 + '\n\n';
 
   body += 'Si necesitas cualquier apoyo o explicación sobre alguna de estas tareas, déjanos saber. La intención es que no estemos pagando impuestos corriendo.\n\n';
   body += 'Saludos,\nFelix Rosa\nAccount One';
