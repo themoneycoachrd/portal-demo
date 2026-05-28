@@ -417,6 +417,50 @@
     .cl-toolbar { flex-direction:column; align-items:stretch; }
     .cl-search { width:100%; }
   }
+
+  /* ========== COBROS MODULE ========== */
+  .cob-summary { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; margin-bottom:20px; }
+  .cob-stat { background:white; border-radius:12px; border:1px solid var(--border); padding:16px; text-align:center; }
+  .cob-stat .num { font-size:1.8rem; font-weight:700; }
+  .cob-stat .lbl { font-size:0.72rem; color:var(--muted); text-transform:uppercase; letter-spacing:0.5px; margin-top:4px; }
+  .cob-table { width:100%; border-collapse:collapse; font-size:0.82rem; }
+  .cob-table th { font-size:0.68rem; text-transform:uppercase; letter-spacing:0.5px; color:var(--muted); font-weight:600; padding:10px 8px; border-bottom:2px solid var(--border); text-align:left; }
+  .cob-table td { padding:10px 8px; border-bottom:1px solid var(--border); vertical-align:middle; }
+  .cob-table tr:hover { background:#fafbfc; }
+  .cob-score { display:inline-block; padding:3px 10px; border-radius:6px; font-size:0.7rem; font-weight:600; }
+  .cob-score.repeat { background:#fef2f2; color:var(--red); }
+  .cob-score.occasional { background:#fffbeb; color:#b45309; }
+  .cob-score.good { background:#ecfdf5; color:var(--green); }
+  .cob-score.unknown { background:#f3f4f6; color:#6b7280; }
+  .cob-btn { padding:5px 10px; border:none; border-radius:6px; font-size:0.72rem; font-weight:600; cursor:pointer; margin:0 2px; }
+  .cob-btn-blue { background:#eff6ff; color:var(--blue); }
+  .cob-btn-blue:hover { background:#dbeafe; }
+  .cob-btn-green { background:#ecfdf5; color:var(--green); }
+  .cob-btn-green:hover { background:#d1fae5; }
+  .cob-btn-purple { background:#f3e8ff; color:#7c3aed; }
+  .cob-btn-purple:hover { background:#ede9fe; }
+  .cob-aging { font-size:0.7rem; font-weight:600; }
+  .cob-aging.red { color:var(--red); }
+  .cob-aging.amber { color:#b45309; }
+  .cob-aging.green { color:var(--green); }
+  .cob-detail-card { background:white; border-radius:12px; border:1px solid var(--border); padding:20px; margin-bottom:16px; }
+  .cob-detail-card h3 { margin:0 0 12px 0; font-size:1rem; color:var(--navy); }
+  .cob-notas-list { max-height:400px; overflow-y:auto; }
+  .cob-nota-item { padding:12px; border-bottom:1px solid var(--border); }
+  .cob-nota-item:last-child { border-bottom:none; }
+  .cob-nota-meta { font-size:0.7rem; color:var(--muted); margin-bottom:4px; }
+  .cob-nota-badge { display:inline-block; padding:2px 8px; border-radius:4px; font-size:0.65rem; font-weight:600; margin-left:6px; }
+  .cob-modal-overlay { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:1000; justify-content:center; align-items:center; }
+  .cob-modal-overlay.open { display:flex; }
+  .cob-modal { background:white; border-radius:12px; padding:24px; width:560px; max-width:90vw; max-height:85vh; overflow-y:auto; }
+  .cob-modal h3 { margin:0 0 16px 0; font-size:1rem; }
+  .cob-modal label { display:block; font-size:0.75rem; font-weight:600; color:var(--navy); margin-bottom:4px; margin-top:12px; }
+  .cob-modal select, .cob-modal input, .cob-modal textarea { width:100%; padding:8px 10px; border:1px solid var(--border); border-radius:8px; font-size:0.82rem; box-sizing:border-box; }
+  .cob-modal textarea { min-height:80px; resize:vertical; }
+  .cob-modal-actions { display:flex; justify-content:flex-end; gap:8px; margin-top:16px; }
+  .cob-back-btn { background:none; border:1px solid var(--border); padding:6px 14px; border-radius:8px; font-size:0.82rem; cursor:pointer; color:var(--navy); margin-bottom:16px; }
+  .cob-back-btn:hover { background:#f3f4f6; }
+  .cob-loading { text-align:center; padding:40px; color:var(--muted); font-size:0.9rem; }
 </style>
 </head>
 <body>
@@ -463,6 +507,10 @@
   <div class="content" id="cc-content"></div>
 </div>
 
+<div id="cob-area" class="hidden">
+  <div class="content" id="cob-content"></div>
+</div>
+
 <div id="ctd-area" class="hidden">
   <div class="content" id="ctd-content"></div>
 </div>
@@ -470,6 +518,55 @@
 <div class="footer">Conectado a Supabase — los datos se guardan en la nube.</div>
 
 </div><!-- /app-wrapper -->
+
+<!-- Cobros: Modal Template (correo/whatsapp/estado de cuenta) -->
+<div class="cob-modal-overlay" id="cobTemplateOverlay" onclick="if(event.target===this)cobCloseTemplate()">
+  <div class="cob-modal">
+    <h3 id="cobTemplateTitle">Template</h3>
+    <pre id="cobTemplateTexto" style="white-space:pre-wrap;font-family:inherit;font-size:0.82rem;background:#f9fafb;padding:16px;border-radius:8px;border:1px solid var(--border);max-height:400px;overflow-y:auto"></pre>
+    <div class="cob-modal-actions">
+      <button class="cob-btn" style="background:var(--border);color:var(--navy)" onclick="cobCloseTemplate()">Cerrar</button>
+      <button class="cob-btn" style="background:var(--blue);color:white" onclick="cobCopyTemplate()">Copiar texto</button>
+    </div>
+  </div>
+</div>
+
+<!-- Cobros: Modal Nueva Nota -->
+<div class="cob-modal-overlay" id="cobNotaOverlay" onclick="if(event.target===this)cobCloseNota()">
+  <div class="cob-modal">
+    <h3>Registrar gestión de cobro</h3>
+    <input type="hidden" id="cobNotaCliente">
+    <label>Tipo de contacto</label>
+    <select id="cobNotaTipo">
+      <option value="llamada">Llamada</option>
+      <option value="correo">Correo</option>
+      <option value="whatsapp">WhatsApp</option>
+      <option value="visita">Visita</option>
+      <option value="nota_interna">Nota interna</option>
+    </select>
+    <label>Resultado</label>
+    <select id="cobNotaResultado">
+      <option value="contactado">Contactado</option>
+      <option value="sin_respuesta">Sin respuesta</option>
+      <option value="buzon">Buzón de voz</option>
+      <option value="promesa_pago">Promesa de pago</option>
+      <option value="pago_parcial">Pago parcial</option>
+      <option value="disputado">Disputado</option>
+    </select>
+    <label>Fecha promesa de pago</label>
+    <input type="date" id="cobNotaFechaPromesa">
+    <label>Monto prometido (RD$)</label>
+    <input type="number" id="cobNotaMonto" step="0.01" placeholder="0.00">
+    <label>Fecha de seguimiento</label>
+    <input type="date" id="cobNotaSeguimiento">
+    <label>Nota</label>
+    <textarea id="cobNotaTexto" placeholder="Detalles de la conversación..."></textarea>
+    <div class="cob-modal-actions">
+      <button class="cob-btn" style="background:var(--border);color:var(--navy)" onclick="cobCloseNota()">Cancelar</button>
+      <button class="cob-btn" style="background:var(--green);color:white" onclick="cobSaveNota()">Guardar</button>
+    </div>
+  </div>
+</div>
 
 <!-- Toast -->
 <div class="toast" id="gerToast"></div>
@@ -1001,8 +1098,12 @@ function renderGerMainTabs() {
   const el = document.getElementById('mainTabs');
   var tabs = [
     { id:'clientes', label:'Clientes' },
+    { id:'cobros', label:'Cobros' },
     { id:'contadoras', label:'Personal' }
   ];
+  if (!tengoPermiso('cobros', 'cobros', 'consulta') && !tengoPermiso('gerencia', 'cobros', 'consulta')) {
+    tabs = tabs.filter(t => t.id !== 'cobros');
+  }
   if (!tengoPermiso('gerencia', 'contadoras', 'consulta')) {
     tabs = tabs.filter(t => t.id !== 'contadoras');
   }
@@ -1013,10 +1114,14 @@ function switchGerTab(tab) {
   gerMainTab = tab;
   renderGerMainTabs();
   document.getElementById('cc-area').classList.add('hidden');
+  document.getElementById('cob-area').classList.add('hidden');
   document.getElementById('ctd-area').classList.add('hidden');
   if (tab === 'clientes') {
     document.getElementById('cc-area').classList.remove('hidden');
     ccRenderAll();
+  } else if (tab === 'cobros') {
+    document.getElementById('cob-area').classList.remove('hidden');
+    cobRenderApp();
   } else if (tab === 'contadoras') {
     document.getElementById('ctd-area').classList.remove('hidden');
     ctdRenderApp();
@@ -2724,6 +2829,445 @@ function ccRenderMonth(el, mes, d) {
       scales:{x:{beginAtZero:true}}
     }
   }));
+}
+
+// ══════════════════════════════════════════════════════════════
+// ██  COBROS MODULE
+// ══════════════════════════════════════════════════════════════
+
+// ─── Adm Cloud credentials (API directa) ───
+var ADM_API = 'https://api.admcloud.net/api';
+var ADM_CREDS = {
+  email: 'frosa@accountone.do',
+  password: 'cgc0FXU3nfz_mjh8zpd',
+  appid: '86598502-d670-4e40-fadd-08debd059b88',
+  company: '516d3a00-2f5f-4ebd-8802-e91881828f36',
+  role: 'Administradores',
+  roleId: '41a8a36b-12cd-4c78-aef7-9bfb9d510a11'
+};
+var cobAdmToken = null;
+var cobInvoices = [];
+var cobNotas = [];
+var cobView = 'lista'; // 'lista' | 'detalle'
+var cobDetalleCliente = null;
+
+// Score overrides from invoice-chase analysis
+var COB_SCORES = {
+  'Iris Laura Guerrero': 'repeat',
+  'Raquel Bencosme Catering': 'repeat',
+  'Suplident': 'repeat',
+  'Gestaf Gestores Administrativos': 'repeat',
+  'Maria Raquel Bencosme': 'repeat',
+  'Nomad': 'repeat',
+  'Growly By Oleica Jimenez': 'repeat',
+  'Grupo De Inversiones': 'repeat',
+  'Casa del Ingeniero NR': 'repeat',
+  'Agencia De Viajes Pat': 'repeat',
+  'Luisa Abreu Sanchez': 'repeat',
+  'Blackbox': 'occasional',
+  'La Charpente': 'occasional',
+  'Mj Inversiones': 'occasional',
+  'Kalma Wellness House': 'occasional',
+  'Architectural & Civil Solutions': 'occasional',
+  'Enlaces Inc': 'occasional',
+  'Maquipan Dominicana': 'occasional',
+  'Psc Estudio De Arquitectura': 'occasional',
+  'Sosa Arquitectura': 'occasional',
+  'Importadora K & G Sas': 'occasional',
+  'Constructora Lidomi & Asociados': 'occasional',
+  'Unfold': 'occasional',
+  'Extraquimica': 'occasional',
+  'Canvas Design & Media': 'occasional',
+  'Dior Legal Partners': 'occasional',
+  'Igsan Interior Desing': 'occasional',
+  'Impregnatto': 'occasional',
+  'Mv Creative Mvc': 'occasional',
+  'Inversiones Saclart': 'occasional',
+  'Sav Educacion Y Enseñanza': 'good',
+  'Distrito Legal': 'good'
+};
+
+var COB_SCORE_LABELS = { repeat: 'Pago recurrente tarde', occasional: 'Pago ocasional tarde', good: 'Buen pagador', unknown: 'Sin clasificar' };
+var COB_SCORE_ORDER = { repeat: 0, occasional: 1, unknown: 2, good: 3 };
+
+// ─── Adm Cloud API helpers ───
+async function cobAdmLogin() {
+  if (cobAdmToken) return cobAdmToken;
+  try {
+    var resp = await fetch(ADM_API + '/Login?company=' + ADM_CREDS.company + '&role=' + encodeURIComponent(ADM_CREDS.role) + '&appid=' + ADM_CREDS.appid, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'appid': ADM_CREDS.appid },
+      body: JSON.stringify({ UserName: ADM_CREDS.email, Password: ADM_CREDS.password, Company: ADM_CREDS.company, Role: ADM_CREDS.role, RoleId: ADM_CREDS.roleId })
+    });
+    var data = await resp.json();
+    cobAdmToken = data.token || data.Token || data.access_token || null;
+    return cobAdmToken;
+  } catch(e) {
+    console.error('Adm Cloud login error:', e);
+    return null;
+  }
+}
+
+async function cobFetchInvoices() {
+  var token = await cobAdmLogin();
+  if (!token) return [];
+  try {
+    var url = ADM_API + '/CreditInvoices?company=' + ADM_CREDS.company + '&role=' + encodeURIComponent(ADM_CREDS.role) + '&appid=' + ADM_CREDS.appid + '&token=' + encodeURIComponent(token);
+    var resp = await fetch(url);
+    var data = await resp.json();
+    return Array.isArray(data) ? data : (data.data || data.Data || data.items || []);
+  } catch(e) {
+    console.error('Adm Cloud fetch error:', e);
+    return [];
+  }
+}
+
+async function cobLoadNotas() {
+  var { data } = await sb.from('notas_cobro').select('*').order('created_at', { ascending: false });
+  return data || [];
+}
+
+// ─── Agrupar facturas por cliente ───
+function cobGroupByCustomer(invoices) {
+  var groups = {};
+  var today = new Date();
+  invoices.forEach(function(inv) {
+    // Detect field names (Adm Cloud puede usar PascalCase)
+    var name = inv.CustomerName || inv.customerName || inv.Customer || inv.customer || 'Sin nombre';
+    var balance = parseFloat(inv.Balance || inv.balance || inv.OpenBalance || inv.openBalance || 0);
+    var total = parseFloat(inv.Total || inv.total || inv.Amount || inv.amount || 0);
+    var dueDate = inv.DueDate || inv.dueDate || inv.Due || inv.due || null;
+    var invDate = inv.Date || inv.date || inv.InvoiceDate || inv.invoiceDate || null;
+    var invNo = inv.No || inv.no || inv.InvoiceNo || inv.invoiceNo || inv.Number || '';
+    var status = inv.Status || inv.status || '';
+
+    // Solo facturas con balance pendiente > 0
+    if (balance <= 0) return;
+
+    if (!groups[name]) {
+      groups[name] = { nombre: name, facturas: [], totalPendiente: 0, maxDias: 0 };
+    }
+    var dias = 0;
+    if (dueDate) {
+      var due = new Date(dueDate);
+      dias = Math.floor((today - due) / 86400000);
+    } else if (invDate) {
+      var d = new Date(invDate);
+      dias = Math.floor((today - d) / 86400000);
+    }
+
+    groups[name].facturas.push({
+      no: invNo, total: total, balance: balance, dueDate: dueDate, date: invDate, dias: dias, status: status
+    });
+    groups[name].totalPendiente += balance;
+    if (dias > groups[name].maxDias) groups[name].maxDias = dias;
+  });
+  return Object.values(groups);
+}
+
+function cobGetScore(nombre) {
+  // Match exact or partial (Adm uses full legal names)
+  if (COB_SCORES[nombre]) return COB_SCORES[nombre];
+  var keys = Object.keys(COB_SCORES);
+  for (var i = 0; i < keys.length; i++) {
+    if (nombre.toLowerCase().indexOf(keys[i].toLowerCase()) >= 0 || keys[i].toLowerCase().indexOf(nombre.toLowerCase()) >= 0) {
+      return COB_SCORES[keys[i]];
+    }
+  }
+  return 'unknown';
+}
+
+function cobFormatMoney(n) {
+  return 'RD$' + Number(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+function cobAgingBucket(dias) {
+  if (dias <= 0) return { label: 'Al día', css: 'green' };
+  if (dias <= 30) return { label: '1-30d', css: 'green' };
+  if (dias <= 60) return { label: '31-60d', css: 'amber' };
+  if (dias <= 90) return { label: '61-90d', css: 'red' };
+  return { label: '90+d', css: 'red' };
+}
+
+// ─── Main render ───
+async function cobRenderApp() {
+  var el = document.getElementById('cob-content');
+  if (cobView === 'detalle' && cobDetalleCliente) {
+    cobRenderDetalle(el);
+    return;
+  }
+
+  el.innerHTML = '<div class="cob-loading">Cargando datos de Adm Cloud...</div>';
+
+  var results = await Promise.all([cobFetchInvoices(), cobLoadNotas()]);
+  cobInvoices = results[0];
+  cobNotas = results[1];
+
+  if (cobInvoices.length === 0) {
+    el.innerHTML = '<div class="cob-loading">No se encontraron facturas pendientes en Adm Cloud. Verifica la conexión.</div>';
+    return;
+  }
+
+  var clientes = cobGroupByCustomer(cobInvoices);
+
+  // Sort by score (worst first), then by maxDias desc
+  clientes.sort(function(a, b) {
+    var sa = COB_SCORE_ORDER[cobGetScore(a.nombre)] || 2;
+    var sb2 = COB_SCORE_ORDER[cobGetScore(b.nombre)] || 2;
+    if (sa !== sb2) return sa - sb2;
+    return b.maxDias - a.maxDias;
+  });
+
+  // Summary stats
+  var totalPendiente = 0, clientesConAtraso = 0, facturasVencidas = 0;
+  clientes.forEach(function(c) {
+    totalPendiente += c.totalPendiente;
+    if (c.maxDias > 0) clientesConAtraso++;
+    c.facturas.forEach(function(f) { if (f.dias > 0) facturasVencidas++; });
+  });
+
+  var html = '';
+
+  // Summary cards
+  html += '<div class="cob-summary">';
+  html += '<div class="cob-stat"><p class="num" style="color:var(--red)">' + cobFormatMoney(totalPendiente) + '</p><p class="lbl">Total pendiente</p></div>';
+  html += '<div class="cob-stat"><p class="num" style="color:var(--navy)">' + clientesConAtraso + '</p><p class="lbl">Clientes con atraso</p></div>';
+  html += '<div class="cob-stat"><p class="num" style="color:var(--amber)">' + facturasVencidas + '</p><p class="lbl">Facturas vencidas</p></div>';
+  html += '</div>';
+
+  // Table
+  html += '<div style="background:white;border-radius:12px;border:1px solid var(--border);overflow-x:auto">';
+  html += '<table class="cob-table"><thead><tr>';
+  html += '<th>#</th><th>Cliente</th><th style="text-align:right">Pendiente</th><th style="text-align:center">Facturas</th><th style="text-align:center">Mayor atraso</th><th style="text-align:center">Score</th><th style="text-align:center">Última nota</th><th style="text-align:center">Acciones</th>';
+  html += '</tr></thead><tbody>';
+
+  clientes.forEach(function(c, idx) {
+    var score = cobGetScore(c.nombre);
+    var aging = cobAgingBucket(c.maxDias);
+    var lastNota = cobNotas.find(function(n) { return n.cliente_nombre === c.nombre; });
+    var lastNotaText = lastNota ? (new Date(lastNota.created_at).toLocaleDateString('es-DO', { day:'numeric', month:'short' }) + ' - ' + (lastNota.resultado || '').replace(/_/g, ' ')) : '-';
+
+    html += '<tr>';
+    html += '<td>' + (idx + 1) + '</td>';
+    html += '<td style="font-weight:600;cursor:pointer" onclick="cobOpenDetalle(\'' + esc(c.nombre) + '\')">' + c.nombre + '</td>';
+    html += '<td style="text-align:right;font-weight:600">' + cobFormatMoney(c.totalPendiente) + '</td>';
+    html += '<td style="text-align:center">' + c.facturas.length + '</td>';
+    html += '<td style="text-align:center"><span class="cob-aging ' + aging.css + '">' + (c.maxDias > 0 ? c.maxDias + 'd' : 'Al día') + '</span></td>';
+    html += '<td style="text-align:center"><span class="cob-score ' + score + '">' + COB_SCORE_LABELS[score] + '</span></td>';
+    html += '<td style="text-align:center;font-size:0.74rem">' + lastNotaText + '</td>';
+    html += '<td style="text-align:center;white-space:nowrap">';
+    html += '<button class="cob-btn cob-btn-blue" onclick="cobShowEstadoCuenta(\'' + esc(c.nombre) + '\')" title="Estado de cuenta">📋</button>';
+    html += '<button class="cob-btn cob-btn-green" onclick="cobShowCorreo(\'' + esc(c.nombre) + '\')" title="Template correo">✉</button>';
+    html += '<button class="cob-btn cob-btn-purple" onclick="cobShowWhatsApp(\'' + esc(c.nombre) + '\')" title="Template WhatsApp">💬</button>';
+    html += '<button class="cob-btn" style="background:#fef2f2;color:var(--red)" onclick="cobOpenNota(\'' + esc(c.nombre) + '\')" title="Registrar nota">📝</button>';
+    html += '</td>';
+    html += '</tr>';
+  });
+
+  html += '</tbody></table></div>';
+  el.innerHTML = html;
+}
+
+// ─── Vista detalle de cliente ───
+function cobOpenDetalle(nombre) {
+  cobDetalleCliente = nombre;
+  cobView = 'detalle';
+  cobRenderDetalle(document.getElementById('cob-content'));
+}
+
+function cobBackToList() {
+  cobView = 'lista';
+  cobDetalleCliente = null;
+  cobRenderApp();
+}
+
+function cobRenderDetalle(el) {
+  var nombre = cobDetalleCliente;
+  var clientes = cobGroupByCustomer(cobInvoices);
+  var cliente = clientes.find(function(c) { return c.nombre === nombre; });
+  if (!cliente) { cobBackToList(); return; }
+
+  var score = cobGetScore(nombre);
+  var notasCliente = cobNotas.filter(function(n) { return n.cliente_nombre === nombre; });
+
+  var html = '<button class="cob-back-btn" onclick="cobBackToList()">← Volver al listado</button>';
+
+  // Header
+  html += '<div class="cob-detail-card">';
+  html += '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px">';
+  html += '<div><h3 style="margin:0">' + nombre + '</h3><span class="cob-score ' + score + '" style="margin-top:6px">' + COB_SCORE_LABELS[score] + '</span></div>';
+  html += '<div style="text-align:right"><div style="font-size:1.4rem;font-weight:700;color:var(--red)">' + cobFormatMoney(cliente.totalPendiente) + '</div><div style="font-size:0.72rem;color:var(--muted)">' + cliente.facturas.length + ' facturas pendientes</div></div>';
+  html += '</div>';
+  html += '<div style="display:flex;gap:8px;margin-top:16px;flex-wrap:wrap">';
+  html += '<button class="cob-btn cob-btn-blue" onclick="cobShowEstadoCuenta(\'' + esc(nombre) + '\')">📋 Estado de cuenta</button>';
+  html += '<button class="cob-btn cob-btn-green" onclick="cobShowCorreo(\'' + esc(nombre) + '\')">✉ Template correo</button>';
+  html += '<button class="cob-btn cob-btn-purple" onclick="cobShowWhatsApp(\'' + esc(nombre) + '\')">💬 Template WhatsApp</button>';
+  html += '<button class="cob-btn" style="background:#fef2f2;color:var(--red)" onclick="cobOpenNota(\'' + esc(nombre) + '\')">📝 Registrar nota</button>';
+  html += '</div></div>';
+
+  // Facturas
+  html += '<div class="cob-detail-card"><h3>Facturas pendientes</h3>';
+  html += '<table class="cob-table"><thead><tr><th>No.</th><th style="text-align:right">Total</th><th style="text-align:right">Pendiente</th><th style="text-align:center">Fecha</th><th style="text-align:center">Vencimiento</th><th style="text-align:center">Días atraso</th></tr></thead><tbody>';
+  cliente.facturas.sort(function(a, b) { return b.dias - a.dias; }).forEach(function(f) {
+    var aging = cobAgingBucket(f.dias);
+    html += '<tr>';
+    html += '<td style="font-weight:600">' + (f.no || '-') + '</td>';
+    html += '<td style="text-align:right">' + cobFormatMoney(f.total) + '</td>';
+    html += '<td style="text-align:right;font-weight:600">' + cobFormatMoney(f.balance) + '</td>';
+    html += '<td style="text-align:center;font-size:0.74rem">' + (f.date ? new Date(f.date).toLocaleDateString('es-DO') : '-') + '</td>';
+    html += '<td style="text-align:center;font-size:0.74rem">' + (f.dueDate ? new Date(f.dueDate).toLocaleDateString('es-DO') : '-') + '</td>';
+    html += '<td style="text-align:center"><span class="cob-aging ' + aging.css + '">' + (f.dias > 0 ? f.dias + 'd' : 'Al día') + '</span></td>';
+    html += '</tr>';
+  });
+  html += '</tbody></table></div>';
+
+  // Historial de notas
+  html += '<div class="cob-detail-card"><h3>Historial de cobro (' + notasCliente.length + ')</h3>';
+  if (notasCliente.length === 0) {
+    html += '<p style="color:var(--muted);font-size:0.82rem">No hay notas registradas para este cliente.</p>';
+  } else {
+    html += '<div class="cob-notas-list">';
+    notasCliente.forEach(function(n) {
+      var tipoBg = { llamada: '#eff6ff', correo: '#ecfdf5', whatsapp: '#f3e8ff', visita: '#fffbeb', nota_interna: '#f3f4f6' };
+      var tipoColor = { llamada: 'var(--blue)', correo: 'var(--green)', whatsapp: '#7c3aed', visita: '#b45309', nota_interna: '#6b7280' };
+      var resBg = { contactado: '#ecfdf5', sin_respuesta: '#fef2f2', buzon: '#fffbeb', promesa_pago: '#eff6ff', pago_parcial: '#ecfdf5', disputado: '#fef2f2' };
+      var resColor = { contactado: 'var(--green)', sin_respuesta: 'var(--red)', buzon: '#b45309', promesa_pago: 'var(--blue)', pago_parcial: 'var(--green)', disputado: 'var(--red)' };
+      html += '<div class="cob-nota-item">';
+      html += '<div class="cob-nota-meta">' + new Date(n.created_at).toLocaleDateString('es-DO', { weekday:'short', day:'numeric', month:'short', year:'numeric' });
+      html += '<span class="cob-nota-badge" style="background:' + (tipoBg[n.tipo_contacto] || '#f3f4f6') + ';color:' + (tipoColor[n.tipo_contacto] || '#6b7280') + '">' + (n.tipo_contacto || '').replace(/_/g, ' ') + '</span>';
+      html += '<span class="cob-nota-badge" style="background:' + (resBg[n.resultado] || '#f3f4f6') + ';color:' + (resColor[n.resultado] || '#6b7280') + '">' + (n.resultado || '').replace(/_/g, ' ') + '</span>';
+      html += '</div>';
+      if (n.fecha_promesa) html += '<div style="font-size:0.74rem;color:var(--blue)">Promesa de pago: ' + new Date(n.fecha_promesa).toLocaleDateString('es-DO') + (n.monto_prometido ? ' por ' + cobFormatMoney(n.monto_prometido) : '') + '</div>';
+      if (n.fecha_seguimiento) html += '<div style="font-size:0.74rem;color:var(--amber)">Seguimiento: ' + new Date(n.fecha_seguimiento).toLocaleDateString('es-DO') + '</div>';
+      if (n.nota) html += '<div style="font-size:0.82rem;margin-top:4px">' + n.nota + '</div>';
+      html += '</div>';
+    });
+    html += '</div>';
+  }
+  html += '</div>';
+
+  el.innerHTML = html;
+}
+
+// ─── Templates ───
+function cobGetClienteData(nombre) {
+  var clientes = cobGroupByCustomer(cobInvoices);
+  return clientes.find(function(c) { return c.nombre === nombre; }) || null;
+}
+
+function cobShowEstadoCuenta(nombre) {
+  var c = cobGetClienteData(nombre);
+  if (!c) return;
+  var txt = 'ESTADO DE CUENTA\n';
+  txt += 'Cliente: ' + c.nombre + '\n';
+  txt += 'Fecha: ' + new Date().toLocaleDateString('es-DO') + '\n\n';
+  txt += 'Facturas pendientes:\n';
+  txt += '─────────────────────────────────────\n';
+  c.facturas.sort(function(a, b) { return b.dias - a.dias; }).forEach(function(f) {
+    txt += 'Factura: ' + (f.no || 'S/N') + '\n';
+    txt += '  Fecha: ' + (f.date ? new Date(f.date).toLocaleDateString('es-DO') : '-') + '\n';
+    txt += '  Vencimiento: ' + (f.dueDate ? new Date(f.dueDate).toLocaleDateString('es-DO') : '-') + '\n';
+    txt += '  Total: ' + cobFormatMoney(f.total) + '\n';
+    txt += '  Pendiente: ' + cobFormatMoney(f.balance) + '\n';
+    if (f.dias > 0) txt += '  Atraso: ' + f.dias + ' días\n';
+    txt += '─────────────────────────────────────\n';
+  });
+  txt += '\nTotal pendiente: ' + cobFormatMoney(c.totalPendiente) + '\n';
+  txt += '\nAccount One\nfrosa@accountone.do';
+  document.getElementById('cobTemplateTitle').textContent = 'Estado de cuenta - ' + nombre;
+  document.getElementById('cobTemplateTexto').textContent = txt;
+  document.getElementById('cobTemplateOverlay').classList.add('open');
+}
+
+function cobShowCorreo(nombre) {
+  var c = cobGetClienteData(nombre);
+  if (!c) return;
+  var facList = c.facturas.map(function(f) {
+    return '  - Factura ' + (f.no || 'S/N') + ': ' + cobFormatMoney(f.balance) + (f.dias > 0 ? ' (' + f.dias + ' días de atraso)' : '');
+  }).join('\n');
+
+  var txt = 'Hola,\n\n';
+  txt += 'Espero que estés bien. Te escribo para dar seguimiento al balance pendiente que tenemos registrado en nuestros libros.\n\n';
+  txt += 'Actualmente tienes ' + c.facturas.length + ' factura' + (c.facturas.length > 1 ? 's' : '') + ' pendiente' + (c.facturas.length > 1 ? 's' : '') + ' por un total de ' + cobFormatMoney(c.totalPendiente) + ':\n\n';
+  txt += facList + '\n\n';
+  txt += 'Agradecemos puedas confirmar cuándo estarás realizando el pago, o si tienes alguna duda con alguna de estas facturas.\n\n';
+  txt += 'Quedo pendiente.\n\n';
+  txt += 'Saludos,\nAccount One';
+  document.getElementById('cobTemplateTitle').textContent = 'Template correo - ' + nombre;
+  document.getElementById('cobTemplateTexto').textContent = txt;
+  document.getElementById('cobTemplateOverlay').classList.add('open');
+}
+
+function cobShowWhatsApp(nombre) {
+  var c = cobGetClienteData(nombre);
+  if (!c) return;
+  var txt = 'Hola! Te escribo de Account One para dar seguimiento al balance pendiente que tenemos. ';
+  txt += 'Tienes ' + c.facturas.length + ' factura' + (c.facturas.length > 1 ? 's' : '') + ' pendiente' + (c.facturas.length > 1 ? 's' : '') + ' por ' + cobFormatMoney(c.totalPendiente) + '. ';
+  if (c.maxDias > 30) {
+    txt += 'La más antigua tiene ' + c.maxDias + ' días. ';
+  }
+  txt += 'Nos puedes confirmar cuándo estarás haciendo el pago? Gracias!';
+  document.getElementById('cobTemplateTitle').textContent = 'Template WhatsApp - ' + nombre;
+  document.getElementById('cobTemplateTexto').textContent = txt;
+  document.getElementById('cobTemplateOverlay').classList.add('open');
+}
+
+function cobCloseTemplate() {
+  document.getElementById('cobTemplateOverlay').classList.remove('open');
+}
+function cobCopyTemplate() {
+  var txt = document.getElementById('cobTemplateTexto').textContent;
+  navigator.clipboard.writeText(txt).then(function() {
+    gerShowToast('Texto copiado al portapapeles');
+    cobCloseTemplate();
+  });
+}
+
+// ─── Notas CRUD ───
+function cobOpenNota(nombre) {
+  document.getElementById('cobNotaCliente').value = nombre;
+  document.getElementById('cobNotaTipo').value = 'llamada';
+  document.getElementById('cobNotaResultado').value = 'contactado';
+  document.getElementById('cobNotaFechaPromesa').value = '';
+  document.getElementById('cobNotaMonto').value = '';
+  document.getElementById('cobNotaSeguimiento').value = '';
+  document.getElementById('cobNotaTexto').value = '';
+  document.getElementById('cobNotaOverlay').classList.add('open');
+}
+function cobCloseNota() {
+  document.getElementById('cobNotaOverlay').classList.remove('open');
+}
+
+async function cobSaveNota() {
+  var nombre = document.getElementById('cobNotaCliente').value;
+  var obj = {
+    cliente_nombre: nombre,
+    tipo_contacto: document.getElementById('cobNotaTipo').value,
+    resultado: document.getElementById('cobNotaResultado').value,
+    nota: document.getElementById('cobNotaTexto').value || null,
+    created_by: (await sb.auth.getUser()).data.user.id
+  };
+  var fp = document.getElementById('cobNotaFechaPromesa').value;
+  if (fp) obj.fecha_promesa = fp;
+  var mt = document.getElementById('cobNotaMonto').value;
+  if (mt) obj.monto_prometido = parseFloat(mt);
+  var fs = document.getElementById('cobNotaSeguimiento').value;
+  if (fs) obj.fecha_seguimiento = fs;
+
+  var { error } = await sb.from('notas_cobro').insert(obj);
+  if (error) {
+    gerShowToast('Error al guardar: ' + error.message, 'error');
+    return;
+  }
+  cobCloseNota();
+  gerShowToast('Nota registrada');
+  // Reload notas
+  cobNotas = await cobLoadNotas();
+  if (cobView === 'detalle') {
+    cobRenderDetalle(document.getElementById('cob-content'));
+  } else {
+    cobRenderApp();
+  }
 }
 
 // ══════════════════════════════════════════════════════════════
