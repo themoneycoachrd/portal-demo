@@ -3030,10 +3030,12 @@ function cobToDOP(monto, moneda) {
 }
 function cobSwitchPill(pill) {
   cobActivePill = pill;
+  cobActiveAging = 'todos'; // reset aging al cambiar pill
   cobRenderApp();
 }
 function cobSwitchAging(aging) {
   cobActiveAging = cobActiveAging === aging ? 'todos' : aging;
+  cobActivePill = 'todos'; // reset pill al cambiar aging
   cobRenderApp();
 }
 function cobOnSearch(val) {
@@ -3075,27 +3077,25 @@ async function cobRenderApp() {
     else if (s === 'good') countGood++;
   });
 
-  // Apply score pill filter
-  var filteredByPill = allClientes;
-  if (cobActivePill !== 'todos') {
-    filteredByPill = allClientes.filter(function(c) { return cobGetScore(c.nombre) === cobActivePill; });
-  }
-
-  // Classify by aging buckets (from pill-filtered list)
-  var bucket90 = [], bucket60 = [], bucket30 = [], bucket0 = [];
-  var totalDOP = 0;
-  filteredByPill.forEach(function(c) {
-    totalDOP += c.montoDOP;
-    if (c.maxDias > 90) bucket90.push(c);
-    else if (c.maxDias > 60) bucket60.push(c);
-    else if (c.maxDias > 30) bucket30.push(c);
-    else bucket0.push(c);
+  // Classify ALL clients by aging buckets (for card counts, always unfiltered)
+  var allBucket90 = [], allBucket60 = [], allBucket30 = [], allBucket0 = [];
+  allClientes.forEach(function(c) {
+    if (c.maxDias > 90) allBucket90.push(c);
+    else if (c.maxDias > 60) allBucket60.push(c);
+    else if (c.maxDias > 30) allBucket30.push(c);
+    else allBucket0.push(c);
   });
 
-  // Apply aging filter (from pill-filtered list)
-  var clientes = filteredByPill;
-  if (cobActiveAging !== 'todos') {
-    clientes = filteredByPill.filter(function(c) {
+  // Apply filters: pill score OR aging card (not both at once)
+  // Si un pill de score está activo, las tarjetas de aging se desactivan
+  // Si una tarjeta de aging está activa, los pills de score se resetean a "todos"
+  var clientes = allClientes;
+  if (cobActivePill !== 'todos') {
+    // Pill activo: filtrar por score, aging cards deshabilitadas
+    clientes = allClientes.filter(function(c) { return cobGetScore(c.nombre) === cobActivePill; });
+  } else if (cobActiveAging !== 'todos') {
+    // Aging activo: filtrar por bucket
+    clientes = allClientes.filter(function(c) {
       if (cobActiveAging === '90') return c.maxDias > 90;
       if (cobActiveAging === '60') return c.maxDias > 60 && c.maxDias <= 90;
       if (cobActiveAging === '30') return c.maxDias > 30 && c.maxDias <= 60;
@@ -3104,8 +3104,12 @@ async function cobRenderApp() {
     });
   }
 
-  // Deuda por cliente for charts (from pill-filtered list, not aging-filtered)
-  var deudaClientes = filteredByPill.filter(function(c) { return c.montoDOP > 0; }).sort(function(a, b) { return b.montoDOP - a.montoDOP; }).slice(0, 8);
+  // Totals from filtered list
+  var totalDOP = 0;
+  clientes.forEach(function(c) { totalDOP += c.montoDOP; });
+
+  // Deuda por cliente for dona (from filtered list)
+  var deudaClientes = clientes.filter(function(c) { return c.montoDOP > 0; }).sort(function(a, b) { return b.montoDOP - a.montoDOP; }).slice(0, 8);
   var maxDeuda = deudaClientes.length > 0 ? deudaClientes[0].montoDOP : 1;
 
   var html = '';
@@ -3139,28 +3143,31 @@ async function cobRenderApp() {
   }
   html += '</div>';
 
-  // ── Urgency cards (by aging) — clickeable ──
+  // ── Urgency cards (by aging) — clickeable, counts always from allClientes ──
+  var agingDisabled = cobActivePill !== 'todos'; // deshabilitadas si hay pill activo
   html += '<div class="cob-urgency">';
-  html += '<div class="cob-urg-card cob-urg-urgent" style="cursor:pointer;' + (cobActiveAging === '90' ? 'box-shadow:0 0 0 2px var(--red)' : '') + '" onclick="cobSwitchAging(\'90\')"><p class="urg-label">Mas de 90 dias</p><p class="urg-num">' + bucket90.length + '</p><p class="urg-sub">critico</p></div>';
-  html += '<div class="cob-urg-card cob-urg-warn" style="cursor:pointer;' + (cobActiveAging === '60' ? 'box-shadow:0 0 0 2px #b45309' : '') + '" onclick="cobSwitchAging(\'60\')"><p class="urg-label">60 - 90 dias</p><p class="urg-num">' + bucket60.length + '</p><p class="urg-sub">alto riesgo</p></div>';
-  html += '<div class="cob-urg-card cob-urg-soon" style="cursor:pointer;' + (cobActiveAging === '30' ? 'box-shadow:0 0 0 2px var(--amber)' : '') + '" onclick="cobSwitchAging(\'30\')"><p class="urg-label">30 - 60 dias</p><p class="urg-num">' + bucket30.length + '</p><p class="urg-sub">en seguimiento</p></div>';
-  html += '<div class="cob-urg-card cob-urg-ok" style="cursor:pointer;' + (cobActiveAging === '0' ? 'box-shadow:0 0 0 2px var(--green)' : '') + '" onclick="cobSwitchAging(\'0\')"><p class="urg-label">0 - 30 dias</p><p class="urg-num">' + bucket0.length + '</p><p class="urg-sub">reciente</p></div>';
+  html += '<div class="cob-urg-card cob-urg-urgent" style="cursor:pointer;' + (cobActiveAging === '90' ? 'box-shadow:0 0 0 2px var(--red)' : '') + (agingDisabled ? ';opacity:0.5' : '') + '" onclick="' + (agingDisabled ? '' : 'cobSwitchAging(\\\'90\\\')') + '"><p class="urg-label">Mas de 90 dias</p><p class="urg-num">' + allBucket90.length + '</p><p class="urg-sub">critico</p></div>';
+  html += '<div class="cob-urg-card cob-urg-warn" style="cursor:pointer;' + (cobActiveAging === '60' ? 'box-shadow:0 0 0 2px #b45309' : '') + (agingDisabled ? ';opacity:0.5' : '') + '" onclick="' + (agingDisabled ? '' : 'cobSwitchAging(\\\'60\\\')') + '"><p class="urg-label">60 - 90 dias</p><p class="urg-num">' + allBucket60.length + '</p><p class="urg-sub">alto riesgo</p></div>';
+  html += '<div class="cob-urg-card cob-urg-soon" style="cursor:pointer;' + (cobActiveAging === '30' ? 'box-shadow:0 0 0 2px var(--amber)' : '') + (agingDisabled ? ';opacity:0.5' : '') + '" onclick="' + (agingDisabled ? '' : 'cobSwitchAging(\\\'30\\\')') + '"><p class="urg-label">30 - 60 dias</p><p class="urg-num">' + allBucket30.length + '</p><p class="urg-sub">en seguimiento</p></div>';
+  html += '<div class="cob-urg-card cob-urg-ok" style="cursor:pointer;' + (cobActiveAging === '0' ? 'box-shadow:0 0 0 2px var(--green)' : '') + (agingDisabled ? ';opacity:0.5' : '') + '" onclick="' + (agingDisabled ? '' : 'cobSwitchAging(\\\'0\\\')') + '"><p class="urg-label">0 - 30 dias</p><p class="urg-num">' + allBucket0.length + '</p><p class="urg-sub">reciente</p></div>';
   html += '</div>';
 
   // ── Charts: Monto por aging + Deuda por cliente ──
   html += '<div class="cob-charts">';
 
-  // Chart 1: Monto en DOP por bucket de aging
+  // Chart 1: Monto en DOP por bucket de aging (from filtered clientes)
   var agingBuckets = [
     { label: '90+ dias', val: 0, color: '#ef4444' },
     { label: '60-90 dias', val: 0, color: '#b45309' },
     { label: '30-60 dias', val: 0, color: '#f59e0b' },
     { label: '0-30 dias', val: 0, color: '#10b981' }
   ];
-  bucket90.forEach(function(c) { agingBuckets[0].val += c.montoDOP; });
-  bucket60.forEach(function(c) { agingBuckets[1].val += c.montoDOP; });
-  bucket30.forEach(function(c) { agingBuckets[2].val += c.montoDOP; });
-  bucket0.forEach(function(c) { agingBuckets[3].val += c.montoDOP; });
+  clientes.forEach(function(c) {
+    if (c.maxDias > 90) agingBuckets[0].val += c.montoDOP;
+    else if (c.maxDias > 60) agingBuckets[1].val += c.montoDOP;
+    else if (c.maxDias > 30) agingBuckets[2].val += c.montoDOP;
+    else agingBuckets[3].val += c.montoDOP;
+  });
   var maxAgingVal = Math.max.apply(null, agingBuckets.map(function(b) { return b.val; })) || 1;
 
   html += '<div class="cob-chart-card"><h4>Monto por antigüedad (RD$)</h4>';
