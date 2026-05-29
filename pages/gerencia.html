@@ -595,10 +595,10 @@
         <option value="Esmeralda">Esmeralda</option>
         <option value="Felix">Felix</option>
       </select>
-      <label>Fecha límite</label>
+      <label>Fecha tarea</label>
       <input type="date" id="cobTareaFecha">
     </div>
-    <label>Fecha de seguimiento</label>
+    <label>Fecha seguimiento</label>
     <input type="date" id="cobNotaSeguimiento">
     <label id="cobNotaTextoLabel">Nota</label>
     <textarea id="cobNotaTexto" placeholder="Detalles de la conversación..."></textarea>
@@ -3455,17 +3455,19 @@ function cobRenderDetalle(el) {
     html += '<p style="color:var(--muted);font-size:0.82rem">No hay tareas pendientes para este cliente.</p>';
   } else {
     html += '<table class="cob-table"><thead><tr>';
-    html += '<th>Creada</th><th>Límite</th><th>Descripción</th><th style="text-align:center">Asignada a</th><th style="text-align:center">Estatus</th><th style="text-align:center"></th>';
+    html += '<th>Creada</th><th>Fecha tarea</th><th>Seguimiento</th><th>Descripción</th><th style="text-align:center">Asignada a</th><th style="text-align:center">Estatus</th><th style="text-align:center"></th>';
     html += '</tr></thead><tbody>';
     tareasCliente.forEach(function(t) {
       var fecha = new Date(t.created_at).toLocaleDateString('es-DO', { day:'numeric', month:'short' });
-      var limite = t.fecha_promesa ? new Date(t.fecha_promesa).toLocaleDateString('es-DO', { day:'numeric', month:'short' }) : '-';
+      var fechaTarea = t.fecha_promesa ? new Date(t.fecha_promesa).toLocaleDateString('es-DO', { day:'numeric', month:'short' }) : '-';
+      var seguimiento = t.fecha_seguimiento ? new Date(t.fecha_seguimiento).toLocaleDateString('es-DO', { day:'numeric', month:'short' }) : '-';
       var parsed = cobParseTarea(t.nota);
       var hoy = new Date(); hoy.setHours(0,0,0,0);
       var vencida = t.fecha_promesa && new Date(t.fecha_promesa) < hoy;
       html += '<tr>';
       html += '<td style="font-size:0.74rem;white-space:nowrap">' + fecha + '</td>';
-      html += '<td style="font-size:0.74rem;white-space:nowrap;' + (vencida ? 'color:var(--red);font-weight:600' : '') + '">' + limite + '</td>';
+      html += '<td style="font-size:0.74rem;white-space:nowrap;' + (vencida ? 'color:var(--red);font-weight:600' : '') + '">' + fechaTarea + '</td>';
+      html += '<td style="font-size:0.74rem;white-space:nowrap">' + seguimiento + '</td>';
       html += '<td>' + (parsed.desc || '-') + '</td>';
       html += '<td style="text-align:center;font-size:0.74rem">' + (parsed.asignada || '-') + '</td>';
       html += '<td style="text-align:center"><span class="cob-nota-badge" style="background:#eff6ff;color:var(--navy)">pendiente</span></td>';
