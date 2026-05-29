@@ -566,6 +566,7 @@
     <h3 id="cobNotaModalTitle">Registrar gestión de cobro</h3>
     <input type="hidden" id="cobNotaCliente">
     <input type="hidden" id="cobNotaMode" value="nota">
+    <input type="hidden" id="cobNotaEditId" value="">
     <div id="cobNotaFields">
       <label>Tipo de contacto</label>
       <select id="cobNotaTipo">
@@ -1661,6 +1662,7 @@ function ccRenderContent() {
 
 // ─── Servicios tab ───
 var ccServFiltro = null; // null = todos, o 'Contabilidad completa', 'Solo impuestos', 'Solo supervisión'
+var ccServMovFiltro = null; // null = todos, 'inicio','nuevos','churn','cierre'
 var ccServMes = MESES[new Date().getMonth()]; // mes actual para tab Servicios
 var ccSwMes = MESES[new Date().getMonth()]; // mes actual para tab Software
 var ccSwFiltro = null; // null = todos, 'inicio','nuevos','churn','cierre'
@@ -1724,7 +1726,7 @@ function ccRenderServicios(el) {
   html += '<div class="month-tabs">';
   MESES.forEach(function(m, i) {
     if (i > currentMonthIdx) return;
-    html += '<button class="month-tab' + (m === ccServMes ? ' active' : '') + '" onclick="ccServMes=\'' + m + '\';ccRenderContent()">' + MESES_LABEL[i] + '</button>';
+    html += '<button class="month-tab' + (m === ccServMes ? ' active' : '') + '" onclick="ccServMes=\'' + m + '\';ccServMovFiltro=null;ccServFiltro=null;ccRenderContent()">' + MESES_LABEL[i] + '</button>';
   });
   html += '</div>';
   html += '<button style="padding:6px 14px;border-radius:8px;font-size:0.78rem;font-weight:600;cursor:pointer;border:1px solid var(--border);background:white;color:var(--navy);white-space:nowrap" onclick="ccToggleServView()" title="Gestionar clientes">&#128221; Base de datos</button>';
@@ -1770,6 +1772,31 @@ function ccRenderServicios(el) {
     html += '<div class="stat-sub">' + (total > 0 ? (sinTipo.length / total * 100).toFixed(0) : 0) + '%</div></div>';
   }
   html += '</div>';
+
+  // ── Movement pills (Inicio / Nuevos / Churn / Cierre) ──
+  var MESES_MAP_SERV2 = {enero:'01',febrero:'02',marzo:'03',abril:'04',mayo:'05',junio:'06',julio:'07',agosto:'08',septiembre:'09',octubre:'10',noviembre:'11',diciembre:'12'};
+  var servPrefix = '2026-' + MESES_MAP_SERV2[ccServMes];
+  var servNuevos = ccAllClientes.filter(function(c) { return c.fecha_entrada && c.fecha_entrada.indexOf(servPrefix) === 0; });
+  var servChurn = ccAllClientes.filter(function(c) { return c.fecha_salida && c.fecha_salida.indexOf(servPrefix) === 0; });
+  var servInicio = total - servNuevos.length + servChurn.length;
+
+  html += '<div class="stats" style="margin-top:8px">';
+  html += '<div class="stat" style="cursor:pointer;border:2px solid ' + (ccServMovFiltro === 'inicio' ? 'var(--blue)' : 'transparent') + '" onclick="ccServMovFilter(\'inicio\')"><div class="stat-label">Inicio mes</div><div class="stat-value" style="color:var(--blue)">' + servInicio + '</div><div class="stat-sub">' + MESES_FULL[mesIdx] + '</div></div>';
+  html += '<div class="stat" style="cursor:pointer;border:2px solid ' + (ccServMovFiltro === 'nuevos' ? 'var(--green)' : 'transparent') + '" onclick="ccServMovFilter(\'nuevos\')"><div class="stat-label">Nuevos</div><div class="stat-value stat-green">' + servNuevos.length + '</div><div class="stat-sub">' + MESES_FULL[mesIdx] + '</div></div>';
+  html += '<div class="stat" style="cursor:pointer;border:2px solid ' + (ccServMovFiltro === 'churn' ? 'var(--red)' : 'transparent') + '" onclick="ccServMovFilter(\'churn\')"><div class="stat-label">Churn</div><div class="stat-value stat-red">' + servChurn.length + '</div><div class="stat-sub">' + MESES_FULL[mesIdx] + '</div></div>';
+  html += '<div class="stat" style="cursor:pointer;border:2px solid ' + (ccServMovFiltro === 'cierre' ? 'var(--navy)' : 'transparent') + '" onclick="ccServMovFilter(\'cierre\')"><div class="stat-label">Cierre</div><div class="stat-value">' + total + '</div><div class="stat-sub">' + MESES_FULL[mesIdx] + '</div></div>';
+  html += '</div>';
+
+  // Movement filter indicator
+  if (ccServMovFiltro) {
+    var mfLabels = {inicio:'Clientes al inicio de ' + MESES_FULL[mesIdx], nuevos:'Nuevos en ' + MESES_FULL[mesIdx], churn:'Churn en ' + MESES_FULL[mesIdx], cierre:'Clientes al cierre de ' + MESES_FULL[mesIdx]};
+    var mfColors = {inicio:'var(--blue)', nuevos:'var(--green)', churn:'var(--red)', cierre:'var(--navy)'};
+    var mfBgs = {inicio:'#eff6ff', nuevos:'#ecfdf5', churn:'#fef2f2', cierre:'#f0f4ff'};
+    html += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;padding:8px 12px;background:' + mfBgs[ccServMovFiltro] + ';border-radius:8px;font-size:0.8rem;color:' + mfColors[ccServMovFiltro] + ';font-weight:500">';
+    html += '<span>' + mfLabels[ccServMovFiltro] + '</span>';
+    html += '<button style="margin-left:auto;padding:3px 10px;border-radius:5px;border:1px solid ' + mfColors[ccServMovFiltro] + ';background:white;font-size:0.72rem;cursor:pointer;color:' + mfColors[ccServMovFiltro] + '" onclick="ccServMovFilter(null)">Ver todos</button>';
+    html += '</div>';
+  }
 
   // Resumen mensual (movimiento mes a mes)
   var ccServBase = ccAllClientes.filter(function(c) { return !c.fecha_entrada || c.fecha_entrada < '2026-01-01'; });
@@ -1824,6 +1851,16 @@ function ccRenderServicios(el) {
   else if (ccServFiltro === 'Solo supervisión') { lista = sup; titulo = 'Supervisión'; }
   else if (ccServFiltro === 'Bookkeeping') { lista = bk; titulo = 'Bookkeeping'; }
   else if (ccServFiltro === '__sin_tipo') { lista = sinTipo; titulo = 'Sin servicio asignado'; }
+  else if (ccServMovFiltro === 'nuevos') { lista = servNuevos; titulo = 'Nuevos en ' + MESES_FULL[mesIdx]; }
+  else if (ccServMovFiltro === 'churn') { lista = servChurn; titulo = 'Churn en ' + MESES_FULL[mesIdx]; }
+  else if (ccServMovFiltro === 'inicio') {
+    // Activos al inicio = activos al cierre - nuevos + churn
+    var servNuevosNombres = servNuevos.map(function(c) { return c.nombre; });
+    var servChurnNombres = servChurn.map(function(c) { return c.nombre; });
+    lista = activos.filter(function(c) { return servNuevosNombres.indexOf(c.nombre) === -1; }).concat(servChurn);
+    titulo = 'Inicio de ' + MESES_FULL[mesIdx];
+  }
+  else if (ccServMovFiltro === 'cierre') { lista = activos; titulo = 'Cierre de ' + MESES_FULL[mesIdx]; }
   else { lista = activos; titulo = 'Todos los clientes'; }
 
   // Sort: group by service type (imp → contab → sup → bk → sin tipo), then alphabetical
@@ -1888,6 +1925,13 @@ function ccRenderServicios(el) {
 
 function ccServFilter(tipo) {
   ccServFiltro = tipo;
+  ccServMovFiltro = null;
+  ccRenderContent();
+}
+function ccServMovFilter(tipo) {
+  if (tipo === null) { ccServMovFiltro = null; }
+  else { ccServMovFiltro = (ccServMovFiltro === tipo) ? null : tipo; }
+  ccServFiltro = null;
   ccRenderContent();
 }
 
@@ -3472,6 +3516,7 @@ function cobRenderDetalle(el) {
       html += '<td style="text-align:center;font-size:0.74rem">' + (parsed.asignada || '-') + '</td>';
       html += '<td style="text-align:center"><span class="cob-nota-badge" style="background:#eff6ff;color:var(--navy)">pendiente</span></td>';
       html += '<td style="text-align:center;white-space:nowrap">';
+      html += '<button class="cob-btn" style="background:#eff6ff;color:var(--blue);font-size:0.68rem;padding:3px 8px" onclick="cobEditarTarea(\'' + t.id + '\')" title="Editar">✎</button>';
       html += '<button class="cob-btn cob-btn-green" style="font-size:0.68rem;padding:3px 8px" onclick="cobCompletarTarea(\'' + t.id + '\')" title="Marcar completada">✓</button>';
       html += '<button class="cob-btn" style="background:#fef2f2;color:var(--red);font-size:0.68rem;padding:3px 8px" onclick="cobBorrarTarea(\'' + t.id + '\')" title="Eliminar">✗</button>';
       html += '</td>';
@@ -3591,6 +3636,7 @@ function cobCopyTemplate() {
 function cobOpenNota(nombre) {
   document.getElementById('cobNotaCliente').value = nombre;
   document.getElementById('cobNotaMode').value = 'nota';
+  document.getElementById('cobNotaEditId').value = '';
   document.getElementById('cobNotaModalTitle').textContent = 'Registrar gestión de cobro';
   document.getElementById('cobNotaFields').style.display = '';
   document.getElementById('cobTareaFields').style.display = 'none';
@@ -3604,9 +3650,27 @@ function cobOpenNota(nombre) {
   document.getElementById('cobNotaOverlay').classList.add('open');
 }
 
+function cobEditarTarea(id) {
+  var tarea = cobNotas.find(function(n) { return n.id === id; });
+  if (!tarea) return;
+  var parsed = cobParseTarea(tarea.nota);
+  document.getElementById('cobNotaCliente').value = tarea.cliente_nombre;
+  document.getElementById('cobNotaMode').value = 'tarea';
+  document.getElementById('cobNotaEditId').value = id;
+  document.getElementById('cobNotaModalTitle').textContent = 'Editar tarea';
+  document.getElementById('cobNotaFields').style.display = 'none';
+  document.getElementById('cobTareaFields').style.display = '';
+  document.getElementById('cobNotaTextoLabel').textContent = 'Descripción de la tarea';
+  document.getElementById('cobTareaAsignado').value = parsed.asignada || 'Esmeralda';
+  document.getElementById('cobTareaFecha').value = tarea.fecha_promesa || '';
+  document.getElementById('cobNotaSeguimiento').value = tarea.fecha_seguimiento || '';
+  document.getElementById('cobNotaTexto').value = parsed.desc || '';
+  document.getElementById('cobNotaOverlay').classList.add('open');
+}
 function cobOpenTarea(nombre) {
   document.getElementById('cobNotaCliente').value = nombre;
   document.getElementById('cobNotaMode').value = 'tarea';
+  document.getElementById('cobNotaEditId').value = '';
   document.getElementById('cobNotaModalTitle').textContent = 'Crear tarea de cobro';
   document.getElementById('cobNotaFields').style.display = 'none';
   document.getElementById('cobTareaFields').style.display = '';
@@ -3648,14 +3712,26 @@ async function cobSaveNota() {
 
   var fs = document.getElementById('cobNotaSeguimiento').value;
   if (fs) obj.fecha_seguimiento = fs;
+  else obj.fecha_seguimiento = null;
 
-  var { error } = await sb.from('notas_cobro').insert(obj);
+  var editId = document.getElementById('cobNotaEditId').value;
+  var error;
+  if (editId) {
+    // Editing existing record
+    delete obj.created_by;
+    if (!obj.fecha_promesa) obj.fecha_promesa = null;
+    var res = await sb.from('notas_cobro').update(obj).eq('id', editId);
+    error = res.error;
+  } else {
+    var res = await sb.from('notas_cobro').insert(obj);
+    error = res.error;
+  }
   if (error) {
     gerShowToast('Error al guardar: ' + error.message, 'error');
     return;
   }
   cobCloseNota();
-  gerShowToast(mode === 'tarea' ? 'Tarea creada' : 'Nota registrada');
+  gerShowToast(editId ? 'Tarea actualizada' : (mode === 'tarea' ? 'Tarea creada' : 'Nota registrada'));
   // Reload notas (force refresh)
   cobDataLoaded = false;
   cobNotas = await cobLoadNotas();
