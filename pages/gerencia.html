@@ -2835,17 +2835,8 @@ function ccRenderMonth(el, mes, d) {
 // ██  COBROS MODULE
 // ══════════════════════════════════════════════════════════════
 
-// ─── Adm Cloud credentials (API directa) ───
-var ADM_API = 'https://api.admcloud.net/api';
-var ADM_CREDS = {
-  email: 'frosa@accountone.do',
-  password: 'cgc0FXU3nfz_mjh8zpd',
-  appid: 'cbea40cc-096d-4ebd-fade-08debd059b88',
-  company: '516d3a00-2f5f-4ebd-8802-e91881828f36',
-  role: 'Administradores',
-  roleId: '41a8a36b-12cd-4c78-aef7-9bfb9d510a11'
-};
-var cobInvoices = [];
+// ─── Cobros data (from Supabase, synced by Cowork from Adm Cloud) ───
+var cobFacturas = [];
 var cobNotas = [];
 var cobView = 'lista'; // 'lista' | 'detalle'
 var cobDetalleCliente = null;
@@ -2889,56 +2880,10 @@ var COB_SCORES = {
 var COB_SCORE_LABELS = { repeat: 'Pago recurrente tarde', occasional: 'Pago ocasional tarde', good: 'Buen pagador', unknown: 'Sin clasificar' };
 var COB_SCORE_ORDER = { repeat: 0, occasional: 1, unknown: 2, good: 3 };
 
-// ─── Adm Cloud API helpers ───
-function cobBasicAuth() {
-  return 'Basic ' + btoa(ADM_CREDS.email + ':' + ADM_CREDS.password);
-}
-
-function cobBuildUrl(endpoint) {
-  return ADM_API + '/' + endpoint + '?appid=' + ADM_CREDS.appid + '&company=' + ADM_CREDS.company + '&role=' + encodeURIComponent(ADM_CREDS.role);
-}
-
-async function cobAdmRequest(endpoint, method) {
-  method = method || 'GET';
-  var url = cobBuildUrl(endpoint);
-  console.log('[Cobros] ' + method + ' ' + endpoint);
-  var resp = await fetch(url, {
-    method: method,
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': cobBasicAuth()
-    }
-  });
-  console.log('[Cobros] Response:', resp.status);
-  if (!resp.ok) {
-    var errText = await resp.text();
-    throw new Error('HTTP ' + resp.status + ': ' + errText.substring(0, 150));
-  }
-  var text = await resp.text();
-  console.log('[Cobros] Body length:', text ? text.length : 0, 'first 300:', (text || '').substring(0, 300));
-  if (!text) return null;
-  return JSON.parse(text);
-}
-
-async function cobFetchInvoices() {
-  // Adm Cloud needs $top for pagination, otherwise returns only first record
-  var raw = await cobAdmRequest('CreditInvoices&$top=500');
-  // Adm Cloud wraps response in {success, message, data}
-  var data = (raw && raw.data !== undefined) ? raw.data : raw;
-
-  if (Array.isArray(data)) {
-    console.log('[Cobros] Got array of', data.length, 'invoices');
-    return data;
-  }
-
-  // Single invoice object (has ID field) - wrap it
-  if (data && typeof data === 'object' && data.ID) {
-    console.log('[Cobros] Got single invoice:', data.DocID, data.RelationshipName);
-    return [data];
-  }
-
-  console.log('[Cobros] Unexpected response format:', typeof data);
-  return [];
+// ─── Supabase data loaders ───
+async function cobLoadFacturas() {
+  var { data } = await sb.from('cobros_facturas').select('*').gt('balance', 0).order('balance', { ascending: false });
+  return data || [];
 }
 
 async function cobLoadNotas() {
@@ -2947,39 +2892,24 @@ async function cobLoadNotas() {
 }
 
 // ─── Agrupar facturas por cliente ───
-function cobGroupByCustomer(invoices) {
+function cobGroupByCustomer(facturas) {
   var groups = {};
   var today = new Date();
-  invoices.forEach(function(inv) {
-    // Skip voided invoices
-    if (inv.Void) return;
-
-    var name = inv.RelationshipName || 'Sin nombre';
-    var total = parseFloat(inv.TotalAmount || inv.CalculatedTotalAmount || 0);
-    var paid = parseFloat(inv.AppliedPayments || 0);
-    var balance = total - paid;
-    var invDate = inv.DocDate || null;
-    var dueDate = inv.ExpirationDate || null;
-    var invNo = inv.DocID || '';
-    var currency = inv.CurrencyID || 'DOP';
-
-    // Solo facturas con balance pendiente > 0
+  facturas.forEach(function(f) {
+    var name = f.cliente_nombre || 'Sin nombre';
+    var balance = parseFloat(f.balance || 0);
+    var total = parseFloat(f.total || 0);
     if (balance <= 0.01) return;
 
     if (!groups[name]) {
-      groups[name] = { nombre: name, facturas: [], totalPendiente: 0, maxDias: 0, currency: currency };
+      groups[name] = { nombre: name, facturas: [], totalPendiente: 0, maxDias: 0, currency: f.moneda || 'DOP' };
     }
-    var dias = 0;
-    if (dueDate) {
-      dias = Math.floor((today - new Date(dueDate)) / 86400000);
-    } else if (invDate) {
-      // If no due date, use invoice date + 30 days as proxy
-      dias = Math.floor((today - new Date(invDate)) / 86400000) - 30;
-    }
-    if (dias < 0) dias = 0;
+    var dias = parseInt(f.dias_atraso) || 0;
 
     groups[name].facturas.push({
-      no: invNo, total: total, balance: balance, dueDate: dueDate, date: invDate, dias: dias, currency: currency, reference: inv.Reference || ''
+      no: f.doc_id || '', total: total, balance: balance,
+      dueDate: f.fecha_vencimiento, date: f.fecha_factura,
+      dias: dias, currency: f.moneda || 'DOP', reference: f.referencia || ''
     });
     groups[name].totalPendiente += balance;
     if (dias > groups[name].maxDias) groups[name].maxDias = dias;
@@ -3011,31 +2941,36 @@ function cobAgingBucket(dias) {
   return { label: '90+d', css: 'red' };
 }
 
-// ─── Build client list from scores (no Adm Cloud needed) ───
+// ─── Build client list: merge Supabase facturas + score list ───
 function cobBuildClientList() {
   var clientes = [];
-  // If we have Adm Cloud data, use it
-  if (cobInvoices.length > 0) {
-    clientes = cobGroupByCustomer(cobInvoices);
-  } else {
-    // Use score list as base (structure without financial data)
-    Object.keys(COB_SCORES).forEach(function(nombre) {
-      clientes.push({ nombre: nombre, facturas: [], totalPendiente: 0, maxDias: 0, sinData: true });
-    });
+  var seen = {};
+
+  // First: clients from Supabase facturas (real data)
+  if (cobFacturas.length > 0) {
+    clientes = cobGroupByCustomer(cobFacturas);
+    clientes.forEach(function(c) { seen[c.nombre] = true; });
   }
-  // Sort by score (worst first), then by maxDias desc, then alphabetical
+
+  // Then: add score-only clients that don't have facturas
+  Object.keys(COB_SCORES).forEach(function(nombre) {
+    if (!seen[nombre]) {
+      clientes.push({ nombre: nombre, facturas: [], totalPendiente: 0, maxDias: 0, sinData: true });
+    }
+  });
+
+  // Sort by score (worst first), then by totalPendiente desc, then alphabetical
   clientes.sort(function(a, b) {
     var sa = COB_SCORE_ORDER[cobGetScore(a.nombre)] || 2;
     var sb2 = COB_SCORE_ORDER[cobGetScore(b.nombre)] || 2;
     if (sa !== sb2) return sa - sb2;
-    if (b.maxDias !== a.maxDias) return b.maxDias - a.maxDias;
+    if (b.totalPendiente !== a.totalPendiente) return b.totalPendiente - a.totalPendiente;
     return a.nombre.localeCompare(b.nombre);
   });
   return clientes;
 }
 
-var cobAdmStatus = 'idle'; // 'idle' | 'loading' | 'loaded' | 'error'
-var cobAdmError = '';
+var cobSyncInfo = null; // {synced_at} from last sync
 
 // ─── Main render ───
 async function cobRenderApp() {
@@ -3045,11 +2980,16 @@ async function cobRenderApp() {
     return;
   }
 
-  // Load notas from Supabase (always)
-  cobNotas = await cobLoadNotas();
+  // Load from Supabase
+  var results = await Promise.all([cobLoadFacturas(), cobLoadNotas()]);
+  cobFacturas = results[0];
+  cobNotas = results[1];
+
+  // Get sync timestamp
+  cobSyncInfo = cobFacturas.length > 0 ? { synced_at: cobFacturas[0].synced_at } : null;
 
   var clientes = cobBuildClientList();
-  var hasAdmData = cobInvoices.length > 0;
+  var hasData = cobFacturas.length > 0;
 
   // Summary stats
   var totalPendiente = 0, clientesConAtraso = 0, facturasVencidas = 0;
@@ -3061,34 +3001,29 @@ async function cobRenderApp() {
 
   var html = '';
 
-  // Adm Cloud status bar
+  // Sync status bar
   html += '<div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;flex-wrap:wrap">';
-  if (cobAdmStatus === 'loaded') {
-    html += '<span style="font-size:0.75rem;color:var(--green)">✓ Datos de Adm Cloud cargados (' + cobInvoices.length + ' facturas)</span>';
-    html += '<button class="cob-btn cob-btn-blue" onclick="cobSyncAdm()" style="margin-left:auto">↻ Recargar</button>';
-  } else if (cobAdmStatus === 'loading') {
-    html += '<span style="font-size:0.75rem;color:var(--muted)">⏳ Cargando datos de Adm Cloud...</span>';
-  } else if (cobAdmStatus === 'error') {
-    html += '<span style="font-size:0.75rem;color:var(--red)">✗ ' + cobAdmError + '</span>';
-    html += '<button class="cob-btn cob-btn-blue" onclick="cobSyncAdm()" style="margin-left:auto">Reintentar</button>';
+  if (hasData) {
+    var syncDate = cobSyncInfo ? new Date(cobSyncInfo.synced_at).toLocaleDateString('es-DO', { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' }) : '';
+    html += '<span style="font-size:0.75rem;color:var(--green)">✓ Datos sincronizados desde Adm Cloud (' + cobFacturas.length + ' facturas pendientes)</span>';
+    if (syncDate) html += '<span style="font-size:0.7rem;color:var(--muted)">Última sync: ' + syncDate + '</span>';
   } else {
-    html += '<span style="font-size:0.75rem;color:var(--muted)">Mostrando clientes por score. Carga datos de Adm Cloud para ver montos y facturas.</span>';
-    html += '<button class="cob-btn" style="background:var(--blue);color:white;margin-left:auto" onclick="cobSyncAdm()">Cargar datos de Adm Cloud</button>';
+    html += '<span style="font-size:0.75rem;color:var(--muted)">Sin datos de Adm Cloud. Pide a Claude que sincronice los datos ("sincroniza cobros").</span>';
   }
   html += '</div>';
 
-  // Summary cards (only show numbers if Adm data loaded)
+  // Summary cards
   html += '<div class="cob-summary">';
-  html += '<div class="cob-stat"><p class="num" style="color:var(--red)">' + (hasAdmData ? cobFormatMoney(totalPendiente) : '-') + '</p><p class="lbl">Total pendiente</p></div>';
+  html += '<div class="cob-stat"><p class="num" style="color:var(--red)">' + (hasData ? cobFormatMoney(totalPendiente) : '-') + '</p><p class="lbl">Total pendiente</p></div>';
   html += '<div class="cob-stat"><p class="num" style="color:var(--navy)">' + clientes.length + '</p><p class="lbl">Clientes en seguimiento</p></div>';
-  html += '<div class="cob-stat"><p class="num" style="color:var(--amber)">' + (hasAdmData ? facturasVencidas : '-') + '</p><p class="lbl">Facturas vencidas</p></div>';
+  html += '<div class="cob-stat"><p class="num" style="color:var(--amber)">' + (hasData ? facturasVencidas : '-') + '</p><p class="lbl">Facturas vencidas</p></div>';
   html += '</div>';
 
   // Table
   html += '<div style="background:white;border-radius:12px;border:1px solid var(--border);overflow-x:auto">';
   html += '<table class="cob-table"><thead><tr>';
   html += '<th>#</th><th>Cliente</th>';
-  if (hasAdmData) html += '<th style="text-align:right">Pendiente</th><th style="text-align:center">Facturas</th><th style="text-align:center">Mayor atraso</th>';
+  if (hasData) html += '<th style="text-align:right">Pendiente</th><th style="text-align:center">Facturas</th><th style="text-align:center">Mayor atraso</th>';
   html += '<th style="text-align:center">Score</th><th style="text-align:center">Última nota</th><th style="text-align:center">Acciones</th>';
   html += '</tr></thead><tbody>';
 
@@ -3101,15 +3036,15 @@ async function cobRenderApp() {
     html += '<tr>';
     html += '<td>' + (idx + 1) + '</td>';
     html += '<td style="font-weight:600;cursor:pointer" onclick="cobOpenDetalle(\'' + esc(c.nombre) + '\')">' + c.nombre + '</td>';
-    if (hasAdmData) {
-      html += '<td style="text-align:right;font-weight:600">' + cobFormatMoney(c.totalPendiente) + '</td>';
-      html += '<td style="text-align:center">' + c.facturas.length + '</td>';
+    if (hasData) {
+      html += '<td style="text-align:right;font-weight:600">' + (c.totalPendiente > 0 ? cobFormatMoney(c.totalPendiente) : '-') + '</td>';
+      html += '<td style="text-align:center">' + (c.facturas.length || '-') + '</td>';
       html += '<td style="text-align:center"><span class="cob-aging ' + aging.css + '">' + (c.maxDias > 0 ? c.maxDias + 'd' : 'Al día') + '</span></td>';
     }
     html += '<td style="text-align:center"><span class="cob-score ' + score + '">' + COB_SCORE_LABELS[score] + '</span></td>';
     html += '<td style="text-align:center;font-size:0.74rem">' + lastNotaText + '</td>';
     html += '<td style="text-align:center;white-space:nowrap">';
-    if (hasAdmData) html += '<button class="cob-btn cob-btn-blue" onclick="cobShowEstadoCuenta(\'' + esc(c.nombre) + '\')" title="Estado de cuenta">📋</button>';
+    if (c.facturas.length > 0) html += '<button class="cob-btn cob-btn-blue" onclick="cobShowEstadoCuenta(\'' + esc(c.nombre) + '\')" title="Estado de cuenta">📋</button>';
     html += '<button class="cob-btn cob-btn-green" onclick="cobShowCorreo(\'' + esc(c.nombre) + '\')" title="Template correo">✉</button>';
     html += '<button class="cob-btn cob-btn-purple" onclick="cobShowWhatsApp(\'' + esc(c.nombre) + '\')" title="Template WhatsApp">💬</button>';
     html += '<button class="cob-btn" style="background:#fef2f2;color:var(--red)" onclick="cobOpenNota(\'' + esc(c.nombre) + '\')" title="Registrar nota">📝</button>';
@@ -3119,31 +3054,6 @@ async function cobRenderApp() {
 
   html += '</tbody></table></div>';
   el.innerHTML = html;
-}
-
-// ─── Sync button handler ───
-async function cobSyncAdm() {
-  cobAdmStatus = 'loading';
-  cobRenderApp();
-  try {
-    cobInvoices = await cobFetchInvoices();
-    if (cobInvoices.length > 0) {
-      cobAdmStatus = 'loaded';
-      gerShowToast('Datos cargados: ' + cobInvoices.length + ' facturas');
-    } else {
-      cobAdmStatus = 'error';
-      cobAdmError = 'La API respondió pero no devolvió facturas.';
-    }
-  } catch(e) {
-    cobAdmStatus = 'error';
-    if (e.message && e.message.indexOf('Failed to fetch') >= 0) {
-      cobAdmError = 'CORS bloqueado: api.admcloud.net no permite llamadas desde este dominio. Contacta a Adm Cloud para habilitar el origen.';
-    } else {
-      cobAdmError = e.message || 'Conexión fallida';
-    }
-    console.error('[Cobros] Sync error:', e);
-  }
-  cobRenderApp();
 }
 
 // ─── Vista detalle de cliente ───
@@ -3235,8 +3145,8 @@ function cobRenderDetalle(el) {
 
 // ─── Templates ───
 function cobGetClienteData(nombre) {
-  var clientes = cobGroupByCustomer(cobInvoices);
-  return clientes.find(function(c) { return c.nombre === nombre; }) || null;
+  var allClientes = cobBuildClientList();
+  return allClientes.find(function(c) { return c.nombre === nombre; }) || null;
 }
 
 function cobShowEstadoCuenta(nombre) {
