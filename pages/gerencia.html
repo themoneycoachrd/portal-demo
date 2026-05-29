@@ -2970,6 +2970,9 @@ function cobGetScore(nombre) {
   return 'unknown';
 }
 
+// Escape for onclick attributes (only escape single quotes, NOT &)
+function cobEsc(s) { return (s||'').replace(/'/g, "\\'"); }
+
 function cobFormatMoney(n) {
   return 'RD$' + Number(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
@@ -3287,7 +3290,7 @@ async function cobRenderApp() {
 
     html += '<tr>';
     html += '<td>' + (idx + 1) + '</td>';
-    html += '<td style="font-weight:600;cursor:pointer" onclick="cobOpenDetalle(\'' + esc(c.nombre) + '\')">' + c.nombre + '</td>';
+    html += '<td style="font-weight:600;cursor:pointer" onclick="cobOpenDetalle(\'' + cobEsc(c.nombre) + '\')">' + c.nombre + '</td>';
     html += '<td style="text-align:center;font-size:0.72rem;color:var(--muted)">' + (c.totalPendiente > 0 ? currency : '-') + '</td>';
     html += '<td style="text-align:right;font-weight:600;font-variant-numeric:tabular-nums">' + (c.totalPendiente > 0 ? cobFmtAmount(c.totalPendiente) : '-') + '</td>';
     html += '<td style="text-align:center">' + (c.facturas.length || '-') + '</td>';
@@ -3295,11 +3298,11 @@ async function cobRenderApp() {
     html += '<td style="text-align:center"><span class="cob-score ' + score + '">' + COB_SCORE_LABELS[score] + '</span></td>';
     html += '<td style="text-align:center;font-size:0.74rem">' + lastNotaText + '</td>';
     html += '<td style="text-align:center;white-space:nowrap">';
-    if (c.facturas.length > 0) html += '<button class="cob-btn cob-btn-blue" onclick="cobShowEstadoCuenta(\'' + esc(c.nombre) + '\')" title="Estado de cuenta">📋</button>';
-    html += '<button class="cob-btn cob-btn-green" onclick="cobShowCorreo(\'' + esc(c.nombre) + '\')" title="Template correo">✉</button>';
-    html += '<button class="cob-btn cob-btn-purple" onclick="cobShowWhatsApp(\'' + esc(c.nombre) + '\')" title="Template WhatsApp">💬</button>';
-    html += '<button class="cob-btn" style="background:#fef2f2;color:var(--red)" onclick="cobOpenNota(\'' + esc(c.nombre) + '\')" title="Registrar nota">📝</button>';
-    html += '<button class="cob-btn" style="background:#eff6ff;color:var(--navy)" onclick="cobOpenTarea(\'' + esc(c.nombre) + '\')" title="Crear tarea">✓</button>';
+    if (c.facturas.length > 0) html += '<button class="cob-btn cob-btn-blue" onclick="cobShowEstadoCuenta(\'' + cobEsc(c.nombre) + '\')" title="Estado de cuenta">📋</button>';
+    html += '<button class="cob-btn cob-btn-green" onclick="cobShowCorreo(\'' + cobEsc(c.nombre) + '\')" title="Template correo">✉</button>';
+    html += '<button class="cob-btn cob-btn-purple" onclick="cobShowWhatsApp(\'' + cobEsc(c.nombre) + '\')" title="Template WhatsApp">💬</button>';
+    html += '<button class="cob-btn" style="background:#fef2f2;color:var(--red)" onclick="cobOpenNota(\'' + cobEsc(c.nombre) + '\')" title="Registrar nota">📝</button>';
+    html += '<button class="cob-btn" style="background:#eff6ff;color:var(--navy)" onclick="cobOpenTarea(\'' + cobEsc(c.nombre) + '\')" title="Crear tarea">✓</button>';
     html += '</td>';
     html += '</tr>';
   });
@@ -3372,11 +3375,11 @@ function cobRenderDetalle(el) {
   html += '<div style="text-align:right"><div style="font-size:1.4rem;font-weight:700;color:var(--red)">' + (hasData ? detCurrency + ' ' + cobFmtAmount(cliente.totalPendiente) : 'Sin datos') + '</div><div style="font-size:0.72rem;color:var(--muted)">' + (hasData ? cliente.facturas.length + ' facturas pendientes' : 'Sin datos de Adm Cloud') + '</div></div>';
   html += '</div>';
   html += '<div style="display:flex;gap:8px;margin-top:16px;flex-wrap:wrap">';
-  html += '<button class="cob-btn cob-btn-blue" onclick="cobShowEstadoCuenta(\'' + esc(nombre) + '\')">📋 Estado de cuenta</button>';
-  html += '<button class="cob-btn cob-btn-green" onclick="cobShowCorreo(\'' + esc(nombre) + '\')">✉ Template correo</button>';
-  html += '<button class="cob-btn cob-btn-purple" onclick="cobShowWhatsApp(\'' + esc(nombre) + '\')">💬 Template WhatsApp</button>';
-  html += '<button class="cob-btn" style="background:#fef2f2;color:var(--red)" onclick="cobOpenNota(\'' + esc(nombre) + '\')">📝 Registrar nota</button>';
-  html += '<button class="cob-btn" style="background:#eff6ff;color:var(--navy)" onclick="cobOpenTarea(\'' + esc(nombre) + '\')">✓ Crear tarea</button>';
+  html += '<button class="cob-btn cob-btn-blue" onclick="cobShowEstadoCuenta(\'' + cobEsc(nombre) + '\')">📋 Estado de cuenta</button>';
+  html += '<button class="cob-btn cob-btn-green" onclick="cobShowCorreo(\'' + cobEsc(nombre) + '\')">✉ Template correo</button>';
+  html += '<button class="cob-btn cob-btn-purple" onclick="cobShowWhatsApp(\'' + cobEsc(nombre) + '\')">💬 Template WhatsApp</button>';
+  html += '<button class="cob-btn" style="background:#fef2f2;color:var(--red)" onclick="cobOpenNota(\'' + cobEsc(nombre) + '\')">📝 Registrar nota</button>';
+  html += '<button class="cob-btn" style="background:#eff6ff;color:var(--navy)" onclick="cobOpenTarea(\'' + cobEsc(nombre) + '\')">✓ Crear tarea</button>';
   html += '</div></div>';
 
   // Facturas
