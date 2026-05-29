@@ -2921,7 +2921,27 @@ async function cobAdmRequest(endpoint, method) {
 
 async function cobFetchInvoices() {
   var data = await cobAdmRequest('CreditInvoices');
-  return Array.isArray(data) ? data : (data && data.data ? data.data : []);
+  console.log('[Cobros] Response type:', typeof data, Array.isArray(data) ? 'ARRAY(' + data.length + ')' : '');
+  if (data && !Array.isArray(data)) {
+    console.log('[Cobros] Response keys:', Object.keys(data));
+    // Try common wrapper patterns
+    var arr = data.data || data.Data || data.items || data.Items || data.value || data.Value || data.results || data.Results || null;
+    if (Array.isArray(arr)) {
+      console.log('[Cobros] Found array in key, length:', arr.length);
+      return arr;
+    }
+    // If it's an object with numeric keys, it might be a collection
+    var keys = Object.keys(data);
+    if (keys.length > 0 && keys[0].match(/^\d+$/)) {
+      console.log('[Cobros] Object with numeric keys, converting to array');
+      return keys.map(function(k) { return data[k]; });
+    }
+    // Log first 500 chars of stringified response for debugging
+    console.log('[Cobros] Unexpected format, first 500 chars:', JSON.stringify(data).substring(0, 500));
+    cobAdmError = 'Formato inesperado. Keys: ' + keys.join(', ') + '. Revisa la consola (F12).';
+    return [];
+  }
+  return Array.isArray(data) ? data : [];
 }
 
 async function cobLoadNotas() {
