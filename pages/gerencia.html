@@ -1781,6 +1781,7 @@ function ccRenderServicios(el) {
   var servInicio = total - servNuevos.length + servChurn.length;
 
   html += '<div class="stats" style="margin-top:8px">';
+  html += '<div class="stat" style="cursor:pointer;border:2px solid ' + (ccServMovFiltro === 'total' ? 'var(--navy)' : 'transparent') + '" onclick="ccServMovFilter(\'total\')"><div class="stat-label">Total clientes</div><div class="stat-value">' + total + '</div><div class="stat-sub">' + MESES_FULL[mesIdx] + '</div></div>';
   html += '<div class="stat" style="cursor:pointer;border:2px solid ' + (ccServMovFiltro === 'inicio' ? 'var(--blue)' : 'transparent') + '" onclick="ccServMovFilter(\'inicio\')"><div class="stat-label">Inicio mes</div><div class="stat-value" style="color:var(--blue)">' + servInicio + '</div><div class="stat-sub">' + MESES_FULL[mesIdx] + '</div></div>';
   html += '<div class="stat" style="cursor:pointer;border:2px solid ' + (ccServMovFiltro === 'nuevos' ? 'var(--green)' : 'transparent') + '" onclick="ccServMovFilter(\'nuevos\')"><div class="stat-label">Nuevos</div><div class="stat-value stat-green">' + servNuevos.length + '</div><div class="stat-sub">' + MESES_FULL[mesIdx] + '</div></div>';
   html += '<div class="stat" style="cursor:pointer;border:2px solid ' + (ccServMovFiltro === 'churn' ? 'var(--red)' : 'transparent') + '" onclick="ccServMovFilter(\'churn\')"><div class="stat-label">Churn</div><div class="stat-value stat-red">' + servChurn.length + '</div><div class="stat-sub">' + MESES_FULL[mesIdx] + '</div></div>';
@@ -1789,9 +1790,9 @@ function ccRenderServicios(el) {
 
   // Movement filter indicator
   if (ccServMovFiltro) {
-    var mfLabels = {inicio:'Clientes al inicio de ' + MESES_FULL[mesIdx], nuevos:'Nuevos en ' + MESES_FULL[mesIdx], churn:'Churn en ' + MESES_FULL[mesIdx], cierre:'Clientes al cierre de ' + MESES_FULL[mesIdx]};
-    var mfColors = {inicio:'var(--blue)', nuevos:'var(--green)', churn:'var(--red)', cierre:'var(--navy)'};
-    var mfBgs = {inicio:'#eff6ff', nuevos:'#ecfdf5', churn:'#fef2f2', cierre:'#f0f4ff'};
+    var mfLabels = {total:'Todos los clientes de ' + MESES_FULL[mesIdx], inicio:'Clientes al inicio de ' + MESES_FULL[mesIdx], nuevos:'Nuevos en ' + MESES_FULL[mesIdx], churn:'Churn en ' + MESES_FULL[mesIdx], cierre:'Clientes al cierre de ' + MESES_FULL[mesIdx]};
+    var mfColors = {total:'var(--navy)', inicio:'var(--blue)', nuevos:'var(--green)', churn:'var(--red)', cierre:'var(--navy)'};
+    var mfBgs = {total:'#f0f4ff', inicio:'#eff6ff', nuevos:'#ecfdf5', churn:'#fef2f2', cierre:'#f0f4ff'};
     html += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;padding:8px 12px;background:' + mfBgs[ccServMovFiltro] + ';border-radius:8px;font-size:0.8rem;color:' + mfColors[ccServMovFiltro] + ';font-weight:500">';
     html += '<span>' + mfLabels[ccServMovFiltro] + '</span>';
     html += '<button style="margin-left:auto;padding:3px 10px;border-radius:5px;border:1px solid ' + mfColors[ccServMovFiltro] + ';background:white;font-size:0.72rem;cursor:pointer;color:' + mfColors[ccServMovFiltro] + '" onclick="ccServMovFilter(null)">Ver todos</button>';
@@ -1861,6 +1862,7 @@ function ccRenderServicios(el) {
     titulo = 'Inicio de ' + MESES_FULL[mesIdx];
   }
   else if (ccServMovFiltro === 'cierre') { lista = activos; titulo = 'Cierre de ' + MESES_FULL[mesIdx]; }
+  else if (ccServMovFiltro === 'total') { lista = activos; titulo = 'Total clientes ' + MESES_FULL[mesIdx]; }
   else { lista = activos; titulo = 'Todos los clientes'; }
 
   // Sort: group by service type (imp → contab → sup → bk → sin tipo), then alphabetical
