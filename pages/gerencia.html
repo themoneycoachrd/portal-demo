@@ -3029,6 +3029,7 @@ var cobActiveAging = 'todos'; // 'todos' | '90' | '60' | '30' | '0'
 var cobSearchText = '';
 var cobSortField = 'default'; // 'default' | 'monto' | 'dias'
 var cobSortDir = 'desc';
+var cobFilteredClientes = []; // cache after pill/aging filter, before search
 var COB_TC_USD = 61; // tasa de cambio USD→DOP aproximada
 
 // ─── Helpers ───
@@ -3058,12 +3059,61 @@ function cobSwitchAging(aging) {
 }
 function cobOnSearch(val) {
   cobSearchText = val.toLowerCase();
-  cobRenderApp();
-  // Restore focus after render
-  setTimeout(function() {
-    var inp = document.querySelector('#cob-content input[type="text"]');
-    if (inp) { inp.focus(); inp.setSelectionRange(val.length, val.length); }
-  }, 10);
+  cobRenderTableOnly();
+}
+function cobRenderTableOnly() {
+  var wrap = document.getElementById('cob-table-wrap');
+  if (!wrap) return;
+  var clientes = cobFilteredClientes.slice();
+  if (cobSearchText) {
+    clientes = clientes.filter(function(c) { return c.nombre.toLowerCase().indexOf(cobSearchText) >= 0; });
+  }
+  if (cobSortField === 'monto') {
+    clientes.sort(function(a, b) { return cobSortDir === 'desc' ? b.totalPendiente - a.totalPendiente : a.totalPendiente - b.totalPendiente; });
+  } else if (cobSortField === 'dias') {
+    clientes.sort(function(a, b) { return cobSortDir === 'desc' ? b.maxDias - a.maxDias : a.maxDias - b.maxDias; });
+  } else {
+    clientes.sort(function(a, b) {
+      if ((a.totalPendiente > 0) !== (b.totalPendiente > 0)) return b.totalPendiente > 0 ? 1 : -1;
+      var ca = a.currency || ''; var cb = b.currency || '';
+      if (ca === 'DOP' && cb !== 'DOP') return 1;
+      if (ca !== 'DOP' && cb === 'DOP') return -1;
+      return b.totalPendiente - a.totalPendiente;
+    });
+  }
+  var html = '<table class="cob-table"><thead><tr>';
+  html += '<th>#</th><th>Cliente</th><th style="text-align:center">Moneda</th>';
+  html += '<th style="text-align:right;cursor:pointer;user-select:none" onclick="cobToggleSort(\'monto\')">Pendiente' + cobSortArrow('monto') + '</th>';
+  html += '<th style="text-align:center">Facturas</th>';
+  html += '<th style="text-align:center;cursor:pointer;user-select:none" onclick="cobToggleSort(\'dias\')">Mayor atraso' + cobSortArrow('dias') + '</th>';
+  html += '<th style="text-align:center">Score</th><th style="text-align:center">Última nota</th><th style="text-align:center">Acciones</th>';
+  html += '</tr></thead><tbody>';
+  clientes.forEach(function(c, idx) {
+    var score = cobGetScore(c.nombre);
+    var aging = cobAgingBucket(c.maxDias);
+    var lastNota = cobNotas.find(function(n) { return n.cliente_nombre === c.nombre; });
+    var lastNotaText = lastNota ? (new Date(lastNota.created_at).toLocaleDateString('es-DO', { day:'numeric', month:'short' }) + ' - ' + (lastNota.resultado || '').replace(/_/g, ' ')) : '-';
+    var currency = c.currency || (c.facturas.length > 0 ? c.facturas[0].currency : 'USD');
+    html += '<tr>';
+    html += '<td>' + (idx + 1) + '</td>';
+    html += '<td style="font-weight:600;cursor:pointer" onclick="cobOpenDetalle(\'' + cobEsc(c.nombre) + '\')">' + c.nombre + '</td>';
+    html += '<td style="text-align:center;font-size:0.72rem;color:var(--muted)">' + (c.totalPendiente > 0 ? currency : '-') + '</td>';
+    html += '<td style="text-align:right;font-weight:600;font-variant-numeric:tabular-nums">' + (c.totalPendiente > 0 ? cobFmtAmount(c.totalPendiente) : '-') + '</td>';
+    html += '<td style="text-align:center">' + (c.facturas.length || '-') + '</td>';
+    html += '<td style="text-align:center"><span class="cob-aging ' + aging.css + '">' + (c.maxDias > 0 ? c.maxDias + 'd' : '-') + '</span></td>';
+    html += '<td style="text-align:center"><span class="cob-score ' + score + '">' + COB_SCORE_LABELS[score] + '</span></td>';
+    html += '<td style="text-align:center;font-size:0.74rem">' + lastNotaText + '</td>';
+    html += '<td style="text-align:center;white-space:nowrap">';
+    if (c.facturas.length > 0) html += '<button class="cob-btn cob-btn-blue" onclick="cobShowEstadoCuenta(\'' + cobEsc(c.nombre) + '\')" title="Estado de cuenta">📋</button>';
+    html += '<button class="cob-btn cob-btn-green" onclick="cobShowCorreo(\'' + cobEsc(c.nombre) + '\')" title="Template correo">✉</button>';
+    html += '<button class="cob-btn cob-btn-purple" onclick="cobShowWhatsApp(\'' + cobEsc(c.nombre) + '\')" title="Template WhatsApp">💬</button>';
+    html += '<button class="cob-btn" style="background:#fef2f2;color:var(--red)" onclick="cobOpenNota(\'' + cobEsc(c.nombre) + '\')" title="Registrar nota">📝</button>';
+    html += '<button class="cob-btn" style="background:#eff6ff;color:var(--navy)" onclick="cobOpenTarea(\'' + cobEsc(c.nombre) + '\')" title="Crear tarea">✓</button>';
+    html += '</td>';
+    html += '</tr>';
+  });
+  html += '</tbody></table>';
+  wrap.innerHTML = html;
 }
 function cobFmtAmount(n) {
   return Number(Math.abs(n)).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -3081,7 +3131,7 @@ function cobToggleSort(field) {
     cobSortField = field;
     cobSortDir = 'desc';
   }
-  cobRenderApp();
+  cobRenderTableOnly();
 }
 function cobSortArrow(field) {
   if (cobSortField !== field) return ' ↕';
@@ -3294,65 +3344,11 @@ async function cobRenderApp() {
   html += '<input type="text" placeholder="Buscar cliente..." value="' + (cobSearchText || '') + '" oninput="cobOnSearch(this.value)" style="width:100%;max-width:320px;padding:8px 12px;border:1px solid var(--border);border-radius:8px;font-size:0.82rem">';
   html += '</div>';
 
-  // ── Apply search filter ──
-  if (cobSearchText) {
-    clientes = clientes.filter(function(c) { return c.nombre.toLowerCase().indexOf(cobSearchText) >= 0; });
-  }
+  // Cache clientes for search/sort (before search filter)
+  cobFilteredClientes = clientes.slice();
 
-  // ── Sort table ──
-  if (cobSortField === 'monto') {
-    clientes.sort(function(a, b) { return cobSortDir === 'desc' ? b.totalPendiente - a.totalPendiente : a.totalPendiente - b.totalPendiente; });
-  } else if (cobSortField === 'dias') {
-    clientes.sort(function(a, b) { return cobSortDir === 'desc' ? b.maxDias - a.maxDias : a.maxDias - b.maxDias; });
-  } else {
-    // Default: USD primero (monto desc), DOP al final, sin data al final
-    clientes.sort(function(a, b) {
-      if ((a.totalPendiente > 0) !== (b.totalPendiente > 0)) return b.totalPendiente > 0 ? 1 : -1;
-      var ca = a.currency || '';
-      var cb = b.currency || '';
-      if (ca === 'DOP' && cb !== 'DOP') return 1;
-      if (ca !== 'DOP' && cb === 'DOP') return -1;
-      return b.totalPendiente - a.totalPendiente;
-    });
-  }
-
-  // ── Table ──
-  html += '<div style="background:white;border-radius:12px;border:1px solid var(--border);overflow-x:auto">';
-  html += '<table class="cob-table"><thead><tr>';
-  html += '<th>#</th><th>Cliente</th><th style="text-align:center">Moneda</th>';
-  html += '<th style="text-align:right;cursor:pointer;user-select:none" onclick="cobToggleSort(\'monto\')">Pendiente' + cobSortArrow('monto') + '</th>';
-  html += '<th style="text-align:center">Facturas</th>';
-  html += '<th style="text-align:center;cursor:pointer;user-select:none" onclick="cobToggleSort(\'dias\')">Mayor atraso' + cobSortArrow('dias') + '</th>';
-  html += '<th style="text-align:center">Score</th><th style="text-align:center">Última nota</th><th style="text-align:center">Acciones</th>';
-  html += '</tr></thead><tbody>';
-
-  clientes.forEach(function(c, idx) {
-    var score = cobGetScore(c.nombre);
-    var aging = cobAgingBucket(c.maxDias);
-    var lastNota = cobNotas.find(function(n) { return n.cliente_nombre === c.nombre; });
-    var lastNotaText = lastNota ? (new Date(lastNota.created_at).toLocaleDateString('es-DO', { day:'numeric', month:'short' }) + ' - ' + (lastNota.resultado || '').replace(/_/g, ' ')) : '-';
-    var currency = c.currency || (c.facturas.length > 0 ? c.facturas[0].currency : 'USD');
-
-    html += '<tr>';
-    html += '<td>' + (idx + 1) + '</td>';
-    html += '<td style="font-weight:600;cursor:pointer" onclick="cobOpenDetalle(\'' + cobEsc(c.nombre) + '\')">' + c.nombre + '</td>';
-    html += '<td style="text-align:center;font-size:0.72rem;color:var(--muted)">' + (c.totalPendiente > 0 ? currency : '-') + '</td>';
-    html += '<td style="text-align:right;font-weight:600;font-variant-numeric:tabular-nums">' + (c.totalPendiente > 0 ? cobFmtAmount(c.totalPendiente) : '-') + '</td>';
-    html += '<td style="text-align:center">' + (c.facturas.length || '-') + '</td>';
-    html += '<td style="text-align:center"><span class="cob-aging ' + aging.css + '">' + (c.maxDias > 0 ? c.maxDias + 'd' : '-') + '</span></td>';
-    html += '<td style="text-align:center"><span class="cob-score ' + score + '">' + COB_SCORE_LABELS[score] + '</span></td>';
-    html += '<td style="text-align:center;font-size:0.74rem">' + lastNotaText + '</td>';
-    html += '<td style="text-align:center;white-space:nowrap">';
-    if (c.facturas.length > 0) html += '<button class="cob-btn cob-btn-blue" onclick="cobShowEstadoCuenta(\'' + cobEsc(c.nombre) + '\')" title="Estado de cuenta">📋</button>';
-    html += '<button class="cob-btn cob-btn-green" onclick="cobShowCorreo(\'' + cobEsc(c.nombre) + '\')" title="Template correo">✉</button>';
-    html += '<button class="cob-btn cob-btn-purple" onclick="cobShowWhatsApp(\'' + cobEsc(c.nombre) + '\')" title="Template WhatsApp">💬</button>';
-    html += '<button class="cob-btn" style="background:#fef2f2;color:var(--red)" onclick="cobOpenNota(\'' + cobEsc(c.nombre) + '\')" title="Registrar nota">📝</button>';
-    html += '<button class="cob-btn" style="background:#eff6ff;color:var(--navy)" onclick="cobOpenTarea(\'' + cobEsc(c.nombre) + '\')" title="Crear tarea">✓</button>';
-    html += '</td>';
-    html += '</tr>';
-  });
-
-  html += '</tbody></table></div>';
+  // Table container (rendered by cobRenderTableOnly)
+  html += '<div id="cob-table-wrap" style="background:white;border-radius:12px;border:1px solid var(--border);overflow-x:auto"></div>';
 
   el.innerHTML = html;
 
@@ -3385,6 +3381,9 @@ async function cobRenderApp() {
       legendEl.innerHTML = lh;
     }
   }
+
+  // Render table (first time)
+  cobRenderTableOnly();
 }
 
 // ─── Vista detalle de cliente ───
