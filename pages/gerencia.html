@@ -2971,20 +2971,28 @@ function cobAgingBucket(dias) {
 }
 
 // ─── Build client list: merge Supabase facturas + score list ───
+function cobClienteYaExiste(nombre, listaClientes) {
+  // Check if a score name already matches an existing client (partial match)
+  var nl = nombre.toLowerCase();
+  for (var i = 0; i < listaClientes.length; i++) {
+    var cl = listaClientes[i].nombre.toLowerCase();
+    if (cl === nl || cl.indexOf(nl) >= 0 || nl.indexOf(cl) >= 0) return true;
+  }
+  return false;
+}
+
 function cobBuildClientList() {
   var clientes = [];
-  var seen = {};
 
   // First: clients from Supabase facturas (real data)
   if (cobFacturas.length > 0) {
     clientes = cobGroupByCustomer(cobFacturas);
-    clientes.forEach(function(c) { seen[c.nombre] = true; });
   }
 
-  // Then: add score-only clients that don't have facturas
+  // Then: add score-only clients that DON'T already appear (partial match)
   Object.keys(COB_SCORES).forEach(function(nombre) {
-    if (!seen[nombre]) {
-      clientes.push({ nombre: nombre, facturas: [], totalPendiente: 0, maxDias: 0, sinData: true });
+    if (!cobClienteYaExiste(nombre, clientes)) {
+      clientes.push({ nombre: nombre, facturas: [], totalPendiente: 0, maxDias: 0, sinData: true, montoDOP: 0 });
     }
   });
 
@@ -3000,7 +3008,9 @@ function cobBuildClientList() {
 }
 
 var cobSyncInfo = null;
-var cobActivePill = 'todos'; // 'todos' | 'good' | 'occasional' | 'repeat'
+var cobActivePill = 'todos';
+var cobActiveAging = 'todos'; // 'todos' | '90' | '60' | '30' | '0'
+var cobSearchText = '';
 var COB_TC_USD = 61; // tasa de cambio USD→DOP aproximada
 
 // ─── Helpers ───
@@ -3021,6 +3031,17 @@ function cobToDOP(monto, moneda) {
 function cobSwitchPill(pill) {
   cobActivePill = pill;
   cobRenderApp();
+}
+function cobSwitchAging(aging) {
+  cobActiveAging = cobActiveAging === aging ? 'todos' : aging;
+  cobRenderApp();
+}
+function cobOnSearch(val) {
+  cobSearchText = val.toLowerCase();
+  cobRenderApp();
+}
+function cobFmtAmount(n) {
+  return Number(Math.abs(n)).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
 // ─── Main render ───
@@ -3102,12 +3123,12 @@ async function cobRenderApp() {
   }
   html += '</div>';
 
-  // ── Urgency cards (by aging) ──
+  // ── Urgency cards (by aging) — clickeable ──
   html += '<div class="cob-urgency">';
-  html += '<div class="cob-urg-card cob-urg-urgent"><p class="urg-label">Mas de 90 dias</p><p class="urg-num">' + bucket90.length + '</p><p class="urg-sub">critico</p></div>';
-  html += '<div class="cob-urg-card cob-urg-warn"><p class="urg-label">60 - 90 dias</p><p class="urg-num">' + bucket60.length + '</p><p class="urg-sub">alto riesgo</p></div>';
-  html += '<div class="cob-urg-card cob-urg-soon"><p class="urg-label">30 - 60 dias</p><p class="urg-num">' + bucket30.length + '</p><p class="urg-sub">en seguimiento</p></div>';
-  html += '<div class="cob-urg-card cob-urg-ok"><p class="urg-label">0 - 30 dias</p><p class="urg-num">' + bucket0.length + '</p><p class="urg-sub">reciente</p></div>';
+  html += '<div class="cob-urg-card cob-urg-urgent" style="cursor:pointer;' + (cobActiveAging === '90' ? 'box-shadow:0 0 0 2px var(--red)' : '') + '" onclick="cobSwitchAging(\'90\')"><p class="urg-label">Mas de 90 dias</p><p class="urg-num">' + bucket90.length + '</p><p class="urg-sub">critico</p></div>';
+  html += '<div class="cob-urg-card cob-urg-warn" style="cursor:pointer;' + (cobActiveAging === '60' ? 'box-shadow:0 0 0 2px #b45309' : '') + '" onclick="cobSwitchAging(\'60\')"><p class="urg-label">60 - 90 dias</p><p class="urg-num">' + bucket60.length + '</p><p class="urg-sub">alto riesgo</p></div>';
+  html += '<div class="cob-urg-card cob-urg-soon" style="cursor:pointer;' + (cobActiveAging === '30' ? 'box-shadow:0 0 0 2px var(--amber)' : '') + '" onclick="cobSwitchAging(\'30\')"><p class="urg-label">30 - 60 dias</p><p class="urg-num">' + bucket30.length + '</p><p class="urg-sub">en seguimiento</p></div>';
+  html += '<div class="cob-urg-card cob-urg-ok" style="cursor:pointer;' + (cobActiveAging === '0' ? 'box-shadow:0 0 0 2px var(--green)' : '') + '" onclick="cobSwitchAging(\'0\')"><p class="urg-label">0 - 30 dias</p><p class="urg-num">' + bucket0.length + '</p><p class="urg-sub">reciente</p></div>';
   html += '</div>';
 
   // ── Charts: Monto por aging + Deuda por cliente ──
@@ -3150,10 +3171,31 @@ async function cobRenderApp() {
   html += '</div>';
   html += '</div>';
 
+  // ── Apply aging filter ──
+  if (cobActiveAging !== 'todos') {
+    clientes = clientes.filter(function(c) {
+      if (cobActiveAging === '90') return c.maxDias > 90;
+      if (cobActiveAging === '60') return c.maxDias > 60 && c.maxDias <= 90;
+      if (cobActiveAging === '30') return c.maxDias > 30 && c.maxDias <= 60;
+      if (cobActiveAging === '0') return c.maxDias <= 30;
+      return true;
+    });
+  }
+
+  // ── Search bar ──
+  html += '<div style="margin-bottom:12px">';
+  html += '<input type="text" placeholder="Buscar cliente..." value="' + (cobSearchText || '') + '" oninput="cobOnSearch(this.value)" style="width:100%;max-width:320px;padding:8px 12px;border:1px solid var(--border);border-radius:8px;font-size:0.82rem">';
+  html += '</div>';
+
+  // ── Apply search filter ──
+  if (cobSearchText) {
+    clientes = clientes.filter(function(c) { return c.nombre.toLowerCase().indexOf(cobSearchText) >= 0; });
+  }
+
   // ── Table ──
   html += '<div style="background:white;border-radius:12px;border:1px solid var(--border);overflow-x:auto">';
   html += '<table class="cob-table"><thead><tr>';
-  html += '<th>#</th><th>Cliente</th><th style="text-align:right">Pendiente (RD$)</th><th style="text-align:center">Facturas</th><th style="text-align:center">Mayor atraso</th><th style="text-align:center">Score</th><th style="text-align:center">Última nota</th><th style="text-align:center">Acciones</th>';
+  html += '<th>#</th><th>Cliente</th><th style="text-align:center">Moneda</th><th style="text-align:right">Pendiente</th><th style="text-align:center">Facturas</th><th style="text-align:center">Mayor atraso</th><th style="text-align:center">Score</th><th style="text-align:center">Última nota</th><th style="text-align:center">Acciones</th>';
   html += '</tr></thead><tbody>';
 
   clientes.forEach(function(c, idx) {
@@ -3161,11 +3203,13 @@ async function cobRenderApp() {
     var aging = cobAgingBucket(c.maxDias);
     var lastNota = cobNotas.find(function(n) { return n.cliente_nombre === c.nombre; });
     var lastNotaText = lastNota ? (new Date(lastNota.created_at).toLocaleDateString('es-DO', { day:'numeric', month:'short' }) + ' - ' + (lastNota.resultado || '').replace(/_/g, ' ')) : '-';
+    var currency = c.currency || (c.facturas.length > 0 ? c.facturas[0].currency : 'USD');
 
     html += '<tr>';
     html += '<td>' + (idx + 1) + '</td>';
     html += '<td style="font-weight:600;cursor:pointer" onclick="cobOpenDetalle(\'' + esc(c.nombre) + '\')">' + c.nombre + '</td>';
-    html += '<td style="text-align:right;font-weight:600">' + (c.montoDOP > 0 ? cobFormatMoney(c.montoDOP) : '-') + '</td>';
+    html += '<td style="text-align:center;font-size:0.72rem;color:var(--muted)">' + (c.totalPendiente > 0 ? currency : '-') + '</td>';
+    html += '<td style="text-align:right;font-weight:600;font-variant-numeric:tabular-nums">' + (c.totalPendiente > 0 ? cobFmtAmount(c.totalPendiente) : '-') + '</td>';
     html += '<td style="text-align:center">' + (c.facturas.length || '-') + '</td>';
     html += '<td style="text-align:center"><span class="cob-aging ' + aging.css + '">' + (c.maxDias > 0 ? c.maxDias + 'd' : '-') + '</span></td>';
     html += '<td style="text-align:center"><span class="cob-score ' + score + '">' + COB_SCORE_LABELS[score] + '</span></td>';
@@ -3243,7 +3287,8 @@ function cobRenderDetalle(el) {
   html += '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px">';
   html += '<div><h3 style="margin:0">' + nombre + '</h3><span class="cob-score ' + score + '" style="margin-top:6px">' + COB_SCORE_LABELS[score] + '</span></div>';
   var hasData = cliente.facturas.length > 0;
-  html += '<div style="text-align:right"><div style="font-size:1.4rem;font-weight:700;color:var(--red)">' + (hasData ? cobFormatMoney(cliente.totalPendiente) : 'Sin datos') + '</div><div style="font-size:0.72rem;color:var(--muted)">' + (hasData ? cliente.facturas.length + ' facturas pendientes' : 'Carga datos de Adm Cloud para ver montos') + '</div></div>';
+  var detCurrency = hasData ? (cliente.facturas[0].currency || 'USD') : '';
+  html += '<div style="text-align:right"><div style="font-size:1.4rem;font-weight:700;color:var(--red)">' + (hasData ? detCurrency + ' ' + cobFmtAmount(cliente.totalPendiente) : 'Sin datos') + '</div><div style="font-size:0.72rem;color:var(--muted)">' + (hasData ? cliente.facturas.length + ' facturas pendientes' : 'Sin datos de Adm Cloud') + '</div></div>';
   html += '</div>';
   html += '<div style="display:flex;gap:8px;margin-top:16px;flex-wrap:wrap">';
   html += '<button class="cob-btn cob-btn-blue" onclick="cobShowEstadoCuenta(\'' + esc(nombre) + '\')">📋 Estado de cuenta</button>';
@@ -3257,13 +3302,14 @@ function cobRenderDetalle(el) {
   if (cliente.facturas.length === 0) {
     html += '<p style="color:var(--muted);font-size:0.82rem">No hay datos de facturas. Usa el botón "Cargar datos de Adm Cloud" en el listado principal.</p>';
   } else {
-    html += '<table class="cob-table"><thead><tr><th>No.</th><th style="text-align:right">Total</th><th style="text-align:right">Pendiente</th><th style="text-align:center">Fecha</th><th style="text-align:center">Vencimiento</th><th style="text-align:center">Días atraso</th></tr></thead><tbody>';
+    html += '<table class="cob-table"><thead><tr><th>No.</th><th style="text-align:center">Moneda</th><th style="text-align:right">Total</th><th style="text-align:right">Pendiente</th><th style="text-align:center">Fecha</th><th style="text-align:center">Vencimiento</th><th style="text-align:center">Días atraso</th></tr></thead><tbody>';
     cliente.facturas.sort(function(a, b) { return b.dias - a.dias; }).forEach(function(f) {
       var aging = cobAgingBucket(f.dias);
       html += '<tr>';
       html += '<td style="font-weight:600">' + (f.no || '-') + '</td>';
-      html += '<td style="text-align:right">' + cobFormatMoney(f.total) + '</td>';
-      html += '<td style="text-align:right;font-weight:600">' + cobFormatMoney(f.balance) + '</td>';
+      html += '<td style="text-align:center;font-size:0.72rem;color:var(--muted)">' + (f.currency || 'USD') + '</td>';
+      html += '<td style="text-align:right;font-variant-numeric:tabular-nums">' + cobFmtAmount(f.total) + '</td>';
+      html += '<td style="text-align:right;font-weight:600;font-variant-numeric:tabular-nums">' + cobFmtAmount(f.balance) + '</td>';
       html += '<td style="text-align:center;font-size:0.74rem">' + (f.date ? new Date(f.date).toLocaleDateString('es-DO') : '-') + '</td>';
       html += '<td style="text-align:center;font-size:0.74rem">' + (f.dueDate ? new Date(f.dueDate).toLocaleDateString('es-DO') : '-') + '</td>';
       html += '<td style="text-align:center"><span class="cob-aging ' + aging.css + '">' + (f.dias > 0 ? f.dias + 'd' : 'Al día') + '</span></td>';
