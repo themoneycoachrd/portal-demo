@@ -2840,7 +2840,7 @@ var ADM_API = 'https://api.admcloud.net/api';
 var ADM_CREDS = {
   email: 'frosa@accountone.do',
   password: 'cgc0FXU3nfz_mjh8zpd',
-  appid: '86598502-d670-4e40-fadd-08debd059b88',
+  appid: 'cbea40cc-096d-4ebd-fade-08debd059b88',
   company: '516d3a00-2f5f-4ebd-8802-e91881828f36',
   role: 'Administradores',
   roleId: '41a8a36b-12cd-4c78-aef7-9bfb9d510a11'
@@ -2893,19 +2893,26 @@ var COB_SCORE_ORDER = { repeat: 0, occasional: 1, unknown: 2, good: 3 };
 // ─── Adm Cloud API helpers ───
 async function cobAdmLogin() {
   if (cobAdmToken) return cobAdmToken;
-  try {
-    var resp = await fetch(ADM_API + '/Login?company=' + ADM_CREDS.company + '&role=' + encodeURIComponent(ADM_CREDS.role) + '&appid=' + ADM_CREDS.appid, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'appid': ADM_CREDS.appid },
-      body: JSON.stringify({ UserName: ADM_CREDS.email, Password: ADM_CREDS.password, Company: ADM_CREDS.company, Role: ADM_CREDS.role, RoleId: ADM_CREDS.roleId })
-    });
-    var data = await resp.json();
-    cobAdmToken = data.token || data.Token || data.access_token || null;
-    return cobAdmToken;
-  } catch(e) {
-    console.error('Adm Cloud login error:', e);
-    return null;
+  var url = ADM_API + '/Login?company=' + ADM_CREDS.company + '&role=' + encodeURIComponent(ADM_CREDS.role) + '&appid=' + ADM_CREDS.appid;
+  console.log('[Cobros] Login attempt:', url);
+  var resp = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'appid': ADM_CREDS.appid },
+    body: JSON.stringify({ UserName: ADM_CREDS.email, Password: ADM_CREDS.password, Company: ADM_CREDS.company, Role: ADM_CREDS.role, RoleId: ADM_CREDS.roleId })
+  });
+  console.log('[Cobros] Login response status:', resp.status);
+  if (!resp.ok) {
+    var errText = await resp.text();
+    console.error('[Cobros] Login failed:', resp.status, errText);
+    throw new Error('Login HTTP ' + resp.status + ': ' + errText.substring(0, 100));
   }
+  var data = await resp.json();
+  console.log('[Cobros] Login data keys:', Object.keys(data));
+  cobAdmToken = data.token || data.Token || data.access_token || null;
+  if (!cobAdmToken) {
+    throw new Error('Login respondió pero no trajo token. Keys: ' + Object.keys(data).join(', '));
+  }
+  return cobAdmToken;
 }
 
 async function cobFetchInvoices() {
@@ -3102,18 +3109,32 @@ async function cobRenderApp() {
 // ─── Sync button handler ───
 async function cobSyncAdm() {
   cobAdmStatus = 'loading';
+  cobAdmToken = null; // forzar re-login
   cobRenderApp();
   try {
+    var token = await cobAdmLogin();
+    if (!token) {
+      cobAdmStatus = 'error';
+      cobAdmError = 'Login fallido. Verifica las credenciales de Adm Cloud en el código.';
+      cobRenderApp();
+      return;
+    }
     cobInvoices = await cobFetchInvoices();
     if (cobInvoices.length > 0) {
       cobAdmStatus = 'loaded';
+      gerShowToast('Datos cargados: ' + cobInvoices.length + ' facturas');
     } else {
       cobAdmStatus = 'error';
-      cobAdmError = 'No se encontraron facturas. Puede ser un problema de CORS o de conexión.';
+      cobAdmError = 'Login exitoso pero no se encontraron facturas. La API respondió vacío.';
     }
   } catch(e) {
     cobAdmStatus = 'error';
-    cobAdmError = 'Error: ' + (e.message || 'Conexión fallida');
+    if (e.message && e.message.indexOf('Failed to fetch') >= 0) {
+      cobAdmError = 'CORS bloqueado: el navegador no permite llamar a api.admcloud.net desde este dominio. Contacta a Adm Cloud para habilitar el origen.';
+    } else {
+      cobAdmError = 'Error: ' + (e.message || 'Conexión fallida');
+    }
+    console.error('cobSyncAdm error:', e);
   }
   cobRenderApp();
 }
