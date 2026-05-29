@@ -3137,21 +3137,15 @@ async function cobRenderApp() {
   });
   html += '</div>';
 
-  // Chart 2: Deuda por cliente (top 8)
+  // Chart 2: Deuda por cliente (dona)
   html += '<div class="cob-chart-card"><h4>Deuda por cliente (RD$)</h4>';
   if (deudaClientes.length === 0) {
     html += '<p style="color:var(--muted);font-size:0.78rem">Sin datos de facturas. Pide a Claude que sincronice ("sincroniza cobros").</p>';
   } else {
-    deudaClientes.forEach(function(c) {
-      var pct = Math.round((c.montoDOP / maxDeuda) * 100);
-      if (pct < 8) pct = 8;
-      var score = cobGetScore(c.nombre);
-      var color = score === 'repeat' ? '#ef4444' : score === 'occasional' ? '#f59e0b' : '#10b981';
-      html += '<div class="cob-funnel-bar">';
-      html += '<div class="cob-funnel-label">' + c.nombre.split(' ').slice(0, 2).join(' ') + '</div>';
-      html += '<div class="cob-funnel-track"><div class="cob-funnel-fill" style="width:' + pct + '%;background:' + color + '"><span class="cob-funnel-num">' + cobFormatMoney(c.montoDOP) + '</span></div></div>';
-      html += '</div>';
-    });
+    html += '<div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap">';
+    html += '<canvas id="cobDonutCliente" width="200" height="200" style="max-width:200px"></canvas>';
+    html += '<div id="cobDonutLegend" style="font-size:0.72rem"></div>';
+    html += '</div>';
   }
   html += '</div>';
   html += '</div>';
@@ -3188,6 +3182,36 @@ async function cobRenderApp() {
   html += '</tbody></table></div>';
 
   el.innerHTML = html;
+
+  // Render donut chart for deuda por cliente
+  var donutCanvas = document.getElementById('cobDonutCliente');
+  if (donutCanvas && deudaClientes.length > 0) {
+    if (window.cobDonutChart) { window.cobDonutChart.destroy(); }
+    var donutColors = ['#ef4444','#f59e0b','#4361ee','#8b5cf6','#10b981','#ec4899','#f97316','#06b6d4'];
+    var donutLabels = deudaClientes.map(function(c) { return c.nombre.split(' ').slice(0,2).join(' '); });
+    var donutData = deudaClientes.map(function(c) { return Math.round(c.montoDOP); });
+    window.cobDonutChart = new Chart(donutCanvas, {
+      type: 'doughnut',
+      data: {
+        labels: donutLabels,
+        datasets: [{ data: donutData, backgroundColor: donutColors.slice(0, donutLabels.length), borderWidth: 2, borderColor: '#fff' }]
+      },
+      options: { responsive: false, cutout: '55%', plugins: { legend: { display: false } } }
+    });
+    // Custom legend
+    var legendEl = document.getElementById('cobDonutLegend');
+    if (legendEl) {
+      var lh = '';
+      deudaClientes.forEach(function(c, i) {
+        lh += '<div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">';
+        lh += '<div style="width:10px;height:10px;border-radius:3px;background:' + donutColors[i % donutColors.length] + ';flex-shrink:0"></div>';
+        lh += '<span style="color:var(--navy)">' + c.nombre.split(' ').slice(0,2).join(' ') + '</span>';
+        lh += '<span style="color:var(--muted);margin-left:auto;font-weight:600">' + cobFormatMoney(c.montoDOP) + '</span>';
+        lh += '</div>';
+      });
+      legendEl.innerHTML = lh;
+    }
+  }
 }
 
 // ─── Vista detalle de cliente ───
