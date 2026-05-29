@@ -3035,7 +3035,7 @@ function cobSwitchPill(pill) {
 }
 function cobSwitchAging(aging) {
   cobActiveAging = cobActiveAging === aging ? 'todos' : aging;
-  cobActivePill = 'todos'; // reset pill al cambiar aging
+  // NO resetea el pill — ambos filtros trabajan juntos
   cobRenderApp();
 }
 function cobOnSearch(val) {
@@ -3077,25 +3077,25 @@ async function cobRenderApp() {
     else if (s === 'good') countGood++;
   });
 
-  // Classify ALL clients by aging buckets (for card counts, always unfiltered)
+  // Step 1: Apply pill filter
+  var filteredByPill = allClientes;
+  if (cobActivePill !== 'todos') {
+    filteredByPill = allClientes.filter(function(c) { return cobGetScore(c.nombre) === cobActivePill; });
+  }
+
+  // Classify by aging buckets (from pill-filtered list, so cards update with pill)
   var allBucket90 = [], allBucket60 = [], allBucket30 = [], allBucket0 = [];
-  allClientes.forEach(function(c) {
+  filteredByPill.forEach(function(c) {
     if (c.maxDias > 90) allBucket90.push(c);
     else if (c.maxDias > 60) allBucket60.push(c);
     else if (c.maxDias > 30) allBucket30.push(c);
     else allBucket0.push(c);
   });
 
-  // Apply filters: pill score OR aging card (not both at once)
-  // Si un pill de score está activo, las tarjetas de aging se desactivan
-  // Si una tarjeta de aging está activa, los pills de score se resetean a "todos"
-  var clientes = allClientes;
-  if (cobActivePill !== 'todos') {
-    // Pill activo: filtrar por score, aging cards deshabilitadas
-    clientes = allClientes.filter(function(c) { return cobGetScore(c.nombre) === cobActivePill; });
-  } else if (cobActiveAging !== 'todos') {
-    // Aging activo: filtrar por bucket
-    clientes = allClientes.filter(function(c) {
+  // Step 2: Apply aging filter on top of pill filter
+  var clientes = filteredByPill;
+  if (cobActiveAging !== 'todos') {
+    clientes = filteredByPill.filter(function(c) {
       if (cobActiveAging === '90') return c.maxDias > 90;
       if (cobActiveAging === '60') return c.maxDias > 60 && c.maxDias <= 90;
       if (cobActiveAging === '30') return c.maxDias > 30 && c.maxDias <= 60;
