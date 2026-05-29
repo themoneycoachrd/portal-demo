@@ -3059,27 +3059,14 @@ async function cobRenderApp() {
 
   var allClientes = cobBuildClientList();
 
-  // Classify by aging buckets (in DOP)
-  var bucket90 = [], bucket60 = [], bucket30 = [], bucket0 = [];
-  var totalDOP = 0;
+  // Calculate montoDOP for all clients
   allClientes.forEach(function(c) {
     var montoDOP = 0;
     c.facturas.forEach(function(f) { montoDOP += cobToDOP(f.balance, f.currency); });
     c.montoDOP = montoDOP;
-    totalDOP += montoDOP;
-    if (c.maxDias > 90) bucket90.push(c);
-    else if (c.maxDias > 60) bucket60.push(c);
-    else if (c.maxDias > 30) bucket30.push(c);
-    else bucket0.push(c);
   });
 
-  // Filter by active pill
-  var clientes = allClientes;
-  if (cobActivePill !== 'todos') {
-    clientes = allClientes.filter(function(c) { return cobGetScore(c.nombre) === cobActivePill; });
-  }
-
-  // Count by score
+  // Count by score (always from allClientes for pill labels)
   var countRepeat = 0, countOccasional = 0, countGood = 0;
   allClientes.forEach(function(c) {
     var s = cobGetScore(c.nombre);
@@ -3088,8 +3075,37 @@ async function cobRenderApp() {
     else if (s === 'good') countGood++;
   });
 
-  // Deuda por cliente (top 8, in DOP)
-  var deudaClientes = allClientes.filter(function(c) { return c.montoDOP > 0; }).sort(function(a, b) { return b.montoDOP - a.montoDOP; }).slice(0, 8);
+  // Apply score pill filter
+  var filteredByPill = allClientes;
+  if (cobActivePill !== 'todos') {
+    filteredByPill = allClientes.filter(function(c) { return cobGetScore(c.nombre) === cobActivePill; });
+  }
+
+  // Classify by aging buckets (from pill-filtered list)
+  var bucket90 = [], bucket60 = [], bucket30 = [], bucket0 = [];
+  var totalDOP = 0;
+  filteredByPill.forEach(function(c) {
+    totalDOP += c.montoDOP;
+    if (c.maxDias > 90) bucket90.push(c);
+    else if (c.maxDias > 60) bucket60.push(c);
+    else if (c.maxDias > 30) bucket30.push(c);
+    else bucket0.push(c);
+  });
+
+  // Apply aging filter (from pill-filtered list)
+  var clientes = filteredByPill;
+  if (cobActiveAging !== 'todos') {
+    clientes = filteredByPill.filter(function(c) {
+      if (cobActiveAging === '90') return c.maxDias > 90;
+      if (cobActiveAging === '60') return c.maxDias > 60 && c.maxDias <= 90;
+      if (cobActiveAging === '30') return c.maxDias > 30 && c.maxDias <= 60;
+      if (cobActiveAging === '0') return c.maxDias <= 30;
+      return true;
+    });
+  }
+
+  // Deuda por cliente for charts (from pill-filtered list, not aging-filtered)
+  var deudaClientes = filteredByPill.filter(function(c) { return c.montoDOP > 0; }).sort(function(a, b) { return b.montoDOP - a.montoDOP; }).slice(0, 8);
   var maxDeuda = deudaClientes.length > 0 ? deudaClientes[0].montoDOP : 1;
 
   var html = '';
@@ -3170,17 +3186,6 @@ async function cobRenderApp() {
   }
   html += '</div>';
   html += '</div>';
-
-  // ── Apply aging filter ──
-  if (cobActiveAging !== 'todos') {
-    clientes = clientes.filter(function(c) {
-      if (cobActiveAging === '90') return c.maxDias > 90;
-      if (cobActiveAging === '60') return c.maxDias > 60 && c.maxDias <= 90;
-      if (cobActiveAging === '30') return c.maxDias > 30 && c.maxDias <= 60;
-      if (cobActiveAging === '0') return c.maxDias <= 30;
-      return true;
-    });
-  }
 
   // ── Search bar ──
   html += '<div style="margin-bottom:12px">';
