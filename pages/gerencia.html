@@ -3040,7 +3040,10 @@ function cobSwitchAging(aging) {
 }
 function cobOnSearch(val) {
   cobSearchText = val.toLowerCase();
-  cobRenderApp();
+  cobRenderApp().then(function() {
+    var inp = document.querySelector('#cob-content input[type="text"]');
+    if (inp) { inp.focus(); inp.setSelectionRange(val.length, val.length); }
+  });
 }
 function cobFmtAmount(n) {
   return Number(Math.abs(n)).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
