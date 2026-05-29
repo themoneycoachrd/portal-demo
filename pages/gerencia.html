@@ -6,6 +6,7 @@
 <title>Clientes — Account One 2026</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
   :root {
     --navy: #1a2332;
@@ -3282,15 +3283,18 @@ async function cobRenderApp() {
   html += '<button class="cob-pill' + (cobActivePill === 'repeat' ? ' active' : '') + '" onclick="cobSwitchPill(\'repeat\')" style="' + (cobActivePill === 'repeat' ? '' : 'border-color:#ef4444;color:#ef4444') + '">Pago recurrente tarde (' + countRepeat + ')</button>';
   html += '</div>';
 
-  // ── Sync button ──
-  html += '<div style="margin-bottom:16px">';
+  // ── Sync / Upload ──
+  html += '<div style="margin-bottom:16px;display:flex;align-items:center;gap:12px">';
   if (cobSyncInfo) {
     var syncDate = new Date(cobSyncInfo.synced_at).toLocaleDateString('es-DO', { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' });
-    html += '<span style="font-size:0.72rem;color:var(--green)">✓ Sync: ' + syncDate + '</span>';
+    html += '<span style="font-size:0.72rem;color:var(--green)">✓ Última carga: ' + syncDate + '</span>';
   } else {
-    html += '<span style="font-size:0.72rem;color:var(--muted)">Sin datos de Adm Cloud.</span> ';
-    html += '<span style="font-size:0.72rem;color:var(--blue);cursor:pointer" onclick="gerShowToast(\'Pide a Claude: sincroniza cobros\')">Cargar data desde Adm →</span>';
+    html += '<span style="font-size:0.72rem;color:var(--muted)">Sin datos cargados.</span>';
   }
+  html += '<label style="padding:4px 12px;border-radius:8px;font-size:0.72rem;font-weight:600;cursor:pointer;border:1px solid var(--blue);background:#eff6ff;color:var(--blue)">';
+  html += '📂 Cargar análisis de saldo';
+  html += '<input type="file" accept=".xlsx,.xls,.csv" onchange="cobUploadExcel(this)" style="display:none">';
+  html += '</label>';
   html += '</div>';
 
   // ── Greeting ──
@@ -3504,7 +3508,7 @@ function cobRenderDetalle(el) {
   if (cliente.facturas.length === 0) {
     html += '<p style="color:var(--muted);font-size:0.82rem">No hay datos de facturas. Usa el botón "Cargar datos de Adm Cloud" en el listado principal.</p>';
   } else {
-    html += '<table class="cob-table"><thead><tr><th>No.</th><th style="text-align:center">Moneda</th><th style="text-align:right">Total</th><th style="text-align:right">Pendiente</th><th style="text-align:center">Fecha</th><th style="text-align:center">Vencimiento</th><th style="text-align:center">Días atraso</th></tr></thead><tbody>';
+    html += '<table class="cob-table"><thead><tr><th>No.</th><th style="text-align:center">Moneda</th><th style="text-align:right">Total</th><th style="text-align:right">Pendiente</th><th style="text-align:center">Fecha emisión</th><th style="text-align:center">Antigüedad</th></tr></thead><tbody>';
     cliente.facturas.sort(function(a, b) { return b.dias - a.dias; }).forEach(function(f) {
       var aging = cobAgingBucket(f.dias);
       html += '<tr>';
@@ -3513,7 +3517,6 @@ function cobRenderDetalle(el) {
       html += '<td style="text-align:right;font-variant-numeric:tabular-nums">' + cobFmtAmount(f.total) + '</td>';
       html += '<td style="text-align:right;font-weight:600;font-variant-numeric:tabular-nums">' + cobFmtAmount(f.balance) + '</td>';
       html += '<td style="text-align:center;font-size:0.74rem">' + (f.date ? new Date(f.date).toLocaleDateString('es-DO') : '-') + '</td>';
-      html += '<td style="text-align:center;font-size:0.74rem">' + (f.dueDate ? new Date(f.dueDate).toLocaleDateString('es-DO') : '-') + '</td>';
       html += '<td style="text-align:center"><span class="cob-aging ' + aging.css + '">' + (f.dias > 0 ? f.dias + 'd' : 'Al día') + '</span></td>';
       html += '</tr>';
     });
@@ -3869,6 +3872,120 @@ async function cobSaveNota() {
   } else {
     cobRenderApp();
   }
+}
+
+// ─── Upload Excel (análisis de saldo) ───
+async function cobUploadExcel(input) {
+  if (!input.files || !input.files[0]) return;
+  var file = input.files[0];
+  gerShowToast('Leyendo archivo...');
+
+  var reader = new FileReader();
+  reader.onload = async function(e) {
+    try {
+      var wb = XLSX.read(e.target.result, { type: 'array', cellDates: true });
+      var ws = wb.Sheets[wb.SheetNames[0]];
+      var rows = XLSX.utils.sheet_to_json(ws, { defval: '' });
+
+      if (rows.length === 0) { gerShowToast('El archivo está vacío', 'error'); return; }
+
+      // Auto-detect columns by matching common names
+      var cols = Object.keys(rows[0]);
+      var colMap = { cliente: null, docId: null, total: null, balance: null, fecha: null, dias: null, moneda: null, tipo: null };
+
+      cols.forEach(function(c) {
+        var cl = c.toLowerCase().trim();
+        if (cl.indexOf('relacion') >= 0 || cl.indexOf('relation') >= 0 || cl.indexOf('cliente') >= 0 || cl.indexOf('nombre') >= 0) colMap.cliente = c;
+        if (cl.indexOf('doc') >= 0 && cl.indexOf('id') >= 0 || cl === 'no.' || cl === 'no' || cl === 'número' || cl === 'numero') colMap.docId = c;
+        if (cl === 'total' || cl.indexOf('totalamount') >= 0 || cl.indexOf('monto total') >= 0 || cl.indexOf('total amount') >= 0) colMap.total = c;
+        if (cl.indexOf('balance') >= 0 || cl.indexOf('pendiente') >= 0 || cl.indexOf('saldo') >= 0) colMap.balance = c;
+        if (cl.indexOf('fecha') >= 0 || cl.indexOf('date') >= 0 || cl.indexOf('created') >= 0 || cl.indexOf('emisi') >= 0) { if (!colMap.fecha) colMap.fecha = c; }
+        if (cl.indexOf('dias') >= 0 || cl.indexOf('days') >= 0 || cl.indexOf('atraso') >= 0 || cl.indexOf('antig') >= 0) colMap.dias = c;
+        if (cl.indexOf('moneda') >= 0 || cl.indexOf('currency') >= 0 || cl.indexOf('curr') >= 0) colMap.moneda = c;
+        if (cl.indexOf('tipo') >= 0 || cl.indexOf('type') >= 0) colMap.tipo = c;
+      });
+
+      // Show preview
+      var preview = 'Archivo: ' + file.name + '\n';
+      preview += 'Filas: ' + rows.length + '\n';
+      preview += 'Columnas detectadas: ' + cols.join(', ') + '\n\n';
+      preview += 'Mapeo automático:\n';
+      preview += '  Cliente → ' + (colMap.cliente || '⚠ NO ENCONTRADA') + '\n';
+      preview += '  Doc ID → ' + (colMap.docId || '(opcional)') + '\n';
+      preview += '  Total → ' + (colMap.total || '(opcional)') + '\n';
+      preview += '  Balance/Pendiente → ' + (colMap.balance || '⚠ NO ENCONTRADA') + '\n';
+      preview += '  Fecha → ' + (colMap.fecha || '(opcional)') + '\n';
+      preview += '  Días atraso → ' + (colMap.dias || '(opcional)') + '\n';
+      preview += '  Moneda → ' + (colMap.moneda || 'default: USD') + '\n';
+      preview += '  Tipo doc → ' + (colMap.tipo || '(opcional)') + '\n\n';
+      preview += 'Primeras 3 filas:\n';
+      rows.slice(0, 3).forEach(function(r, i) {
+        preview += '  ' + (i+1) + '. ' + (r[colMap.cliente] || '?') + ' | ' + (r[colMap.balance] || '?') + ' | ' + (r[colMap.moneda] || 'USD') + '\n';
+      });
+
+      if (!colMap.cliente || !colMap.balance) {
+        gerShowToast('No se encontraron las columnas de Cliente y Balance/Saldo. Verifica el archivo.', 'error');
+        document.getElementById('cobTemplateTitle').textContent = 'Error en mapeo de columnas';
+        document.getElementById('cobTemplateTexto').textContent = preview;
+        document.getElementById('cobTemplateOverlay').classList.add('open');
+        return;
+      }
+
+      if (!confirm('Se encontraron ' + rows.length + ' filas. Esto reemplazará todos los datos actuales de cobros. ¿Continuar?')) return;
+
+      // Build records
+      gerShowToast('Procesando ' + rows.length + ' registros...');
+      var records = [];
+      rows.forEach(function(r) {
+        var clienteNombre = String(r[colMap.cliente] || '').trim();
+        if (!clienteNombre) return;
+        var bal = parseFloat(r[colMap.balance]) || 0;
+        if (bal <= 0.01 && bal >= -0.01) return; // skip zero balance
+
+        var fechaVal = null;
+        if (colMap.fecha && r[colMap.fecha]) {
+          var fv = r[colMap.fecha];
+          if (fv instanceof Date) fechaVal = fv.toISOString().slice(0, 10);
+          else if (typeof fv === 'string' && fv.length >= 8) fechaVal = fv.slice(0, 10);
+        }
+
+        records.push({
+          cliente_nombre: clienteNombre,
+          doc_id: colMap.docId ? String(r[colMap.docId] || '') : null,
+          total: colMap.total ? (parseFloat(r[colMap.total]) || 0) : Math.abs(bal),
+          balance: bal,
+          fecha_factura: fechaVal,
+          dias_atraso: colMap.dias ? (parseInt(r[colMap.dias]) || 0) : 0,
+          moneda: colMap.moneda ? (String(r[colMap.moneda] || 'USD').toUpperCase().trim()) : 'USD',
+          tipo_doc: colMap.tipo ? String(r[colMap.tipo] || '') : 'Factura a Crédito',
+          synced_at: new Date().toISOString()
+        });
+      });
+
+      if (records.length === 0) { gerShowToast('No hay registros con balance pendiente', 'error'); return; }
+
+      // Delete all existing + insert new
+      var delRes = await sb.from('cobros_facturas').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+      if (delRes.error) { gerShowToast('Error al limpiar datos: ' + delRes.error.message, 'error'); return; }
+
+      // Insert in batches of 50
+      for (var i = 0; i < records.length; i += 50) {
+        var batch = records.slice(i, i + 50);
+        var insRes = await sb.from('cobros_facturas').insert(batch);
+        if (insRes.error) { gerShowToast('Error al insertar (fila ' + (i+1) + '): ' + insRes.error.message, 'error'); return; }
+      }
+
+      gerShowToast(records.length + ' facturas cargadas correctamente');
+      cobDataLoaded = false;
+      cobRenderApp();
+
+    } catch(err) {
+      gerShowToast('Error leyendo el archivo: ' + err.message, 'error');
+      console.error(err);
+    }
+  };
+  reader.readAsArrayBuffer(file);
+  input.value = ''; // reset for re-upload
 }
 
 async function cobCompletarTarea(id) {
