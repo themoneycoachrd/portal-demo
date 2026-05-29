@@ -2921,28 +2921,24 @@ async function cobAdmRequest(endpoint, method) {
 }
 
 async function cobFetchInvoices() {
-  var data = await cobAdmRequest('CreditInvoices');
-  console.log('[Cobros] Response type:', typeof data, Array.isArray(data) ? 'ARRAY(' + data.length + ')' : '');
-  if (data && !Array.isArray(data)) {
-    console.log('[Cobros] Response keys:', Object.keys(data));
-    // Try common wrapper patterns
-    var arr = data.data || data.Data || data.items || data.Items || data.value || data.Value || data.results || data.Results || null;
-    if (Array.isArray(arr)) {
-      console.log('[Cobros] Found array in key, length:', arr.length);
-      return arr;
-    }
-    // If it's an object with numeric keys, it might be a collection
-    var keys = Object.keys(data);
-    if (keys.length > 0 && keys[0].match(/^\d+$/)) {
-      console.log('[Cobros] Object with numeric keys, converting to array');
-      return keys.map(function(k) { return data[k]; });
-    }
-    // Log first 500 chars of stringified response for debugging
-    console.log('[Cobros] Unexpected format, first 500 chars:', JSON.stringify(data).substring(0, 500));
-    cobAdmError = 'Formato inesperado. Keys: ' + keys.join(', ') + '. Revisa la consola (F12).';
-    return [];
+  // Adm Cloud needs $top for pagination, otherwise returns only first record
+  var raw = await cobAdmRequest('CreditInvoices&$top=500');
+  // Adm Cloud wraps response in {success, message, data}
+  var data = (raw && raw.data !== undefined) ? raw.data : raw;
+
+  if (Array.isArray(data)) {
+    console.log('[Cobros] Got array of', data.length, 'invoices');
+    return data;
   }
-  return Array.isArray(data) ? data : [];
+
+  // Single invoice object (has ID field) - wrap it
+  if (data && typeof data === 'object' && data.ID) {
+    console.log('[Cobros] Got single invoice:', data.DocID, data.RelationshipName);
+    return [data];
+  }
+
+  console.log('[Cobros] Unexpected response format:', typeof data);
+  return [];
 }
 
 async function cobLoadNotas() {
@@ -2955,32 +2951,35 @@ function cobGroupByCustomer(invoices) {
   var groups = {};
   var today = new Date();
   invoices.forEach(function(inv) {
-    // Detect field names (Adm Cloud puede usar PascalCase)
-    var name = inv.CustomerName || inv.customerName || inv.Customer || inv.customer || 'Sin nombre';
-    var balance = parseFloat(inv.Balance || inv.balance || inv.OpenBalance || inv.openBalance || 0);
-    var total = parseFloat(inv.Total || inv.total || inv.Amount || inv.amount || 0);
-    var dueDate = inv.DueDate || inv.dueDate || inv.Due || inv.due || null;
-    var invDate = inv.Date || inv.date || inv.InvoiceDate || inv.invoiceDate || null;
-    var invNo = inv.No || inv.no || inv.InvoiceNo || inv.invoiceNo || inv.Number || '';
-    var status = inv.Status || inv.status || '';
+    // Skip voided invoices
+    if (inv.Void) return;
+
+    var name = inv.RelationshipName || 'Sin nombre';
+    var total = parseFloat(inv.TotalAmount || inv.CalculatedTotalAmount || 0);
+    var paid = parseFloat(inv.AppliedPayments || 0);
+    var balance = total - paid;
+    var invDate = inv.DocDate || null;
+    var dueDate = inv.ExpirationDate || null;
+    var invNo = inv.DocID || '';
+    var currency = inv.CurrencyID || 'DOP';
 
     // Solo facturas con balance pendiente > 0
-    if (balance <= 0) return;
+    if (balance <= 0.01) return;
 
     if (!groups[name]) {
-      groups[name] = { nombre: name, facturas: [], totalPendiente: 0, maxDias: 0 };
+      groups[name] = { nombre: name, facturas: [], totalPendiente: 0, maxDias: 0, currency: currency };
     }
     var dias = 0;
     if (dueDate) {
-      var due = new Date(dueDate);
-      dias = Math.floor((today - due) / 86400000);
+      dias = Math.floor((today - new Date(dueDate)) / 86400000);
     } else if (invDate) {
-      var d = new Date(invDate);
-      dias = Math.floor((today - d) / 86400000);
+      // If no due date, use invoice date + 30 days as proxy
+      dias = Math.floor((today - new Date(invDate)) / 86400000) - 30;
     }
+    if (dias < 0) dias = 0;
 
     groups[name].facturas.push({
-      no: invNo, total: total, balance: balance, dueDate: dueDate, date: invDate, dias: dias, status: status
+      no: invNo, total: total, balance: balance, dueDate: dueDate, date: invDate, dias: dias, currency: currency, reference: inv.Reference || ''
     });
     groups[name].totalPendiente += balance;
     if (dias > groups[name].maxDias) groups[name].maxDias = dias;
