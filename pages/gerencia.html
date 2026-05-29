@@ -3068,6 +3068,12 @@ function cobOnSearch(val) {
 function cobFmtAmount(n) {
   return Number(Math.abs(n)).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
+function cobParseTarea(nota) {
+  if (!nota) return { asignada: '', desc: '' };
+  var m = nota.match(/^Asignada a: ([^.]+)\.\s*/);
+  if (m) return { asignada: m[1], desc: nota.substring(m[0].length) };
+  return { asignada: '', desc: nota };
+}
 function cobToggleSort(field) {
   if (cobSortField === field) {
     cobSortDir = cobSortDir === 'desc' ? 'asc' : 'desc';
@@ -3238,21 +3244,22 @@ async function cobRenderApp() {
 
   html += '<div class="cob-charts">';
 
-  // Últimas 3 tareas
+  // Últimas 3 tareas (clickeables → perfil del cliente)
   html += '<div class="cob-chart-card"><h4>Últimas tareas</h4>';
   if (tareasPendientes.length === 0) {
-    html += '<p style="color:var(--muted);font-size:0.78rem">Sin tareas registradas.</p>';
+    html += '<p style="color:var(--muted);font-size:0.78rem">Sin tareas pendientes.</p>';
   } else {
     tareasPendientes.forEach(function(t) {
       var fecha = new Date(t.created_at).toLocaleDateString('es-DO', { day:'numeric', month:'short' });
       var limite = t.fecha_promesa ? new Date(t.fecha_promesa).toLocaleDateString('es-DO', { day:'numeric', month:'short' }) : '';
-      html += '<div style="padding:8px 0;border-bottom:1px solid var(--border);font-size:0.78rem">';
+      var parsed = cobParseTarea(t.nota);
+      html += '<div style="padding:8px 0;border-bottom:1px solid var(--border);font-size:0.78rem;cursor:pointer" onclick="cobOpenDetalle(\'' + cobEsc(t.cliente_nombre) + '\')">';
       html += '<div style="display:flex;justify-content:space-between;align-items:center">';
-      html += '<span style="font-weight:600;color:var(--navy)">' + (t.cliente_nombre || '').split(' ').slice(0,2).join(' ') + '</span>';
-      html += '<span class="cob-nota-badge" style="background:#fefce8;color:#92400e">tarea</span>';
+      html += '<span style="font-weight:600;color:var(--blue)">' + (t.cliente_nombre || '').split(' ').slice(0,2).join(' ') + ' →</span>';
+      if (limite) html += '<span style="font-size:0.68rem;color:var(--red)">Límite: ' + limite + '</span>';
       html += '</div>';
-      html += '<div style="color:var(--muted);font-size:0.72rem;margin-top:2px">' + fecha + (limite ? ' · Límite: ' + limite : '') + '</div>';
-      if (t.nota) html += '<div style="margin-top:2px">' + t.nota.substring(0, 80) + (t.nota.length > 80 ? '...' : '') + '</div>';
+      if (parsed.desc) html += '<div style="margin-top:2px;color:var(--navy)">' + parsed.desc.substring(0, 80) + (parsed.desc.length > 80 ? '...' : '') + '</div>';
+      html += '<div style="color:var(--muted);font-size:0.68rem;margin-top:2px">' + fecha + (parsed.asignada ? ' · ' + parsed.asignada : '') + '</div>';
       html += '</div>';
     });
   }
@@ -3440,32 +3447,34 @@ function cobRenderDetalle(el) {
   }
   html += '</div>';
 
-  // Tareas del cliente (solo pendientes)
+  // Tareas del cliente (solo pendientes) — tabla con columnas
   var tareasCliente = notasCliente.filter(function(n) { return n.tipo_contacto === 'tarea' && n.resultado !== 'completada'; });
   html += '<div class="cob-detail-card"><h3>Tareas pendientes (' + tareasCliente.length + ')</h3>';
   if (tareasCliente.length === 0) {
     html += '<p style="color:var(--muted);font-size:0.82rem">No hay tareas pendientes para este cliente.</p>';
   } else {
-    html += '<div class="cob-notas-list">';
+    html += '<table class="cob-table"><thead><tr>';
+    html += '<th>Creada</th><th>Límite</th><th>Descripción</th><th style="text-align:center">Asignada a</th><th style="text-align:center">Estatus</th><th style="text-align:center"></th>';
+    html += '</tr></thead><tbody>';
     tareasCliente.forEach(function(t) {
-      var fecha = new Date(t.created_at).toLocaleDateString('es-DO', { weekday:'short', day:'numeric', month:'short', year:'numeric' });
-      var limite = t.fecha_promesa ? new Date(t.fecha_promesa).toLocaleDateString('es-DO', { day:'numeric', month:'short' }) : null;
-      var seguimiento = t.fecha_seguimiento ? new Date(t.fecha_seguimiento).toLocaleDateString('es-DO', { day:'numeric', month:'short' }) : null;
-      html += '<div class="cob-nota-item">';
-      html += '<div class="cob-nota-meta">' + fecha;
-      html += '<span class="cob-nota-badge" style="background:#fefce8;color:#92400e">tarea</span>';
-      html += '<span class="cob-nota-badge" style="background:#eff6ff;color:var(--navy)">pendiente</span>';
-      html += '</div>';
-      if (limite) html += '<div style="font-size:0.74rem;color:var(--red)">Fecha límite: ' + limite + '</div>';
-      if (seguimiento) html += '<div style="font-size:0.74rem;color:var(--amber)">Seguimiento: ' + seguimiento + '</div>';
-      if (t.nota) html += '<div style="font-size:0.82rem;margin-top:4px">' + t.nota + '</div>';
-      html += '<div style="display:flex;gap:6px;margin-top:8px">';
-      html += '<button class="cob-btn cob-btn-green" style="font-size:0.7rem" onclick="cobCompletarTarea(\'' + t.id + '\')">✓ Completar</button>';
-      html += '<button class="cob-btn" style="background:#fef2f2;color:var(--red);font-size:0.7rem" onclick="cobBorrarTarea(\'' + t.id + '\')">✗ Eliminar</button>';
-      html += '</div>';
-      html += '</div>';
+      var fecha = new Date(t.created_at).toLocaleDateString('es-DO', { day:'numeric', month:'short' });
+      var limite = t.fecha_promesa ? new Date(t.fecha_promesa).toLocaleDateString('es-DO', { day:'numeric', month:'short' }) : '-';
+      var parsed = cobParseTarea(t.nota);
+      var hoy = new Date(); hoy.setHours(0,0,0,0);
+      var vencida = t.fecha_promesa && new Date(t.fecha_promesa) < hoy;
+      html += '<tr>';
+      html += '<td style="font-size:0.74rem;white-space:nowrap">' + fecha + '</td>';
+      html += '<td style="font-size:0.74rem;white-space:nowrap;' + (vencida ? 'color:var(--red);font-weight:600' : '') + '">' + limite + '</td>';
+      html += '<td>' + (parsed.desc || '-') + '</td>';
+      html += '<td style="text-align:center;font-size:0.74rem">' + (parsed.asignada || '-') + '</td>';
+      html += '<td style="text-align:center"><span class="cob-nota-badge" style="background:#eff6ff;color:var(--navy)">pendiente</span></td>';
+      html += '<td style="text-align:center;white-space:nowrap">';
+      html += '<button class="cob-btn cob-btn-green" style="font-size:0.68rem;padding:3px 8px" onclick="cobCompletarTarea(\'' + t.id + '\')" title="Marcar completada">✓</button>';
+      html += '<button class="cob-btn" style="background:#fef2f2;color:var(--red);font-size:0.68rem;padding:3px 8px" onclick="cobBorrarTarea(\'' + t.id + '\')" title="Eliminar">✗</button>';
+      html += '</td>';
+      html += '</tr>';
     });
-    html += '</div>';
+    html += '</tbody></table>';
   }
   html += '</div>';
 
@@ -3669,8 +3678,9 @@ async function cobCompletarTarea(id) {
 
 async function cobBorrarTarea(id) {
   if (!confirm('¿Eliminar esta tarea?')) return;
-  var { error } = await sb.from('notas_cobro').delete().eq('id', id);
+  var { data, error } = await sb.from('notas_cobro').delete().eq('id', id).select();
   if (error) { gerShowToast('Error: ' + error.message, 'error'); return; }
+  if (!data || data.length === 0) { gerShowToast('No se pudo eliminar. Verifica permisos.', 'error'); return; }
   gerShowToast('Tarea eliminada');
   cobDataLoaded = false;
   cobNotas = await cobLoadNotas();
