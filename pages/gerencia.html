@@ -3401,13 +3401,39 @@ function cobRenderDetalle(el) {
   }
   html += '</div>';
 
-  // Historial de notas
-  html += '<div class="cob-detail-card"><h3>Historial de cobro (' + notasCliente.length + ')</h3>';
-  if (notasCliente.length === 0) {
-    html += '<p style="color:var(--muted);font-size:0.82rem">No hay notas registradas para este cliente.</p>';
+  // Tareas del cliente
+  var tareasCliente = notasCliente.filter(function(n) { return n.tipo_contacto === 'tarea'; });
+  html += '<div class="cob-detail-card"><h3>Tareas (' + tareasCliente.length + ')</h3>';
+  if (tareasCliente.length === 0) {
+    html += '<p style="color:var(--muted);font-size:0.82rem">No hay tareas para este cliente.</p>';
   } else {
     html += '<div class="cob-notas-list">';
-    notasCliente.forEach(function(n) {
+    tareasCliente.forEach(function(t) {
+      var fecha = new Date(t.created_at).toLocaleDateString('es-DO', { weekday:'short', day:'numeric', month:'short', year:'numeric' });
+      var limite = t.fecha_promesa ? new Date(t.fecha_promesa).toLocaleDateString('es-DO', { day:'numeric', month:'short' }) : null;
+      var seguimiento = t.fecha_seguimiento ? new Date(t.fecha_seguimiento).toLocaleDateString('es-DO', { day:'numeric', month:'short' }) : null;
+      html += '<div class="cob-nota-item">';
+      html += '<div class="cob-nota-meta">' + fecha;
+      html += '<span class="cob-nota-badge" style="background:#fefce8;color:#92400e">tarea</span>';
+      html += '<span class="cob-nota-badge" style="background:#eff6ff;color:var(--navy)">pendiente</span>';
+      html += '</div>';
+      if (limite) html += '<div style="font-size:0.74rem;color:var(--red)">Fecha límite: ' + limite + '</div>';
+      if (seguimiento) html += '<div style="font-size:0.74rem;color:var(--amber)">Seguimiento: ' + seguimiento + '</div>';
+      if (t.nota) html += '<div style="font-size:0.82rem;margin-top:4px">' + t.nota + '</div>';
+      html += '</div>';
+    });
+    html += '</div>';
+  }
+  html += '</div>';
+
+  // Historial de cobro (sin tareas)
+  var gestionesCliente = notasCliente.filter(function(n) { return n.tipo_contacto !== 'tarea'; });
+  html += '<div class="cob-detail-card"><h3>Historial de cobro (' + gestionesCliente.length + ')</h3>';
+  if (gestionesCliente.length === 0) {
+    html += '<p style="color:var(--muted);font-size:0.82rem">No hay gestiones registradas para este cliente.</p>';
+  } else {
+    html += '<div class="cob-notas-list">';
+    gestionesCliente.forEach(function(n) {
       var tipoBg = { llamada: '#eff6ff', correo: '#ecfdf5', whatsapp: '#f3e8ff', visita: '#fffbeb', nota_interna: '#f3f4f6', tarea: '#fefce8' };
       var tipoColor = { llamada: 'var(--blue)', correo: 'var(--green)', whatsapp: '#7c3aed', visita: '#b45309', nota_interna: '#6b7280', tarea: '#92400e' };
       var resBg = { contactado: '#ecfdf5', sin_respuesta: '#fef2f2', buzon: '#fffbeb', promesa_pago: '#eff6ff', pago_parcial: '#ecfdf5', disputado: '#fef2f2', pendiente: '#fefce8' };
