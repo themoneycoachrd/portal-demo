@@ -461,6 +461,35 @@
   .cob-back-btn { background:none; border:1px solid var(--border); padding:6px 14px; border-radius:8px; font-size:0.82rem; cursor:pointer; color:var(--navy); margin-bottom:16px; }
   .cob-back-btn:hover { background:#f3f4f6; }
   .cob-loading { text-align:center; padding:40px; color:var(--muted); font-size:0.9rem; }
+  .cob-greeting { background:var(--navy); border-radius:12px; padding:20px 24px; margin-bottom:16px; }
+  .cob-greeting h2 { font-size:1.1rem; font-weight:700; color:#fff; margin:0 0 4px; }
+  .cob-greeting p { font-size:0.78rem; color:rgba(255,255,255,0.55); margin:0; }
+  .cob-urgency { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-bottom:16px; }
+  .cob-urg-card { background:white; border-radius:12px; padding:16px; text-align:center; border:1px solid var(--border); }
+  .cob-urg-card .urg-label { font-size:0.68rem; text-transform:uppercase; letter-spacing:0.5px; color:var(--muted); margin:0; }
+  .cob-urg-card .urg-num { font-size:1.6rem; font-weight:700; margin:4px 0; }
+  .cob-urg-card .urg-sub { font-size:0.68rem; color:var(--muted); margin:0; }
+  .cob-urg-urgent .urg-num { color:var(--red); }
+  .cob-urg-warn .urg-num { color:#b45309; }
+  .cob-urg-soon .urg-num { color:var(--amber); }
+  .cob-urg-ok .urg-num { color:var(--green); }
+  .cob-charts { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:16px; }
+  .cob-chart-card { background:white; border-radius:12px; border:1px solid var(--border); padding:16px; }
+  .cob-chart-card h4 { font-size:0.82rem; margin:0 0 12px; color:var(--navy); }
+  .cob-insights { background:#f8fafc; border-radius:10px; padding:12px 16px; margin-bottom:16px; border:1px solid var(--border); }
+  .cob-insight-item { font-size:0.8rem; color:var(--navy); padding:4px 0; }
+  .cob-section { background:white; border-radius:12px; border:1px solid var(--border); padding:16px; margin-bottom:16px; }
+  .cob-section-hdr { display:flex; align-items:center; gap:10px; margin-bottom:12px; }
+  .cob-section-hdr h3 { font-size:0.9rem; margin:0; color:var(--navy); }
+  .cob-section-icon { width:28px; height:28px; border-radius:8px; display:flex; align-items:center; justify-content:center; color:white; font-size:0.75rem; font-weight:700; }
+  .cob-pills { display:flex; gap:6px; margin-bottom:16px; flex-wrap:wrap; }
+  .cob-pill { padding:6px 14px; border-radius:20px; border:1px solid var(--border); background:white; font-size:0.75rem; font-weight:600; cursor:pointer; color:var(--navy); }
+  .cob-pill.active { background:var(--navy); color:white; border-color:var(--navy); }
+  .cob-funnel-bar { display:flex; align-items:center; gap:10px; margin-bottom:8px; }
+  .cob-funnel-label { font-size:0.72rem; font-weight:600; color:var(--navy); min-width:80px; text-align:right; white-space:nowrap; }
+  .cob-funnel-track { flex:1; background:#f1f5f9; border-radius:8px; height:28px; position:relative; overflow:hidden; }
+  .cob-funnel-fill { height:100%; border-radius:8px; display:flex; align-items:center; padding:0 10px; transition:width 0.4s ease; }
+  .cob-funnel-num { font-size:0.72rem; font-weight:700; color:#fff; }
 </style>
 </head>
 <body>
@@ -2970,7 +2999,29 @@ function cobBuildClientList() {
   return clientes;
 }
 
-var cobSyncInfo = null; // {synced_at} from last sync
+var cobSyncInfo = null;
+var cobActivePill = 'todos'; // 'todos' | 'good' | 'occasional' | 'repeat'
+var COB_TC_USD = 61; // tasa de cambio USD→DOP aproximada
+
+// ─── Helpers ───
+function cobGetGreeting() {
+  var h = new Date().getHours();
+  if (h < 12) return 'Buenos dias';
+  if (h < 18) return 'Buenas tardes';
+  return 'Buenas noches';
+}
+function cobGetFirstName() {
+  return (userName || 'usuario').split(' ')[0];
+}
+function cobToDOP(monto, moneda) {
+  if (!moneda || moneda === 'DOP') return monto;
+  if (moneda === 'USD') return monto * COB_TC_USD;
+  return monto;
+}
+function cobSwitchPill(pill) {
+  cobActivePill = pill;
+  cobRenderApp();
+}
 
 // ─── Main render ───
 async function cobRenderApp() {
@@ -2985,46 +3036,119 @@ async function cobRenderApp() {
   cobFacturas = results[0];
   cobNotas = results[1];
 
-  // Get sync timestamp
-  cobSyncInfo = cobFacturas.length > 0 ? { synced_at: cobFacturas[0].synced_at } : null;
+  var allClientes = cobBuildClientList();
 
-  var clientes = cobBuildClientList();
-  var hasData = cobFacturas.length > 0;
-
-  // Summary stats
-  var totalPendiente = 0, clientesConAtraso = 0, facturasVencidas = 0;
-  clientes.forEach(function(c) {
-    totalPendiente += c.totalPendiente;
-    if (c.maxDias > 0) clientesConAtraso++;
-    c.facturas.forEach(function(f) { if (f.dias > 0) facturasVencidas++; });
+  // Classify by aging buckets (in DOP)
+  var bucket90 = [], bucket60 = [], bucket30 = [], bucket0 = [];
+  var totalDOP = 0;
+  allClientes.forEach(function(c) {
+    var montoDOP = 0;
+    c.facturas.forEach(function(f) { montoDOP += cobToDOP(f.balance, f.currency); });
+    c.montoDOP = montoDOP;
+    totalDOP += montoDOP;
+    if (c.maxDias > 90) bucket90.push(c);
+    else if (c.maxDias > 60) bucket60.push(c);
+    else if (c.maxDias > 30) bucket30.push(c);
+    else bucket0.push(c);
   });
+
+  // Filter by active pill
+  var clientes = allClientes;
+  if (cobActivePill !== 'todos') {
+    clientes = allClientes.filter(function(c) { return cobGetScore(c.nombre) === cobActivePill; });
+  }
+
+  // Count by score
+  var countRepeat = 0, countOccasional = 0, countGood = 0;
+  allClientes.forEach(function(c) {
+    var s = cobGetScore(c.nombre);
+    if (s === 'repeat') countRepeat++;
+    else if (s === 'occasional') countOccasional++;
+    else if (s === 'good') countGood++;
+  });
+
+  // Deuda por cliente (top 8, in DOP)
+  var deudaClientes = allClientes.filter(function(c) { return c.montoDOP > 0; }).sort(function(a, b) { return b.montoDOP - a.montoDOP; }).slice(0, 8);
+  var maxDeuda = deudaClientes.length > 0 ? deudaClientes[0].montoDOP : 1;
 
   var html = '';
 
-  // Sync status bar
-  html += '<div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;flex-wrap:wrap">';
-  if (hasData) {
-    var syncDate = cobSyncInfo ? new Date(cobSyncInfo.synced_at).toLocaleDateString('es-DO', { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' }) : '';
-    html += '<span style="font-size:0.75rem;color:var(--green)">✓ Datos sincronizados desde Adm Cloud (' + cobFacturas.length + ' facturas pendientes)</span>';
-    if (syncDate) html += '<span style="font-size:0.7rem;color:var(--muted)">Última sync: ' + syncDate + '</span>';
+  // ── Greeting ──
+  html += '<div class="cob-greeting">';
+  html += '<h2>' + cobGetGreeting() + ', ' + cobGetFirstName() + '</h2>';
+  if (totalDOP > 0) {
+    html += '<p>Tienes ' + allClientes.length + ' clientes en seguimiento de cobro por ' + cobFormatMoney(totalDOP) + ' en total.</p>';
   } else {
-    html += '<span style="font-size:0.75rem;color:var(--muted)">Sin datos de Adm Cloud. Pide a Claude que sincronice los datos ("sincroniza cobros").</span>';
+    html += '<p>Tienes ' + allClientes.length + ' clientes clasificados por score de pago.</p>';
   }
   html += '</div>';
 
-  // Summary cards
-  html += '<div class="cob-summary">';
-  html += '<div class="cob-stat"><p class="num" style="color:var(--red)">' + (hasData ? cobFormatMoney(totalPendiente) : '-') + '</p><p class="lbl">Total pendiente</p></div>';
-  html += '<div class="cob-stat"><p class="num" style="color:var(--navy)">' + clientes.length + '</p><p class="lbl">Clientes en seguimiento</p></div>';
-  html += '<div class="cob-stat"><p class="num" style="color:var(--amber)">' + (hasData ? facturasVencidas : '-') + '</p><p class="lbl">Facturas vencidas</p></div>';
+  // ── Urgency cards (by aging) ──
+  html += '<div class="cob-urgency">';
+  html += '<div class="cob-urg-card cob-urg-urgent"><p class="urg-label">Mas de 90 dias</p><p class="urg-num">' + bucket90.length + '</p><p class="urg-sub">critico</p></div>';
+  html += '<div class="cob-urg-card cob-urg-warn"><p class="urg-label">60 - 90 dias</p><p class="urg-num">' + bucket60.length + '</p><p class="urg-sub">alto riesgo</p></div>';
+  html += '<div class="cob-urg-card cob-urg-soon"><p class="urg-label">30 - 60 dias</p><p class="urg-num">' + bucket30.length + '</p><p class="urg-sub">en seguimiento</p></div>';
+  html += '<div class="cob-urg-card cob-urg-ok"><p class="urg-label">0 - 30 dias</p><p class="urg-num">' + bucket0.length + '</p><p class="urg-sub">reciente</p></div>';
   html += '</div>';
 
-  // Table
+  // ── Charts: Monto por aging + Deuda por cliente ──
+  html += '<div class="cob-charts">';
+
+  // Chart 1: Monto en DOP por bucket de aging
+  var agingBuckets = [
+    { label: '90+ dias', val: 0, color: '#ef4444' },
+    { label: '60-90 dias', val: 0, color: '#b45309' },
+    { label: '30-60 dias', val: 0, color: '#f59e0b' },
+    { label: '0-30 dias', val: 0, color: '#10b981' }
+  ];
+  bucket90.forEach(function(c) { agingBuckets[0].val += c.montoDOP; });
+  bucket60.forEach(function(c) { agingBuckets[1].val += c.montoDOP; });
+  bucket30.forEach(function(c) { agingBuckets[2].val += c.montoDOP; });
+  bucket0.forEach(function(c) { agingBuckets[3].val += c.montoDOP; });
+  var maxAgingVal = Math.max.apply(null, agingBuckets.map(function(b) { return b.val; })) || 1;
+
+  html += '<div class="cob-chart-card"><h4>Monto por antigüedad (RD$)</h4>';
+  agingBuckets.forEach(function(b) {
+    var pct = Math.round((b.val / maxAgingVal) * 100);
+    if (pct < 8 && b.val > 0) pct = 8;
+    html += '<div class="cob-funnel-bar">';
+    html += '<div class="cob-funnel-label">' + b.label + '</div>';
+    html += '<div class="cob-funnel-track"><div class="cob-funnel-fill" style="width:' + pct + '%;background:' + b.color + '"><span class="cob-funnel-num">' + cobFormatMoney(b.val) + '</span></div></div>';
+    html += '</div>';
+  });
+  html += '</div>';
+
+  // Chart 2: Deuda por cliente (top 8)
+  html += '<div class="cob-chart-card"><h4>Deuda por cliente (RD$)</h4>';
+  if (deudaClientes.length === 0) {
+    html += '<p style="color:var(--muted);font-size:0.78rem">Sin datos de facturas. Pide a Claude que sincronice ("sincroniza cobros").</p>';
+  } else {
+    deudaClientes.forEach(function(c) {
+      var pct = Math.round((c.montoDOP / maxDeuda) * 100);
+      if (pct < 8) pct = 8;
+      var score = cobGetScore(c.nombre);
+      var color = score === 'repeat' ? '#ef4444' : score === 'occasional' ? '#f59e0b' : '#10b981';
+      html += '<div class="cob-funnel-bar">';
+      html += '<div class="cob-funnel-label">' + c.nombre.split(' ').slice(0, 2).join(' ') + '</div>';
+      html += '<div class="cob-funnel-track"><div class="cob-funnel-fill" style="width:' + pct + '%;background:' + color + '"><span class="cob-funnel-num">' + cobFormatMoney(c.montoDOP) + '</span></div></div>';
+      html += '</div>';
+    });
+  }
+  html += '</div>';
+  html += '</div>';
+
+  // ── Score pills ──
+  html += '<div class="cob-pills">';
+  html += '<button class="cob-pill' + (cobActivePill === 'todos' ? ' active' : '') + '" onclick="cobSwitchPill(\'todos\')">Todos (' + allClientes.length + ')</button>';
+  html += '<button class="cob-pill' + (cobActivePill === 'good' ? ' active' : '') + '" onclick="cobSwitchPill(\'good\')" style="' + (cobActivePill === 'good' ? '' : 'border-color:#10b981;color:#10b981') + '">Buen pagador (' + countGood + ')</button>';
+  html += '<button class="cob-pill' + (cobActivePill === 'occasional' ? ' active' : '') + '" onclick="cobSwitchPill(\'occasional\')" style="' + (cobActivePill === 'occasional' ? '' : 'border-color:#f59e0b;color:#b45309') + '">Pago ocasional tarde (' + countOccasional + ')</button>';
+  html += '<button class="cob-pill' + (cobActivePill === 'repeat' ? ' active' : '') + '" onclick="cobSwitchPill(\'repeat\')" style="' + (cobActivePill === 'repeat' ? '' : 'border-color:#ef4444;color:#ef4444') + '">Pago recurrente tarde (' + countRepeat + ')</button>';
+  html += '</div>';
+
+  // ── Table ──
   html += '<div style="background:white;border-radius:12px;border:1px solid var(--border);overflow-x:auto">';
   html += '<table class="cob-table"><thead><tr>';
-  html += '<th>#</th><th>Cliente</th>';
-  if (hasData) html += '<th style="text-align:right">Pendiente</th><th style="text-align:center">Facturas</th><th style="text-align:center">Mayor atraso</th>';
-  html += '<th style="text-align:center">Score</th><th style="text-align:center">Última nota</th><th style="text-align:center">Acciones</th>';
+  html += '<th>#</th><th>Cliente</th><th style="text-align:right">Pendiente (RD$)</th><th style="text-align:center">Facturas</th><th style="text-align:center">Mayor atraso</th><th style="text-align:center">Score</th><th style="text-align:center">Última nota</th><th style="text-align:center">Acciones</th>';
   html += '</tr></thead><tbody>';
 
   clientes.forEach(function(c, idx) {
@@ -3036,11 +3160,9 @@ async function cobRenderApp() {
     html += '<tr>';
     html += '<td>' + (idx + 1) + '</td>';
     html += '<td style="font-weight:600;cursor:pointer" onclick="cobOpenDetalle(\'' + esc(c.nombre) + '\')">' + c.nombre + '</td>';
-    if (hasData) {
-      html += '<td style="text-align:right;font-weight:600">' + (c.totalPendiente > 0 ? cobFormatMoney(c.totalPendiente) : '-') + '</td>';
-      html += '<td style="text-align:center">' + (c.facturas.length || '-') + '</td>';
-      html += '<td style="text-align:center"><span class="cob-aging ' + aging.css + '">' + (c.maxDias > 0 ? c.maxDias + 'd' : 'Al día') + '</span></td>';
-    }
+    html += '<td style="text-align:right;font-weight:600">' + (c.montoDOP > 0 ? cobFormatMoney(c.montoDOP) : '-') + '</td>';
+    html += '<td style="text-align:center">' + (c.facturas.length || '-') + '</td>';
+    html += '<td style="text-align:center"><span class="cob-aging ' + aging.css + '">' + (c.maxDias > 0 ? c.maxDias + 'd' : '-') + '</span></td>';
     html += '<td style="text-align:center"><span class="cob-score ' + score + '">' + COB_SCORE_LABELS[score] + '</span></td>';
     html += '<td style="text-align:center;font-size:0.74rem">' + lastNotaText + '</td>';
     html += '<td style="text-align:center;white-space:nowrap">';
@@ -3053,6 +3175,15 @@ async function cobRenderApp() {
   });
 
   html += '</tbody></table></div>';
+
+  // Sync info footer
+  if (cobSyncInfo) {
+    var syncDate = new Date(cobSyncInfo.synced_at).toLocaleDateString('es-DO', { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' });
+    html += '<p style="text-align:center;font-size:0.7rem;color:var(--muted);margin-top:12px">Datos sincronizados desde Adm Cloud · Última sync: ' + syncDate + '</p>';
+  } else {
+    html += '<p style="text-align:center;font-size:0.7rem;color:var(--muted);margin-top:12px">Sin datos de Adm Cloud. Pide a Claude: "sincroniza cobros" para cargar facturas.</p>';
+  }
+
   el.innerHTML = html;
 }
 
