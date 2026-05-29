@@ -3239,16 +3239,17 @@ async function cobRenderApp() {
   html += '</div>';
 
   // ── Últimas tareas + Últimos cobros (side by side) ──
-  var tareasPendientes = cobNotas.filter(function(n) { return n.tipo_contacto === 'tarea' && n.resultado !== 'completada'; }).slice(0, 3);
-  var ultimosCobros = cobNotas.filter(function(n) { return n.tipo_contacto !== 'tarea'; }).slice(0, 3);
+  var tareasPendientes = cobNotas.filter(function(n) { return n.tipo_contacto === 'tarea' && n.resultado !== 'completada'; });
+  var ultimosCobros = cobNotas.filter(function(n) { return n.tipo_contacto !== 'tarea'; }).slice(0, 5);
 
   html += '<div class="cob-charts">';
 
-  // Últimas 3 tareas (clickeables → perfil del cliente)
-  html += '<div class="cob-chart-card"><h4>Últimas tareas</h4>';
+  // Tareas pendientes (clickeables → perfil del cliente, con scroll)
+  html += '<div class="cob-chart-card"><h4>Tareas pendientes (' + tareasPendientes.length + ')</h4>';
   if (tareasPendientes.length === 0) {
     html += '<p style="color:var(--muted);font-size:0.78rem">Sin tareas pendientes.</p>';
   } else {
+    html += '<div style="max-height:280px;overflow-y:auto">';
     tareasPendientes.forEach(function(t) {
       var fecha = new Date(t.created_at).toLocaleDateString('es-DO', { day:'numeric', month:'short' });
       var limite = t.fecha_promesa ? new Date(t.fecha_promesa).toLocaleDateString('es-DO', { day:'numeric', month:'short' }) : '';
@@ -3262,6 +3263,7 @@ async function cobRenderApp() {
       html += '<div style="color:var(--muted);font-size:0.68rem;margin-top:2px">' + fecha + (parsed.asignada ? ' · ' + parsed.asignada : '') + '</div>';
       html += '</div>';
     });
+    html += '</div>';
   }
   html += '</div>';
 
