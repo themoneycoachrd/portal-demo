@@ -3630,36 +3630,48 @@ function cobShowCorreo(nombre) {
   var mon = (c && c.currency) || 'USD';
   var lvl = cobEmailLevel || 1;
   var txt = '';
+  var mesActual = MESES_FULL[new Date().getMonth()];
   var facBlock = '';
   if (c && c.facturas.length > 0) {
     facBlock = c.facturas.map(function(f) {
-      return '  - Factura ' + (f.no || 'S/N') + ': ' + cobFormatMoney(f.balance, mon) + (f.dias > 0 ? ' (' + f.dias + ' días de atraso)' : '');
+      return '  - Factura ' + (f.no || 'S/N') + ': ' + cobFormatMoney(f.balance, mon) + (f.dias > 0 ? ' (' + f.dias + ' días)' : '');
     }).join('\n');
   }
 
   if (lvl === 1) {
-    // Nivel 1: Notificación formal
+    // Emisión de factura
     txt = 'Hola,\n\n';
-    txt += 'Le informamos que su factura correspondiente al mes de ' + MESES_FULL[new Date().getMonth()] + ' ha sido emitida.\n\n';
+    txt += 'Le informamos que su factura correspondiente al mes de ' + mesActual + ' ha sido emitida.\n\n';
     if (facBlock) {
       txt += 'Detalle de facturas pendientes (' + cobFormatMoney(c.totalPendiente, mon) + ' en total):\n\n' + facBlock + '\n\n';
     }
-    txt += 'Le recordamos que nuestras facturas no manejan crédito. Agradecemos el pago oportuno.\n\n';
+    txt += 'Le recordamos que nuestras facturas no manejan crédito. Agradecemos el pago a la brevedad.\n\n';
     txt += 'Si ya realizó el pago, puede ignorar este correo.\n\n';
     txt += 'Saludos cordiales,\nAccount One\nfacturacion@accountone.do';
   } else if (lvl === 2) {
-    // Nivel 2: Recordatorio con urgencia moderada
+    // Recordatorio fin de mes (no juntar dos)
     txt = 'Hola,\n\n';
-    txt += 'Espero que estés bien. Te escribo porque tenemos un balance pendiente que queremos poner al día antes de que se acumule con el próximo mes.\n\n';
+    txt += 'Estamos cerrando el mes de ' + mesActual + ' y queremos asegurarnos de que tu cuenta quede al día antes de que se genere la próxima factura.\n\n';
     if (facBlock) {
-      txt += 'Este es el detalle:\n\n' + facBlock + '\n\n';
+      txt += 'Este es el detalle actual:\n\n' + facBlock + '\n\n';
       txt += 'Total pendiente: ' + cobFormatMoney(c.totalPendiente, mon) + '\n\n';
     }
-    txt += 'Queremos evitar que se junten dos meses y mantener todo en orden. Agradecemos puedas confirmar cuándo estarás realizando el pago.\n\n';
+    txt += 'Nuestro servicio es recurrente y las facturas se emiten cada mes, por lo que lo ideal es ir al día con el pago mensual. Cuando se acumulan dos o más meses el monto se siente más pesado, y preferimos evitarte eso. Agradecemos puedas confirmar cuándo estarás realizando el pago.\n\n';
+    txt += 'Quedamos atentos.\n\n';
+    txt += 'Saludos,\nAccount One';
+  } else if (lvl === 3) {
+    // Recordatorio estándar
+    txt = 'Hola,\n\n';
+    txt += 'Te escribo para dar seguimiento al balance pendiente que tenemos registrado.\n\n';
+    if (facBlock) {
+      txt += 'Detalle:\n\n' + facBlock + '\n\n';
+      txt += 'Total pendiente: ' + cobFormatMoney(c.totalPendiente, mon) + '\n\n';
+    }
+    txt += 'Agradecemos puedas confirmar cuándo estarás realizando el pago para mantener tu cuenta al día.\n\n';
     txt += 'Quedo pendiente de tu respuesta.\n\n';
     txt += 'Saludos,\nAccount One';
   } else {
-    // Nivel 3: Personal de Felix
+    // Personal Felix
     txt = 'Hola,\n\n';
     txt += 'Te escribo personalmente porque veo que tenemos un balance pendiente que necesitamos resolver.\n\n';
     if (facBlock) {
@@ -3671,7 +3683,8 @@ function cobShowCorreo(nombre) {
     txt += 'Un abrazo,\nFelix Rosa\nAccount One';
   }
 
-  document.getElementById('cobTemplateTitle').textContent = 'Correo Nivel ' + lvl + ' - ' + nombre;
+  var lvlLabels = {1:'Emisión factura', 2:'Recordatorio fin de mes', 3:'Recordatorio estándar', 4:'Personal Felix'};
+  document.getElementById('cobTemplateTitle').textContent = 'Correo: ' + lvlLabels[lvl] + ' - ' + nombre;
   document.getElementById('cobTemplateTexto').textContent = txt;
   var overlay = document.getElementById('cobTemplateOverlay');
   overlay.classList.add('open');
@@ -3680,15 +3693,16 @@ function cobShowCorreo(nombre) {
     if (!document.getElementById('cobEmailLevelPills')) {
       var pills = document.createElement('div');
       pills.id = 'cobEmailLevelPills';
-      pills.style.cssText = 'display:flex;gap:6px;margin-top:8px';
+      pills.style.cssText = 'display:flex;gap:6px;margin-top:8px;flex-wrap:wrap';
       titleEl.parentNode.insertBefore(pills, titleEl.nextSibling);
     }
+    var n = cobEsc(nombre);
     var ph = '';
-    ph += '<button style="padding:4px 12px;border-radius:8px;font-size:0.72rem;font-weight:600;cursor:pointer;border:1px solid ' + (lvl===1?'var(--blue)':'var(--border)') + ';background:' + (lvl===1?'#eff6ff':'white') + ';color:' + (lvl===1?'var(--blue)':'var(--muted)') + '" onclick="cobEmailLevel=1;cobShowCorreo(\'' + cobEsc(nombre) + '\')">1. Notificación</button>';
-    ph += '<button style="padding:4px 12px;border-radius:8px;font-size:0.72rem;font-weight:600;cursor:pointer;border:1px solid ' + (lvl===2?'var(--amber)':'var(--border)') + ';background:' + (lvl===2?'#fefce8':'white') + ';color:' + (lvl===2?'#92400e':'var(--muted)') + '" onclick="cobEmailLevel=2;cobShowCorreo(\'' + cobEsc(nombre) + '\')">2. Recordatorio</button>';
-    ph += '<button style="padding:4px 12px;border-radius:8px;font-size:0.72rem;font-weight:600;cursor:pointer;border:1px solid ' + (lvl===3?'var(--red)':'var(--border)') + ';background:' + (lvl===3?'#fef2f2':'white') + ';color:' + (lvl===3?'var(--red)':'var(--muted)') + '" onclick="cobEmailLevel=3;cobShowCorreo(\'' + cobEsc(nombre) + '\')">3. Personal</button>';
+    ph += '<button style="padding:4px 10px;border-radius:8px;font-size:0.68rem;font-weight:600;cursor:pointer;border:1px solid ' + (lvl===1?'var(--blue)':'var(--border)') + ';background:' + (lvl===1?'#eff6ff':'white') + ';color:' + (lvl===1?'var(--blue)':'var(--muted)') + '" onclick="cobEmailLevel=1;cobShowCorreo(\'' + n + '\')">Emisión</button>';
+    ph += '<button style="padding:4px 10px;border-radius:8px;font-size:0.68rem;font-weight:600;cursor:pointer;border:1px solid ' + (lvl===2?'var(--amber)':'var(--border)') + ';background:' + (lvl===2?'#fefce8':'white') + ';color:' + (lvl===2?'#92400e':'var(--muted)') + '" onclick="cobEmailLevel=2;cobShowCorreo(\'' + n + '\')">Fin de mes</button>';
+    ph += '<button style="padding:4px 10px;border-radius:8px;font-size:0.68rem;font-weight:600;cursor:pointer;border:1px solid ' + (lvl===3?'var(--green)':'var(--border)') + ';background:' + (lvl===3?'#ecfdf5':'white') + ';color:' + (lvl===3?'var(--green)':'var(--muted)') + '" onclick="cobEmailLevel=3;cobShowCorreo(\'' + n + '\')">Estándar</button>';
+    ph += '<button style="padding:4px 10px;border-radius:8px;font-size:0.68rem;font-weight:600;cursor:pointer;border:1px solid ' + (lvl===4?'var(--red)':'var(--border)') + ';background:' + (lvl===4?'#fef2f2':'white') + ';color:' + (lvl===4?'var(--red)':'var(--muted)') + '" onclick="cobEmailLevel=4;cobShowCorreo(\'' + n + '\')">Personal</button>';
     document.getElementById('cobEmailLevelPills').innerHTML = ph;
-    // Remove WA pills if they exist
     var waPills = document.getElementById('cobWaLevelPills');
     if (waPills) waPills.remove();
   }, 10);
@@ -3697,57 +3711,68 @@ function cobShowCorreo(nombre) {
 function cobShowWhatsApp(nombre) {
   var c = cobGetClienteData(nombre);
   var mon = (c && c.currency) || 'USD';
-  // Show selector for 3 levels
   var lvl = cobWaLevel || 1;
   var txt = '';
+  var mesActual = MESES_FULL[new Date().getMonth()];
+  var hasFac = c && c.facturas.length > 0;
+  var nFac = hasFac ? c.facturas.length : 0;
+  var plural = nFac > 1 ? 's' : '';
+
   if (lvl === 1) {
-    // Nivel 1: Notificación automática (cordial, parece generado por sistema)
-    txt = 'Hola! Desde Account One te informamos que tu factura del mes de ' + MESES_FULL[new Date().getMonth()] + ' ha sido emitida. ';
-    if (c && c.facturas.length > 0) {
-      txt += 'Monto pendiente: ' + cobFormatMoney(c.totalPendiente, mon) + '. ';
-    }
-    txt += 'Nuestras facturas no manejan crédito, por lo que agradecemos el pago oportuno. ';
+    // Emisión de factura (automático, sistema)
+    txt = 'Hola! Desde Account One te informamos que tu factura del mes de ' + mesActual + ' ha sido emitida. ';
+    if (hasFac) txt += 'Monto: ' + cobFormatMoney(c.totalPendiente, mon) + '. ';
+    txt += 'Te recordamos que nuestras facturas no manejan crédito, por lo que agradecemos el pago a la brevedad. ';
     txt += 'Si ya realizaste el pago, puedes ignorar este mensaje. Gracias!';
   } else if (lvl === 2) {
-    // Nivel 2: Toque humano (recordatorio directo)
+    // Recordatorio fin de mes (no juntar dos facturas)
     txt = 'Hola! Te escribo de Account One. ';
-    if (c && c.facturas.length > 0) {
-      txt += 'Tienes ' + c.facturas.length + ' factura' + (c.facturas.length > 1 ? 's' : '') + ' pendiente' + (c.facturas.length > 1 ? 's' : '') + ' por ' + cobFormatMoney(c.totalPendiente, mon) + '. ';
+    txt += 'Estamos cerrando el mes de ' + mesActual + ' y queremos asegurarnos de que tu cuenta quede al día antes de que se emita la próxima factura. ';
+    if (hasFac) {
+      txt += 'Actualmente tienes ' + cobFormatMoney(c.totalPendiente, mon) + ' pendiente' + plural + '. ';
+    }
+    txt += 'Nuestro servicio es recurrente y las facturas se emiten cada mes, por lo que lo ideal es ir al día con el pago mensual. Cuando se acumulan dos o más meses el monto pesa más, y preferimos evitarte eso.';
+    txt += 'Nos confirmas cuándo estarás haciendo el pago? Quedamos atentos!';
+  } else if (lvl === 3) {
+    // Recordatorio estándar (seguimiento directo)
+    txt = 'Hola! Te escribo de Account One para dar seguimiento a tu balance pendiente. ';
+    if (hasFac) {
+      txt += 'Tienes ' + nFac + ' factura' + plural + ' pendiente' + plural + ' por ' + cobFormatMoney(c.totalPendiente, mon) + '. ';
       if (c.maxDias > 30) txt += 'La más antigua tiene ' + c.maxDias + ' días. ';
     }
-    txt += 'Queremos evitar que se acumulen dos meses y mantener tu cuenta al día. ';
-    txt += 'Nos puedes confirmar cuándo estarás realizando el pago? Quedamos atentos!';
+    txt += 'Agradecemos puedas confirmar cuándo estarás realizando el pago para mantener tu cuenta al día. Gracias!';
   } else {
-    // Nivel 3: Dueño a dueño (Felix personal)
+    // Personal Felix (dueño a dueño)
     txt = 'Hola, te saluda Felix de Account One. ';
-    if (c && c.facturas.length > 0) {
+    if (hasFac) {
       txt += 'Te escribo personalmente porque veo que tienes un balance de ' + cobFormatMoney(c.totalPendiente, mon) + ' pendiente';
-      if (c.maxDias > 30) txt += ' con ' + c.maxDias + ' días de atraso';
+      if (c.maxDias > 30) txt += ' con ' + c.maxDias + ' días';
       txt += '. ';
     }
     txt += 'Entiendo que a veces las cosas se pasan, pero necesito que pongamos esta cuenta al día para poder seguir brindándote el servicio que mereces. ';
     txt += 'Dime cuándo podemos coordinar el pago. Cuenta conmigo.';
   }
-  document.getElementById('cobTemplateTitle').textContent = 'WhatsApp Nivel ' + lvl + ' - ' + nombre;
+
+  var lvlLabels = {1:'Emisión factura', 2:'Recordatorio fin de mes', 3:'Recordatorio estándar', 4:'Personal Felix'};
+  document.getElementById('cobTemplateTitle').textContent = 'WhatsApp: ' + lvlLabels[lvl] + ' - ' + nombre;
   document.getElementById('cobTemplateTexto').textContent = txt;
-  // Add level selector
   var overlay = document.getElementById('cobTemplateOverlay');
   overlay.classList.add('open');
-  // Render level pills after overlay opens
   setTimeout(function() {
     var titleEl = document.getElementById('cobTemplateTitle');
     if (!document.getElementById('cobWaLevelPills')) {
       var pills = document.createElement('div');
       pills.id = 'cobWaLevelPills';
-      pills.style.cssText = 'display:flex;gap:6px;margin-top:8px';
+      pills.style.cssText = 'display:flex;gap:6px;margin-top:8px;flex-wrap:wrap';
       titleEl.parentNode.insertBefore(pills, titleEl.nextSibling);
     }
+    var n = cobEsc(nombre);
     var ph = '';
-    ph += '<button style="padding:4px 12px;border-radius:8px;font-size:0.72rem;font-weight:600;cursor:pointer;border:1px solid ' + (lvl===1?'var(--blue)':'var(--border)') + ';background:' + (lvl===1?'#eff6ff':'white') + ';color:' + (lvl===1?'var(--blue)':'var(--muted)') + '" onclick="cobWaLevel=1;cobShowWhatsApp(\'' + cobEsc(nombre) + '\')">1. Notificación</button>';
-    ph += '<button style="padding:4px 12px;border-radius:8px;font-size:0.72rem;font-weight:600;cursor:pointer;border:1px solid ' + (lvl===2?'var(--amber)':'var(--border)') + ';background:' + (lvl===2?'#fefce8':'white') + ';color:' + (lvl===2?'#92400e':'var(--muted)') + '" onclick="cobWaLevel=2;cobShowWhatsApp(\'' + cobEsc(nombre) + '\')">2. Recordatorio</button>';
-    ph += '<button style="padding:4px 12px;border-radius:8px;font-size:0.72rem;font-weight:600;cursor:pointer;border:1px solid ' + (lvl===3?'var(--red)':'var(--border)') + ';background:' + (lvl===3?'#fef2f2':'white') + ';color:' + (lvl===3?'var(--red)':'var(--muted)') + '" onclick="cobWaLevel=3;cobShowWhatsApp(\'' + cobEsc(nombre) + '\')">3. Personal</button>';
+    ph += '<button style="padding:4px 10px;border-radius:8px;font-size:0.68rem;font-weight:600;cursor:pointer;border:1px solid ' + (lvl===1?'var(--blue)':'var(--border)') + ';background:' + (lvl===1?'#eff6ff':'white') + ';color:' + (lvl===1?'var(--blue)':'var(--muted)') + '" onclick="cobWaLevel=1;cobShowWhatsApp(\'' + n + '\')">Emisión</button>';
+    ph += '<button style="padding:4px 10px;border-radius:8px;font-size:0.68rem;font-weight:600;cursor:pointer;border:1px solid ' + (lvl===2?'var(--amber)':'var(--border)') + ';background:' + (lvl===2?'#fefce8':'white') + ';color:' + (lvl===2?'#92400e':'var(--muted)') + '" onclick="cobWaLevel=2;cobShowWhatsApp(\'' + n + '\')">Fin de mes</button>';
+    ph += '<button style="padding:4px 10px;border-radius:8px;font-size:0.68rem;font-weight:600;cursor:pointer;border:1px solid ' + (lvl===3?'var(--green)':'var(--border)') + ';background:' + (lvl===3?'#ecfdf5':'white') + ';color:' + (lvl===3?'var(--green)':'var(--muted)') + '" onclick="cobWaLevel=3;cobShowWhatsApp(\'' + n + '\')">Estándar</button>';
+    ph += '<button style="padding:4px 10px;border-radius:8px;font-size:0.68rem;font-weight:600;cursor:pointer;border:1px solid ' + (lvl===4?'var(--red)':'var(--border)') + ';background:' + (lvl===4?'#fef2f2':'white') + ';color:' + (lvl===4?'var(--red)':'var(--muted)') + '" onclick="cobWaLevel=4;cobShowWhatsApp(\'' + n + '\')">Personal</button>';
     document.getElementById('cobWaLevelPills').innerHTML = ph;
-    // Remove email pills if they exist
     var emailPills = document.getElementById('cobEmailLevelPills');
     if (emailPills) emailPills.remove();
   }, 10);
