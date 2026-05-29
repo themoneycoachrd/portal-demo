@@ -3019,8 +3019,9 @@ function cobGetScore(nombre) {
 // Escape for onclick attributes (only escape single quotes, NOT &)
 function cobEsc(s) { return (s||'').replace(/'/g, "\\'"); }
 
-function cobFormatMoney(n) {
-  return 'RD$' + Number(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+function cobFormatMoney(n, moneda) {
+  var prefix = moneda === 'USD' ? 'US$' : 'RD$';
+  return prefix + Number(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
 function cobAgingBucket(dias) {
@@ -3076,6 +3077,9 @@ var cobSearchText = '';
 var cobSortField = 'default'; // 'default' | 'monto' | 'dias'
 var cobSortDir = 'desc';
 var cobFilteredClientes = []; // cache after pill/aging filter, before search
+var cobTareaAsigFiltro = 'todos'; // 'todos' | 'Esmeralda' | 'Felix'
+var cobWaLevel = 1; // 1=notificación, 2=recordatorio, 3=personal
+var cobEmailLevel = 1; // 1=notificación, 2=recordatorio, 3=personal
 var COB_TC_USD = 61; // tasa de cambio USD→DOP aproximada
 
 // ─── Helpers ───
@@ -3163,6 +3167,21 @@ function cobRenderTableOnly() {
 }
 function cobFmtAmount(n) {
   return Number(Math.abs(n)).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+function cobSwitchTareaAsig(val) {
+  cobTareaAsigFiltro = val;
+  if (cobView === 'detalle') {
+    cobRenderDetalle(document.getElementById('cob-content'));
+  } else {
+    cobRenderApp();
+  }
+}
+function cobFilterTareasByAsig(tareas) {
+  if (cobTareaAsigFiltro === 'todos') return tareas;
+  return tareas.filter(function(t) {
+    var parsed = cobParseTarea(t.nota);
+    return parsed.asignada === cobTareaAsigFiltro;
+  });
 }
 function cobParseTarea(nota) {
   if (!nota) return { asignada: '', desc: '' };
@@ -3341,12 +3360,20 @@ async function cobRenderApp() {
   html += '<div class="cob-charts">';
 
   // Tareas pendientes (clickeables → perfil del cliente, con scroll)
-  html += '<div class="cob-chart-card"><h4>Tareas pendientes (' + tareasPendientes.length + ')</h4>';
-  if (tareasPendientes.length === 0) {
-    html += '<p style="color:var(--muted);font-size:0.78rem">Sin tareas pendientes.</p>';
+  var tareasFiltradas = cobFilterTareasByAsig(tareasPendientes);
+  html += '<div class="cob-chart-card">';
+  html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">';
+  html += '<h4 style="margin:0">Tareas (' + tareasFiltradas.length + ')</h4>';
+  html += '<div style="display:flex;gap:4px">';
+  html += '<button style="padding:2px 8px;border-radius:10px;font-size:0.65rem;font-weight:600;cursor:pointer;border:1px solid ' + (cobTareaAsigFiltro === 'todos' ? 'var(--navy)' : 'var(--border)') + ';background:' + (cobTareaAsigFiltro === 'todos' ? 'var(--navy)' : 'white') + ';color:' + (cobTareaAsigFiltro === 'todos' ? 'white' : 'var(--muted)') + '" onclick="cobSwitchTareaAsig(\'todos\')">Todas</button>';
+  html += '<button style="padding:2px 8px;border-radius:10px;font-size:0.65rem;font-weight:600;cursor:pointer;border:1px solid ' + (cobTareaAsigFiltro === 'Esmeralda' ? 'var(--blue)' : 'var(--border)') + ';background:' + (cobTareaAsigFiltro === 'Esmeralda' ? '#eff6ff' : 'white') + ';color:' + (cobTareaAsigFiltro === 'Esmeralda' ? 'var(--blue)' : 'var(--muted)') + '" onclick="cobSwitchTareaAsig(\'Esmeralda\')">Esmeralda</button>';
+  html += '<button style="padding:2px 8px;border-radius:10px;font-size:0.65rem;font-weight:600;cursor:pointer;border:1px solid ' + (cobTareaAsigFiltro === 'Felix' ? 'var(--green)' : 'var(--border)') + ';background:' + (cobTareaAsigFiltro === 'Felix' ? '#ecfdf5' : 'white') + ';color:' + (cobTareaAsigFiltro === 'Felix' ? 'var(--green)' : 'var(--muted)') + '" onclick="cobSwitchTareaAsig(\'Felix\')">Felix</button>';
+  html += '</div></div>';
+  if (tareasFiltradas.length === 0) {
+    html += '<p style="color:var(--muted);font-size:0.78rem">Sin tareas' + (cobTareaAsigFiltro !== 'todos' ? ' para ' + cobTareaAsigFiltro : ' pendientes') + '.</p>';
   } else {
     html += '<div style="max-height:280px;overflow-y:auto">';
-    tareasPendientes.forEach(function(t) {
+    tareasFiltradas.forEach(function(t) {
       var fecha = new Date(t.created_at).toLocaleDateString('es-DO', { day:'numeric', month:'short' });
       var limite = t.fecha_promesa ? new Date(t.fecha_promesa).toLocaleDateString('es-DO', { day:'numeric', month:'short' }) : '';
       var parsed = cobParseTarea(t.nota);
@@ -3494,11 +3521,18 @@ function cobRenderDetalle(el) {
   }
   html += '</div>';
 
-  // Tareas del cliente (solo pendientes) — tabla con columnas
-  var tareasCliente = notasCliente.filter(function(n) { return n.tipo_contacto === 'tarea' && n.resultado !== 'completada'; });
-  html += '<div class="cob-detail-card"><h3>Tareas pendientes (' + tareasCliente.length + ')</h3>';
+  // Tareas del cliente (solo pendientes, filtradas por asignado) — tabla con columnas
+  var tareasCliente = cobFilterTareasByAsig(notasCliente.filter(function(n) { return n.tipo_contacto === 'tarea' && n.resultado !== 'completada'; }));
+  html += '<div class="cob-detail-card">';
+  html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">';
+  html += '<h3 style="margin:0">Tareas pendientes (' + tareasCliente.length + ')</h3>';
+  html += '<div style="display:flex;gap:4px">';
+  html += '<button style="padding:2px 8px;border-radius:10px;font-size:0.65rem;font-weight:600;cursor:pointer;border:1px solid ' + (cobTareaAsigFiltro === 'todos' ? 'var(--navy)' : 'var(--border)') + ';background:' + (cobTareaAsigFiltro === 'todos' ? 'var(--navy)' : 'white') + ';color:' + (cobTareaAsigFiltro === 'todos' ? 'white' : 'var(--muted)') + '" onclick="cobSwitchTareaAsig(\'todos\')">Todas</button>';
+  html += '<button style="padding:2px 8px;border-radius:10px;font-size:0.65rem;font-weight:600;cursor:pointer;border:1px solid ' + (cobTareaAsigFiltro === 'Esmeralda' ? 'var(--blue)' : 'var(--border)') + ';background:' + (cobTareaAsigFiltro === 'Esmeralda' ? '#eff6ff' : 'white') + ';color:' + (cobTareaAsigFiltro === 'Esmeralda' ? 'var(--blue)' : 'var(--muted)') + '" onclick="cobSwitchTareaAsig(\'Esmeralda\')">Esmeralda</button>';
+  html += '<button style="padding:2px 8px;border-radius:10px;font-size:0.65rem;font-weight:600;cursor:pointer;border:1px solid ' + (cobTareaAsigFiltro === 'Felix' ? 'var(--green)' : 'var(--border)') + ';background:' + (cobTareaAsigFiltro === 'Felix' ? '#ecfdf5' : 'white') + ';color:' + (cobTareaAsigFiltro === 'Felix' ? 'var(--green)' : 'var(--muted)') + '" onclick="cobSwitchTareaAsig(\'Felix\')">Felix</button>';
+  html += '</div></div>';
   if (tareasCliente.length === 0) {
-    html += '<p style="color:var(--muted);font-size:0.82rem">No hay tareas pendientes para este cliente.</p>';
+    html += '<p style="color:var(--muted);font-size:0.82rem">No hay tareas' + (cobTareaAsigFiltro !== 'todos' ? ' para ' + cobTareaAsigFiltro : ' pendientes') + '.</p>';
   } else {
     html += '<table class="cob-table"><thead><tr>';
     html += '<th>Creada</th><th>Fecha tarea</th><th>Seguimiento</th><th>Descripción</th><th style="text-align:center">Asignada a</th><th style="text-align:center">Estatus</th><th style="text-align:center"></th>';
@@ -3566,6 +3600,7 @@ function cobGetClienteData(nombre) {
 function cobShowEstadoCuenta(nombre) {
   var c = cobGetClienteData(nombre);
   if (!c) return;
+  var mon = c.currency || 'USD';
   var txt = 'ESTADO DE CUENTA\n';
   txt += 'Cliente: ' + c.nombre + '\n';
   txt += 'Fecha: ' + new Date().toLocaleDateString('es-DO') + '\n\n';
@@ -3575,12 +3610,12 @@ function cobShowEstadoCuenta(nombre) {
     txt += 'Factura: ' + (f.no || 'S/N') + '\n';
     txt += '  Fecha: ' + (f.date ? new Date(f.date).toLocaleDateString('es-DO') : '-') + '\n';
     txt += '  Vencimiento: ' + (f.dueDate ? new Date(f.dueDate).toLocaleDateString('es-DO') : '-') + '\n';
-    txt += '  Total: ' + cobFormatMoney(f.total) + '\n';
-    txt += '  Pendiente: ' + cobFormatMoney(f.balance) + '\n';
+    txt += '  Total: ' + cobFormatMoney(f.total, mon) + '\n';
+    txt += '  Pendiente: ' + cobFormatMoney(f.balance, mon) + '\n';
     if (f.dias > 0) txt += '  Atraso: ' + f.dias + ' días\n';
     txt += '─────────────────────────────────────\n';
   });
-  txt += '\nTotal pendiente: ' + cobFormatMoney(c.totalPendiente) + '\n';
+  txt += '\nTotal pendiente: ' + cobFormatMoney(c.totalPendiente, mon) + '\n';
   txt += '\nAccount One\nfrosa@accountone.do';
   document.getElementById('cobTemplateTitle').textContent = 'Estado de cuenta - ' + nombre;
   document.getElementById('cobTemplateTexto').textContent = txt;
@@ -3589,38 +3624,130 @@ function cobShowEstadoCuenta(nombre) {
 
 function cobShowCorreo(nombre) {
   var c = cobGetClienteData(nombre);
-  var txt = 'Hola,\n\n';
-  txt += 'Espero que estés bien. Te escribo para dar seguimiento al balance pendiente que tenemos registrado en nuestros libros.\n\n';
+  var mon = (c && c.currency) || 'USD';
+  var lvl = cobEmailLevel || 1;
+  var txt = '';
+  var facBlock = '';
   if (c && c.facturas.length > 0) {
-    var facList = c.facturas.map(function(f) {
-      return '  - Factura ' + (f.no || 'S/N') + ': ' + cobFormatMoney(f.balance) + (f.dias > 0 ? ' (' + f.dias + ' días de atraso)' : '');
+    facBlock = c.facturas.map(function(f) {
+      return '  - Factura ' + (f.no || 'S/N') + ': ' + cobFormatMoney(f.balance, mon) + (f.dias > 0 ? ' (' + f.dias + ' días de atraso)' : '');
     }).join('\n');
-    txt += 'Actualmente tienes ' + c.facturas.length + ' factura' + (c.facturas.length > 1 ? 's' : '') + ' pendiente' + (c.facturas.length > 1 ? 's' : '') + ' por un total de ' + cobFormatMoney(c.totalPendiente) + ':\n\n';
-    txt += facList + '\n\n';
-  } else {
-    txt += 'Tenemos un balance pendiente registrado a tu nombre y queremos confirmar el estatus.\n\n';
   }
-  txt += 'Agradecemos puedas confirmar cuándo estarás realizando el pago, o si tienes alguna duda.\n\n';
-  txt += 'Quedo pendiente.\n\n';
-  txt += 'Saludos,\nAccount One';
-  document.getElementById('cobTemplateTitle').textContent = 'Template correo - ' + nombre;
+
+  if (lvl === 1) {
+    // Nivel 1: Notificación formal
+    txt = 'Hola,\n\n';
+    txt += 'Le informamos que su factura correspondiente al mes de ' + MESES_FULL[new Date().getMonth()] + ' ha sido emitida.\n\n';
+    if (facBlock) {
+      txt += 'Detalle de facturas pendientes (' + cobFormatMoney(c.totalPendiente, mon) + ' en total):\n\n' + facBlock + '\n\n';
+    }
+    txt += 'Le recordamos que nuestras facturas no manejan crédito. Agradecemos el pago oportuno.\n\n';
+    txt += 'Si ya realizó el pago, puede ignorar este correo.\n\n';
+    txt += 'Saludos cordiales,\nAccount One\nfacturacion@accountone.do';
+  } else if (lvl === 2) {
+    // Nivel 2: Recordatorio con urgencia moderada
+    txt = 'Hola,\n\n';
+    txt += 'Espero que estés bien. Te escribo porque tenemos un balance pendiente que queremos poner al día antes de que se acumule con el próximo mes.\n\n';
+    if (facBlock) {
+      txt += 'Este es el detalle:\n\n' + facBlock + '\n\n';
+      txt += 'Total pendiente: ' + cobFormatMoney(c.totalPendiente, mon) + '\n\n';
+    }
+    txt += 'Queremos evitar que se junten dos meses y mantener todo en orden. Agradecemos puedas confirmar cuándo estarás realizando el pago.\n\n';
+    txt += 'Quedo pendiente de tu respuesta.\n\n';
+    txt += 'Saludos,\nAccount One';
+  } else {
+    // Nivel 3: Personal de Felix
+    txt = 'Hola,\n\n';
+    txt += 'Te escribo personalmente porque veo que tenemos un balance pendiente que necesitamos resolver.\n\n';
+    if (facBlock) {
+      txt += 'El detalle es el siguiente:\n\n' + facBlock + '\n\n';
+      txt += 'Total: ' + cobFormatMoney(c.totalPendiente, mon) + '\n\n';
+    }
+    txt += 'Entiendo que a veces las cosas se pasan, pero necesito que pongamos esta cuenta al día para poder seguir trabajando juntos como hasta ahora.\n\n';
+    txt += 'Dime cuándo podemos coordinar el pago. Cuenta conmigo para cualquier cosa.\n\n';
+    txt += 'Un abrazo,\nFelix Rosa\nAccount One';
+  }
+
+  document.getElementById('cobTemplateTitle').textContent = 'Correo Nivel ' + lvl + ' - ' + nombre;
   document.getElementById('cobTemplateTexto').textContent = txt;
-  document.getElementById('cobTemplateOverlay').classList.add('open');
+  var overlay = document.getElementById('cobTemplateOverlay');
+  overlay.classList.add('open');
+  setTimeout(function() {
+    var titleEl = document.getElementById('cobTemplateTitle');
+    if (!document.getElementById('cobEmailLevelPills')) {
+      var pills = document.createElement('div');
+      pills.id = 'cobEmailLevelPills';
+      pills.style.cssText = 'display:flex;gap:6px;margin-top:8px';
+      titleEl.parentNode.insertBefore(pills, titleEl.nextSibling);
+    }
+    var ph = '';
+    ph += '<button style="padding:4px 12px;border-radius:8px;font-size:0.72rem;font-weight:600;cursor:pointer;border:1px solid ' + (lvl===1?'var(--blue)':'var(--border)') + ';background:' + (lvl===1?'#eff6ff':'white') + ';color:' + (lvl===1?'var(--blue)':'var(--muted)') + '" onclick="cobEmailLevel=1;cobShowCorreo(\'' + cobEsc(nombre) + '\')">1. Notificación</button>';
+    ph += '<button style="padding:4px 12px;border-radius:8px;font-size:0.72rem;font-weight:600;cursor:pointer;border:1px solid ' + (lvl===2?'var(--amber)':'var(--border)') + ';background:' + (lvl===2?'#fefce8':'white') + ';color:' + (lvl===2?'#92400e':'var(--muted)') + '" onclick="cobEmailLevel=2;cobShowCorreo(\'' + cobEsc(nombre) + '\')">2. Recordatorio</button>';
+    ph += '<button style="padding:4px 12px;border-radius:8px;font-size:0.72rem;font-weight:600;cursor:pointer;border:1px solid ' + (lvl===3?'var(--red)':'var(--border)') + ';background:' + (lvl===3?'#fef2f2':'white') + ';color:' + (lvl===3?'var(--red)':'var(--muted)') + '" onclick="cobEmailLevel=3;cobShowCorreo(\'' + cobEsc(nombre) + '\')">3. Personal</button>';
+    document.getElementById('cobEmailLevelPills').innerHTML = ph;
+    // Remove WA pills if they exist
+    var waPills = document.getElementById('cobWaLevelPills');
+    if (waPills) waPills.remove();
+  }, 10);
 }
 
 function cobShowWhatsApp(nombre) {
   var c = cobGetClienteData(nombre);
-  var txt = 'Hola! Te escribo de Account One para dar seguimiento al balance pendiente que tenemos. ';
-  if (c && c.facturas.length > 0) {
-    txt += 'Tienes ' + c.facturas.length + ' factura' + (c.facturas.length > 1 ? 's' : '') + ' pendiente' + (c.facturas.length > 1 ? 's' : '') + ' por ' + cobFormatMoney(c.totalPendiente) + '. ';
-    if (c.maxDias > 30) {
-      txt += 'La más antigua tiene ' + c.maxDias + ' días. ';
+  var mon = (c && c.currency) || 'USD';
+  // Show selector for 3 levels
+  var lvl = cobWaLevel || 1;
+  var txt = '';
+  if (lvl === 1) {
+    // Nivel 1: Notificación automática (cordial, parece generado por sistema)
+    txt = 'Hola! Desde Account One te informamos que tu factura del mes de ' + MESES_FULL[new Date().getMonth()] + ' ha sido emitida. ';
+    if (c && c.facturas.length > 0) {
+      txt += 'Monto pendiente: ' + cobFormatMoney(c.totalPendiente, mon) + '. ';
     }
+    txt += 'Nuestras facturas no manejan crédito, por lo que agradecemos el pago oportuno. ';
+    txt += 'Si ya realizaste el pago, puedes ignorar este mensaje. Gracias!';
+  } else if (lvl === 2) {
+    // Nivel 2: Toque humano (recordatorio directo)
+    txt = 'Hola! Te escribo de Account One. ';
+    if (c && c.facturas.length > 0) {
+      txt += 'Tienes ' + c.facturas.length + ' factura' + (c.facturas.length > 1 ? 's' : '') + ' pendiente' + (c.facturas.length > 1 ? 's' : '') + ' por ' + cobFormatMoney(c.totalPendiente, mon) + '. ';
+      if (c.maxDias > 30) txt += 'La más antigua tiene ' + c.maxDias + ' días. ';
+    }
+    txt += 'Queremos evitar que se acumulen dos meses y mantener tu cuenta al día. ';
+    txt += 'Nos puedes confirmar cuándo estarás realizando el pago? Quedamos atentos!';
+  } else {
+    // Nivel 3: Dueño a dueño (Felix personal)
+    txt = 'Hola, te saluda Felix de Account One. ';
+    if (c && c.facturas.length > 0) {
+      txt += 'Te escribo personalmente porque veo que tienes un balance de ' + cobFormatMoney(c.totalPendiente, mon) + ' pendiente';
+      if (c.maxDias > 30) txt += ' con ' + c.maxDias + ' días de atraso';
+      txt += '. ';
+    }
+    txt += 'Entiendo que a veces las cosas se pasan, pero necesito que pongamos esta cuenta al día para poder seguir brindándote el servicio que mereces. ';
+    txt += 'Dime cuándo podemos coordinar el pago. Cuenta conmigo.';
   }
-  txt += 'Nos puedes confirmar cuándo estarás haciendo el pago? Gracias!';
-  document.getElementById('cobTemplateTitle').textContent = 'Template WhatsApp - ' + nombre;
+  document.getElementById('cobTemplateTitle').textContent = 'WhatsApp Nivel ' + lvl + ' - ' + nombre;
   document.getElementById('cobTemplateTexto').textContent = txt;
-  document.getElementById('cobTemplateOverlay').classList.add('open');
+  // Add level selector
+  var overlay = document.getElementById('cobTemplateOverlay');
+  overlay.classList.add('open');
+  // Render level pills after overlay opens
+  setTimeout(function() {
+    var titleEl = document.getElementById('cobTemplateTitle');
+    if (!document.getElementById('cobWaLevelPills')) {
+      var pills = document.createElement('div');
+      pills.id = 'cobWaLevelPills';
+      pills.style.cssText = 'display:flex;gap:6px;margin-top:8px';
+      titleEl.parentNode.insertBefore(pills, titleEl.nextSibling);
+    }
+    var ph = '';
+    ph += '<button style="padding:4px 12px;border-radius:8px;font-size:0.72rem;font-weight:600;cursor:pointer;border:1px solid ' + (lvl===1?'var(--blue)':'var(--border)') + ';background:' + (lvl===1?'#eff6ff':'white') + ';color:' + (lvl===1?'var(--blue)':'var(--muted)') + '" onclick="cobWaLevel=1;cobShowWhatsApp(\'' + cobEsc(nombre) + '\')">1. Notificación</button>';
+    ph += '<button style="padding:4px 12px;border-radius:8px;font-size:0.72rem;font-weight:600;cursor:pointer;border:1px solid ' + (lvl===2?'var(--amber)':'var(--border)') + ';background:' + (lvl===2?'#fefce8':'white') + ';color:' + (lvl===2?'#92400e':'var(--muted)') + '" onclick="cobWaLevel=2;cobShowWhatsApp(\'' + cobEsc(nombre) + '\')">2. Recordatorio</button>';
+    ph += '<button style="padding:4px 12px;border-radius:8px;font-size:0.72rem;font-weight:600;cursor:pointer;border:1px solid ' + (lvl===3?'var(--red)':'var(--border)') + ';background:' + (lvl===3?'#fef2f2':'white') + ';color:' + (lvl===3?'var(--red)':'var(--muted)') + '" onclick="cobWaLevel=3;cobShowWhatsApp(\'' + cobEsc(nombre) + '\')">3. Personal</button>';
+    document.getElementById('cobWaLevelPills').innerHTML = ph;
+    // Remove email pills if they exist
+    var emailPills = document.getElementById('cobEmailLevelPills');
+    if (emailPills) emailPills.remove();
+  }, 10);
 }
 
 function cobCloseTemplate() {
