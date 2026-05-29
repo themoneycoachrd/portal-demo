@@ -1608,9 +1608,9 @@ function ccRenderMainTabs() {
     {id:'contadoras-maestra', label:'Personal', perm:'basedatos', permKey:'contadoras'},
     {id:'asignaciones', label:'Asignaciones', perm:'basedatos', permKey:'asignaciones'},
     {id:'link-dashboard', label:'Link Dashboard', perm:'basedatos', permKey:'links-portal'},
-    {id:'facturacion', label:'Facturación', perm:'facturacion'}
+    {id:'facturacion', label:'Facturación', perm:'facturacion', noSub: true}
   ].filter(t => {
-    return tengoPermiso('gerencia', t.perm, 'consulta', t.permKey || t.id);
+    return tengoPermiso('gerencia', t.perm, 'consulta', t.noSub ? undefined : (t.permKey || t.id));
   });
   if (tabs.length && !tabs.find(t => t.id === ccActiveMainTab)) ccActiveMainTab = tabs[0].id;
   el.innerHTML = tabs.map(t =>
