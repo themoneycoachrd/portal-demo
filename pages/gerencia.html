@@ -3073,6 +3073,25 @@ async function cobRenderApp() {
 
   var html = '';
 
+  // ── Score pills (arriba) ──
+  html += '<div class="cob-pills">';
+  html += '<button class="cob-pill' + (cobActivePill === 'todos' ? ' active' : '') + '" onclick="cobSwitchPill(\'todos\')">Todos (' + allClientes.length + ')</button>';
+  html += '<button class="cob-pill' + (cobActivePill === 'good' ? ' active' : '') + '" onclick="cobSwitchPill(\'good\')" style="' + (cobActivePill === 'good' ? '' : 'border-color:#10b981;color:#10b981') + '">Buen pagador (' + countGood + ')</button>';
+  html += '<button class="cob-pill' + (cobActivePill === 'occasional' ? ' active' : '') + '" onclick="cobSwitchPill(\'occasional\')" style="' + (cobActivePill === 'occasional' ? '' : 'border-color:#f59e0b;color:#b45309') + '">Pago ocasional tarde (' + countOccasional + ')</button>';
+  html += '<button class="cob-pill' + (cobActivePill === 'repeat' ? ' active' : '') + '" onclick="cobSwitchPill(\'repeat\')" style="' + (cobActivePill === 'repeat' ? '' : 'border-color:#ef4444;color:#ef4444') + '">Pago recurrente tarde (' + countRepeat + ')</button>';
+  html += '</div>';
+
+  // ── Sync button ──
+  html += '<div style="margin-bottom:16px">';
+  if (cobSyncInfo) {
+    var syncDate = new Date(cobSyncInfo.synced_at).toLocaleDateString('es-DO', { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' });
+    html += '<span style="font-size:0.72rem;color:var(--green)">✓ Sync: ' + syncDate + '</span>';
+  } else {
+    html += '<span style="font-size:0.72rem;color:var(--muted)">Sin datos de Adm Cloud.</span> ';
+    html += '<span style="font-size:0.72rem;color:var(--blue);cursor:pointer" onclick="gerShowToast(\'Pide a Claude: sincroniza cobros\')">Cargar data desde Adm →</span>';
+  }
+  html += '</div>';
+
   // ── Greeting ──
   html += '<div class="cob-greeting">';
   html += '<h2>' + cobGetGreeting() + ', ' + cobGetFirstName() + '</h2>';
@@ -3137,14 +3156,6 @@ async function cobRenderApp() {
   html += '</div>';
   html += '</div>';
 
-  // ── Score pills ──
-  html += '<div class="cob-pills">';
-  html += '<button class="cob-pill' + (cobActivePill === 'todos' ? ' active' : '') + '" onclick="cobSwitchPill(\'todos\')">Todos (' + allClientes.length + ')</button>';
-  html += '<button class="cob-pill' + (cobActivePill === 'good' ? ' active' : '') + '" onclick="cobSwitchPill(\'good\')" style="' + (cobActivePill === 'good' ? '' : 'border-color:#10b981;color:#10b981') + '">Buen pagador (' + countGood + ')</button>';
-  html += '<button class="cob-pill' + (cobActivePill === 'occasional' ? ' active' : '') + '" onclick="cobSwitchPill(\'occasional\')" style="' + (cobActivePill === 'occasional' ? '' : 'border-color:#f59e0b;color:#b45309') + '">Pago ocasional tarde (' + countOccasional + ')</button>';
-  html += '<button class="cob-pill' + (cobActivePill === 'repeat' ? ' active' : '') + '" onclick="cobSwitchPill(\'repeat\')" style="' + (cobActivePill === 'repeat' ? '' : 'border-color:#ef4444;color:#ef4444') + '">Pago recurrente tarde (' + countRepeat + ')</button>';
-  html += '</div>';
-
   // ── Table ──
   html += '<div style="background:white;border-radius:12px;border:1px solid var(--border);overflow-x:auto">';
   html += '<table class="cob-table"><thead><tr>';
@@ -3175,14 +3186,6 @@ async function cobRenderApp() {
   });
 
   html += '</tbody></table></div>';
-
-  // Sync info footer
-  if (cobSyncInfo) {
-    var syncDate = new Date(cobSyncInfo.synced_at).toLocaleDateString('es-DO', { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' });
-    html += '<p style="text-align:center;font-size:0.7rem;color:var(--muted);margin-top:12px">Datos sincronizados desde Adm Cloud · Última sync: ' + syncDate + '</p>';
-  } else {
-    html += '<p style="text-align:center;font-size:0.7rem;color:var(--muted);margin-top:12px">Sin datos de Adm Cloud. Pide a Claude: "sincroniza cobros" para cargar facturas.</p>';
-  }
 
   el.innerHTML = html;
 }
