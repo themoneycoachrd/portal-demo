@@ -563,32 +563,44 @@
 <!-- Cobros: Modal Nueva Nota -->
 <div class="cob-modal-overlay" id="cobNotaOverlay" onclick="if(event.target===this)cobCloseNota()">
   <div class="cob-modal">
-    <h3>Registrar gestión de cobro</h3>
+    <h3 id="cobNotaModalTitle">Registrar gestión de cobro</h3>
     <input type="hidden" id="cobNotaCliente">
-    <label>Tipo de contacto</label>
-    <select id="cobNotaTipo">
-      <option value="llamada">Llamada</option>
-      <option value="correo">Correo</option>
-      <option value="whatsapp">WhatsApp</option>
-      <option value="visita">Visita</option>
-      <option value="nota_interna">Nota interna</option>
-    </select>
-    <label>Resultado</label>
-    <select id="cobNotaResultado">
-      <option value="contactado">Contactado</option>
-      <option value="sin_respuesta">Sin respuesta</option>
-      <option value="buzon">Buzón de voz</option>
-      <option value="promesa_pago">Promesa de pago</option>
-      <option value="pago_parcial">Pago parcial</option>
-      <option value="disputado">Disputado</option>
-    </select>
-    <label>Fecha promesa de pago</label>
-    <input type="date" id="cobNotaFechaPromesa">
-    <label>Monto prometido (RD$)</label>
-    <input type="number" id="cobNotaMonto" step="0.01" placeholder="0.00">
+    <input type="hidden" id="cobNotaMode" value="nota">
+    <div id="cobNotaFields">
+      <label>Tipo de contacto</label>
+      <select id="cobNotaTipo">
+        <option value="llamada">Llamada</option>
+        <option value="correo">Correo</option>
+        <option value="whatsapp">WhatsApp</option>
+        <option value="visita">Visita</option>
+        <option value="nota_interna">Nota interna</option>
+      </select>
+      <label>Resultado</label>
+      <select id="cobNotaResultado">
+        <option value="contactado">Contactado</option>
+        <option value="sin_respuesta">Sin respuesta</option>
+        <option value="buzon">Buzón de voz</option>
+        <option value="promesa_pago">Promesa de pago</option>
+        <option value="pago_parcial">Pago parcial</option>
+        <option value="disputado">Disputado</option>
+      </select>
+      <label>Fecha promesa de pago</label>
+      <input type="date" id="cobNotaFechaPromesa">
+      <label>Monto prometido (RD$)</label>
+      <input type="number" id="cobNotaMonto" step="0.01" placeholder="0.00">
+    </div>
+    <div id="cobTareaFields" style="display:none">
+      <label>Asignar a</label>
+      <select id="cobTareaAsignado">
+        <option value="Esmeralda">Esmeralda</option>
+        <option value="Felix">Felix</option>
+      </select>
+      <label>Fecha límite</label>
+      <input type="date" id="cobTareaFecha">
+    </div>
     <label>Fecha de seguimiento</label>
     <input type="date" id="cobNotaSeguimiento">
-    <label>Nota</label>
+    <label id="cobNotaTextoLabel">Nota</label>
     <textarea id="cobNotaTexto" placeholder="Detalles de la conversación..."></textarea>
     <div class="cob-modal-actions">
       <button class="cob-btn" style="background:var(--border);color:var(--navy)" onclick="cobCloseNota()">Cancelar</button>
@@ -3008,6 +3020,7 @@ function cobBuildClientList() {
 }
 
 var cobSyncInfo = null;
+var cobDataLoaded = false;
 var cobActivePill = 'todos';
 var cobActiveAging = 'todos'; // 'todos' | '90' | '60' | '30' | '0'
 var cobSearchText = '';
@@ -3040,10 +3053,12 @@ function cobSwitchAging(aging) {
 }
 function cobOnSearch(val) {
   cobSearchText = val.toLowerCase();
-  cobRenderApp().then(function() {
+  cobRenderApp();
+  // Restore focus after render
+  setTimeout(function() {
     var inp = document.querySelector('#cob-content input[type="text"]');
     if (inp) { inp.focus(); inp.setSelectionRange(val.length, val.length); }
-  });
+  }, 10);
 }
 function cobFmtAmount(n) {
   return Number(Math.abs(n)).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -3057,10 +3072,13 @@ async function cobRenderApp() {
     return;
   }
 
-  // Load from Supabase
-  var results = await Promise.all([cobLoadFacturas(), cobLoadNotas()]);
-  cobFacturas = results[0];
-  cobNotas = results[1];
+  // Load from Supabase (only first time or on explicit reload)
+  if (!cobDataLoaded) {
+    var results = await Promise.all([cobLoadFacturas(), cobLoadNotas()]);
+    cobFacturas = results[0];
+    cobNotas = results[1];
+    cobDataLoaded = true;
+  }
 
   var allClientes = cobBuildClientList();
 
@@ -3233,6 +3251,7 @@ async function cobRenderApp() {
     html += '<button class="cob-btn cob-btn-green" onclick="cobShowCorreo(\'' + esc(c.nombre) + '\')" title="Template correo">✉</button>';
     html += '<button class="cob-btn cob-btn-purple" onclick="cobShowWhatsApp(\'' + esc(c.nombre) + '\')" title="Template WhatsApp">💬</button>';
     html += '<button class="cob-btn" style="background:#fef2f2;color:var(--red)" onclick="cobOpenNota(\'' + esc(c.nombre) + '\')" title="Registrar nota">📝</button>';
+    html += '<button class="cob-btn" style="background:#eff6ff;color:var(--navy)" onclick="cobOpenTarea(\'' + esc(c.nombre) + '\')" title="Crear tarea">✓</button>';
     html += '</td>';
     html += '</tr>';
   });
@@ -3309,6 +3328,7 @@ function cobRenderDetalle(el) {
   html += '<button class="cob-btn cob-btn-green" onclick="cobShowCorreo(\'' + esc(nombre) + '\')">✉ Template correo</button>';
   html += '<button class="cob-btn cob-btn-purple" onclick="cobShowWhatsApp(\'' + esc(nombre) + '\')">💬 Template WhatsApp</button>';
   html += '<button class="cob-btn" style="background:#fef2f2;color:var(--red)" onclick="cobOpenNota(\'' + esc(nombre) + '\')">📝 Registrar nota</button>';
+  html += '<button class="cob-btn" style="background:#eff6ff;color:var(--navy)" onclick="cobOpenTarea(\'' + esc(nombre) + '\')">✓ Crear tarea</button>';
   html += '</div></div>';
 
   // Facturas
@@ -3340,10 +3360,10 @@ function cobRenderDetalle(el) {
   } else {
     html += '<div class="cob-notas-list">';
     notasCliente.forEach(function(n) {
-      var tipoBg = { llamada: '#eff6ff', correo: '#ecfdf5', whatsapp: '#f3e8ff', visita: '#fffbeb', nota_interna: '#f3f4f6' };
-      var tipoColor = { llamada: 'var(--blue)', correo: 'var(--green)', whatsapp: '#7c3aed', visita: '#b45309', nota_interna: '#6b7280' };
-      var resBg = { contactado: '#ecfdf5', sin_respuesta: '#fef2f2', buzon: '#fffbeb', promesa_pago: '#eff6ff', pago_parcial: '#ecfdf5', disputado: '#fef2f2' };
-      var resColor = { contactado: 'var(--green)', sin_respuesta: 'var(--red)', buzon: '#b45309', promesa_pago: 'var(--blue)', pago_parcial: 'var(--green)', disputado: 'var(--red)' };
+      var tipoBg = { llamada: '#eff6ff', correo: '#ecfdf5', whatsapp: '#f3e8ff', visita: '#fffbeb', nota_interna: '#f3f4f6', tarea: '#fefce8' };
+      var tipoColor = { llamada: 'var(--blue)', correo: 'var(--green)', whatsapp: '#7c3aed', visita: '#b45309', nota_interna: '#6b7280', tarea: '#92400e' };
+      var resBg = { contactado: '#ecfdf5', sin_respuesta: '#fef2f2', buzon: '#fffbeb', promesa_pago: '#eff6ff', pago_parcial: '#ecfdf5', disputado: '#fef2f2', pendiente: '#fefce8' };
+      var resColor = { contactado: 'var(--green)', sin_respuesta: 'var(--red)', buzon: '#b45309', promesa_pago: 'var(--blue)', pago_parcial: 'var(--green)', disputado: 'var(--red)', pendiente: '#92400e' };
       html += '<div class="cob-nota-item">';
       html += '<div class="cob-nota-meta">' + new Date(n.created_at).toLocaleDateString('es-DO', { weekday:'short', day:'numeric', month:'short', year:'numeric' });
       html += '<span class="cob-nota-badge" style="background:' + (tipoBg[n.tipo_contacto] || '#f3f4f6') + ';color:' + (tipoColor[n.tipo_contacto] || '#6b7280') + '">' + (n.tipo_contacto || '').replace(/_/g, ' ') + '</span>';
@@ -3441,10 +3461,29 @@ function cobCopyTemplate() {
 // ─── Notas CRUD ───
 function cobOpenNota(nombre) {
   document.getElementById('cobNotaCliente').value = nombre;
+  document.getElementById('cobNotaMode').value = 'nota';
+  document.getElementById('cobNotaModalTitle').textContent = 'Registrar gestión de cobro';
+  document.getElementById('cobNotaFields').style.display = '';
+  document.getElementById('cobTareaFields').style.display = 'none';
+  document.getElementById('cobNotaTextoLabel').textContent = 'Nota';
   document.getElementById('cobNotaTipo').value = 'llamada';
   document.getElementById('cobNotaResultado').value = 'contactado';
   document.getElementById('cobNotaFechaPromesa').value = '';
   document.getElementById('cobNotaMonto').value = '';
+  document.getElementById('cobNotaSeguimiento').value = '';
+  document.getElementById('cobNotaTexto').value = '';
+  document.getElementById('cobNotaOverlay').classList.add('open');
+}
+
+function cobOpenTarea(nombre) {
+  document.getElementById('cobNotaCliente').value = nombre;
+  document.getElementById('cobNotaMode').value = 'tarea';
+  document.getElementById('cobNotaModalTitle').textContent = 'Crear tarea de cobro';
+  document.getElementById('cobNotaFields').style.display = 'none';
+  document.getElementById('cobTareaFields').style.display = '';
+  document.getElementById('cobNotaTextoLabel').textContent = 'Descripción de la tarea';
+  document.getElementById('cobTareaAsignado').value = 'Esmeralda';
+  document.getElementById('cobTareaFecha').value = '';
   document.getElementById('cobNotaSeguimiento').value = '';
   document.getElementById('cobNotaTexto').value = '';
   document.getElementById('cobNotaOverlay').classList.add('open');
@@ -3455,17 +3494,29 @@ function cobCloseNota() {
 
 async function cobSaveNota() {
   var nombre = document.getElementById('cobNotaCliente').value;
+  var mode = document.getElementById('cobNotaMode').value;
   var obj = {
     cliente_nombre: nombre,
-    tipo_contacto: document.getElementById('cobNotaTipo').value,
-    resultado: document.getElementById('cobNotaResultado').value,
     nota: document.getElementById('cobNotaTexto').value || null,
     created_by: (await sb.auth.getUser()).data.user.id
   };
-  var fp = document.getElementById('cobNotaFechaPromesa').value;
-  if (fp) obj.fecha_promesa = fp;
-  var mt = document.getElementById('cobNotaMonto').value;
-  if (mt) obj.monto_prometido = parseFloat(mt);
+
+  if (mode === 'tarea') {
+    obj.tipo_contacto = 'tarea';
+    obj.resultado = 'pendiente';
+    var asignado = document.getElementById('cobTareaAsignado').value;
+    var fechaLimite = document.getElementById('cobTareaFecha').value;
+    obj.nota = (asignado ? 'Asignada a: ' + asignado + '. ' : '') + (obj.nota || '');
+    if (fechaLimite) obj.fecha_promesa = fechaLimite;
+  } else {
+    obj.tipo_contacto = document.getElementById('cobNotaTipo').value;
+    obj.resultado = document.getElementById('cobNotaResultado').value;
+    var fp = document.getElementById('cobNotaFechaPromesa').value;
+    if (fp) obj.fecha_promesa = fp;
+    var mt = document.getElementById('cobNotaMonto').value;
+    if (mt) obj.monto_prometido = parseFloat(mt);
+  }
+
   var fs = document.getElementById('cobNotaSeguimiento').value;
   if (fs) obj.fecha_seguimiento = fs;
 
@@ -3475,8 +3526,9 @@ async function cobSaveNota() {
     return;
   }
   cobCloseNota();
-  gerShowToast('Nota registrada');
-  // Reload notas
+  gerShowToast(mode === 'tarea' ? 'Tarea creada' : 'Nota registrada');
+  // Reload notas (force refresh)
+  cobDataLoaded = false;
   cobNotas = await cobLoadNotas();
   if (cobView === 'detalle') {
     cobRenderDetalle(document.getElementById('cob-content'));
