@@ -3214,6 +3214,54 @@ async function cobRenderApp() {
   html += '</div>';
   html += '</div>';
 
+  // ── Últimas tareas + Últimos cobros (side by side) ──
+  var tareasPendientes = cobNotas.filter(function(n) { return n.tipo_contacto === 'tarea'; }).slice(0, 3);
+  var ultimosCobros = cobNotas.filter(function(n) { return n.tipo_contacto !== 'tarea'; }).slice(0, 3);
+
+  html += '<div class="cob-charts">';
+
+  // Últimas 3 tareas
+  html += '<div class="cob-chart-card"><h4>Últimas tareas</h4>';
+  if (tareasPendientes.length === 0) {
+    html += '<p style="color:var(--muted);font-size:0.78rem">Sin tareas registradas.</p>';
+  } else {
+    tareasPendientes.forEach(function(t) {
+      var fecha = new Date(t.created_at).toLocaleDateString('es-DO', { day:'numeric', month:'short' });
+      var limite = t.fecha_promesa ? new Date(t.fecha_promesa).toLocaleDateString('es-DO', { day:'numeric', month:'short' }) : '';
+      html += '<div style="padding:8px 0;border-bottom:1px solid var(--border);font-size:0.78rem">';
+      html += '<div style="display:flex;justify-content:space-between;align-items:center">';
+      html += '<span style="font-weight:600;color:var(--navy)">' + (t.cliente_nombre || '').split(' ').slice(0,2).join(' ') + '</span>';
+      html += '<span class="cob-nota-badge" style="background:#fefce8;color:#92400e">tarea</span>';
+      html += '</div>';
+      html += '<div style="color:var(--muted);font-size:0.72rem;margin-top:2px">' + fecha + (limite ? ' · Límite: ' + limite : '') + '</div>';
+      if (t.nota) html += '<div style="margin-top:2px">' + t.nota.substring(0, 80) + (t.nota.length > 80 ? '...' : '') + '</div>';
+      html += '</div>';
+    });
+  }
+  html += '</div>';
+
+  // Últimos 3 cobros
+  html += '<div class="cob-chart-card"><h4>Últimas gestiones</h4>';
+  if (ultimosCobros.length === 0) {
+    html += '<p style="color:var(--muted);font-size:0.78rem">Sin gestiones registradas.</p>';
+  } else {
+    ultimosCobros.forEach(function(n) {
+      var fecha = new Date(n.created_at).toLocaleDateString('es-DO', { day:'numeric', month:'short' });
+      var tipoBg2 = { llamada: '#eff6ff', correo: '#ecfdf5', whatsapp: '#f3e8ff', visita: '#fffbeb', nota_interna: '#f3f4f6' };
+      var tipoColor2 = { llamada: 'var(--blue)', correo: 'var(--green)', whatsapp: '#7c3aed', visita: '#b45309', nota_interna: '#6b7280' };
+      html += '<div style="padding:8px 0;border-bottom:1px solid var(--border);font-size:0.78rem">';
+      html += '<div style="display:flex;justify-content:space-between;align-items:center">';
+      html += '<span style="font-weight:600;color:var(--navy)">' + (n.cliente_nombre || '').split(' ').slice(0,2).join(' ') + '</span>';
+      html += '<span class="cob-nota-badge" style="background:' + (tipoBg2[n.tipo_contacto] || '#f3f4f6') + ';color:' + (tipoColor2[n.tipo_contacto] || '#6b7280') + '">' + (n.tipo_contacto || '').replace(/_/g, ' ') + '</span>';
+      html += '</div>';
+      html += '<div style="color:var(--muted);font-size:0.72rem;margin-top:2px">' + fecha + ' · ' + (n.resultado || '').replace(/_/g, ' ') + '</div>';
+      if (n.nota) html += '<div style="margin-top:2px">' + n.nota.substring(0, 80) + (n.nota.length > 80 ? '...' : '') + '</div>';
+      html += '</div>';
+    });
+  }
+  html += '</div>';
+  html += '</div>';
+
   // ── Search bar ──
   html += '<div style="margin-bottom:12px">';
   html += '<input type="text" placeholder="Buscar cliente..." value="' + (cobSearchText || '') + '" oninput="cobOnSearch(this.value)" style="width:100%;max-width:320px;padding:8px 12px;border:1px solid var(--border);border-radius:8px;font-size:0.82rem">';
