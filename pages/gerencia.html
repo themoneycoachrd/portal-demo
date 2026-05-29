@@ -3027,6 +3027,8 @@ var cobDataLoaded = false;
 var cobActivePill = 'todos';
 var cobActiveAging = 'todos'; // 'todos' | '90' | '60' | '30' | '0'
 var cobSearchText = '';
+var cobSortField = 'default'; // 'default' | 'monto' | 'dias'
+var cobSortDir = 'desc';
 var COB_TC_USD = 61; // tasa de cambio USD→DOP aproximada
 
 // ─── Helpers ───
@@ -3065,6 +3067,19 @@ function cobOnSearch(val) {
 }
 function cobFmtAmount(n) {
   return Number(Math.abs(n)).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+function cobToggleSort(field) {
+  if (cobSortField === field) {
+    cobSortDir = cobSortDir === 'desc' ? 'asc' : 'desc';
+  } else {
+    cobSortField = field;
+    cobSortDir = 'desc';
+  }
+  cobRenderApp();
+}
+function cobSortArrow(field) {
+  if (cobSortField !== field) return ' ↕';
+  return cobSortDir === 'desc' ? ' ▼' : ' ▲';
 }
 
 // ─── Main render ───
@@ -3218,7 +3233,7 @@ async function cobRenderApp() {
   html += '</div>';
 
   // ── Últimas tareas + Últimos cobros (side by side) ──
-  var tareasPendientes = cobNotas.filter(function(n) { return n.tipo_contacto === 'tarea'; }).slice(0, 3);
+  var tareasPendientes = cobNotas.filter(function(n) { return n.tipo_contacto === 'tarea' && n.resultado !== 'completada'; }).slice(0, 3);
   var ultimosCobros = cobNotas.filter(function(n) { return n.tipo_contacto !== 'tarea'; }).slice(0, 3);
 
   html += '<div class="cob-charts">';
@@ -3275,10 +3290,31 @@ async function cobRenderApp() {
     clientes = clientes.filter(function(c) { return c.nombre.toLowerCase().indexOf(cobSearchText) >= 0; });
   }
 
+  // ── Sort table ──
+  if (cobSortField === 'monto') {
+    clientes.sort(function(a, b) { return cobSortDir === 'desc' ? b.totalPendiente - a.totalPendiente : a.totalPendiente - b.totalPendiente; });
+  } else if (cobSortField === 'dias') {
+    clientes.sort(function(a, b) { return cobSortDir === 'desc' ? b.maxDias - a.maxDias : a.maxDias - b.maxDias; });
+  } else {
+    // Default: USD primero (monto desc), DOP al final, sin data al final
+    clientes.sort(function(a, b) {
+      if ((a.totalPendiente > 0) !== (b.totalPendiente > 0)) return b.totalPendiente > 0 ? 1 : -1;
+      var ca = a.currency || '';
+      var cb = b.currency || '';
+      if (ca === 'DOP' && cb !== 'DOP') return 1;
+      if (ca !== 'DOP' && cb === 'DOP') return -1;
+      return b.totalPendiente - a.totalPendiente;
+    });
+  }
+
   // ── Table ──
   html += '<div style="background:white;border-radius:12px;border:1px solid var(--border);overflow-x:auto">';
   html += '<table class="cob-table"><thead><tr>';
-  html += '<th>#</th><th>Cliente</th><th style="text-align:center">Moneda</th><th style="text-align:right">Pendiente</th><th style="text-align:center">Facturas</th><th style="text-align:center">Mayor atraso</th><th style="text-align:center">Score</th><th style="text-align:center">Última nota</th><th style="text-align:center">Acciones</th>';
+  html += '<th>#</th><th>Cliente</th><th style="text-align:center">Moneda</th>';
+  html += '<th style="text-align:right;cursor:pointer;user-select:none" onclick="cobToggleSort(\'monto\')">Pendiente' + cobSortArrow('monto') + '</th>';
+  html += '<th style="text-align:center">Facturas</th>';
+  html += '<th style="text-align:center;cursor:pointer;user-select:none" onclick="cobToggleSort(\'dias\')">Mayor atraso' + cobSortArrow('dias') + '</th>';
+  html += '<th style="text-align:center">Score</th><th style="text-align:center">Última nota</th><th style="text-align:center">Acciones</th>';
   html += '</tr></thead><tbody>';
 
   clientes.forEach(function(c, idx) {
@@ -3404,11 +3440,11 @@ function cobRenderDetalle(el) {
   }
   html += '</div>';
 
-  // Tareas del cliente
-  var tareasCliente = notasCliente.filter(function(n) { return n.tipo_contacto === 'tarea'; });
-  html += '<div class="cob-detail-card"><h3>Tareas (' + tareasCliente.length + ')</h3>';
+  // Tareas del cliente (solo pendientes)
+  var tareasCliente = notasCliente.filter(function(n) { return n.tipo_contacto === 'tarea' && n.resultado !== 'completada'; });
+  html += '<div class="cob-detail-card"><h3>Tareas pendientes (' + tareasCliente.length + ')</h3>';
   if (tareasCliente.length === 0) {
-    html += '<p style="color:var(--muted);font-size:0.82rem">No hay tareas para este cliente.</p>';
+    html += '<p style="color:var(--muted);font-size:0.82rem">No hay tareas pendientes para este cliente.</p>';
   } else {
     html += '<div class="cob-notas-list">';
     tareasCliente.forEach(function(t) {
@@ -3423,6 +3459,10 @@ function cobRenderDetalle(el) {
       if (limite) html += '<div style="font-size:0.74rem;color:var(--red)">Fecha límite: ' + limite + '</div>';
       if (seguimiento) html += '<div style="font-size:0.74rem;color:var(--amber)">Seguimiento: ' + seguimiento + '</div>';
       if (t.nota) html += '<div style="font-size:0.82rem;margin-top:4px">' + t.nota + '</div>';
+      html += '<div style="display:flex;gap:6px;margin-top:8px">';
+      html += '<button class="cob-btn cob-btn-green" style="font-size:0.7rem" onclick="cobCompletarTarea(\'' + t.id + '\')">✓ Completar</button>';
+      html += '<button class="cob-btn" style="background:#fef2f2;color:var(--red);font-size:0.7rem" onclick="cobBorrarTarea(\'' + t.id + '\')">✗ Eliminar</button>';
+      html += '</div>';
       html += '</div>';
     });
     html += '</div>';
@@ -3605,6 +3645,33 @@ async function cobSaveNota() {
   cobCloseNota();
   gerShowToast(mode === 'tarea' ? 'Tarea creada' : 'Nota registrada');
   // Reload notas (force refresh)
+  cobDataLoaded = false;
+  cobNotas = await cobLoadNotas();
+  if (cobView === 'detalle') {
+    cobRenderDetalle(document.getElementById('cob-content'));
+  } else {
+    cobRenderApp();
+  }
+}
+
+async function cobCompletarTarea(id) {
+  var { error } = await sb.from('notas_cobro').update({ resultado: 'completada' }).eq('id', id);
+  if (error) { gerShowToast('Error: ' + error.message, 'error'); return; }
+  gerShowToast('Tarea completada');
+  cobDataLoaded = false;
+  cobNotas = await cobLoadNotas();
+  if (cobView === 'detalle') {
+    cobRenderDetalle(document.getElementById('cob-content'));
+  } else {
+    cobRenderApp();
+  }
+}
+
+async function cobBorrarTarea(id) {
+  if (!confirm('¿Eliminar esta tarea?')) return;
+  var { error } = await sb.from('notas_cobro').delete().eq('id', id);
+  if (error) { gerShowToast('Error: ' + error.message, 'error'); return; }
+  gerShowToast('Tarea eliminada');
   cobDataLoaded = false;
   cobNotas = await cobLoadNotas();
   if (cobView === 'detalle') {
