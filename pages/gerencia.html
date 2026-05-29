@@ -2915,6 +2915,7 @@ async function cobAdmRequest(endpoint, method) {
     throw new Error('HTTP ' + resp.status + ': ' + errText.substring(0, 150));
   }
   var text = await resp.text();
+  console.log('[Cobros] Body length:', text ? text.length : 0, 'first 300:', (text || '').substring(0, 300));
   if (!text) return null;
   return JSON.parse(text);
 }
