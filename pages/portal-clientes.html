@@ -456,6 +456,7 @@ var CHECKLIST = {
 // ==================== STATE ====================
 var clienteNombre = '';
 var clienteToken = '';
+var clienteConfig = {};
 var selectedMainTab = 'checklist';
 var selectedTab = 'dashboard';
 var selectedMes = '';
@@ -658,6 +659,7 @@ async function loadFiles() {
 
 async function saveData(impuesto, mes) {
   if (saving) return;
+  if (new URLSearchParams(location.search).get('demo') === '1') return; // Demo: no guarda
   saving = true;
   var dk = dataKey(impuesto, mes);
   var datos = portalData[dk] || {};
@@ -825,13 +827,153 @@ function pmGetDeclForMes(mesNum, obligacion) {
   return pmDeclaraciones.find(function(d) { return d.mes === mesNum && d.obligacion === obligacion; }) || null;
 }
 
+// ==================== DEMO MODE ====================
+function initDemo() {
+  clienteNombre = 'Grupo Ejemplo Srl';
+  clienteConfig = { tipo_contribuyente: 'empresa' };
+  isAdminMode = false;
+  selectedMes = MESES_KEY[Math.min(new Date().getMonth(), 11)];
+
+  document.getElementById('app').style.display = '';
+  document.getElementById('clientName').textContent = clienteNombre;
+  document.getElementById('headerSub').textContent = clienteNombre;
+
+  // ── Checklist: data para 12 meses ──
+  portalData = {};
+  var yesnoItems = {
+    TSS: ['novedades_nomina', 'autorizacion_tss', 'pague_tss'],
+    'IR-3': ['autorizacion_ir3', 'pague_ir3'],
+    'IR-17': ['pagos_informales'],
+    Anticipo: ['autorizacion_anticipo', 'pague_anticipo'],
+    ITBIS: ['facturas_mes', 'ncf_bancos', 'facturas_atrasadas', 'borrador_itbis', 'aprobo_borrador', 'pague_itbis']
+  };
+  var mesActual = new Date().getMonth(); // 0-based
+  MESES_KEY.forEach(function(m, mi) {
+    Object.keys(CHECKLIST).forEach(function(imp) {
+      var dk = imp + '||' + m;
+      var datos = {};
+      var items = yesnoItems[imp] || [];
+      if (mi < mesActual - 1) {
+        // Meses cerrados: todo completado
+        items.forEach(function(id) { datos[id] = true; });
+        if (imp === 'ITBIS') datos['facturas_estimadas'] = 750000 + Math.floor(Math.random() * 350000);
+      } else if (mi === mesActual - 1) {
+        // Mes anterior: casi todo
+        items.forEach(function(id, idx) { datos[id] = idx < items.length - 1 ? true : false; });
+        if (imp === 'ITBIS') datos['facturas_estimadas'] = 820000;
+      } else if (mi === mesActual) {
+        // Mes actual: en progreso
+        items.forEach(function(id, idx) { datos[id] = idx < Math.ceil(items.length * 0.4) ? true : null; });
+        if (imp === 'ITBIS') datos['facturas_estimadas'] = 680000;
+      }
+      // Meses futuros: no se crean (quedan vacíos)
+      if (mi <= mesActual) portalData[dk] = datos;
+    });
+  });
+
+  // ── Archivos fake para meses cerrados ──
+  portalFiles = {};
+  var uploadTypes = { TSS: ['nomina','volantes_nomina'], 'IR-17': ['pagos_informales','volantes_informales'], ITBIS: ['facturas_excel'] };
+  MESES_KEY.forEach(function(m, mi) {
+    if (mi >= mesActual - 1) return;
+    Object.keys(uploadTypes).forEach(function(imp) {
+      uploadTypes[imp].forEach(function(ft) {
+        var fk = imp + '||' + m + '||' + ft;
+        portalFiles[fk] = [{ id: 'demo-' + mi + '-' + ft, nombre_archivo: ft.replace(/_/g,' ') + '.pdf', storage_path: 'demo' }];
+      });
+    });
+  });
+
+  // ── Presupuesto anual ──
+  pmPresupuesto = {
+    ventas_it1_anual: 18000000, costos_operativos_anual: 7200000, gastos_anual: 6000000,
+    ingreso_no_operacional_anual: 240000, gasto_no_operacional_anual: 180000, gastos_no_admitidos_anual: 360000,
+    ventas_simple_anual: 18000000, gastos_simple_anual: 13200000
+  };
+
+  // ── Ejecución mensual (6 meses) ──
+  // Ene-Mar superan meta, Abr-May flojos, Jun recuperándose
+  var ejData = [
+    { v: 1720000, c: 640000, g: 447000, ino: 22000, gno: 15000, gna: 28000 },
+    { v: 1680000, c: 615000, g: 467000, ino: 18000, gno: 12000, gna: 32000 },
+    { v: 1810000, c: 690000, g: 490000, ino: 25000, gno: 18000, gna: 35000 },
+    { v: 1180000, c: 520000, g: 530000, ino: 15000, gno: 22000, gna: 30000 },
+    { v: 1050000, c: 480000, g: 548000, ino: 12000, gno: 25000, gna: 28000 },
+    { v: 1390000, c: 560000, g: 483000, ino: 20000, gno: 16000, gna: 31000 }
+  ];
+  pmEjecucion = [];
+  ejData.forEach(function(d, i) {
+    if (i > mesActual) return;
+    pmEjecucion.push({
+      mes: i + 1, ventas_it1: d.v, costos_operativos: d.c, gastos: d.g,
+      ingreso_no_operacional: d.ino, gasto_no_operacional: d.gno, gastos_no_admitidos: d.gna,
+      ventas_simple: d.v, gastos_simple: d.c + d.g
+    });
+  });
+
+  // ── Config impuestos ──
+  pmImpConfig = {
+    anticipo_tramo1: 185000, anticipo_tramo2: 210000,
+    perdidas_compensables: 0, activos_totales: 15000000,
+    activos_exentos: 8500000, crs_monto: 6000,
+    tipo_contribuyente: 'empresa'
+  };
+
+  // ── Declaraciones mensuales ──
+  pmDeclaraciones = [];
+  var obligaciones = ['TSS','IR-3','IR-17','Anticipo','ITBIS'];
+  var montosBase = { TSS: 145000, 'IR-3': 82000, 'IR-17': 14000, Anticipo: 185000, ITBIS: 95000 };
+  MESES_KEY.forEach(function(m, mi) {
+    if (mi >= mesActual) {
+      // Mes actual: parcial (TSS a_tiempo, resto pendiente)
+      if (mi === mesActual) {
+        obligaciones.forEach(function(ob, oi) {
+          pmDeclaraciones.push({
+            mes: mi + 1, obligacion: ob,
+            monto: oi === 0 ? montosBase[ob] : 0,
+            estado: oi === 0 ? 'a_tiempo' : 'pendiente',
+            fecha_presentado: oi === 0 ? '2026-' + String(mi+1).padStart(2,'0') + '-03' : null
+          });
+        });
+      }
+      return;
+    }
+    obligaciones.forEach(function(ob) {
+      var variacion = 0.85 + Math.random() * 0.3;
+      var monto = Math.round(montosBase[ob] * variacion);
+      // Abril ITBIS tarde, febrero IR-17 no aplica
+      var estado = 'a_tiempo';
+      if (mi === 3 && ob === 'ITBIS') estado = 'tarde';
+      if (mi === 1 && ob === 'IR-17') { estado = 'no_aplico'; monto = 0; }
+      pmDeclaraciones.push({
+        mes: mi + 1, obligacion: ob, monto: monto, estado: estado,
+        fecha_presentado: estado === 'pendiente' ? null : '2026-' + String(mi+1).padStart(2,'0') + '-' + String(3 + Math.floor(Math.random()*12)).padStart(2,'0')
+      });
+    });
+  });
+
+  pmImpChecklist = [];
+
+  renderMainTabs();
+  renderSubTabs();
+  renderNav();
+  render();
+}
+
 // ==================== INIT ====================
 async function init() {
   var params = new URLSearchParams(location.search);
   clienteToken = params.get('token');
   var isEmbed = params.get('embed') === '1';
+  var isDemo = params.get('demo') === '1';
 
   if (isEmbed) document.body.classList.add('embed');
+
+  // ═══ MODO DEMO: data ficticia, sin login, sin Supabase ═══
+  if (isDemo) {
+    initDemo();
+    return;
+  }
 
   if (clienteToken) {
     // Client mode: mostrar pantalla de contraseña (RNC)
