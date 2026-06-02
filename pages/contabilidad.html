@@ -678,7 +678,8 @@ const KPI_ESCALA = [
   { min:0,  max:69,  label:'Sin bono',  bonoPct:0,   color:'#ef4444', bg:'#fef2f2', css:'score-sinbono', bonoCss:'bono-0' }
 ];
 
-const MV_EXCEPTION = { contadora: 'Beliani', cliente: 'Mv Creative' };
+// MV_EXCEPTION desactivada (2026-06-02): Mv Creative ahora cuenta en el scoring de Beliani
+const MV_EXCEPTION = null;
 
 const EXCLUIDAS = ['Milka', 'Yolenny'];
 
@@ -811,7 +812,7 @@ function getVideoTipo(mes) { const idx = MESES.indexOf(mes); return (idx % 3 ===
 function getQuarterInfo(mes) { const idx = MESES.indexOf(mes); const q = Math.floor(idx / 3) + 1; const pos = (idx % 3) + 1; return { q, pos, label:'Q' + q + ' — Mes ' + pos + ' de 3' }; }
 function getCategoriaColor(total) { if (total >= 90) return '#10b981'; if (total >= 80) return '#4361ee'; if (total >= 70) return '#f59e0b'; return '#ef4444'; }
 function isMonthPast(mesIdx) { const now = new Date(); const end = new Date(2026, mesIdx + 1, 0, 23, 59, 59); return now > end; }
-function isMvException(contadora, cliente) { return contadora === MV_EXCEPTION.contadora && cliente === MV_EXCEPTION.cliente; }
+function isMvException(contadora, cliente) { return false; }
 function isFriday(dateStr) { if (!dateStr) return null; return new Date(dateStr + 'T12:00:00').getDay() === 5; }
 
 function getWeekRanges(mesIdx) {
