@@ -481,7 +481,11 @@ function esc(s) { return (s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').re
 function escJs(s) { return (s||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'"); }
 
 function getCurrentMonth() {
-  return MESES_KEY[new Date().getMonth()];
+  var hoy = new Date();
+  var m = hoy.getMonth();
+  var d = hoy.getDate();
+  if (d <= 22) m = Math.max(m - 1, 0);
+  return MESES_KEY[m];
 }
 
 var ANALISTAS_IMPUESTOS = ['Karina', 'Lovelis', 'Doriluz'];

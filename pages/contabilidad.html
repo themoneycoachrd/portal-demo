@@ -742,7 +742,12 @@ function isExcluida(name) {
 }
 
 function getCurrentMonth() {
-  const m = new Date().getMonth();
+  // Del 25 del mes anterior al 22 del mes actual = mes en presentación es el anterior
+  // Ej: del 25 mayo al 22 junio → mayo está en presentación
+  const hoy = new Date();
+  var m = hoy.getMonth(); // 0-based
+  var d = hoy.getDate();
+  if (d <= 22) m = Math.max(m - 1, 0); // antes del 22: mes anterior en presentación
   return MESES[m];
 }
 

@@ -509,7 +509,11 @@ var allClientes = [];
 function esc(s) { return (s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/'/g,'&#39;'); }
 
 function getCurrentMonth() {
-  return MESES_KEY[new Date().getMonth()];
+  var hoy = new Date();
+  var m = hoy.getMonth();
+  var d = hoy.getDate();
+  if (d <= 22) m = Math.max(m - 1, 0);
+  return MESES_KEY[m];
 }
 
 function dataKey(impuesto, mes) {
