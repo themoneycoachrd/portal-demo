@@ -2994,12 +2994,15 @@ function cobGroupByCustomer(facturas) {
     }
     var dias = parseInt(f.dias_atraso) || 0;
 
+    var balDop = parseFloat(f.balance_dop || 0) || balance; // fallback si no hay balance_dop
     groups[name].facturas.push({
-      no: f.doc_id || '', total: total, balance: balance,
+      no: f.doc_id || '', total: total, balance: balance, balanceDop: balDop,
       dueDate: f.fecha_vencimiento, date: f.fecha_factura,
       dias: dias, currency: f.moneda || 'DOP', reference: f.referencia || ''
     });
     groups[name].totalPendiente += balance;
+    if (!groups[name].totalDop) groups[name].totalDop = 0;
+    groups[name].totalDop += balDop;
     if (dias > groups[name].maxDias) groups[name].maxDias = dias;
   });
   return Object.values(groups);
@@ -3222,10 +3225,10 @@ async function cobRenderApp() {
 
   var allClientes = cobBuildClientList();
 
-  // Calculate montoDOP for all clients
+  // Calculate montoDOP for all clients (usando balance_dop real, no tasa hardcodeada)
   allClientes.forEach(function(c) {
     var montoDOP = 0;
-    c.facturas.forEach(function(f) { montoDOP += cobToDOP(f.balance, f.currency); });
+    c.facturas.forEach(function(f) { montoDOP += (f.balanceDop || cobToDOP(f.balance, f.currency)); });
     c.montoDOP = montoDOP;
   });
 
@@ -4001,9 +4004,10 @@ async function cobUploadExcel(input) {
       rows.forEach(function(r) {
         var clienteNombre = String(r[colMap.cliente] || '').trim();
         if (!clienteNombre) return;
-        // Si hay balance en moneda local, usar ese (ya es DOP). Si no, usar balance normal.
-        var bal = useLocalBalance ? (parseFloat(r[colMap.balanceLocal]) || 0) : (parseFloat(r[colMap.balance]) || 0);
+        var bal = parseFloat(r[colMap.balance]) || 0;
         if (bal <= 0.01 && bal >= -0.01) return; // skip zero balance
+        // Balance en DOP: si hay columna local, usarla. Si no, asumir que balance ya es DOP.
+        var balDop = useLocalBalance ? (parseFloat(r[colMap.balanceLocal]) || bal) : bal;
 
         var fechaVal = null;
         if (colMap.fecha && r[colMap.fecha]) {
@@ -4019,7 +4023,8 @@ async function cobUploadExcel(input) {
           balance: bal,
           fecha_factura: fechaVal,
           dias_atraso: colMap.dias ? (parseInt(r[colMap.dias]) || 0) : 0,
-          moneda: useLocalBalance ? 'DOP' : (colMap.moneda ? (String(r[colMap.moneda] || 'DOP').toUpperCase().trim()) : 'DOP'),
+          moneda: colMap.moneda ? (String(r[colMap.moneda] || 'DOP').toUpperCase().trim()) : 'DOP',
+          balance_dop: balDop,
           tipo_doc: colMap.tipo ? String(r[colMap.tipo] || '') : 'Factura a Crédito',
           synced_at: new Date().toISOString()
         });
