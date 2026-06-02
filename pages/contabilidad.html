@@ -2875,39 +2875,34 @@ function renderKpiReporte(el) {
   html += '</div>'; // close rpt-wrap
 
   // ════════════════════════════════════════════════════════════
-  // BLOQUE 2: LLENADO PORTAL (30 pts) + CORREO/REUNION (20 pts)
+  // BLOQUE 2: LLENADO PORTAL (30 pts)
   // ════════════════════════════════════════════════════════════
   var limiteLabel = limiteDay + ' ' + MESES_LABEL[mesIdx].toLowerCase();
+  var mesPresLabel = MESES_FULL[mesIdx > 0 ? mesIdx - 1 : 11];
+  var resPctTotal = scores.resTotal > 0 ? Math.round(scores.resDone / scores.resTotal * 100) : 0;
 
   html += '<div class="rpt-wrap">';
-  html += '<div style="padding:16px 20px 0;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">';
-  html += '<h3 style="margin:0">Llenado del portal y ' + (vidTipo === 'Reunion' ? 'reuniones' : 'correo mensual') + '</h3>';
-  html += '<div style="display:flex;gap:8px">';
-  html += '<span class="rpt-score-badge" style="background:' + getEscala(resPts * 100/30).bg + ';color:' + getEscala(resPts * 100/30).color + '">Portal: ' + resPts + '/30</span>';
-  html += '<span class="rpt-score-badge" style="background:' + getEscala(vidPts * 5).bg + ';color:' + getEscala(vidPts * 5).color + '">' + (vidTipo === 'Reunion' ? 'Reunion' : 'Correo') + ': ' + vidPts + '/20</span>';
-  html += '</div></div>';
-  html += '<div style="font-size:0.72rem;color:var(--muted);padding:4px 20px 0">Limite: ' + limiteLabel + ' · Mes de presentacion: ' + MESES_FULL[mesIdx > 0 ? mesIdx - 1 : 11] + '</div>';
+  html += '<div style="display:flex;justify-content:space-between;align-items:center;padding:16px 20px 0">';
+  html += '<h3 style="margin:0">Llenado del portal de clientes</h3>';
+  html += '<span class="rpt-score-badge" style="background:' + getEscala(resPts * 100/30).bg + ';color:' + getEscala(resPts * 100/30).color + '">' + resPts + '/30 pts</span>';
+  html += '</div>';
+  html += '<div style="font-size:0.72rem;color:var(--muted);padding:4px 20px 0">Limite: ' + limiteLabel + ' · Presentacion de: ' + mesPresLabel + '</div>';
 
   html += '<div style="overflow-x:auto;padding:8px 0 16px"><table class="rpt-table"><thead><tr>';
   html += '<th style="min-width:120px">Cliente</th>';
   html += '<th style="min-width:50px">Tx</th>';
-  html += '<th style="min-width:90px">Portal llenado</th>';
-  html += '<th style="min-width:80px">Fecha portal</th>';
-  html += '<th style="min-width:90px">' + (vidTipo === 'Reunion' ? 'Reunion' : 'Correo enviado') + '</th>';
-  html += '<th style="min-width:80px">Fecha ' + (vidTipo === 'Reunion' ? 'reunion' : 'correo') + '</th>';
+  html += '<th style="min-width:90px">Estado</th>';
+  html += '<th style="min-width:100px">Fecha</th>';
   html += '</tr></thead><tbody>';
 
   clients.forEach(function(cl) {
     var res = entry.datos.resumenes[cl.nombre] || { done: false, fecha: '' };
-    var vid = entry.datos.video[cl.nombre] || { done: false, fecha: '' };
     var effAdm = getEffectiveAdm(contadora, mes, cl.nombre);
     var isMv = isMvException(contadora, cl.nombre);
 
     html += '<tr' + (isMv ? ' style="opacity:0.55"' : '') + '>';
     html += '<td>' + cl.nombre + '</td>';
     html += '<td>' + (isMv ? '<span style="color:var(--purple)">MV</span>' : effAdm) + '</td>';
-
-    // Portal
     if (res.done) {
       var resOnTime = res.fecha <= limiteFecha;
       html += '<td><span style="color:var(--green);font-weight:700">Completado</span></td>';
@@ -2916,8 +2911,43 @@ function renderKpiReporte(el) {
       html += '<td><span style="color:var(--red);font-weight:700">Pendiente</span></td>';
       html += '<td class="rpt-na">—</td>';
     }
+    html += '</tr>';
+  });
 
-    // Correo/Reunión
+  html += '<tr style="background:#f8fafc;font-weight:700">';
+  html += '<td>Total</td><td></td>';
+  html += '<td style="color:' + getBarColor(resPctTotal) + '">' + scores.resDone + ' de ' + scores.resTotal + ' (' + resPctTotal + '%)</td>';
+  html += '<td></td></tr>';
+  html += '</tbody></table></div></div>';
+
+  // ════════════════════════════════════════════════════════════
+  // BLOQUE 3: CORREO / REUNION (20 pts)
+  // ════════════════════════════════════════════════════════════
+  var vidLabel = vidTipo === 'Reunion' ? 'Reuniones con clientes' : 'Correo mensual a clientes';
+  var vidPctTotal = scores.vidTotal > 0 ? Math.round(scores.vidDone / scores.vidTotal * 100) : 0;
+
+  html += '<div class="rpt-wrap">';
+  html += '<div style="display:flex;justify-content:space-between;align-items:center;padding:16px 20px 0">';
+  html += '<h3 style="margin:0">' + vidLabel + '</h3>';
+  html += '<span class="rpt-score-badge" style="background:' + getEscala(vidPts * 5).bg + ';color:' + getEscala(vidPts * 5).color + '">' + vidPts + '/20 pts</span>';
+  html += '</div>';
+  html += '<div style="font-size:0.72rem;color:var(--muted);padding:4px 20px 0">Limite: ' + limiteLabel + ' · Presentacion de: ' + mesPresLabel + '</div>';
+
+  html += '<div style="overflow-x:auto;padding:8px 0 16px"><table class="rpt-table"><thead><tr>';
+  html += '<th style="min-width:120px">Cliente</th>';
+  html += '<th style="min-width:50px">Tx</th>';
+  html += '<th style="min-width:90px">Estado</th>';
+  html += '<th style="min-width:100px">Fecha</th>';
+  html += '</tr></thead><tbody>';
+
+  clients.forEach(function(cl) {
+    var vid = entry.datos.video[cl.nombre] || { done: false, fecha: '' };
+    var effAdm = getEffectiveAdm(contadora, mes, cl.nombre);
+    var isMv = isMvException(contadora, cl.nombre);
+
+    html += '<tr' + (isMv ? ' style="opacity:0.55"' : '') + '>';
+    html += '<td>' + cl.nombre + '</td>';
+    html += '<td>' + (isMv ? '<span style="color:var(--purple)">MV</span>' : effAdm) + '</td>';
     if (vid.done) {
       var vidOnTime = vid.fecha <= limiteFecha;
       html += '<td><span style="color:var(--green);font-weight:700">Completado</span></td>';
@@ -2929,14 +2959,10 @@ function renderKpiReporte(el) {
     html += '</tr>';
   });
 
-  // Fila resumen
   html += '<tr style="background:#f8fafc;font-weight:700">';
   html += '<td>Total</td><td></td>';
-  html += '<td style="color:' + getBarColor(scores.resTotal > 0 ? Math.round(scores.resDone / scores.resTotal * 100) : 0) + '">' + scores.resDone + ' de ' + scores.resTotal + '</td>';
-  html += '<td></td>';
-  html += '<td style="color:' + getBarColor(scores.vidTotal > 0 ? Math.round(scores.vidDone / scores.vidTotal * 100) : 0) + '">' + scores.vidDone + ' de ' + scores.vidTotal + '</td>';
+  html += '<td style="color:' + getBarColor(vidPctTotal) + '">' + scores.vidDone + ' de ' + scores.vidTotal + ' (' + vidPctTotal + '%)</td>';
   html += '<td></td></tr>';
-
   html += '</tbody></table></div></div>';
 
   el.innerHTML = html;
