@@ -2518,20 +2518,24 @@ function renderKPIDetail(el) {
   });
 
   html += '<div class="dig-stats" style="grid-template-columns:repeat(4,1fr)">';
-  html += '<div class="dig-stat"><div class="dig-stat-label">Objetivo</div><div class="dig-stat-value">' + cfg.objetivo.toLocaleString() + '</div></div>';
-  html += '<div class="dig-stat"><div class="dig-stat-label">Tx meta (Adm)</div><div class="dig-stat-value">' + scores.admTotal + '</div></div>';
+  html += '<div class="dig-stat"><div class="dig-stat-label">Vision</div><div class="dig-stat-value">' + cfg.objetivo.toLocaleString() + '</div></div>';
+  html += '<div class="dig-stat"><div class="dig-stat-label">Mes anterior</div><div class="dig-stat-value">' + scores.admTotal + '</div></div>';
   html += '<div class="dig-stat"><div class="dig-stat-label">Tx cargadas</div><div class="dig-stat-value" style="color:var(--green)">' + cargaTotal + '</div></div>';
   html += '<div class="dig-stat"><div class="dig-stat-label">Tx digitadas</div><div class="dig-stat-value" style="color:' + getBarColor(digPct) + '">' + scores.digActual + '</div></div></div>';
 
   // Client x Week table with dual carga/dig per cell
   const weekRanges = getWeekRanges(mesIdx);
-  html += '<div style="overflow-x:auto"><table class="dig-table"><thead><tr><th style="text-align:left;min-width:100px">Cliente</th><th style="min-width:40px">Adm</th>';
+  html += '<div style="overflow-x:auto"><table class="dig-table"><thead><tr><th style="text-align:left;min-width:100px">Cliente</th>';
   for (let wi = 0; wi < 5; wi++) {
     const wLabel = weekRanges[wi] || ('S' + (wi+1));
     html += '<th class="dig-week-th">' + wLabel + '<div style="display:flex;gap:4px;justify-content:center;margin-top:3px;font-size:7px;letter-spacing:0"><span style="color:var(--green)">C</span><span style="color:var(--blue)">D</span></div></th>';
   }
   html += '<th class="dig-week-th" style="min-width:50px;background:#fdf8f0">Fuera<div style="display:flex;gap:4px;justify-content:center;margin-top:3px;font-size:7px"><span style="color:var(--green)">C</span><span style="color:var(--blue)">D</span></div></th>';
-  html += '<th style="min-width:48px">Total<div style="display:flex;gap:4px;justify-content:center;margin-top:3px;font-size:7px"><span style="color:var(--green)">C</span><span style="color:var(--blue)">D</span></div></th></tr></thead><tbody>';
+  html += '<th style="min-width:48px">Total<div style="display:flex;gap:4px;justify-content:center;margin-top:3px;font-size:7px"><span style="color:var(--green)">C</span><span style="color:var(--blue)">D</span></div></th>';
+  html += '<th style="min-width:48px">Mes ant.</th>';
+  html += '<th style="min-width:48px">Contrat.</th>';
+  html += '<th style="min-width:40px">%</th>';
+  html += '</tr></thead><tbody>';
 
   let grandDigTotal = 0;
   let grandCargaTotal = 0;
@@ -2545,8 +2549,8 @@ function renderKPIDetail(el) {
     const isMv = isMvException(c, cl.nombre);
     const admLabel = isMv ? '<span style="color:var(--purple);font-weight:600">MV</span>' : effAdm;
 
+    const contratado = cl.contratado || 0;
     html += '<tr' + (isMv ? ' style="opacity:0.6"' : '') + '><td style="font-weight:600;font-size:0.78rem">' + cl.nombre + '</td>';
-    html += '<td>' + admLabel + '</td>';
 
     for (let w = 0; w < 6; w++) {
       const wObj = weeks[w] || {carga:0,dig:0,fecha:'',fecha_respuesta:''};
@@ -2595,8 +2599,17 @@ function renderKPIDetail(el) {
       html += '</div></td>';
     }
     const pctClient = effAdm > 0 ? Math.round(clientDigTotal / effAdm * 100) : 0;
+    const pctContratado = contratado > 0 ? Math.round(clientDigTotal / contratado * 100) : 0;
     const totalColor = isMv ? 'var(--light)' : getBarColor(pctClient);
-    html += '<td><div class="dig-dual"><div class="dig-dual-row"><span class="dig-dual-val" style="color:var(--green)">' + clientCargaTotal + '</span></div><div class="dig-dual-row"><span class="dig-dual-val" style="font-weight:700;color:' + totalColor + '">' + clientDigTotal + '</span></div></div></td></tr>';
+    // Total (C/D)
+    html += '<td><div class="dig-dual"><div class="dig-dual-row"><span class="dig-dual-val" style="color:var(--green)">' + clientCargaTotal + '</span></div><div class="dig-dual-row"><span class="dig-dual-val" style="font-weight:700;color:' + totalColor + '">' + clientDigTotal + '</span></div></div></td>';
+    // Mes anterior (effAdm)
+    html += '<td>' + (isMv ? '<span style="color:var(--purple);font-weight:600">MV</span>' : '<span style="font-weight:600">' + effAdm + '</span>') + '</td>';
+    // Contratado (monto_adm)
+    html += '<td>' + (isMv ? '—' : contratado) + '</td>';
+    // % vs contratado
+    html += '<td style="font-weight:700;color:' + (isMv ? 'var(--light)' : getBarColor(pctContratado)) + '">' + (isMv ? '—' : pctContratado + '%') + '</td>';
+    html += '</tr>';
   });
 
   // Total row
@@ -2607,12 +2620,21 @@ function renderKPIDetail(el) {
     const weeks = entry.datos.digitacion[cl.nombre] || emptyWeeks();
     weeks.forEach((w, i) => { if (i < 6) { weekCargaTotals[i] += getWeekCarga(w); weekDigTotals[i] += getWeekQty(w); } });
   });
-  html += '<tr class="total-row"><td>Total</td><td>' + scores.admTotal + '</td>';
+  // Calcular totales de contratado para la fila total
+  let grandContratado = 0;
+  clients.forEach(cl => { if (!isMvException(c, cl.nombre)) grandContratado += (cl.contratado || 0); });
+  const grandPctContratado = grandContratado > 0 ? Math.round(grandDigTotal / grandContratado * 100) : 0;
+
+  html += '<tr class="total-row"><td>Total</td>';
   for (let ti = 0; ti < 5; ti++) {
     html += '<td><div class="dig-dual"><div class="dig-dual-row"><span style="color:var(--green);font-weight:600">' + weekCargaTotals[ti] + '</span></div><div class="dig-dual-row"><span style="color:var(--blue);font-weight:600">' + weekDigTotals[ti] + '</span></div></div></td>';
   }
   html += '<td style="background:#fdf8f0"><div class="dig-dual"><div class="dig-dual-row"><span style="color:var(--green);font-weight:600">' + weekCargaTotals[5] + '</span></div><div class="dig-dual-row"><span style="color:var(--blue);font-weight:600">' + weekDigTotals[5] + '</span></div></div></td>';
-  html += '<td><div class="dig-dual"><div class="dig-dual-row"><span style="color:var(--green);font-weight:700">' + grandCargaTotal + '</span></div><div class="dig-dual-row"><span style="color:' + getBarColor(digPct) + ';font-weight:700">' + grandDigTotal + '</span></div></div></td></tr>';
+  html += '<td><div class="dig-dual"><div class="dig-dual-row"><span style="color:var(--green);font-weight:700">' + grandCargaTotal + '</span></div><div class="dig-dual-row"><span style="color:' + getBarColor(digPct) + ';font-weight:700">' + grandDigTotal + '</span></div></div></td>';
+  html += '<td style="font-weight:700">' + scores.admTotal + '</td>';
+  html += '<td style="font-weight:700">' + grandContratado + '</td>';
+  html += '<td style="font-weight:700;color:' + getBarColor(grandPctContratado) + '">' + grandPctContratado + '%</td>';
+  html += '</tr>';
   html += '</tbody></table></div>';
 
   html += '<div style="display:flex;align-items:center;gap:8px;margin-top:10px"><span style="font-size:12px;color:var(--muted)">Avance:</span><div class="progress-bar" style="flex:1"><div class="progress-fill" style="width:' + digPct + '%;background:' + getBarColor(digPct) + '"></div></div><span style="font-size:12px;font-weight:700;color:' + getBarColor(digPct) + '">' + digPct + '%</span></div>';
