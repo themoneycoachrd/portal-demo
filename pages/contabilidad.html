@@ -2727,6 +2727,10 @@ function renderKpiReporte(el) {
   if (limiteDay > lastDayOfMonth) limiteDay = lastDayOfMonth;
   var limiteFecha = '2026-' + String(mesIdx + 1).padStart(2, '0') + '-' + String(limiteDay).padStart(2, '0');
 
+  var digPts = Math.round(scores.digScore * 5);
+  var resPts = Math.round(scores.resScore * 3);
+  var vidPts = Math.round(scores.vidScore * 2);
+
   var html = '';
 
   // ── Score resumen arriba ──
@@ -2734,9 +2738,9 @@ function renderKpiReporte(el) {
   html += '<div><div class="rpt-score-big" style="color:' + escala.color + '">' + total + '<span style="font-size:1rem;color:var(--muted)">/100</span></div>';
   html += '<div style="font-size:0.75rem;color:var(--muted);margin-top:2px">' + contadora + ' · ' + MESES_FULL[mesIdx] + ' 2026</div></div>';
   html += '<div class="rpt-score-detail">';
-  html += 'Digitacion: <span style="color:' + escala.color + '">' + Math.round(scores.digScore * 5) + '/50</span> · ';
-  html += 'Portal: <span style="color:' + escala.color + '">' + Math.round(scores.resScore * 3) + '/30</span> · ';
-  html += (vidTipo === 'Reunion' ? 'Reunion' : 'Correo') + ': <span style="color:' + escala.color + '">' + Math.round(scores.vidScore * 2) + '/20</span>';
+  html += 'Digitacion: <span style="color:' + getCategoriaColor(digPts * 2) + '">' + digPts + '/50</span> · ';
+  html += 'Portal: <span style="color:' + getCategoriaColor(resPts * 100/30) + '">' + resPts + '/30</span> · ';
+  html += (vidTipo === 'Reunion' ? 'Reunion' : 'Correo') + ': <span style="color:' + getCategoriaColor(vidPts * 5) + '">' + vidPts + '/20</span>';
   html += '</div>';
   html += '<div class="rpt-score-badge" style="background:' + escala.bg + ';color:' + escala.color + '">' + escala.label + ' (' + escala.bonoPct + '% bono)</div>';
   html += '</div>';
@@ -2747,21 +2751,26 @@ function renderKpiReporte(el) {
     return;
   }
 
-  // ── Tabla del reporte ──
-  html += '<div class="rpt-wrap"><h3>Reporte ' + MESES_FULL[mesIdx] + ' — ' + contadora + '</h3>';
-  html += '<div style="overflow-x:auto;padding:0 0 16px"><table class="rpt-table"><thead><tr>';
+  // ════════════════════════════════════════════════════════════
+  // BLOQUE 1: DIGITACION (50 pts)
+  // ════════════════════════════════════════════════════════════
+  var digPct = scores.admTotal > 0 ? Math.round(scores.digActual / scores.admTotal * 100) : 0;
+  html += '<div class="rpt-wrap">';
+  html += '<div style="display:flex;justify-content:space-between;align-items:center;padding:16px 20px 0">';
+  html += '<h3 style="margin:0">Digitacion de transacciones</h3>';
+  html += '<span class="rpt-score-badge" style="background:' + getEscala(digPts * 2).bg + ';color:' + getEscala(digPts * 2).color + '">' + digPts + '/50 pts</span>';
+  html += '</div>';
+  html += '<div style="overflow-x:auto;padding:8px 0 16px"><table class="rpt-table"><thead><tr>';
   html += '<th style="min-width:120px">Cliente</th>';
-  html += '<th style="min-width:50px">Meta ADM</th>';
-  html += '<th style="min-width:70px">Carga facturas</th>';
-  // Semanas de digitación
+  html += '<th style="min-width:50px">Meta</th>';
+  // Week headers — two rows: Carga / Digitado
   for (var wi = 0; wi < 5; wi++) {
     var wLabel = weekRanges[wi] || ('S' + (wi + 1));
-    html += '<th style="min-width:55px">' + wLabel + '</th>';
+    html += '<th style="min-width:58px">' + wLabel + '</th>';
   }
   html += '<th style="min-width:55px;background:#fdf8f0">Fuera</th>';
-  html += '<th style="min-width:50px">Total dig.</th>';
-  html += '<th style="min-width:80px">Llenado portal</th>';
-  html += '<th style="min-width:80px">' + (vidTipo === 'Reunion' ? 'Reunion' : 'Correo') + '</th>';
+  html += '<th style="min-width:55px">Total</th>';
+  html += '<th style="min-width:50px">%</th>';
   html += '<th style="min-width:140px">Nota</th>';
   html += '</tr></thead><tbody>';
 
@@ -2769,113 +2778,163 @@ function renderKpiReporte(el) {
     var isMv = isMvException(contadora, cl.nombre);
     var effAdm = getEffectiveAdm(contadora, mes, cl.nombre);
     var weeks = entry.datos.digitacion[cl.nombre] || emptyWeeks();
-    var res = entry.datos.resumenes[cl.nombre] || { done: false, fecha: '' };
-    var vid = entry.datos.video[cl.nombre] || { done: false, fecha: '' };
 
-    // Fecha de carga de facturas: primera semana donde hay fecha_respuesta (el cliente cargó)
-    var fechaCarga = '';
-    for (var fi = 0; fi < weeks.length; fi++) {
-      var fw = weeks[fi];
-      if (typeof fw === 'object' && fw.fecha_respuesta) {
-        fechaCarga = fw.fecha_respuesta;
-        break;
-      }
-    }
-
-    // Total digitado
     var totalDig = 0;
-    weeks.forEach(function(w) { totalDig += getWeekQty(w); });
+    var totalCarga = 0;
+    weeks.forEach(function(w) { totalDig += getWeekQty(w); totalCarga += getWeekCarga(w); });
+    var clPct = effAdm > 0 ? Math.round(totalDig / effAdm * 100) : 0;
 
-    html += '<tr' + (isMv ? ' style="opacity:0.55"' : '') + '>';
+    // ── Fila 1: Carga del cliente (verde) ──
+    html += '<tr style="border-bottom:none;' + (isMv ? 'opacity:0.55;' : '') + '">';
+    html += '<td rowspan="2" style="font-weight:600;vertical-align:middle;border-bottom:1px solid #f0f2f5">' + cl.nombre + '</td>';
+    html += '<td rowspan="2" style="vertical-align:middle;border-bottom:1px solid #f0f2f5">' + (isMv ? '<span style="color:var(--purple)">MV</span>' : effAdm) + '</td>';
 
-    // Cliente
-    html += '<td>' + cl.nombre + '</td>';
-
-    // Meta ADM
-    html += '<td>' + (isMv ? '<span style="color:var(--purple)">MV</span>' : effAdm) + '</td>';
-
-    // Fecha carga facturas
-    if (fechaCarga) {
-      html += '<td class="rpt-fecha">' + formatDateShort(fechaCarga) + '</td>';
-    } else {
-      html += '<td class="rpt-pending">—</td>';
-    }
-
-    // Digitación S1-S5 + Fuera
     for (var sw = 0; sw < 6; sw++) {
-      var wObj = weeks[sw] || { carga: 0, dig: 0, fecha: '', fecha_respuesta: '' };
-      var dig = getWeekQty(wObj);
+      var wObj = weeks[sw] || { carga:0, dig:0, fecha:'', fecha_respuesta:'' };
       var carga = getWeekCarga(wObj);
-      var fechaDig = typeof wObj === 'object' ? (wObj.fecha || '') : '';
+      var fechaResp = typeof wObj === 'object' ? (wObj.fecha_respuesta || '') : '';
       var isFuera = sw === 5;
       var bgS = isFuera ? 'background:#fdf8f0;' : '';
-
-      if (dig > 0 || carga > 0) {
-        var cellParts = [];
-        if (carga > 0) cellParts.push('<span style="color:var(--green)">' + carga + 'c</span>');
-        if (dig > 0) cellParts.push('<span style="color:var(--blue)">' + dig + 'd</span>');
-        var fechaLine = fechaDig ? '<div style="font-size:0.62rem;color:var(--light)">' + formatDateShort(fechaDig) + '</div>' : '';
-        html += '<td style="' + bgS + '"><div class="rpt-dig-cell">' + cellParts.join(' ') + fechaLine + '</div></td>';
+      if (carga > 0) {
+        html += '<td style="' + bgS + 'padding-bottom:0;border-bottom:none"><div style="color:var(--green);font-weight:600;font-size:0.78rem">' + carga + ' carg.</div>';
+        if (fechaResp) html += '<div style="font-size:0.6rem;color:var(--light)">' + formatDateShort(fechaResp) + '</div>';
+        html += '</td>';
+      } else if (fechaResp) {
+        html += '<td style="' + bgS + 'padding-bottom:0;border-bottom:none"><div style="font-size:0.7rem;color:var(--red)">No cargo</div><div style="font-size:0.6rem;color:var(--light)">' + formatDateShort(fechaResp) + '</div></td>';
       } else {
-        html += '<td style="' + bgS + '" class="rpt-na">—</td>';
+        html += '<td style="' + bgS + 'padding-bottom:0;border-bottom:none" class="rpt-na">—</td>';
       }
     }
+    html += '<td rowspan="2" style="font-weight:700;vertical-align:middle;color:' + (isMv ? 'var(--light)' : getBarColor(clPct)) + ';border-bottom:1px solid #f0f2f5">' + totalDig + '</td>';
+    html += '<td rowspan="2" style="vertical-align:middle;font-weight:600;font-size:0.78rem;color:' + (isMv ? 'var(--light)' : getBarColor(clPct)) + ';border-bottom:1px solid #f0f2f5">' + (isMv ? '—' : clPct + '%') + '</td>';
 
-    // Total digitado
-    var pctDig = effAdm > 0 ? Math.round(totalDig / effAdm * 100) : 0;
-    var digColor = isMv ? 'var(--light)' : getBarColor(pctDig);
-    html += '<td style="font-weight:700;color:' + digColor + '">' + totalDig + '</td>';
-
-    // Llenado portal (límite vs fecha real)
-    if (res.done && res.fecha) {
-      var onTime = res.fecha <= limiteFecha;
-      html += '<td><div class="rpt-fecha ' + (onTime ? 'rpt-ok' : 'rpt-late') + '">' + formatDateShort(res.fecha) + '</div><div style="font-size:0.62rem;color:var(--light)">Limite: ' + limiteDay + '/' + (mesIdx + 1) + '</div></td>';
-    } else {
-      html += '<td class="rpt-pending">Pendiente</td>';
-    }
-
-    // Correo/Reunión (límite vs fecha real)
-    if (vid.done && vid.fecha) {
-      var vidOnTime = vid.fecha <= limiteFecha;
-      html += '<td><div class="rpt-fecha ' + (vidOnTime ? 'rpt-ok' : 'rpt-late') + '">' + formatDateShort(vid.fecha) + '</div><div style="font-size:0.62rem;color:var(--light)">Limite: ' + limiteDay + '/' + (mesIdx + 1) + '</div></td>';
-    } else {
-      html += '<td class="rpt-pending">Pendiente</td>';
-    }
-
-    // Nota temporal
+    // Nota
     var notaKey = contadora + '_' + mes + '_' + cl.nombre;
     var notaVal = rptNotas[notaKey] || '';
-    var safeClient = cl.nombre.replace(/'/g, "\\'");
-    html += '<td><input type="text" class="rpt-nota-input" id="rpt-nota-' + contadora + '-' + cl.nombre.replace(/\s/g, '_') + '" value="' + notaVal.replace(/"/g, '&quot;') + '" placeholder="Ej: facturas tarde" onblur="rptSaveNotaByKey(\'' + notaKey.replace(/'/g, "\\'") + '\', this.value)"></td>';
+    html += '<td rowspan="2" style="vertical-align:middle;border-bottom:1px solid #f0f2f5"><input type="text" class="rpt-nota-input" value="' + notaVal.replace(/"/g, '&quot;') + '" placeholder="Excepcion..." onblur="rptSaveNotaByKey(\'' + notaKey.replace(/'/g, "\\'") + '\', this.value)"></td>';
+    html += '</tr>';
 
+    // ── Fila 2: Digitado por contadora (azul) ──
+    html += '<tr style="' + (isMv ? 'opacity:0.55;' : '') + '">';
+    for (var dw = 0; dw < 6; dw++) {
+      var dwObj = weeks[dw] || { carga:0, dig:0, fecha:'' };
+      var dig = getWeekQty(dwObj);
+      var fechaDig = typeof dwObj === 'object' ? (dwObj.fecha || '') : '';
+      var isFueraDig = dw === 5;
+      var bgD = isFueraDig ? 'background:#fdf8f0;' : '';
+      if (dig > 0) {
+        html += '<td style="' + bgD + 'padding-top:0"><div style="color:var(--blue);font-weight:600;font-size:0.78rem">' + dig + ' dig.</div>';
+        if (fechaDig) html += '<div style="font-size:0.6rem;color:var(--light)">' + formatDateShort(fechaDig) + '</div>';
+        html += '</td>';
+      } else {
+        html += '<td style="' + bgD + 'padding-top:0" class="rpt-na">—</td>';
+      }
+    }
+    // Total y % ya están como rowspan
     html += '</tr>';
   });
 
-  // Fila total
+  // ── Fila total + comparativo Meta vs Digitado ──
   var grandDig = 0;
   var grandCarga = 0;
   clients.forEach(function(cl) {
     if (isMvException(contadora, cl.nombre)) return;
-    var weeks = entry.datos.digitacion[cl.nombre] || emptyWeeks();
-    weeks.forEach(function(w) { grandDig += getWeekQty(w); grandCarga += getWeekCarga(w); });
+    var wks = entry.datos.digitacion[cl.nombre] || emptyWeeks();
+    wks.forEach(function(w) { grandDig += getWeekQty(w); grandCarga += getWeekCarga(w); });
   });
-  html += '<tr style="background:#f8fafc;font-weight:700"><td>Total (' + clients.length + ' clientes)</td>';
+  var grandPct = scores.admTotal > 0 ? Math.round(grandDig / scores.admTotal * 100) : 0;
+  html += '<tr style="background:#f8fafc;font-weight:700">';
+  html += '<td>Total</td>';
   html += '<td>' + scores.admTotal + '</td>';
-  html += '<td></td>'; // carga facturas
-  // Totales por semana
   var weekDigTots = [0,0,0,0,0,0];
+  var weekCargaTots = [0,0,0,0,0,0];
   clients.forEach(function(cl) {
     if (isMvException(contadora, cl.nombre)) return;
-    var weeks = entry.datos.digitacion[cl.nombre] || emptyWeeks();
-    weeks.forEach(function(w, i) { if (i < 6) weekDigTots[i] += getWeekQty(w); });
+    var wks = entry.datos.digitacion[cl.nombre] || emptyWeeks();
+    wks.forEach(function(w, i) { if (i < 6) { weekDigTots[i] += getWeekQty(w); weekCargaTots[i] += getWeekCarga(w); } });
   });
   for (var tw = 0; tw < 6; tw++) {
     var bgTw = tw === 5 ? 'background:#fdf8f0;' : '';
-    html += '<td style="' + bgTw + 'color:var(--blue)">' + (weekDigTots[tw] || '—') + '</td>';
+    html += '<td style="' + bgTw + '"><span style="color:var(--green)">' + weekCargaTots[tw] + '</span> / <span style="color:var(--blue)">' + weekDigTots[tw] + '</span></td>';
   }
-  html += '<td style="color:' + getBarColor(scores.admTotal > 0 ? Math.round(grandDig / scores.admTotal * 100) : 0) + '">' + grandDig + '</td>';
-  html += '<td>' + scores.resDone + '/' + scores.resTotal + '</td>';
-  html += '<td>' + scores.vidDone + '/' + scores.vidTotal + '</td>';
+  html += '<td style="color:' + getBarColor(grandPct) + '">' + grandDig + '</td>';
+  html += '<td style="color:' + getBarColor(grandPct) + '">' + grandPct + '%</td>';
+  html += '<td></td></tr>';
+  html += '</tbody></table></div>';
+
+  // Comparativo Meta vs Digitado
+  var diff = grandDig - scores.admTotal;
+  var diffColor = diff >= 0 ? 'var(--green)' : 'var(--red)';
+  var diffSign = diff >= 0 ? '+' : '';
+  html += '<div style="display:flex;gap:16px;padding:12px 20px 16px;align-items:center;flex-wrap:wrap">';
+  html += '<div style="background:#f8fafc;border-radius:8px;padding:10px 16px;flex:1;min-width:120px;text-align:center"><div style="font-size:0.65rem;text-transform:uppercase;color:var(--light);letter-spacing:0.3px">Meta facturas</div><div style="font-size:1.3rem;font-weight:800;color:var(--navy)">' + scores.admTotal + '</div></div>';
+  html += '<div style="background:#f8fafc;border-radius:8px;padding:10px 16px;flex:1;min-width:120px;text-align:center"><div style="font-size:0.65rem;text-transform:uppercase;color:var(--light);letter-spacing:0.3px">Total digitado</div><div style="font-size:1.3rem;font-weight:800;color:var(--blue)">' + grandDig + '</div></div>';
+  html += '<div style="background:#f8fafc;border-radius:8px;padding:10px 16px;flex:1;min-width:120px;text-align:center"><div style="font-size:0.65rem;text-transform:uppercase;color:var(--light);letter-spacing:0.3px">Diferencial</div><div style="font-size:1.3rem;font-weight:800;color:' + diffColor + '">' + diffSign + diff + '</div></div>';
+  html += '<div style="background:#f8fafc;border-radius:8px;padding:10px 16px;flex:1;min-width:120px;text-align:center"><div style="font-size:0.65rem;text-transform:uppercase;color:var(--light);letter-spacing:0.3px">Cumplimiento</div><div style="font-size:1.3rem;font-weight:800;color:' + getBarColor(grandPct) + '">' + grandPct + '%</div></div>';
+  html += '</div>';
+  html += '</div>'; // close rpt-wrap
+
+  // ════════════════════════════════════════════════════════════
+  // BLOQUE 2: LLENADO PORTAL (30 pts) + CORREO/REUNION (20 pts)
+  // ════════════════════════════════════════════════════════════
+  var limiteLabel = limiteDay + ' ' + MESES_LABEL[mesIdx].toLowerCase();
+
+  html += '<div class="rpt-wrap">';
+  html += '<div style="padding:16px 20px 0;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">';
+  html += '<h3 style="margin:0">Llenado del portal y ' + (vidTipo === 'Reunion' ? 'reuniones' : 'correo mensual') + '</h3>';
+  html += '<div style="display:flex;gap:8px">';
+  html += '<span class="rpt-score-badge" style="background:' + getEscala(resPts * 100/30).bg + ';color:' + getEscala(resPts * 100/30).color + '">Portal: ' + resPts + '/30</span>';
+  html += '<span class="rpt-score-badge" style="background:' + getEscala(vidPts * 5).bg + ';color:' + getEscala(vidPts * 5).color + '">' + (vidTipo === 'Reunion' ? 'Reunion' : 'Correo') + ': ' + vidPts + '/20</span>';
+  html += '</div></div>';
+  html += '<div style="font-size:0.72rem;color:var(--muted);padding:4px 20px 0">Limite: ' + limiteLabel + ' · Mes de presentacion: ' + MESES_FULL[mesIdx > 0 ? mesIdx - 1 : 11] + '</div>';
+
+  html += '<div style="overflow-x:auto;padding:8px 0 16px"><table class="rpt-table"><thead><tr>';
+  html += '<th style="min-width:120px">Cliente</th>';
+  html += '<th style="min-width:50px">Tx</th>';
+  html += '<th style="min-width:90px">Portal llenado</th>';
+  html += '<th style="min-width:80px">Fecha portal</th>';
+  html += '<th style="min-width:90px">' + (vidTipo === 'Reunion' ? 'Reunion' : 'Correo enviado') + '</th>';
+  html += '<th style="min-width:80px">Fecha ' + (vidTipo === 'Reunion' ? 'reunion' : 'correo') + '</th>';
+  html += '</tr></thead><tbody>';
+
+  clients.forEach(function(cl) {
+    var res = entry.datos.resumenes[cl.nombre] || { done: false, fecha: '' };
+    var vid = entry.datos.video[cl.nombre] || { done: false, fecha: '' };
+    var effAdm = getEffectiveAdm(contadora, mes, cl.nombre);
+    var isMv = isMvException(contadora, cl.nombre);
+
+    html += '<tr' + (isMv ? ' style="opacity:0.55"' : '') + '>';
+    html += '<td>' + cl.nombre + '</td>';
+    html += '<td>' + (isMv ? '<span style="color:var(--purple)">MV</span>' : effAdm) + '</td>';
+
+    // Portal
+    if (res.done) {
+      var resOnTime = res.fecha <= limiteFecha;
+      html += '<td><span style="color:var(--green);font-weight:700">Completado</span></td>';
+      html += '<td class="rpt-fecha ' + (resOnTime ? 'rpt-ok' : 'rpt-late') + '">' + formatDateShort(res.fecha) + (resOnTime ? '' : ' (tarde)') + '</td>';
+    } else {
+      html += '<td><span style="color:var(--red);font-weight:700">Pendiente</span></td>';
+      html += '<td class="rpt-na">—</td>';
+    }
+
+    // Correo/Reunión
+    if (vid.done) {
+      var vidOnTime = vid.fecha <= limiteFecha;
+      html += '<td><span style="color:var(--green);font-weight:700">Completado</span></td>';
+      html += '<td class="rpt-fecha ' + (vidOnTime ? 'rpt-ok' : 'rpt-late') + '">' + formatDateShort(vid.fecha) + (vidOnTime ? '' : ' (tarde)') + '</td>';
+    } else {
+      html += '<td><span style="color:var(--red);font-weight:700">Pendiente</span></td>';
+      html += '<td class="rpt-na">—</td>';
+    }
+    html += '</tr>';
+  });
+
+  // Fila resumen
+  html += '<tr style="background:#f8fafc;font-weight:700">';
+  html += '<td>Total</td><td></td>';
+  html += '<td style="color:' + getBarColor(scores.resTotal > 0 ? Math.round(scores.resDone / scores.resTotal * 100) : 0) + '">' + scores.resDone + ' de ' + scores.resTotal + '</td>';
+  html += '<td></td>';
+  html += '<td style="color:' + getBarColor(scores.vidTotal > 0 ? Math.round(scores.vidDone / scores.vidTotal * 100) : 0) + '">' + scores.vidDone + ' de ' + scores.vidTotal + '</td>';
   html += '<td></td></tr>';
 
   html += '</tbody></table></div></div>';
