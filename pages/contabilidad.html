@@ -427,6 +427,29 @@ body { font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-se
 .toast { position:fixed; bottom:24px; right:24px; background:var(--navy); color:white; padding:12px 20px; border-radius:10px; font-size:0.85rem; font-weight:500; z-index:999; opacity:0; transform:translateY(10px); transition:all 0.3s; pointer-events:none; }
 .toast.show { opacity:1; transform:translateY(0); }
 
+/* ─── Reporte KPI ─── */
+.rpt-wrap { background:white; border-radius:12px; border:1px solid var(--border); overflow:hidden; margin-bottom:20px; }
+.rpt-wrap h3 { font-size:1rem; padding:16px 20px 0; color:var(--navy); }
+.rpt-table { width:100%; border-collapse:collapse; font-size:0.78rem; }
+.rpt-table th { background:#f8fafc; font-size:0.65rem; text-transform:uppercase; letter-spacing:0.3px; color:var(--light); font-weight:700; padding:10px 8px; text-align:center; border-bottom:1px solid var(--border); white-space:nowrap; }
+.rpt-table th:first-child { text-align:left; padding-left:16px; }
+.rpt-table td { padding:8px; text-align:center; border-bottom:1px solid #f0f2f5; vertical-align:middle; }
+.rpt-table td:first-child { text-align:left; padding-left:16px; font-weight:600; }
+.rpt-table tr:hover { background:#fafbfc; }
+.rpt-table .rpt-fecha { font-size:0.72rem; }
+.rpt-table .rpt-ok { color:var(--green); font-weight:600; }
+.rpt-table .rpt-late { color:var(--red); font-weight:600; }
+.rpt-table .rpt-pending { color:var(--light); font-size:0.72rem; }
+.rpt-table .rpt-na { color:var(--light); }
+.rpt-nota-input { width:100%; min-width:120px; padding:4px 6px; border:1px solid var(--border); border-radius:6px; font-size:0.75rem; font-family:inherit; background:#fafbfc; }
+.rpt-nota-input:focus { outline:none; border-color:var(--blue); background:white; }
+.rpt-score-card { display:flex; align-items:center; gap:20px; padding:20px; background:white; border-radius:12px; border:1px solid var(--border); margin-bottom:16px; flex-wrap:wrap; }
+.rpt-score-big { font-size:2.4rem; font-weight:800; line-height:1; }
+.rpt-score-detail { font-size:0.82rem; color:var(--muted); }
+.rpt-score-detail span { font-weight:700; }
+.rpt-score-badge { display:inline-block; padding:4px 12px; border-radius:20px; font-size:0.78rem; font-weight:700; }
+.rpt-dig-cell { font-size:0.72rem; line-height:1.4; }
+
 body.embed .login-overlay { display:none !important; }
 body.embed .header { display:none !important; }
 body.embed .breadcrumb-bar { display:none !important; }
@@ -947,6 +970,10 @@ let kpiQuarter = getCurrentQuarter();
 let kpiContadora = null;
 let kpiMes = null;
 
+// Reporte state
+let rptSelectedContadora = null;
+let rptNotas = {}; // { "contadora_mes_cliente": "nota text" } — temporal, no se guarda
+
 // ==================== UNIFIED ASIGNACIONES ====================
 // Fuente principal: tabla clientes (maestra).
 // Asignaciones solo aporta dato mensual de transacciones digitadas (adm) para KPI.
@@ -1454,6 +1481,15 @@ function ckToggleView(mode) {
 function kpiSwitchSubTab(tab) {
   kpiSubTab = tab;
   kpiContadora = null;
+  if (tab === 'reporte') {
+    // Default: mes anterior al actual (el reporte se genera el día 1 sobre el mes que cerró)
+    var m = new Date().getMonth(); // 0-based, junio=5
+    kpiMes = MESES[Math.max(m - 1, 0)];
+    if (!rptSelectedContadora) {
+      var vis = getVisibleContadoras();
+      if (vis.length > 0) rptSelectedContadora = vis[0].nombre;
+    }
+  }
   renderAll();
 }
 
@@ -1484,6 +1520,20 @@ function kpiGoBackToSelector() {
   renderKpiNav();
   renderKpiContent();
 }
+
+function kpiSwitchReporteMonth(m) {
+  kpiMes = m;
+  renderKpiNav();
+  renderKpiContent();
+}
+
+function kpiSelectReporteContadora(nombre) {
+  rptSelectedContadora = nombre;
+  renderKpiNav();
+  renderKpiContent();
+}
+
+// rptSaveNotaByKey is defined after renderKpiReporte
 
 // ==================== UNIFIED DISPATCHER ====================
 
@@ -2275,29 +2325,36 @@ function renderKpiNav() {
   // Sub-tabs (solo admin/gerencia ve selector y trimestral)
   if (isKpiAdmin()) {
     html += '<div class="sub-tabs">';
-    html += '<button class="sub-tab ' + (kpiSubTab === 'mensual' ? 'active' : '') + '" onclick="kpiSwitchSubTab(\'mensual\')">Resumen del Mes</button>';
     html += '<button class="sub-tab ' + (kpiSubTab === 'detalle' ? 'active' : '') + '" onclick="kpiSwitchSubTab(\'detalle\')">Detalle por Contadora</button>';
     html += '<button class="sub-tab ' + (kpiSubTab === 'trimestral' ? 'active' : '') + '" onclick="kpiSwitchSubTab(\'trimestral\')">Resumen Trimestral</button>';
+    html += '<button class="sub-tab ' + (kpiSubTab === 'reporte' ? 'active' : '') + '" onclick="kpiSwitchSubTab(\'reporte\')">Reporte Mensual</button>';
     html += '</div>';
-  }
-
-  if (kpiSubTab === 'mensual' && isKpiAdmin()) {
-    var q = QUARTERS[kpiQuarter - 1];
-    html += '<div class="quarter-bar">' + QUARTERS.map(qq =>
-      '<button class="q-btn ' + (kpiQuarter === qq.id ? 'active' : '') + '" onclick="kpiSwitchQuarter(' + qq.id + ')"><div class="q-label">' + qq.label + '</div><div class="q-months">' + qq.meses.map(m => MESES_LABEL[MESES.indexOf(m)]).join(' · ') + '</div></button>'
-    ).join('') + '</div>';
-    html += '<div style="padding:10px 24px;background:var(--bg);border-bottom:1px solid var(--border)"><div class="month-tabs">' + q.meses.map(function(m) {
-      var idx = MESES.indexOf(m);
-      return '<button class="month-tab ' + (kpiMes === m ? 'active' : '') + '" onclick="kpiMes=\'' + m + '\';renderAll()">' + MESES_FULL[idx] + '</button>';
-    }).join('') + '</div></div>';
-    el.innerHTML = html;
-    return;
   }
 
   if (kpiSubTab === 'trimestral' && isKpiAdmin()) {
     html += '<div class="quarter-bar">' + QUARTERS.map(q =>
       '<button class="q-btn ' + (kpiQuarter === q.id ? 'active' : '') + '" onclick="kpiSwitchQuarter(' + q.id + ')"><div class="q-label">' + q.label + '</div><div class="q-months">' + q.meses.map(m => MESES_LABEL[MESES.indexOf(m)]).join(' · ') + '</div></button>'
     ).join('') + '</div>';
+    el.innerHTML = html;
+    return;
+  }
+
+  if (kpiSubTab === 'reporte' && isKpiAdmin()) {
+    // Month pills (all 12)
+    html += '<div style="padding:12px 24px;background:var(--bg);border-bottom:1px solid var(--border)">';
+    html += '<div class="month-tabs">';
+    MESES.forEach(function(m, i) {
+      html += '<button class="month-tab ' + (kpiMes === m ? 'active' : '') + '" onclick="kpiSwitchReporteMonth(\'' + m + '\')">' + MESES_LABEL[i] + '</button>';
+    });
+    html += '</div></div>';
+    // Contadora pills
+    html += '<div style="padding:10px 24px;background:var(--bg);border-bottom:1px solid var(--border)">';
+    html += '<div class="contadora-pills">';
+    var rptContadoras = getVisibleContadoras();
+    rptContadoras.forEach(function(c) {
+      html += '<button class="contadora-pill ' + (rptSelectedContadora === c.nombre ? 'active' : '') + '" onclick="kpiSelectReporteContadora(\'' + c.nombre + '\')">' + c.nombre + '</button>';
+    });
+    html += '</div></div>';
     el.innerHTML = html;
     return;
   }
@@ -2325,7 +2382,7 @@ function renderKpiNav() {
 
 function renderKpiContent() {
   const el = document.getElementById('content');
-  if (kpiSubTab === 'mensual' && isKpiAdmin()) return renderKpiResumenMes(el);
+  if (kpiSubTab === 'reporte' && isKpiAdmin()) return renderKpiReporte(el);
   if (kpiSubTab === 'trimestral' && isKpiAdmin()) return renderTrimestral(el);
   if (!kpiContadora && isKpiAdmin()) return renderKpiSelector(el);
   if (!kpiContadora) { el.innerHTML = '<div class="empty">Cargando...</div>'; return; }
@@ -2643,132 +2700,191 @@ function renderKPIDetail(el) {
   el.innerHTML = html;
 }
 
-// ==================== RESUMEN DEL MES (KPI admin only) ====================
 
-function renderKpiResumenMes(el) {
-  var mes = kpiMes || getCurrentMonth();
+// ==================== REPORTE MENSUAL VIEW (KPI admin only) ====================
+
+function renderKpiReporte(el) {
+  var mes = kpiMes;
+  var contadora = rptSelectedContadora;
+  if (!mes) { el.innerHTML = '<div class="empty">Selecciona un mes.</div>'; return; }
+  if (!contadora) { el.innerHTML = '<div class="empty">Selecciona una contadora.</div>'; return; }
+
   var mesIdx = MESES.indexOf(mes);
-  var contadoras = getVisibleContadoras();
+  var cfg = KPI_CONTADORAS.find(function(x) { return x.nombre === contadora; });
+  if (!cfg) { el.innerHTML = '<div class="empty">Contadora no encontrada en KPI_CONTADORAS.</div>'; return; }
+
+  var entry = getDetalle(contadora, mes);
+  var clients = getClients(contadora, mes);
+  var scores = calcScoresForContadora(contadora, mes);
+  var total = calcTotal(scores.digScore, scores.resScore, scores.vidScore);
+  var escala = getEscala(total);
   var vidTipo = getVideoTipo(mes);
-  var vidLabel = vidTipo === 'Reunion' ? 'Reunión' : 'Correo cierre';
+  var weekRanges = getWeekRanges(mesIdx);
 
-  var rows = contadoras.map(function(cfg) {
-    var c = cfg.nombre;
-    var clients = getClients(c, mes);
-    if (clients.length === 0) return null;
-    var s = calcScoresForContadora(c, mes);
-    var total = calcTotal(s.digScore, s.resScore, s.vidScore);
-    var penalties = calcPenalties(c, mes);
-    var nivel = total >= 90 ? 'Excelente' : total >= 80 ? 'Bueno' : total >= 70 ? 'Aceptable' : 'Sin bono';
-    var nivelCss = total >= 90 ? '#10b981' : total >= 80 ? '#4361ee' : total >= 70 ? '#f59e0b' : '#ef4444';
-    var nivelBg = total >= 90 ? '#ecfdf5' : total >= 80 ? '#eef2ff' : total >= 70 ? '#fffbeb' : '#fef2f2';
-    var bonoPct = total >= 90 ? 100 : total >= 80 ? 75 : total >= 70 ? 50 : 0;
-    var bonoBase = getBonoBase(c);
-    var bonoMonto = Math.round(bonoBase * bonoPct / 100);
-    return { nombre: c, tier: cfg.tier, color: cfg.color, clients: clients.length, s: s, total: total, nivel: nivel, nivelCss: nivelCss, nivelBg: nivelBg, bonoPct: bonoPct, bonoMonto: bonoMonto, penalties: penalties };
-  }).filter(function(r) { return r !== null; });
+  // Deadline para llenado portal y correo: día 30 del mes de la vista
+  var limiteDay = 30;
+  var lastDayOfMonth = new Date(2026, mesIdx + 1, 0).getDate();
+  if (limiteDay > lastDayOfMonth) limiteDay = lastDayOfMonth;
+  var limiteFecha = '2026-' + String(mesIdx + 1).padStart(2, '0') + '-' + String(limiteDay).padStart(2, '0');
 
-  rows.sort(function(a, b) { return b.total - a.total; });
+  var html = '';
 
-  var avgTotal = rows.length > 0 ? Math.round(rows.reduce(function(s, r) { return s + r.total; }, 0) / rows.length) : 0;
+  // ── Score resumen arriba ──
+  html += '<div class="rpt-score-card">';
+  html += '<div><div class="rpt-score-big" style="color:' + escala.color + '">' + total + '<span style="font-size:1rem;color:var(--muted)">/100</span></div>';
+  html += '<div style="font-size:0.75rem;color:var(--muted);margin-top:2px">' + contadora + ' · ' + MESES_FULL[mesIdx] + ' 2026</div></div>';
+  html += '<div class="rpt-score-detail">';
+  html += 'Digitacion: <span style="color:' + escala.color + '">' + Math.round(scores.digScore * 5) + '/50</span> · ';
+  html += 'Portal: <span style="color:' + escala.color + '">' + Math.round(scores.resScore * 3) + '/30</span> · ';
+  html += (vidTipo === 'Reunion' ? 'Reunion' : 'Correo') + ': <span style="color:' + escala.color + '">' + Math.round(scores.vidScore * 2) + '/20</span>';
+  html += '</div>';
+  html += '<div class="rpt-score-badge" style="background:' + escala.bg + ';color:' + escala.color + '">' + escala.label + ' (' + escala.bonoPct + '% bono)</div>';
+  html += '</div>';
 
-  var h = '<div style="padding:24px;max-width:900px;margin:0 auto">';
-
-  // Header
-  h += '<div style="text-align:center;margin-bottom:24px">';
-  h += '<h2 style="margin:0;color:var(--navy)">KPI Contabilidad — ' + MESES_FULL[mesIdx] + ' 2026</h2>';
-  h += '<p style="color:var(--muted);font-size:0.85rem;margin-top:4px">Resumen de desempeño del equipo</p>';
-  h += '</div>';
-
-  // Promedio del equipo
-  var avgColor = avgTotal >= 90 ? '#10b981' : avgTotal >= 80 ? '#4361ee' : avgTotal >= 70 ? '#f59e0b' : '#ef4444';
-  h += '<div style="display:flex;justify-content:center;margin-bottom:20px">';
-  h += '<div style="background:white;border:2px solid ' + avgColor + ';border-radius:12px;padding:16px 32px;text-align:center">';
-  h += '<div style="font-size:0.7rem;text-transform:uppercase;letter-spacing:0.5px;color:var(--muted);font-weight:600">Promedio equipo</div>';
-  h += '<div style="font-size:2rem;font-weight:800;color:' + avgColor + '">' + avgTotal + '</div>';
-  h += '</div></div>';
-
-  // Tabla principal
-  h += '<div style="background:white;border-radius:12px;border:1px solid var(--border);overflow:hidden">';
-  h += '<table style="width:100%;border-collapse:collapse;font-size:0.85rem">';
-  h += '<thead><tr style="background:#f8fafc">';
-  h += '<th style="text-align:left;padding:12px 16px;font-size:0.68rem;text-transform:uppercase;letter-spacing:0.3px;color:var(--muted);font-weight:700">Contadora</th>';
-  h += '<th style="text-align:center;padding:12px 8px;font-size:0.68rem;text-transform:uppercase;letter-spacing:0.3px;color:var(--muted);font-weight:700">Clientes</th>';
-  h += '<th style="text-align:center;padding:12px 8px;font-size:0.68rem;text-transform:uppercase;letter-spacing:0.3px;color:var(--muted);font-weight:700">Digitación<br><span style="font-weight:400;font-size:0.6rem">(50 pts)</span></th>';
-  h += '<th style="text-align:center;padding:12px 8px;font-size:0.68rem;text-transform:uppercase;letter-spacing:0.3px;color:var(--muted);font-weight:700">Llenado Portal<br><span style="font-weight:400;font-size:0.6rem">(30 pts)</span></th>';
-  h += '<th style="text-align:center;padding:12px 8px;font-size:0.68rem;text-transform:uppercase;letter-spacing:0.3px;color:var(--muted);font-weight:700">' + vidLabel + '<br><span style="font-weight:400;font-size:0.6rem">(20 pts)</span></th>';
-  h += '<th style="text-align:center;padding:12px 8px;font-size:0.68rem;text-transform:uppercase;letter-spacing:0.3px;color:var(--muted);font-weight:700">Total</th>';
-  h += '<th style="text-align:center;padding:12px 8px;font-size:0.68rem;text-transform:uppercase;letter-spacing:0.3px;color:var(--muted);font-weight:700">Nivel</th>';
-  h += '<th style="text-align:right;padding:12px 16px;font-size:0.68rem;text-transform:uppercase;letter-spacing:0.3px;color:var(--muted);font-weight:700">Bono</th>';
-  h += '</tr></thead><tbody>';
-
-  rows.forEach(function(r) {
-    var digPts = Math.round(r.s.digScore * 5);
-    var resPts = Math.round(r.s.resScore * 3);
-    var vidPts = Math.round(r.s.vidScore * 2);
-
-    h += '<tr style="border-bottom:1px solid #f1f5f9">';
-    h += '<td style="padding:14px 16px;font-weight:700"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:' + r.color + ';margin-right:8px"></span>' + r.nombre + '<div style="font-size:0.7rem;color:var(--muted);font-weight:400;margin-top:2px">' + r.tier + '</div></td>';
-    h += '<td style="text-align:center;color:var(--muted)">' + r.clients + '</td>';
-
-    // Digitación
-    h += '<td style="text-align:center"><div style="font-weight:700;font-size:1rem">' + digPts + '</div>';
-    h += '<div style="font-size:0.68rem;color:var(--muted)">' + r.s.digActual + '/' + r.s.admTotal + ' tx</div></td>';
-
-    // Llenado Portal
-    h += '<td style="text-align:center"><div style="font-weight:700;font-size:1rem">' + resPts + '</div>';
-    h += '<div style="font-size:0.68rem;color:var(--muted)">' + r.s.resDone + '/' + r.s.resTotal + ' clientes</div></td>';
-
-    // Video/Correo
-    h += '<td style="text-align:center"><div style="font-weight:700;font-size:1rem">' + vidPts + '</div>';
-    h += '<div style="font-size:0.68rem;color:var(--muted)">' + r.s.vidDone + '/' + r.s.vidTotal + ' clientes</div></td>';
-
-    // Total
-    h += '<td style="text-align:center"><div style="font-size:1.3rem;font-weight:800;color:' + r.nivelCss + '">' + r.total + '</div></td>';
-
-    // Nivel
-    h += '<td style="text-align:center"><span style="display:inline-block;padding:4px 12px;border-radius:20px;font-size:0.72rem;font-weight:700;background:' + r.nivelBg + ';color:' + r.nivelCss + '">' + r.nivel + '</span></td>';
-
-    // Bono
-    h += '<td style="text-align:right;padding:14px 16px">';
-    if (r.bonoPct > 0) {
-      h += '<div style="font-weight:700;color:var(--green)">RD$' + r.bonoMonto.toLocaleString() + '</div>';
-      h += '<div style="font-size:0.68rem;color:var(--muted)">' + r.bonoPct + '% del base</div>';
-    } else {
-      h += '<div style="font-weight:600;color:var(--red)">Sin bono</div>';
-    }
-    h += '</td>';
-    h += '</tr>';
-  });
-
-  h += '</tbody></table></div>';
-
-  // Deducciones pendientes
-  var allPenalties = [];
-  rows.forEach(function(r) {
-    r.penalties.forEach(function(p) {
-      allPenalties.push({ contadora: r.nombre, pts: p.pts, area: p.area, detail: p.detail, color: p.color });
-    });
-  });
-
-  if (allPenalties.length > 0) {
-    h += '<div style="margin-top:16px;background:white;border-radius:12px;border:1px solid var(--border);padding:16px 20px">';
-    h += '<h3 style="margin:0 0 10px;font-size:0.88rem;color:var(--navy)">Pendientes que restan puntos (' + allPenalties.length + ')</h3>';
-    h += '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:6px">';
-    allPenalties.sort(function(a, b) { return b.pts - a.pts; });
-    allPenalties.slice(0, 12).forEach(function(p) {
-      h += '<div style="display:flex;align-items:center;gap:8px;padding:6px 10px;background:#fafbfc;border-radius:6px;font-size:0.75rem">';
-      h += '<span style="font-weight:700;color:' + p.color + ';min-width:30px">-' + p.pts + '</span>';
-      h += '<span style="color:var(--muted)">' + p.contadora + '</span>';
-      h += '<span style="color:var(--navy)">' + p.area + ': ' + p.detail + '</span>';
-      h += '</div>';
-    });
-    if (allPenalties.length > 12) h += '<div style="font-size:0.72rem;color:var(--muted);padding:4px 10px">...y ' + (allPenalties.length - 12) + ' más</div>';
-    h += '</div></div>';
+  if (clients.length === 0) {
+    html += '<div class="empty">No hay clientes asignados para ' + contadora + ' en ' + MESES_FULL[mesIdx] + '.</div>';
+    el.innerHTML = html;
+    return;
   }
 
-  h += '</div>';
-  el.innerHTML = h;
+  // ── Tabla del reporte ──
+  html += '<div class="rpt-wrap"><h3>Reporte ' + MESES_FULL[mesIdx] + ' — ' + contadora + '</h3>';
+  html += '<div style="overflow-x:auto;padding:0 0 16px"><table class="rpt-table"><thead><tr>';
+  html += '<th style="min-width:120px">Cliente</th>';
+  html += '<th style="min-width:50px">Meta ADM</th>';
+  html += '<th style="min-width:70px">Carga facturas</th>';
+  // Semanas de digitación
+  for (var wi = 0; wi < 5; wi++) {
+    var wLabel = weekRanges[wi] || ('S' + (wi + 1));
+    html += '<th style="min-width:55px">' + wLabel + '</th>';
+  }
+  html += '<th style="min-width:55px;background:#fdf8f0">Fuera</th>';
+  html += '<th style="min-width:50px">Total dig.</th>';
+  html += '<th style="min-width:80px">Llenado portal</th>';
+  html += '<th style="min-width:80px">' + (vidTipo === 'Reunion' ? 'Reunion' : 'Correo') + '</th>';
+  html += '<th style="min-width:140px">Nota</th>';
+  html += '</tr></thead><tbody>';
+
+  clients.forEach(function(cl) {
+    var isMv = isMvException(contadora, cl.nombre);
+    var effAdm = getEffectiveAdm(contadora, mes, cl.nombre);
+    var weeks = entry.datos.digitacion[cl.nombre] || emptyWeeks();
+    var res = entry.datos.resumenes[cl.nombre] || { done: false, fecha: '' };
+    var vid = entry.datos.video[cl.nombre] || { done: false, fecha: '' };
+
+    // Fecha de carga de facturas: primera semana donde hay fecha_respuesta (el cliente cargó)
+    var fechaCarga = '';
+    for (var fi = 0; fi < weeks.length; fi++) {
+      var fw = weeks[fi];
+      if (typeof fw === 'object' && fw.fecha_respuesta) {
+        fechaCarga = fw.fecha_respuesta;
+        break;
+      }
+    }
+
+    // Total digitado
+    var totalDig = 0;
+    weeks.forEach(function(w) { totalDig += getWeekQty(w); });
+
+    html += '<tr' + (isMv ? ' style="opacity:0.55"' : '') + '>';
+
+    // Cliente
+    html += '<td>' + cl.nombre + '</td>';
+
+    // Meta ADM
+    html += '<td>' + (isMv ? '<span style="color:var(--purple)">MV</span>' : effAdm) + '</td>';
+
+    // Fecha carga facturas
+    if (fechaCarga) {
+      html += '<td class="rpt-fecha">' + formatDateShort(fechaCarga) + '</td>';
+    } else {
+      html += '<td class="rpt-pending">—</td>';
+    }
+
+    // Digitación S1-S5 + Fuera
+    for (var sw = 0; sw < 6; sw++) {
+      var wObj = weeks[sw] || { carga: 0, dig: 0, fecha: '', fecha_respuesta: '' };
+      var dig = getWeekQty(wObj);
+      var carga = getWeekCarga(wObj);
+      var fechaDig = typeof wObj === 'object' ? (wObj.fecha || '') : '';
+      var isFuera = sw === 5;
+      var bgS = isFuera ? 'background:#fdf8f0;' : '';
+
+      if (dig > 0 || carga > 0) {
+        var cellParts = [];
+        if (carga > 0) cellParts.push('<span style="color:var(--green)">' + carga + 'c</span>');
+        if (dig > 0) cellParts.push('<span style="color:var(--blue)">' + dig + 'd</span>');
+        var fechaLine = fechaDig ? '<div style="font-size:0.62rem;color:var(--light)">' + formatDateShort(fechaDig) + '</div>' : '';
+        html += '<td style="' + bgS + '"><div class="rpt-dig-cell">' + cellParts.join(' ') + fechaLine + '</div></td>';
+      } else {
+        html += '<td style="' + bgS + '" class="rpt-na">—</td>';
+      }
+    }
+
+    // Total digitado
+    var pctDig = effAdm > 0 ? Math.round(totalDig / effAdm * 100) : 0;
+    var digColor = isMv ? 'var(--light)' : getBarColor(pctDig);
+    html += '<td style="font-weight:700;color:' + digColor + '">' + totalDig + '</td>';
+
+    // Llenado portal (límite vs fecha real)
+    if (res.done && res.fecha) {
+      var onTime = res.fecha <= limiteFecha;
+      html += '<td><div class="rpt-fecha ' + (onTime ? 'rpt-ok' : 'rpt-late') + '">' + formatDateShort(res.fecha) + '</div><div style="font-size:0.62rem;color:var(--light)">Limite: ' + limiteDay + '/' + (mesIdx + 1) + '</div></td>';
+    } else {
+      html += '<td class="rpt-pending">Pendiente</td>';
+    }
+
+    // Correo/Reunión (límite vs fecha real)
+    if (vid.done && vid.fecha) {
+      var vidOnTime = vid.fecha <= limiteFecha;
+      html += '<td><div class="rpt-fecha ' + (vidOnTime ? 'rpt-ok' : 'rpt-late') + '">' + formatDateShort(vid.fecha) + '</div><div style="font-size:0.62rem;color:var(--light)">Limite: ' + limiteDay + '/' + (mesIdx + 1) + '</div></td>';
+    } else {
+      html += '<td class="rpt-pending">Pendiente</td>';
+    }
+
+    // Nota temporal
+    var notaKey = contadora + '_' + mes + '_' + cl.nombre;
+    var notaVal = rptNotas[notaKey] || '';
+    var safeClient = cl.nombre.replace(/'/g, "\\'");
+    html += '<td><input type="text" class="rpt-nota-input" id="rpt-nota-' + contadora + '-' + cl.nombre.replace(/\s/g, '_') + '" value="' + notaVal.replace(/"/g, '&quot;') + '" placeholder="Ej: facturas tarde" onblur="rptSaveNotaByKey(\'' + notaKey.replace(/'/g, "\\'") + '\', this.value)"></td>';
+
+    html += '</tr>';
+  });
+
+  // Fila total
+  var grandDig = 0;
+  var grandCarga = 0;
+  clients.forEach(function(cl) {
+    if (isMvException(contadora, cl.nombre)) return;
+    var weeks = entry.datos.digitacion[cl.nombre] || emptyWeeks();
+    weeks.forEach(function(w) { grandDig += getWeekQty(w); grandCarga += getWeekCarga(w); });
+  });
+  html += '<tr style="background:#f8fafc;font-weight:700"><td>Total (' + clients.length + ' clientes)</td>';
+  html += '<td>' + scores.admTotal + '</td>';
+  html += '<td></td>'; // carga facturas
+  // Totales por semana
+  var weekDigTots = [0,0,0,0,0,0];
+  clients.forEach(function(cl) {
+    if (isMvException(contadora, cl.nombre)) return;
+    var weeks = entry.datos.digitacion[cl.nombre] || emptyWeeks();
+    weeks.forEach(function(w, i) { if (i < 6) weekDigTots[i] += getWeekQty(w); });
+  });
+  for (var tw = 0; tw < 6; tw++) {
+    var bgTw = tw === 5 ? 'background:#fdf8f0;' : '';
+    html += '<td style="' + bgTw + 'color:var(--blue)">' + (weekDigTots[tw] || '—') + '</td>';
+  }
+  html += '<td style="color:' + getBarColor(scores.admTotal > 0 ? Math.round(grandDig / scores.admTotal * 100) : 0) + '">' + grandDig + '</td>';
+  html += '<td>' + scores.resDone + '/' + scores.resTotal + '</td>';
+  html += '<td>' + scores.vidDone + '/' + scores.vidTotal + '</td>';
+  html += '<td></td></tr>';
+
+  html += '</tbody></table></div></div>';
+
+  el.innerHTML = html;
+}
+
+function rptSaveNotaByKey(key, value) {
+  rptNotas[key] = value;
 }
 
 // ==================== TRIMESTRAL VIEW (KPI admin only) ====================
