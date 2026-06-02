@@ -2990,7 +2990,7 @@ function cobGroupByCustomer(facturas) {
     if (balance <= 0.01) return;
 
     if (!groups[name]) {
-      groups[name] = { nombre: name, facturas: [], totalPendiente: 0, maxDias: 0, currency: f.moneda || 'DOP' };
+      groups[name] = { nombre: name, facturas: [], totalPendiente: 0, maxDias: 0, currency: f.moneda || 'DOP', monedaMix: false };
     }
     var dias = parseInt(f.dias_atraso) || 0;
 
@@ -3944,19 +3944,27 @@ async function cobUploadExcel(input) {
 
       // Auto-detect columns by matching common names
       var cols = Object.keys(rows[0]);
-      var colMap = { cliente: null, docId: null, total: null, balance: null, fecha: null, dias: null, moneda: null, tipo: null };
+      var colMap = { cliente: null, docId: null, total: null, balance: null, balanceLocal: null, fecha: null, dias: null, moneda: null, tipo: null };
 
       cols.forEach(function(c) {
         var cl = c.toLowerCase().trim();
         if (cl.indexOf('relacion') >= 0 || cl.indexOf('relation') >= 0 || cl.indexOf('cliente') >= 0 || cl.indexOf('nombre') >= 0) colMap.cliente = c;
         if (cl.indexOf('doc') >= 0 && cl.indexOf('id') >= 0 || cl === 'no.' || cl === 'no' || cl === 'número' || cl === 'numero') colMap.docId = c;
         if (cl === 'total' || cl.indexOf('totalamount') >= 0 || cl.indexOf('monto total') >= 0 || cl.indexOf('total amount') >= 0) colMap.total = c;
-        if (cl.indexOf('balance') >= 0 || cl.indexOf('pendiente') >= 0 || cl.indexOf('saldo') >= 0) colMap.balance = c;
+        // Balance en moneda local (columna N de Adm): tiene prioridad sobre balance normal
+        if ((cl.indexOf('balance') >= 0 || cl.indexOf('saldo') >= 0 || cl.indexOf('pendiente') >= 0) && (cl.indexOf('local') >= 0 || cl.indexOf('ml') >= 0 || cl.indexOf('dop') >= 0 || cl.indexOf('moneda local') >= 0)) {
+          colMap.balanceLocal = c;
+        } else if ((cl.indexOf('balance') >= 0 || cl.indexOf('pendiente') >= 0 || cl.indexOf('saldo') >= 0) && !colMap.balance) {
+          colMap.balance = c;
+        }
         if (cl.indexOf('fecha') >= 0 || cl.indexOf('date') >= 0 || cl.indexOf('created') >= 0 || cl.indexOf('emisi') >= 0) { if (!colMap.fecha) colMap.fecha = c; }
         if (cl.indexOf('dias') >= 0 || cl.indexOf('days') >= 0 || cl.indexOf('atraso') >= 0 || cl.indexOf('antig') >= 0) colMap.dias = c;
-        if (cl.indexOf('moneda') >= 0 || cl.indexOf('currency') >= 0 || cl.indexOf('curr') >= 0) colMap.moneda = c;
+        if (cl.indexOf('moneda') >= 0 || cl.indexOf('currency') >= 0 || cl.indexOf('curr') >= 0 || cl === 'mon' || cl === 'mon.') colMap.moneda = c;
         if (cl.indexOf('tipo') >= 0 || cl.indexOf('type') >= 0) colMap.tipo = c;
       });
+
+      // Si hay balance en moneda local, usarlo como balance principal (ya está en DOP)
+      var useLocalBalance = !!colMap.balanceLocal;
 
       // Show preview
       var preview = 'Archivo: ' + file.name + '\n';
@@ -3966,17 +3974,18 @@ async function cobUploadExcel(input) {
       preview += '  Cliente → ' + (colMap.cliente || '⚠ NO ENCONTRADA') + '\n';
       preview += '  Doc ID → ' + (colMap.docId || '(opcional)') + '\n';
       preview += '  Total → ' + (colMap.total || '(opcional)') + '\n';
-      preview += '  Balance/Pendiente → ' + (colMap.balance || '⚠ NO ENCONTRADA') + '\n';
+      preview += '  Balance → ' + (colMap.balance || '(no encontrada)') + '\n';
+      preview += '  Balance moneda local → ' + (colMap.balanceLocal || '(no encontrada)') + (useLocalBalance ? ' ← USANDO ESTA (todo en DOP)' : '') + '\n';
       preview += '  Fecha → ' + (colMap.fecha || '(opcional)') + '\n';
       preview += '  Días atraso → ' + (colMap.dias || '(opcional)') + '\n';
-      preview += '  Moneda → ' + (colMap.moneda || 'default: USD') + '\n';
+      preview += '  Moneda → ' + (colMap.moneda || 'default: DOP') + '\n';
       preview += '  Tipo doc → ' + (colMap.tipo || '(opcional)') + '\n\n';
       preview += 'Primeras 3 filas:\n';
       rows.slice(0, 3).forEach(function(r, i) {
-        preview += '  ' + (i+1) + '. ' + (r[colMap.cliente] || '?') + ' | ' + (r[colMap.balance] || '?') + ' | ' + (r[colMap.moneda] || 'USD') + '\n';
+        preview += '  ' + (i+1) + '. ' + (r[colMap.cliente] || '?') + ' | ' + (r[colMap.balance] || '?') + ' | ' + (r[colMap.moneda] || 'DOP') + '\n';
       });
 
-      if (!colMap.cliente || !colMap.balance) {
+      if (!colMap.cliente || (!colMap.balance && !colMap.balanceLocal)) {
         gerShowToast('No se encontraron las columnas de Cliente y Balance/Saldo. Verifica el archivo.', 'error');
         document.getElementById('cobTemplateTitle').textContent = 'Error en mapeo de columnas';
         document.getElementById('cobTemplateTexto').textContent = preview;
@@ -3992,7 +4001,8 @@ async function cobUploadExcel(input) {
       rows.forEach(function(r) {
         var clienteNombre = String(r[colMap.cliente] || '').trim();
         if (!clienteNombre) return;
-        var bal = parseFloat(r[colMap.balance]) || 0;
+        // Si hay balance en moneda local, usar ese (ya es DOP). Si no, usar balance normal.
+        var bal = useLocalBalance ? (parseFloat(r[colMap.balanceLocal]) || 0) : (parseFloat(r[colMap.balance]) || 0);
         if (bal <= 0.01 && bal >= -0.01) return; // skip zero balance
 
         var fechaVal = null;
@@ -4009,7 +4019,7 @@ async function cobUploadExcel(input) {
           balance: bal,
           fecha_factura: fechaVal,
           dias_atraso: colMap.dias ? (parseInt(r[colMap.dias]) || 0) : 0,
-          moneda: colMap.moneda ? (String(r[colMap.moneda] || 'USD').toUpperCase().trim()) : 'USD',
+          moneda: useLocalBalance ? 'DOP' : (colMap.moneda ? (String(r[colMap.moneda] || 'DOP').toUpperCase().trim()) : 'DOP'),
           tipo_doc: colMap.tipo ? String(r[colMap.tipo] || '') : 'Factura a Crédito',
           synced_at: new Date().toISOString()
         });
