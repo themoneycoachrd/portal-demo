@@ -3571,28 +3571,33 @@ function cobRenderDetalle(el) {
   if (gestionesCliente.length === 0) {
     html += '<p style="color:var(--muted);font-size:0.82rem">No hay gestiones registradas para este cliente.</p>';
   } else {
-    html += '<div class="cob-notas-list">';
+    var tipoBg = { llamada: '#eff6ff', correo: '#ecfdf5', whatsapp: '#f3e8ff', visita: '#fffbeb', nota_interna: '#f3f4f6', tarea: '#fefce8' };
+    var tipoColor = { llamada: 'var(--blue)', correo: 'var(--green)', whatsapp: '#7c3aed', visita: '#b45309', nota_interna: '#6b7280', tarea: '#92400e' };
+    var resBg = { contactado: '#ecfdf5', sin_respuesta: '#fef2f2', buzon: '#fffbeb', promesa_pago: '#eff6ff', pago_parcial: '#ecfdf5', disputado: '#fef2f2', pendiente: '#fefce8' };
+    var resColor = { contactado: 'var(--green)', sin_respuesta: 'var(--red)', buzon: '#b45309', promesa_pago: 'var(--blue)', pago_parcial: 'var(--green)', disputado: 'var(--red)', pendiente: '#92400e' };
+    html += '<table class="cob-table"><thead><tr>';
+    html += '<th>Fecha</th><th>Tipo</th><th>Resultado</th><th>Detalle</th><th style="text-align:center">Estatus</th><th style="text-align:center"></th>';
+    html += '</tr></thead><tbody>';
     gestionesCliente.forEach(function(n) {
-      var tipoBg = { llamada: '#eff6ff', correo: '#ecfdf5', whatsapp: '#f3e8ff', visita: '#fffbeb', nota_interna: '#f3f4f6', tarea: '#fefce8' };
-      var tipoColor = { llamada: 'var(--blue)', correo: 'var(--green)', whatsapp: '#7c3aed', visita: '#b45309', nota_interna: '#6b7280', tarea: '#92400e' };
-      var resBg = { contactado: '#ecfdf5', sin_respuesta: '#fef2f2', buzon: '#fffbeb', promesa_pago: '#eff6ff', pago_parcial: '#ecfdf5', disputado: '#fef2f2', pendiente: '#fefce8' };
-      var resColor = { contactado: 'var(--green)', sin_respuesta: 'var(--red)', buzon: '#b45309', promesa_pago: 'var(--blue)', pago_parcial: 'var(--green)', disputado: 'var(--red)', pendiente: '#92400e' };
-      html += '<div class="cob-nota-item">';
-      html += '<div class="cob-nota-meta">' + new Date(n.created_at).toLocaleDateString('es-DO', { weekday:'short', day:'numeric', month:'short', year:'numeric' });
-      html += '<span class="cob-nota-badge" style="background:' + (tipoBg[n.tipo_contacto] || '#f3f4f6') + ';color:' + (tipoColor[n.tipo_contacto] || '#6b7280') + '">' + (n.tipo_contacto || '').replace(/_/g, ' ') + '</span>';
-      html += '<span class="cob-nota-badge" style="background:' + (resBg[n.resultado] || '#f3f4f6') + ';color:' + (resColor[n.resultado] || '#6b7280') + '">' + (n.resultado || '').replace(/_/g, ' ') + '</span>';
-      html += '</div>';
-      if (n.fecha_promesa) html += '<div style="font-size:0.74rem;color:var(--blue)">Promesa de pago: ' + new Date(n.fecha_promesa).toLocaleDateString('es-DO') + (n.monto_prometido ? ' por ' + cobFormatMoney(n.monto_prometido) : '') + '</div>';
-      if (n.fecha_seguimiento) html += '<div style="font-size:0.74rem;color:var(--amber)">Seguimiento: ' + new Date(n.fecha_seguimiento).toLocaleDateString('es-DO') + '</div>';
-      if (n.nota) html += '<div style="font-size:0.82rem;margin-top:4px">' + n.nota + '</div>';
-      html += '<div style="display:flex;gap:4px;margin-top:6px">';
-      html += '<button class="cob-btn" style="background:#eff6ff;color:var(--blue);font-size:0.65rem;padding:2px 8px" onclick="cobEditarNota(\'' + n.id + '\')" title="Editar">✎ Editar</button>';
-      html += '<button class="cob-btn cob-btn-green" style="font-size:0.65rem;padding:2px 8px" onclick="cobCompletarTarea(\'' + n.id + '\')" title="Marcar completada">✓ Completar</button>';
-      html += '<button class="cob-btn" style="background:#fef2f2;color:var(--red);font-size:0.65rem;padding:2px 8px" onclick="cobBorrarTarea(\'' + n.id + '\')" title="Eliminar">✗ Eliminar</button>';
-      html += '</div>';
-      html += '</div>';
+      var fecha = new Date(n.created_at).toLocaleDateString('es-DO', { day:'numeric', month:'short' });
+      var detalles = [];
+      if (n.fecha_promesa) detalles.push('<span style="color:var(--blue)">Promesa: ' + new Date(n.fecha_promesa).toLocaleDateString('es-DO') + (n.monto_prometido ? ' · ' + cobFormatMoney(n.monto_prometido) : '') + '</span>');
+      if (n.fecha_seguimiento) detalles.push('<span style="color:var(--amber)">Seguimiento: ' + new Date(n.fecha_seguimiento).toLocaleDateString('es-DO') + '</span>');
+      if (n.nota) detalles.push(n.nota);
+      html += '<tr>';
+      html += '<td style="font-size:0.74rem;white-space:nowrap">' + fecha + '</td>';
+      html += '<td><span class="cob-nota-badge" style="background:' + (tipoBg[n.tipo_contacto] || '#f3f4f6') + ';color:' + (tipoColor[n.tipo_contacto] || '#6b7280') + '">' + (n.tipo_contacto || '').replace(/_/g, ' ') + '</span></td>';
+      html += '<td><span class="cob-nota-badge" style="background:' + (resBg[n.resultado] || '#f3f4f6') + ';color:' + (resColor[n.resultado] || '#6b7280') + '">' + (n.resultado || '').replace(/_/g, ' ') + '</span></td>';
+      html += '<td style="font-size:0.78rem">' + (detalles.join('<br>') || '-') + '</td>';
+      html += '<td style="text-align:center"><span class="cob-nota-badge" style="background:#ecfdf5;color:var(--green)">registrada</span></td>';
+      html += '<td style="text-align:center;white-space:nowrap">';
+      html += '<button class="cob-btn" style="background:#eff6ff;color:var(--blue);font-size:0.68rem;padding:3px 8px" onclick="cobEditarNota(\'' + n.id + '\')" title="Editar">✎</button>';
+      html += '<button class="cob-btn cob-btn-green" style="font-size:0.68rem;padding:3px 8px" onclick="cobCompletarTarea(\'' + n.id + '\')" title="Marcar completada">✓</button>';
+      html += '<button class="cob-btn" style="background:#fef2f2;color:var(--red);font-size:0.68rem;padding:3px 8px" onclick="cobBorrarTarea(\'' + n.id + '\')" title="Eliminar">✗</button>';
+      html += '</td>';
+      html += '</tr>';
     });
-    html += '</div>';
+    html += '</tbody></table>';
   }
   html += '</div>';
 
