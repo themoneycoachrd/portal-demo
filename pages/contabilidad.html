@@ -2275,9 +2275,23 @@ function renderKpiNav() {
   // Sub-tabs (solo admin/gerencia ve selector y trimestral)
   if (isKpiAdmin()) {
     html += '<div class="sub-tabs">';
+    html += '<button class="sub-tab ' + (kpiSubTab === 'mensual' ? 'active' : '') + '" onclick="kpiSwitchSubTab(\'mensual\')">Resumen del Mes</button>';
     html += '<button class="sub-tab ' + (kpiSubTab === 'detalle' ? 'active' : '') + '" onclick="kpiSwitchSubTab(\'detalle\')">Detalle por Contadora</button>';
     html += '<button class="sub-tab ' + (kpiSubTab === 'trimestral' ? 'active' : '') + '" onclick="kpiSwitchSubTab(\'trimestral\')">Resumen Trimestral</button>';
     html += '</div>';
+  }
+
+  if (kpiSubTab === 'mensual' && isKpiAdmin()) {
+    var q = QUARTERS[kpiQuarter - 1];
+    html += '<div class="quarter-bar">' + QUARTERS.map(qq =>
+      '<button class="q-btn ' + (kpiQuarter === qq.id ? 'active' : '') + '" onclick="kpiSwitchQuarter(' + qq.id + ')"><div class="q-label">' + qq.label + '</div><div class="q-months">' + qq.meses.map(m => MESES_LABEL[MESES.indexOf(m)]).join(' · ') + '</div></button>'
+    ).join('') + '</div>';
+    html += '<div style="padding:10px 24px;background:var(--bg);border-bottom:1px solid var(--border)"><div class="month-tabs">' + q.meses.map(function(m) {
+      var idx = MESES.indexOf(m);
+      return '<button class="month-tab ' + (kpiMes === m ? 'active' : '') + '" onclick="kpiMes=\'' + m + '\';renderAll()">' + MESES_FULL[idx] + '</button>';
+    }).join('') + '</div></div>';
+    el.innerHTML = html;
+    return;
   }
 
   if (kpiSubTab === 'trimestral' && isKpiAdmin()) {
@@ -2311,6 +2325,7 @@ function renderKpiNav() {
 
 function renderKpiContent() {
   const el = document.getElementById('content');
+  if (kpiSubTab === 'mensual' && isKpiAdmin()) return renderKpiResumenMes(el);
   if (kpiSubTab === 'trimestral' && isKpiAdmin()) return renderTrimestral(el);
   if (!kpiContadora && isKpiAdmin()) return renderKpiSelector(el);
   if (!kpiContadora) { el.innerHTML = '<div class="empty">Cargando...</div>'; return; }
@@ -2626,6 +2641,134 @@ function renderKPIDetail(el) {
   }
 
   el.innerHTML = html;
+}
+
+// ==================== RESUMEN DEL MES (KPI admin only) ====================
+
+function renderKpiResumenMes(el) {
+  var mes = kpiMes || getCurrentMonth();
+  var mesIdx = MESES.indexOf(mes);
+  var contadoras = getVisibleContadoras();
+  var vidTipo = getVideoTipo(mes);
+  var vidLabel = vidTipo === 'Reunion' ? 'Reunión' : 'Correo cierre';
+
+  var rows = contadoras.map(function(cfg) {
+    var c = cfg.nombre;
+    var clients = getClients(c, mes);
+    if (clients.length === 0) return null;
+    var s = calcScoresForContadora(c, mes);
+    var total = calcTotal(s.digScore, s.resScore, s.vidScore);
+    var penalties = calcPenalties(c, mes);
+    var nivel = total >= 90 ? 'Excelente' : total >= 80 ? 'Bueno' : total >= 70 ? 'Aceptable' : 'Sin bono';
+    var nivelCss = total >= 90 ? '#10b981' : total >= 80 ? '#4361ee' : total >= 70 ? '#f59e0b' : '#ef4444';
+    var nivelBg = total >= 90 ? '#ecfdf5' : total >= 80 ? '#eef2ff' : total >= 70 ? '#fffbeb' : '#fef2f2';
+    var bonoPct = total >= 90 ? 100 : total >= 80 ? 75 : total >= 70 ? 50 : 0;
+    var bonoBase = getBonoBase(c);
+    var bonoMonto = Math.round(bonoBase * bonoPct / 100);
+    return { nombre: c, tier: cfg.tier, color: cfg.color, clients: clients.length, s: s, total: total, nivel: nivel, nivelCss: nivelCss, nivelBg: nivelBg, bonoPct: bonoPct, bonoMonto: bonoMonto, penalties: penalties };
+  }).filter(function(r) { return r !== null; });
+
+  rows.sort(function(a, b) { return b.total - a.total; });
+
+  var avgTotal = rows.length > 0 ? Math.round(rows.reduce(function(s, r) { return s + r.total; }, 0) / rows.length) : 0;
+
+  var h = '<div style="padding:24px;max-width:900px;margin:0 auto">';
+
+  // Header
+  h += '<div style="text-align:center;margin-bottom:24px">';
+  h += '<h2 style="margin:0;color:var(--navy)">KPI Contabilidad — ' + MESES_FULL[mesIdx] + ' 2026</h2>';
+  h += '<p style="color:var(--muted);font-size:0.85rem;margin-top:4px">Resumen de desempeño del equipo</p>';
+  h += '</div>';
+
+  // Promedio del equipo
+  var avgColor = avgTotal >= 90 ? '#10b981' : avgTotal >= 80 ? '#4361ee' : avgTotal >= 70 ? '#f59e0b' : '#ef4444';
+  h += '<div style="display:flex;justify-content:center;margin-bottom:20px">';
+  h += '<div style="background:white;border:2px solid ' + avgColor + ';border-radius:12px;padding:16px 32px;text-align:center">';
+  h += '<div style="font-size:0.7rem;text-transform:uppercase;letter-spacing:0.5px;color:var(--muted);font-weight:600">Promedio equipo</div>';
+  h += '<div style="font-size:2rem;font-weight:800;color:' + avgColor + '">' + avgTotal + '</div>';
+  h += '</div></div>';
+
+  // Tabla principal
+  h += '<div style="background:white;border-radius:12px;border:1px solid var(--border);overflow:hidden">';
+  h += '<table style="width:100%;border-collapse:collapse;font-size:0.85rem">';
+  h += '<thead><tr style="background:#f8fafc">';
+  h += '<th style="text-align:left;padding:12px 16px;font-size:0.68rem;text-transform:uppercase;letter-spacing:0.3px;color:var(--muted);font-weight:700">Contadora</th>';
+  h += '<th style="text-align:center;padding:12px 8px;font-size:0.68rem;text-transform:uppercase;letter-spacing:0.3px;color:var(--muted);font-weight:700">Clientes</th>';
+  h += '<th style="text-align:center;padding:12px 8px;font-size:0.68rem;text-transform:uppercase;letter-spacing:0.3px;color:var(--muted);font-weight:700">Digitación<br><span style="font-weight:400;font-size:0.6rem">(50 pts)</span></th>';
+  h += '<th style="text-align:center;padding:12px 8px;font-size:0.68rem;text-transform:uppercase;letter-spacing:0.3px;color:var(--muted);font-weight:700">Llenado Portal<br><span style="font-weight:400;font-size:0.6rem">(30 pts)</span></th>';
+  h += '<th style="text-align:center;padding:12px 8px;font-size:0.68rem;text-transform:uppercase;letter-spacing:0.3px;color:var(--muted);font-weight:700">' + vidLabel + '<br><span style="font-weight:400;font-size:0.6rem">(20 pts)</span></th>';
+  h += '<th style="text-align:center;padding:12px 8px;font-size:0.68rem;text-transform:uppercase;letter-spacing:0.3px;color:var(--muted);font-weight:700">Total</th>';
+  h += '<th style="text-align:center;padding:12px 8px;font-size:0.68rem;text-transform:uppercase;letter-spacing:0.3px;color:var(--muted);font-weight:700">Nivel</th>';
+  h += '<th style="text-align:right;padding:12px 16px;font-size:0.68rem;text-transform:uppercase;letter-spacing:0.3px;color:var(--muted);font-weight:700">Bono</th>';
+  h += '</tr></thead><tbody>';
+
+  rows.forEach(function(r) {
+    var digPts = Math.round(r.s.digScore * 5);
+    var resPts = Math.round(r.s.resScore * 3);
+    var vidPts = Math.round(r.s.vidScore * 2);
+
+    h += '<tr style="border-bottom:1px solid #f1f5f9">';
+    h += '<td style="padding:14px 16px;font-weight:700"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:' + r.color + ';margin-right:8px"></span>' + r.nombre + '<div style="font-size:0.7rem;color:var(--muted);font-weight:400;margin-top:2px">' + r.tier + '</div></td>';
+    h += '<td style="text-align:center;color:var(--muted)">' + r.clients + '</td>';
+
+    // Digitación
+    h += '<td style="text-align:center"><div style="font-weight:700;font-size:1rem">' + digPts + '</div>';
+    h += '<div style="font-size:0.68rem;color:var(--muted)">' + r.s.digActual + '/' + r.s.admTotal + ' tx</div></td>';
+
+    // Llenado Portal
+    h += '<td style="text-align:center"><div style="font-weight:700;font-size:1rem">' + resPts + '</div>';
+    h += '<div style="font-size:0.68rem;color:var(--muted)">' + r.s.resDone + '/' + r.s.resTotal + ' clientes</div></td>';
+
+    // Video/Correo
+    h += '<td style="text-align:center"><div style="font-weight:700;font-size:1rem">' + vidPts + '</div>';
+    h += '<div style="font-size:0.68rem;color:var(--muted)">' + r.s.vidDone + '/' + r.s.vidTotal + ' clientes</div></td>';
+
+    // Total
+    h += '<td style="text-align:center"><div style="font-size:1.3rem;font-weight:800;color:' + r.nivelCss + '">' + r.total + '</div></td>';
+
+    // Nivel
+    h += '<td style="text-align:center"><span style="display:inline-block;padding:4px 12px;border-radius:20px;font-size:0.72rem;font-weight:700;background:' + r.nivelBg + ';color:' + r.nivelCss + '">' + r.nivel + '</span></td>';
+
+    // Bono
+    h += '<td style="text-align:right;padding:14px 16px">';
+    if (r.bonoPct > 0) {
+      h += '<div style="font-weight:700;color:var(--green)">RD$' + r.bonoMonto.toLocaleString() + '</div>';
+      h += '<div style="font-size:0.68rem;color:var(--muted)">' + r.bonoPct + '% del base</div>';
+    } else {
+      h += '<div style="font-weight:600;color:var(--red)">Sin bono</div>';
+    }
+    h += '</td>';
+    h += '</tr>';
+  });
+
+  h += '</tbody></table></div>';
+
+  // Deducciones pendientes
+  var allPenalties = [];
+  rows.forEach(function(r) {
+    r.penalties.forEach(function(p) {
+      allPenalties.push({ contadora: r.nombre, pts: p.pts, area: p.area, detail: p.detail, color: p.color });
+    });
+  });
+
+  if (allPenalties.length > 0) {
+    h += '<div style="margin-top:16px;background:white;border-radius:12px;border:1px solid var(--border);padding:16px 20px">';
+    h += '<h3 style="margin:0 0 10px;font-size:0.88rem;color:var(--navy)">Pendientes que restan puntos (' + allPenalties.length + ')</h3>';
+    h += '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:6px">';
+    allPenalties.sort(function(a, b) { return b.pts - a.pts; });
+    allPenalties.slice(0, 12).forEach(function(p) {
+      h += '<div style="display:flex;align-items:center;gap:8px;padding:6px 10px;background:#fafbfc;border-radius:6px;font-size:0.75rem">';
+      h += '<span style="font-weight:700;color:' + p.color + ';min-width:30px">-' + p.pts + '</span>';
+      h += '<span style="color:var(--muted)">' + p.contadora + '</span>';
+      h += '<span style="color:var(--navy)">' + p.area + ': ' + p.detail + '</span>';
+      h += '</div>';
+    });
+    if (allPenalties.length > 12) h += '<div style="font-size:0.72rem;color:var(--muted);padding:4px 10px">...y ' + (allPenalties.length - 12) + ' más</div>';
+    h += '</div></div>';
+  }
+
+  h += '</div>';
+  el.innerHTML = h;
 }
 
 // ==================== TRIMESTRAL VIEW (KPI admin only) ====================
