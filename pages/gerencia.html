@@ -3585,6 +3585,11 @@ function cobRenderDetalle(el) {
       if (n.fecha_promesa) html += '<div style="font-size:0.74rem;color:var(--blue)">Promesa de pago: ' + new Date(n.fecha_promesa).toLocaleDateString('es-DO') + (n.monto_prometido ? ' por ' + cobFormatMoney(n.monto_prometido) : '') + '</div>';
       if (n.fecha_seguimiento) html += '<div style="font-size:0.74rem;color:var(--amber)">Seguimiento: ' + new Date(n.fecha_seguimiento).toLocaleDateString('es-DO') + '</div>';
       if (n.nota) html += '<div style="font-size:0.82rem;margin-top:4px">' + n.nota + '</div>';
+      html += '<div style="display:flex;gap:4px;margin-top:6px">';
+      html += '<button class="cob-btn" style="background:#eff6ff;color:var(--blue);font-size:0.65rem;padding:2px 8px" onclick="cobEditarNota(\'' + n.id + '\')" title="Editar">✎ Editar</button>';
+      html += '<button class="cob-btn cob-btn-green" style="font-size:0.65rem;padding:2px 8px" onclick="cobCompletarTarea(\'' + n.id + '\')" title="Marcar completada">✓ Completar</button>';
+      html += '<button class="cob-btn" style="background:#fef2f2;color:var(--red);font-size:0.65rem;padding:2px 8px" onclick="cobBorrarTarea(\'' + n.id + '\')" title="Eliminar">✗ Eliminar</button>';
+      html += '</div>';
       html += '</div>';
     });
     html += '</div>';
@@ -3822,6 +3827,24 @@ function cobEditarTarea(id) {
   document.getElementById('cobTareaFecha').value = tarea.fecha_promesa || '';
   document.getElementById('cobNotaSeguimiento').value = tarea.fecha_seguimiento || '';
   document.getElementById('cobNotaTexto').value = parsed.desc || '';
+  document.getElementById('cobNotaOverlay').classList.add('open');
+}
+function cobEditarNota(id) {
+  var nota = cobNotas.find(function(n) { return n.id === id; });
+  if (!nota) return;
+  document.getElementById('cobNotaCliente').value = nota.cliente_nombre;
+  document.getElementById('cobNotaMode').value = 'nota';
+  document.getElementById('cobNotaEditId').value = id;
+  document.getElementById('cobNotaModalTitle').textContent = 'Editar gestión de cobro';
+  document.getElementById('cobNotaFields').style.display = '';
+  document.getElementById('cobTareaFields').style.display = 'none';
+  document.getElementById('cobNotaTextoLabel').textContent = 'Nota';
+  document.getElementById('cobNotaTipo').value = nota.tipo_contacto || 'llamada';
+  document.getElementById('cobNotaResultado').value = nota.resultado || 'contactado';
+  document.getElementById('cobNotaFechaPromesa').value = nota.fecha_promesa || '';
+  document.getElementById('cobNotaMonto').value = nota.monto_prometido || '';
+  document.getElementById('cobNotaSeguimiento').value = nota.fecha_seguimiento || '';
+  document.getElementById('cobNotaTexto').value = nota.nota || '';
   document.getElementById('cobNotaOverlay').classList.add('open');
 }
 function cobOpenTarea(nombre) {
