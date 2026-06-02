@@ -1142,7 +1142,7 @@ function getEjecucionCount(nombre) {
 
 /* ── Calendario de entregas ── */
 var calActiveView = 'resumen';
-var calActiveMes = new Date().getMonth();
+var calActiveMes = new Date().getDate() <= 20 ? Math.max(new Date().getMonth() - 1, 0) : new Date().getMonth();
 var calActivePerspective = 'cliente';
 var calActiveFilter = 'todos';
 
@@ -1327,7 +1327,9 @@ function renderCalGrid() {
   h += '</div>';
 
   h += '<div class="cal-grid-wrap">';
-  h += '<div class="cal-grid-header"><span class="cal-grid-title">Calendario — ' + MESES_FULL_CAL[mesIdx] + ' 2026</span>';
+  var mesPresentacion = (mesIdx + 1) % 12;
+  var anioPres = mesIdx === 11 ? 2027 : 2026;
+  h += '<div class="cal-grid-header"><span class="cal-grid-title">Presentación fiscal de ' + MESES_FULL_CAL[mesIdx] + ' — se presenta en ' + MESES_FULL_CAL[mesPresentacion] + ' ' + anioPres + '</span>';
   h += '<span class="cal-grid-range">' + startDate.getDate() + ' ' + MESES_ABR[startDate.getMonth()] + ' – ' + endDate.getDate() + ' ' + MESES_ABR[endDate.getMonth()] + '</span></div>';
 
   var dows = ['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'];
