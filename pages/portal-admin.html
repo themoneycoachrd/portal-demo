@@ -1610,6 +1610,7 @@ function renderAdminIndex() {
     h += '<div class="summary-stat"><div class="summary-stat-label">Ejecución del mes</div><div class="summary-stat-value" style="color:var(--amber)">' + conEjMes + '</div></div>';
     h += '<div class="summary-stat"><div class="summary-stat-label">Config impuestos</div><div class="summary-stat-value" style="color:var(--blue)">' + conConfig + '</div></div>';
     h += '<div class="summary-stat"><div class="summary-stat-label">Declaraciones 6/6</div><div class="summary-stat-value" style="color:var(--green)">' + declCompletas + '</div></div>';
+    h += '<div class="summary-stat" style="cursor:pointer;border-color:var(--blue);border-style:dashed" onclick="window.open(\'portal-clientes.html?demo=1\',\'_blank\')"><div class="summary-stat-label" style="color:var(--blue)">Cliente Demo</div><div class="summary-stat-value" style="font-size:1.1rem;color:var(--blue)">Ver →</div></div>';
     h += '</div>';
 
     h += '<div class="view-toggle-row"><div class="view-toggle">';
@@ -1707,6 +1708,7 @@ function renderAdminIndex() {
     h += '<div class="summary-stat"><div class="summary-stat-label">En progreso</div><div class="summary-stat-value" style="color:var(--amber)">' + enProgreso + '</div></div>';
     h += '<div class="summary-stat"><div class="summary-stat-label">Sin iniciar</div><div class="summary-stat-value" style="color:var(--muted)">' + sinIniciar + '</div></div>';
     h += '<div class="summary-stat"><div class="summary-stat-label">Avance promedio</div><div class="summary-stat-value" style="color:' + progressColor(avgPct) + '">' + avgPct + '%</div></div>';
+    h += '<div class="summary-stat" style="cursor:pointer;border-color:var(--blue);border-style:dashed" onclick="window.open(\'portal-clientes.html?demo=1\',\'_blank\')"><div class="summary-stat-label" style="color:var(--blue)">Cliente Demo</div><div class="summary-stat-value" style="font-size:1.1rem;color:var(--blue)">Ver →</div></div>';
     h += '</div>';
 
     h += '<div class="view-toggle-row"><div class="view-toggle">';
