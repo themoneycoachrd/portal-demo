@@ -462,6 +462,7 @@ var currentView = 'main'; // 'main' or 'detail'
 var impViewMode = 'table'; // 'table' or 'cards'
 var mainTab = 'resumen'; // 'resumen', 'checklist' or 'kpi'
 var resAnalista = 'Todas'; // pill filter for resumen
+var resTipoFilterImp = null; // filtro por tipo de impuesto en resumen
 
 // Data
 var asignacionesRaw = []; // all raw assignment rows
@@ -1618,7 +1619,13 @@ function renderResNav() {
 
 function resSwitchAnalista(name) {
   resAnalista = name;
+  resTipoFilterImp = null;
   renderResNav();
+  renderResContent();
+}
+
+function impToggleTipoFilter(tipo) {
+  resTipoFilterImp = resTipoFilterImp === tipo ? null : tipo;
   renderResContent();
 }
 
@@ -1671,35 +1678,66 @@ function renderResContent() {
   // ── Charts ──
   var todosItems = urgentes.concat(vencidos).concat(proximos);
   if (todosItems.length > 0) {
+    var IMP_CHART_COLORS = { 'TSS': '#4361ee', 'IR-3': '#8b5cf6', 'IR-17': '#d97706', 'Anticipo': '#db2777', 'ITBIS': '#059669' };
+    var impMap = {};
+    todosItems.forEach(function(p) { impMap[p.impuesto] = (impMap[p.impuesto] || 0) + 1; });
+    var impLabels = Object.keys(impMap).sort(function(a, b) { return impMap[b] - impMap[a]; });
+    var impMax = impLabels.length > 0 ? impMap[impLabels[0]] : 1;
+
     h += '<div class="res-charts">';
-    h += '<div class="res-chart-card"><h4>Por tipo de impuesto</h4><div style="position:relative;height:180px"><canvas id="impResChartImpuesto"></canvas></div></div>';
+    h += '<div class="res-chart-card"><h4>Por tipo de impuesto</h4>';
+    if (resTipoFilterImp) {
+      h += '<div style="margin-bottom:8px"><span style="display:inline-flex;align-items:center;gap:6px;background:#eef2ff;color:var(--blue);font-size:0.72rem;font-weight:600;padding:4px 10px;border-radius:12px;cursor:pointer" onclick="impToggleTipoFilter(null)">Filtrando: ' + resTipoFilterImp + ' <span style="font-size:0.85rem">&times;</span></span></div>';
+    }
+    impLabels.forEach(function(lbl) {
+      var cnt = impMap[lbl];
+      var pct = Math.round(cnt / impMax * 100);
+      var col = IMP_CHART_COLORS[lbl] || '#888';
+      var isActive = resTipoFilterImp === lbl;
+      var opacity = resTipoFilterImp && !isActive ? '0.35' : '1';
+      h += '<div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;cursor:pointer;opacity:' + opacity + '" onclick="impToggleTipoFilter(\'' + escJs(lbl) + '\')">';
+      h += '<span style="min-width:70px;font-size:0.78rem;font-weight:600;color:' + (isActive ? col : 'var(--text)') + '">' + lbl + '</span>';
+      h += '<div style="flex:1;height:16px;background:#f0f2f5;border-radius:4px;overflow:hidden"><div style="height:100%;width:' + pct + '%;background:' + col + ';border-radius:4px;transition:width 0.3s"></div></div>';
+      h += '<span style="min-width:24px;text-align:right;font-size:0.78rem;font-weight:700;color:' + col + '">' + cnt + '</span>';
+      h += '</div>';
+    });
+    h += '</div>';
     h += '<div class="res-chart-card"><h4>Por cliente</h4><div style="position:relative;height:180px"><canvas id="impResChartCliente"></canvas></div></div>';
     h += '</div>';
   }
 
+  // Aplicar filtro de tipo de impuesto
+  var fUrgentes = resTipoFilterImp ? urgentes.filter(function(p) { return p.impuesto === resTipoFilterImp; }) : urgentes;
+  var fVencidos = resTipoFilterImp ? vencidos.filter(function(p) { return p.impuesto === resTipoFilterImp; }) : vencidos;
+  var fProximos = resTipoFilterImp ? proximos.filter(function(p) { return p.impuesto === resTipoFilterImp; }) : proximos;
+
   // ── Urgente section ──
-  if (urgentes.length > 0) {
-    h += impResRenderSection('Urgente', urgentes, 'urgent', '#ef4444', isAdmin);
+  if (fUrgentes.length > 0) {
+    h += impResRenderSection('Urgente', fUrgentes, 'urgent', '#ef4444', isAdmin);
   }
 
   // ── Vencido section ──
-  if (vencidos.length > 0) {
-    h += impResRenderSection('Por vencer', vencidos, 'warn', '#f59e0b', isAdmin);
+  if (fVencidos.length > 0) {
+    h += impResRenderSection('Por vencer', fVencidos, 'warn', '#f59e0b', isAdmin);
   }
 
   // ── Próximo section ──
-  if (proximos.length > 0) {
-    h += impResRenderSection('Proximo a vencer', proximos, 'soon', '#4361ee', isAdmin);
+  if (fProximos.length > 0) {
+    h += impResRenderSection('Proximo a vencer', fProximos, 'soon', '#4361ee', isAdmin);
   }
 
   // ── Al dia ──
-  if (urgentes.length === 0 && vencidos.length === 0 && proximos.length === 0) {
-    h += '<div class="res-section"><div class="res-ok">Al dia — todas las declaraciones fiscales estan completadas</div></div>';
+  if (fUrgentes.length === 0 && fVencidos.length === 0 && fProximos.length === 0) {
+    if (resTipoFilterImp) {
+      h += '<div class="res-section"><div class="res-ok">No hay pendientes de ' + resTipoFilterImp + '</div></div>';
+    } else {
+      h += '<div class="res-section"><div class="res-ok">Al dia — todas las declaraciones fiscales estan completadas</div></div>';
+    }
   }
 
   el.innerHTML = h;
 
-  // Charts after DOM
+  // Client chart after DOM
   if (todosItems.length > 0) {
     impResRenderCharts(todosItems);
   }
@@ -1761,32 +1799,8 @@ function impResRenderSection(titulo, items, colorClass, iconColor, isAdmin) {
 
 function impResRenderCharts(todos) {
   if (typeof Chart === 'undefined') return;
-  var CHART_COLORS = { 'TSS': '#4361ee', 'IR-3': '#8b5cf6', 'IR-17': '#d97706', 'Anticipo': '#db2777', 'ITBIS': '#059669' };
 
-  // Chart 1: by impuesto
-  var impMap = {};
-  todos.forEach(function(p) { impMap[p.impuesto] = (impMap[p.impuesto] || 0) + 1; });
-  var impLabels = Object.keys(impMap).sort(function(a, b) { return impMap[b] - impMap[a]; });
-  var impData = impLabels.map(function(l) { return impMap[l]; });
-  var impColors = impLabels.map(function(l) { return CHART_COLORS[l] || '#888'; });
-
-  var c1 = document.getElementById('impResChartImpuesto');
-  if (c1) {
-    new Chart(c1, {
-      type: 'bar',
-      data: { labels: impLabels, datasets: [{ data: impData, backgroundColor: impColors, borderRadius: 4, barThickness: 16 }] },
-      options: {
-        indexAxis: 'y', responsive: true, maintainAspectRatio: false,
-        plugins: { legend: { display: false } },
-        scales: {
-          x: { grid: { display: false }, ticks: { font: { size: 10 }, stepSize: 1 } },
-          y: { grid: { display: false }, ticks: { font: { size: 11 } } }
-        }
-      }
-    });
-  }
-
-  // Chart 2: by client (top 8)
+  // Chart: by client (top 8) — impuesto chart is now HTML bars
   var cliMap = {};
   todos.forEach(function(p) { cliMap[p.cliente] = (cliMap[p.cliente] || 0) + 1; });
   var cliSorted = Object.keys(cliMap).sort(function(a, b) { return cliMap[b] - cliMap[a]; }).slice(0, 8);
