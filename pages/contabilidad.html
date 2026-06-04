@@ -687,7 +687,7 @@ const EXCLUIDAS = ['Milka', 'Yolenny'];
 const ITEM_GROUPS = [
   { label: 'Nomina → TSS — Presentacion dia 3', from: 0, to: 4 },
   { label: 'IR-3 — Presentacion dia 10', from: 5, to: 5 },
-  { label: 'Proveedores informales — Presentacion dia 10', from: 6, to: 11 },
+  { label: 'IR-17 — Presentacion dia 10', from: 6, to: 11 },
   { label: 'Anticipo — Presentacion dia 15', from: 12, to: 12 },
   { label: 'ITBIS — Presentacion dia 20', from: 13, to: 17 },
   { label: 'Presentacion mensual', from: 18, to: 22 }
@@ -705,12 +705,12 @@ const ITEMS = [
   { id:'autorizacion_ir3',        n:6,  label:'Subir autorizacion de pago de IR-3',          tipoCss:'tipo-ir3',      impuesto:'IR-3',          dia:10, mesRel:1 },
 
   // ── Proveedores informales (deadline dia 10, firma dia 5) ──
-  { id:'solicitar_proveedores',   n:7,  label:'Solicitar Proveedores Informales',           tipoCss:'tipo-ir17',     impuesto:'Proveedores',   dia:10, mesRel:1 },
-  { id:'recepcion_proveedores',   n:8,  label:'Recepcion de Proveedores Informales',        tipoCss:'tipo-ir17',     impuesto:'Proveedores',   dia:10, mesRel:1 },
-  { id:'registrar_proveedores',   n:9,  label:'Registrar gastos de Proveedores Informales', tipoCss:'tipo-ir17',     impuesto:'Proveedores',   dia:10, mesRel:1 },
-  { id:'borrador_ir17',           n:10, label:'Realizar Borrador de IR-17',                 tipoCss:'tipo-ir17',     impuesto:'Proveedores',   dia:10, mesRel:1 },
-  { id:'enviar_ir17',             n:11, label:'Enviar borrador de IR-17 al cliente',        tipoCss:'tipo-ir17',     impuesto:'Proveedores',   dia:10, mesRel:1 },
-  { id:'notificacion_ir17',       n:12, label:'Subir autorizacion de pago de IR-17',         tipoCss:'tipo-ir17',     impuesto:'Proveedores',   dia:10, mesRel:1 },
+  { id:'solicitar_proveedores',   n:7,  label:'Solicitar Proveedores Informales',           tipoCss:'tipo-ir17',     impuesto:'IR-17',   dia:10, mesRel:1 },
+  { id:'recepcion_proveedores',   n:8,  label:'Recepcion de Proveedores Informales',        tipoCss:'tipo-ir17',     impuesto:'IR-17',   dia:10, mesRel:1 },
+  { id:'registrar_proveedores',   n:9,  label:'Registrar gastos de Proveedores Informales', tipoCss:'tipo-ir17',     impuesto:'IR-17',   dia:10, mesRel:1 },
+  { id:'borrador_ir17',           n:10, label:'Realizar Borrador de IR-17',                 tipoCss:'tipo-ir17',     impuesto:'IR-17',   dia:10, mesRel:1 },
+  { id:'enviar_ir17',             n:11, label:'Enviar borrador de IR-17 al cliente',        tipoCss:'tipo-ir17',     impuesto:'IR-17',   dia:10, mesRel:1 },
+  { id:'notificacion_ir17',       n:12, label:'Subir autorizacion de pago de IR-17',         tipoCss:'tipo-ir17',     impuesto:'IR-17',   dia:10, mesRel:1 },
 
   // ── Anticipo (deadline dia 15, firma dia 10) ──
   { id:'autorizacion_anticipo',   n:13, label:'Subir autorizacion de pago de Anticipo',      tipoCss:'tipo-anticipo', impuesto:'Anticipo',      dia:15, mesRel:1 },
@@ -950,7 +950,8 @@ let mainTab = 'resumen';
 
 // Resumen state
 let resContadora = 'Todas';
-let resTipoFilter = null; // null = sin filtro, 'TSS' | 'IR-3' | 'Proveedores' | 'ITBIS' | 'Anticipo'
+let resTipoFilter = null; // null = sin filtro, 'TSS' | 'IR-3' | 'IR-17' | 'ITBIS' | 'Anticipo'
+let resUrgFilter = null; // null = sin filtro, 'urgente' | 'vencido' | 'proximo'
 let NOTAS_CONTADORA = [];
 let currentUserId = null;
 
@@ -1728,6 +1729,11 @@ function resToggleTipoFilter(tipo) {
   renderResContent();
 }
 
+function resToggleUrgFilter(level) {
+  resUrgFilter = resUrgFilter === level ? null : level;
+  renderResContent();
+}
+
 function renderResContent() {
   const el = document.getElementById('content');
   const isAdmin = isResAdmin();
@@ -1748,11 +1754,11 @@ function renderResContent() {
   }
   html += '</div>';
 
-  // ── Urgency cards ──
+  // ── Urgency cards (clickeables como filtro) ──
   html += '<div class="res-urgency">';
-  html += '<div class="res-urg-card res-urg-urgent"><p class="urg-label">Urgente</p><p class="urg-num">' + urgentes.length + '</p><p class="urg-sub">a 2 dias o pasado limite</p></div>';
-  html += '<div class="res-urg-card res-urg-warn"><p class="urg-label">Vencido</p><p class="urg-num">' + vencidos.length + '</p><p class="urg-sub">a 5 dias del limite</p></div>';
-  html += '<div class="res-urg-card res-urg-soon"><p class="urg-label">Proximo a vencer</p><p class="urg-num">' + proximos.length + '</p><p class="urg-sub">cerca de fecha AO</p></div>';
+  html += '<div class="res-urg-card res-urg-urgent" style="cursor:pointer;opacity:' + (resUrgFilter && resUrgFilter !== 'urgente' ? '0.4' : '1') + ';' + (resUrgFilter === 'urgente' ? 'box-shadow:0 0 0 2px #ef4444' : '') + '" onclick="resToggleUrgFilter(\'urgente\')"><p class="urg-label">Urgente</p><p class="urg-num">' + urgentes.length + '</p><p class="urg-sub">a 2 dias o pasado limite</p></div>';
+  html += '<div class="res-urg-card res-urg-warn" style="cursor:pointer;opacity:' + (resUrgFilter && resUrgFilter !== 'vencido' ? '0.4' : '1') + ';' + (resUrgFilter === 'vencido' ? 'box-shadow:0 0 0 2px #f59e0b' : '') + '" onclick="resToggleUrgFilter(\'vencido\')"><p class="urg-label">Vencido</p><p class="urg-num">' + vencidos.length + '</p><p class="urg-sub">a 5 dias del limite</p></div>';
+  html += '<div class="res-urg-card res-urg-soon" style="cursor:pointer;opacity:' + (resUrgFilter && resUrgFilter !== 'proximo' ? '0.4' : '1') + ';' + (resUrgFilter === 'proximo' ? 'box-shadow:0 0 0 2px #4361ee' : '') + '" onclick="resToggleUrgFilter(\'proximo\')"><p class="urg-label">Proximo a vencer</p><p class="urg-num">' + proximos.length + '</p><p class="urg-sub">cerca de fecha AO</p></div>';
   html += '</div>';
 
   // ── Insights rápidos (solo admins) ──
@@ -1776,7 +1782,7 @@ function renderResContent() {
   // ── Charts (solo si hay items) ──
   var todosPreFilter = urgentes.concat(vencidos).concat(proximos);
   if (todosPreFilter.length > 0) {
-    var CHART_COLORS = { 'TSS':'#4361ee', 'IR-3':'#8b5cf6', 'Proveedores':'#d97706', 'ITBIS':'#059669', 'Anticipo':'#db2777' };
+    var CHART_COLORS = { 'TSS':'#4361ee', 'IR-3':'#8b5cf6', 'IR-17':'#d97706', 'ITBIS':'#059669', 'Anticipo':'#db2777' };
     var impMap = {};
     todosPreFilter.forEach(function(p) { impMap[p.impuesto] = (impMap[p.impuesto] || 0) + 1; });
     var impLabels = Object.keys(impMap).sort(function(a, b) { return impMap[b] - impMap[a]; });
@@ -1794,7 +1800,7 @@ function renderResContent() {
       var isActive = resTipoFilter === lbl;
       var opacity = resTipoFilter && !isActive ? '0.35' : '1';
       html += '<div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;cursor:pointer;opacity:' + opacity + '" onclick="resToggleTipoFilter(\'' + esc(lbl) + '\')">';
-      html += '<span style="min-width:70px;font-size:0.78rem;font-weight:600;color:' + (isActive ? col : 'var(--text)') + '">' + lbl + '</span>';
+      html += '<span style="display:inline-block;width:80px;font-size:0.78rem;font-weight:600;color:' + (isActive ? col : 'var(--text)') + '">' + lbl + '</span>';
       html += '<div style="flex:1;height:16px;background:#f0f2f5;border-radius:4px;overflow:hidden"><div style="height:100%;width:' + pct + '%;background:' + col + ';border-radius:4px;transition:width 0.3s"></div></div>';
       html += '<span style="min-width:24px;text-align:right;font-size:0.78rem;font-weight:700;color:' + col + '">' + cnt + '</span>';
       html += '</div>';
@@ -1804,30 +1810,35 @@ function renderResContent() {
     html += '</div>';
   }
 
-  // Aplicar filtro de tipo de impuesto si está activo
+  // Aplicar filtros (tipo de impuesto + urgencia)
   var fUrgentes = resTipoFilter ? urgentes.filter(function(p) { return p.impuesto === resTipoFilter; }) : urgentes;
   var fVencidos = resTipoFilter ? vencidos.filter(function(p) { return p.impuesto === resTipoFilter; }) : vencidos;
   var fProximos = resTipoFilter ? proximos.filter(function(p) { return p.impuesto === resTipoFilter; }) : proximos;
 
+  var showUrgente = !resUrgFilter || resUrgFilter === 'urgente';
+  var showVencido = !resUrgFilter || resUrgFilter === 'vencido';
+  var showProximo = !resUrgFilter || resUrgFilter === 'proximo';
+
   // ── Urgente section ──
-  if (fUrgentes.length > 0) {
+  if (fUrgentes.length > 0 && showUrgente) {
     html += resRenderCategorySection('Urgente', fUrgentes, 'urgent', '#ef4444', isAdmin);
   }
 
   // ── Vencido section ──
-  if (fVencidos.length > 0) {
+  if (fVencidos.length > 0 && showVencido) {
     html += resRenderCategorySection('Vencido', fVencidos, 'warn', '#f59e0b', isAdmin);
   }
 
   // ── Próximo a vencer section ──
-  if (fProximos.length > 0) {
+  if (fProximos.length > 0 && showProximo) {
     html += resRenderProximoSection(fProximos, isAdmin);
   }
 
   // ── Al día ──
-  if (fUrgentes.length === 0 && fVencidos.length === 0 && fProximos.length === 0) {
-    if (resTipoFilter) {
-      html += '<div class="res-section"><div class="res-ok">No hay pendientes de ' + resTipoFilter + '</div></div>';
+  var ningunoVisible = (!showUrgente || fUrgentes.length === 0) && (!showVencido || fVencidos.length === 0) && (!showProximo || fProximos.length === 0);
+  if (ningunoVisible) {
+    if (resTipoFilter || resUrgFilter) {
+      html += '<div class="res-section"><div class="res-ok">No hay pendientes con los filtros seleccionados</div></div>';
     } else {
       html += '<div class="res-section"><div class="res-ok">Al dia — todas las autorizaciones de pago estan subidas</div></div>';
     }

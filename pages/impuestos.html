@@ -463,6 +463,7 @@ var impViewMode = 'table'; // 'table' or 'cards'
 var mainTab = 'resumen'; // 'resumen', 'checklist' or 'kpi'
 var resAnalista = 'Todas'; // pill filter for resumen
 var resTipoFilterImp = null; // filtro por tipo de impuesto en resumen
+var resUrgFilterImp = null; // filtro por urgencia: 'urgente' | 'vencido' | 'proximo'
 
 // Data
 var asignacionesRaw = []; // all raw assignment rows
@@ -1629,6 +1630,11 @@ function impToggleTipoFilter(tipo) {
   renderResContent();
 }
 
+function impToggleUrgFilter(level) {
+  resUrgFilterImp = resUrgFilterImp === level ? null : level;
+  renderResContent();
+}
+
 function renderResContent() {
   var el = document.getElementById('resumenPanel');
   var isAdmin = isImpResAdmin();
@@ -1652,11 +1658,11 @@ function renderResContent() {
   }
   h += '</div>';
 
-  // ── Urgency cards ──
+  // ── Urgency cards (clickeables como filtro) ──
   h += '<div class="res-urgency">';
-  h += '<div class="res-urg-card res-urg-urgent"><p class="urg-label">Urgente</p><p class="urg-num">' + urgentes.length + '</p><p class="urg-sub">pasado el limite</p></div>';
-  h += '<div class="res-urg-card res-urg-warn"><p class="urg-label">Por vencer</p><p class="urg-num">' + vencidos.length + '</p><p class="urg-sub">a 3 dias del limite</p></div>';
-  h += '<div class="res-urg-card res-urg-soon"><p class="urg-label">Proximo</p><p class="urg-num">' + proximos.length + '</p><p class="urg-sub">a 7 dias del limite</p></div>';
+  h += '<div class="res-urg-card res-urg-urgent" style="cursor:pointer;opacity:' + (resUrgFilterImp && resUrgFilterImp !== 'urgente' ? '0.4' : '1') + ';' + (resUrgFilterImp === 'urgente' ? 'box-shadow:0 0 0 2px #ef4444' : '') + '" onclick="impToggleUrgFilter(\'urgente\')"><p class="urg-label">Urgente</p><p class="urg-num">' + urgentes.length + '</p><p class="urg-sub">pasado el limite</p></div>';
+  h += '<div class="res-urg-card res-urg-warn" style="cursor:pointer;opacity:' + (resUrgFilterImp && resUrgFilterImp !== 'vencido' ? '0.4' : '1') + ';' + (resUrgFilterImp === 'vencido' ? 'box-shadow:0 0 0 2px #f59e0b' : '') + '" onclick="impToggleUrgFilter(\'vencido\')"><p class="urg-label">Por vencer</p><p class="urg-num">' + vencidos.length + '</p><p class="urg-sub">a 3 dias del limite</p></div>';
+  h += '<div class="res-urg-card res-urg-soon" style="cursor:pointer;opacity:' + (resUrgFilterImp && resUrgFilterImp !== 'proximo' ? '0.4' : '1') + ';' + (resUrgFilterImp === 'proximo' ? 'box-shadow:0 0 0 2px #4361ee' : '') + '" onclick="impToggleUrgFilter(\'proximo\')"><p class="urg-label">Proximo</p><p class="urg-num">' + proximos.length + '</p><p class="urg-sub">a 7 dias del limite</p></div>';
   h += '</div>';
 
   // ── Insights (solo admins) ──
@@ -1696,7 +1702,7 @@ function renderResContent() {
       var isActive = resTipoFilterImp === lbl;
       var opacity = resTipoFilterImp && !isActive ? '0.35' : '1';
       h += '<div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;cursor:pointer;opacity:' + opacity + '" onclick="impToggleTipoFilter(\'' + escJs(lbl) + '\')">';
-      h += '<span style="min-width:70px;font-size:0.78rem;font-weight:600;color:' + (isActive ? col : 'var(--text)') + '">' + lbl + '</span>';
+      h += '<span style="display:inline-block;width:80px;font-size:0.78rem;font-weight:600;color:' + (isActive ? col : 'var(--text)') + '">' + lbl + '</span>';
       h += '<div style="flex:1;height:16px;background:#f0f2f5;border-radius:4px;overflow:hidden"><div style="height:100%;width:' + pct + '%;background:' + col + ';border-radius:4px;transition:width 0.3s"></div></div>';
       h += '<span style="min-width:24px;text-align:right;font-size:0.78rem;font-weight:700;color:' + col + '">' + cnt + '</span>';
       h += '</div>';
@@ -1706,30 +1712,35 @@ function renderResContent() {
     h += '</div>';
   }
 
-  // Aplicar filtro de tipo de impuesto
+  // Aplicar filtros (tipo de impuesto + urgencia)
   var fUrgentes = resTipoFilterImp ? urgentes.filter(function(p) { return p.impuesto === resTipoFilterImp; }) : urgentes;
   var fVencidos = resTipoFilterImp ? vencidos.filter(function(p) { return p.impuesto === resTipoFilterImp; }) : vencidos;
   var fProximos = resTipoFilterImp ? proximos.filter(function(p) { return p.impuesto === resTipoFilterImp; }) : proximos;
 
+  var showUrgente = !resUrgFilterImp || resUrgFilterImp === 'urgente';
+  var showVencido = !resUrgFilterImp || resUrgFilterImp === 'vencido';
+  var showProximo = !resUrgFilterImp || resUrgFilterImp === 'proximo';
+
   // ── Urgente section ──
-  if (fUrgentes.length > 0) {
+  if (fUrgentes.length > 0 && showUrgente) {
     h += impResRenderSection('Urgente', fUrgentes, 'urgent', '#ef4444', isAdmin);
   }
 
   // ── Vencido section ──
-  if (fVencidos.length > 0) {
+  if (fVencidos.length > 0 && showVencido) {
     h += impResRenderSection('Por vencer', fVencidos, 'warn', '#f59e0b', isAdmin);
   }
 
   // ── Próximo section ──
-  if (fProximos.length > 0) {
+  if (fProximos.length > 0 && showProximo) {
     h += impResRenderSection('Proximo a vencer', fProximos, 'soon', '#4361ee', isAdmin);
   }
 
   // ── Al dia ──
-  if (fUrgentes.length === 0 && fVencidos.length === 0 && fProximos.length === 0) {
-    if (resTipoFilterImp) {
-      h += '<div class="res-section"><div class="res-ok">No hay pendientes de ' + resTipoFilterImp + '</div></div>';
+  var ningunoVisible = (!showUrgente || fUrgentes.length === 0) && (!showVencido || fVencidos.length === 0) && (!showProximo || fProximos.length === 0);
+  if (ningunoVisible) {
+    if (resTipoFilterImp || resUrgFilterImp) {
+      h += '<div class="res-section"><div class="res-ok">No hay pendientes con los filtros seleccionados</div></div>';
     } else {
       h += '<div class="res-section"><div class="res-ok">Al dia — todas las declaraciones fiscales estan completadas</div></div>';
     }
