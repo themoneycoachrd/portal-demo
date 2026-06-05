@@ -733,7 +733,7 @@ function renderHistorial() {
     html += '<div class="empty-state"><div class="icon">📋</div><p>No hay registros todavía.</p></div>';
   } else {
     html += '<table class="wow-table">';
-    html += '<thead><tr><th>Fecha</th><th>Empleado</th><th>Tipo</th><th>Puntos</th><th>Reconocido por</th><th>Motivo</th></tr></thead>';
+    html += '<thead><tr><th>Fecha</th><th>Empleado</th><th>Tipo</th><th>Puntos</th><th>Reconocido por</th><th>Motivo</th>' + (canManage() ? '<th style="text-align:center"></th>' : '') + '</tr></thead>';
     html += '<tbody>';
     records.forEach(function(row) {
       var fecha = new Date(row.created_at);
@@ -750,6 +750,12 @@ function renderHistorial() {
       html += '<td style="font-weight:700;">' + pts + '</td>';
       html += '<td>' + esc(row.otorgado_por || '-') + '</td>';
       html += '<td>' + esc(row.motivo || '-') + '</td>';
+      if (canManage()) {
+        html += '<td style="text-align:center;white-space:nowrap">';
+        html += '<button style="background:#eff6ff;color:var(--blue);border:1px solid #dbeafe;border-radius:6px;padding:3px 8px;font-size:0.68rem;cursor:pointer;font-family:inherit;margin-right:2px" onclick="wowEditarPunto(\'' + row.id + '\')" title="Editar">✎</button>';
+        html += '<button style="background:#fef2f2;color:var(--red);border:1px solid #fecaca;border-radius:6px;padding:3px 8px;font-size:0.68rem;cursor:pointer;font-family:inherit" onclick="wowEliminarPunto(\'' + row.id + '\')" title="Eliminar">✗</button>';
+        html += '</td>';
+      }
       html += '</tr>';
     });
     html += '</tbody></table>';
@@ -969,6 +975,38 @@ async function confirmPay() {
   }
 
   closePayModal();
+  render();
+}
+
+// ==================== EDITAR / ELIMINAR PUNTOS ====================
+
+function wowEditarPunto(id) {
+  var row = APP.wowData.find(function(r) { return r.id === id; });
+  if (!row) return;
+  var nuevoMotivo = prompt('Motivo:', row.motivo || '');
+  if (nuevoMotivo === null) return; // canceló
+  var nuevosPuntos = row.tipo === 'puntos' ? prompt('Puntos:', row.puntos) : null;
+  if (row.tipo === 'puntos' && nuevosPuntos === null) return;
+  var puntosInt = row.tipo === 'puntos' ? parseInt(nuevosPuntos) : row.puntos;
+  if (row.tipo === 'puntos' && isNaN(puntosInt)) { alert('Puntos debe ser un numero.'); return; }
+
+  sb.from('wow_points').update({
+    motivo: nuevoMotivo.trim(),
+    puntos: puntosInt
+  }).eq('id', id).then(function(res) {
+    if (res.error) { alert('Error al editar: ' + res.error.message); return; }
+    // Actualizar en estado local
+    row.motivo = nuevoMotivo.trim();
+    row.puntos = puntosInt;
+    render();
+  });
+}
+
+async function wowEliminarPunto(id) {
+  if (!confirm('Eliminar este registro? Esta accion no se puede deshacer.')) return;
+  var { error } = await sb.from('wow_points').delete().eq('id', id);
+  if (error) { alert('Error al eliminar: ' + error.message); return; }
+  APP.wowData = APP.wowData.filter(function(r) { return r.id !== id; });
   render();
 }
 
