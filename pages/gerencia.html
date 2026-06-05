@@ -3090,6 +3090,57 @@ function cobBuildClientList() {
     }
   });
 
+  // Descontar pagos (recibos) del total pendiente para reflejar deuda real
+  if (cobPagos.length > 0) {
+    clientes.forEach(function(c) {
+      if (c.facturas.length === 0) return;
+      // Buscar pagos de este cliente (match parcial como cobGetScore)
+      var pagosCliente = cobPagos.filter(function(p) {
+        return p.cliente_nombre.toLowerCase().indexOf(c.nombre.toLowerCase()) >= 0
+          || c.nombre.toLowerCase().indexOf(p.cliente_nombre.toLowerCase()) >= 0;
+      });
+      if (pagosCliente.length === 0) return;
+
+      // Restar pagos de facturas específicas
+      var pagosSinAplicar = 0;
+      pagosCliente.forEach(function(p) {
+        if (p.factura_ref) {
+          var fact = c.facturas.find(function(f) { return f.no === p.factura_ref; });
+          if (fact) {
+            fact.balance = Math.max(0, fact.balance - p.monto);
+          } else {
+            pagosSinAplicar += p.monto;
+          }
+        } else {
+          pagosSinAplicar += p.monto;
+        }
+      });
+
+      // Aplicar pagos sin factura específica por FIFO (más antigua primero)
+      if (pagosSinAplicar > 0) {
+        var factOrdenadas = c.facturas.slice().sort(function(a, b) { return (b.dias || 0) - (a.dias || 0); });
+        factOrdenadas.forEach(function(f) {
+          if (pagosSinAplicar <= 0 || f.balance <= 0) return;
+          var aplicar = Math.min(pagosSinAplicar, f.balance);
+          f.balance -= aplicar;
+          pagosSinAplicar -= aplicar;
+        });
+      }
+
+      // Recalcular total pendiente
+      c.totalPendiente = 0;
+      c.totalDop = 0;
+      c.facturas.forEach(function(f) {
+        c.totalPendiente += f.balance;
+        c.totalDop = (c.totalDop || 0) + (f.balanceDop ? f.balanceDop * (f.balance / (f.total || 1)) : f.balance);
+      });
+      c.totalPagos = pagosCliente.length;
+    });
+
+    // Quitar clientes cuyo balance quedó en 0
+    clientes = clientes.filter(function(c) { return c.totalPendiente > 0.01 || c.sinData; });
+  }
+
   // Sort by score (worst first), then by totalPendiente desc, then alphabetical
   clientes.sort(function(a, b) {
     var sa = COB_SCORE_ORDER[cobGetScore(a.nombre)] || 2;
@@ -3562,6 +3613,107 @@ function cobRenderDetalle(el) {
     html += '</tbody></table>';
   }
   html += '</div>';
+
+  // ── Historial de movimientos: facturas (rojo) + recibos (verde) con running total ──
+  var pagosCliente = cobPagos.filter(function(p) {
+    return p.cliente_nombre.toLowerCase().indexOf(nombre.toLowerCase()) >= 0
+      || nombre.toLowerCase().indexOf(p.cliente_nombre.toLowerCase()) >= 0;
+  });
+
+  if (cliente.facturas.length > 0 || pagosCliente.length > 0) {
+    // Build timeline: merge facturas + pagos, sort by date
+    var movimientos = [];
+    cliente.facturas.forEach(function(f) {
+      movimientos.push({
+        tipo: 'factura',
+        fecha: f.date ? new Date(f.date) : null,
+        fechaStr: f.date || '',
+        ref: f.no || '-',
+        monto: f.total || f.balance,
+        balance: f.balance,
+        moneda: f.currency || 'DOP',
+        dias: f.dias
+      });
+    });
+    pagosCliente.forEach(function(p) {
+      movimientos.push({
+        tipo: 'recibo',
+        fecha: p.fecha_pago ? new Date(p.fecha_pago) : null,
+        fechaStr: p.fecha_pago || '',
+        ref: p.recibo_no || '-',
+        facturaRef: p.factura_ref || '-',
+        monto: p.monto,
+        moneda: p.moneda || 'DOP'
+      });
+    });
+
+    // Sort by date (nulls last)
+    movimientos.sort(function(a, b) {
+      if (!a.fecha && !b.fecha) return 0;
+      if (!a.fecha) return 1;
+      if (!b.fecha) return -1;
+      return a.fecha - b.fecha;
+    });
+
+    // Calculate running total
+    var runningTotal = 0;
+    movimientos.forEach(function(m) {
+      if (m.tipo === 'factura') {
+        runningTotal += m.monto;
+      } else {
+        runningTotal -= m.monto;
+      }
+      m.runningTotal = runningTotal;
+    });
+
+    // Auto score info
+    var autoScore = cobCalcAutoScore(nombre);
+
+    html += '<div class="cob-detail-card">';
+    html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px">';
+    html += '<h3 style="margin:0">Movimientos (' + movimientos.length + ')</h3>';
+    html += '<div style="display:flex;gap:8px;align-items:center">';
+    html += '<span style="font-size:0.68rem;color:var(--red);font-weight:600">● Facturas: ' + cliente.facturas.length + '</span>';
+    html += '<span style="font-size:0.68rem;color:var(--green);font-weight:600">● Recibos: ' + pagosCliente.length + '</span>';
+    if (autoScore && autoScore.avgDias > 0) {
+      var avgColor = autoScore.avgDias <= 30 ? 'var(--green)' : (autoScore.avgDias <= 60 ? 'var(--amber)' : 'var(--red)');
+      html += '<span style="font-size:0.68rem;background:#f8fafc;padding:2px 8px;border-radius:10px;color:' + avgColor + ';font-weight:600">Promedio pago: ' + autoScore.avgDias + ' dias</span>';
+    }
+    html += '</div></div>';
+
+    html += '<div style="overflow-x:auto"><table class="cob-table"><thead><tr>';
+    html += '<th style="width:30px"></th>';
+    html += '<th>Fecha</th>';
+    html += '<th>Tipo</th>';
+    html += '<th>Ref</th>';
+    html += '<th style="text-align:right">Monto</th>';
+    html += '<th style="text-align:right">Balance acum.</th>';
+    html += '</tr></thead><tbody>';
+
+    movimientos.forEach(function(m) {
+      var esFactura = m.tipo === 'factura';
+      var rowBg = esFactura ? '#fef2f2' : '#ecfdf5';
+      var montoColor = esFactura ? 'var(--red)' : 'var(--green)';
+      var montoSign = esFactura ? '+' : '-';
+      var tipoBadge = esFactura
+        ? '<span style="background:#fef2f2;color:var(--red);font-size:0.68rem;font-weight:600;padding:2px 8px;border-radius:10px">Factura</span>'
+        : '<span style="background:#ecfdf5;color:var(--green);font-size:0.68rem;font-weight:600;padding:2px 8px;border-radius:10px">Recibo</span>';
+      var fechaDisplay = m.fecha ? m.fecha.toLocaleDateString('es-DO', { day:'numeric', month:'short', year:'numeric' }) : '-';
+      var refDisplay = esFactura ? m.ref : (m.ref + (m.facturaRef && m.facturaRef !== '-' ? ' → Fact. ' + m.facturaRef : ''));
+      var balColor = m.runningTotal > 0 ? 'var(--red)' : 'var(--green)';
+
+      html += '<tr style="background:' + rowBg + '">';
+      html += '<td style="text-align:center;font-size:1rem">' + (esFactura ? '🔴' : '🟢') + '</td>';
+      html += '<td style="font-size:0.74rem;white-space:nowrap">' + fechaDisplay + '</td>';
+      html += '<td>' + tipoBadge + '</td>';
+      html += '<td style="font-size:0.78rem">' + refDisplay + '</td>';
+      html += '<td style="text-align:right;font-weight:700;color:' + montoColor + ';font-variant-numeric:tabular-nums">' + montoSign + cobFmtAmount(m.monto) + '</td>';
+      html += '<td style="text-align:right;font-weight:600;color:' + balColor + ';font-variant-numeric:tabular-nums">' + cobFmtAmount(Math.abs(m.runningTotal)) + '</td>';
+      html += '</tr>';
+    });
+
+    html += '</tbody></table></div></div>';
+  }
 
   // Tareas del cliente (solo pendientes, filtradas por asignado) — tabla con columnas
   var tareasCliente = cobFilterTareasByAsig(notasCliente.filter(function(n) { return n.tipo_contacto === 'tarea' && n.resultado !== 'completada'; }));
