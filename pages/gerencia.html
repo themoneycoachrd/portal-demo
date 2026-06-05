@@ -292,7 +292,7 @@
   .btn-logout:hover { background:rgba(255,255,255,0.25); }
 
   /* ─── Login ─── */
-  .login-overlay { position:fixed; top:0; left:0; right:0; bottom:0; background:var(--bg); display:flex; align-items:center; justify-content:center; z-index:1000; }
+  .login-overlay { position:fixed; top:0; left:0; right:0; bottom:0; background:var(--bg); display:flex; align-items:center; justify-content:center; z-index:3000; }
   .login-box { background:white; border-radius:16px; padding:40px; width:100%; max-width:400px; box-shadow:0 4px 24px rgba(0,0,0,0.08); border:1px solid var(--border); }
   .login-box h2 { font-size:1.4rem; color:var(--navy); margin-bottom:4px; }
   .login-box .subtitle { font-size:0.85rem; color:var(--muted); margin-bottom:24px; }
@@ -451,7 +451,7 @@
   .cob-nota-item:last-child { border-bottom:none; }
   .cob-nota-meta { font-size:0.7rem; color:var(--muted); margin-bottom:4px; }
   .cob-nota-badge { display:inline-block; padding:2px 8px; border-radius:4px; font-size:0.65rem; font-weight:600; margin-left:6px; }
-  .cob-modal-overlay { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:1000; justify-content:center; align-items:center; }
+  .cob-modal-overlay { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:2000; justify-content:center; align-items:center; }
   .cob-modal-overlay.open { display:flex; }
   .cob-modal { background:white; border-radius:12px; padding:24px; width:560px; max-width:90vw; max-height:85vh; overflow-y:auto; }
   .cob-modal h3 { margin:0 0 16px 0; font-size:1rem; }
@@ -492,6 +492,10 @@
   .cob-funnel-fill { height:100%; border-radius:8px; display:flex; align-items:center; padding:0 10px; transition:width 0.4s ease; }
   .cob-funnel-num { font-size:0.72rem; font-weight:700; color:#fff; }
 </style>
+
+<!-- Account One Refinado theme layer (override) -->
+<link rel="stylesheet" href="assets/theme.css">
+<script src="assets/theme.js" defer></script>
 </head>
 <body>
 
@@ -499,7 +503,7 @@
 <div class="login-overlay" id="login-screen">
   <div class="login-box">
     <h2>Account One</h2>
-    <p class="subtitle">Inicia sesion para continuar</p>
+    <p class="subtitle">Inicia sesión para continuar</p>
     <div class="field"><label>Email</label><input type="email" id="login-email" placeholder="tu@accountone.do"></div>
     <div class="field"><label>Contrasena</label><input type="password" id="login-password" placeholder="••••••••"></div>
     <button class="login-btn" id="btn-login" onclick="handleLogin()">Entrar</button>
@@ -527,6 +531,18 @@
   <a href="index.html">Account One</a>
   <span class="sep">›</span>
   <span class="current">Clientes</span>
+</div>
+
+<div class="mod-header" id="modHeader">
+  <div>
+    <div class="mod-header-eye">Clientes</div>
+    <h1 class="mod-header-title">Cartera de contabilidad</h1>
+    <p class="mod-header-sub" id="modHeaderSub">Cargando datos...</p>
+  </div>
+  <div class="mod-header-actions">
+    <button class="mod-header-btn" onclick="if(typeof ccExportXLS==='function')ccExportXLS()">↓ Exportar</button>
+    <button class="mod-header-btn primary">+ Nuevo cliente</button>
+  </div>
 </div>
 
 <div class="main-tabs" id="mainTabs"></div>
@@ -669,7 +685,7 @@
             <option value="Cambio a otra firma">Cambio a otra firma</option>
             <option value="Cierre de empresa">Cierre de empresa</option>
             <option value="Reduccion de costos">Reducción de costos</option>
-            <option value="Insatisfaccion con el servicio">Insatisfacción con el servicio</option>
+            <option value="Insatisfacción con el servicio">Insatisfacción con el servicio</option>
             <option value="No pago">No pago</option>
             <option value="Internalizacion">Internalización</option>
             <option value="Otro">Otro</option>
@@ -1050,7 +1066,7 @@
             <option value="Cambio a otro software">Cambio a otro software</option>
             <option value="Cierre de empresa">Cierre de empresa</option>
             <option value="Reduccion de costos">Reducción de costos</option>
-            <option value="Insatisfaccion con el servicio">Insatisfacción con el servicio</option>
+            <option value="Insatisfacción con el servicio">Insatisfacción con el servicio</option>
             <option value="No pago">No pago</option>
             <option value="Otro">Otro</option>
           </select>
@@ -1091,6 +1107,7 @@
 const SUPABASE_URL = 'https://ouetusstqvpyjeycfdio.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im91ZXR1c3N0cXZweWpleWNmZGlvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY2NDcwNzksImV4cCI6MjA5MjIyMzA3OX0.Bsys947JLGEuf3zdBF2GPFdbJVJtaZdC4YEmyBU5Bow';
 const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+var ANIO = new Date().getFullYear();
 
 // ==================== SHARED STATE ====================
 let userRole = null;
@@ -1226,11 +1243,11 @@ async function ccLoadData() {
   ccAllClientes = clientes;
 
   // 2. Cargar asignaciones para el detalle por contadora (serv/adm por mes)
-  var { data: asig } = await sb.from('asignaciones').select('*').eq('anio', 2026);
+  var { data: asig } = await sb.from('asignaciones').select('*').eq('anio', ANIO);
   asig = asig || [];
 
   // 3. Cargar notas de meses_resumen (si existen, solo para las notas)
-  var { data: resumen } = await sb.from('meses_resumen').select('mes, notas').eq('anio', 2026);
+  var { data: resumen } = await sb.from('meses_resumen').select('mes, notas').eq('anio', ANIO);
   var notasPorMes = {};
   (resumen || []).forEach(function(r) { if (r.notas) notasPorMes[r.mes] = r.notas; });
 
@@ -1246,10 +1263,10 @@ async function ccLoadData() {
     var churn = [];
 
     clientes.forEach(function(c) {
-      if (c.fecha_entrada && ccYear(c.fecha_entrada) === 2026 && ccMonthIdx(c.fecha_entrada) === mesIdx) {
+      if (c.fecha_entrada && ccYear(c.fecha_entrada) === ANIO && ccMonthIdx(c.fecha_entrada) === mesIdx) {
         nuevos.push(c.nombre);
       }
-      if (c.fecha_salida && ccYear(c.fecha_salida) === 2026 && ccMonthIdx(c.fecha_salida) === mesIdx) {
+      if (c.fecha_salida && ccYear(c.fecha_salida) === ANIO && ccMonthIdx(c.fecha_salida) === mesIdx) {
         churn.push(c.nombre);
       }
     });
@@ -1258,8 +1275,8 @@ async function ccLoadData() {
     // Un cliente está activo al final del mes si:
     //   - fecha_entrada IS NULL (pre-existente) o fecha_entrada <= último día del mes
     //   - Y fecha_salida IS NULL o fecha_salida > último día del mes
-    var lastDay = new Date(2026, mesIdx + 1, 0); // último día del mes
-    var lastDayStr = '2026-' + String(mesIdx + 1).padStart(2, '0') + '-' + String(lastDay.getDate()).padStart(2, '0');
+    var lastDay = new Date(ANIO, mesIdx + 1, 0); // último día del mes
+    var lastDayStr = ANIO + '-' + String(mesIdx + 1).padStart(2, '0') + '-' + String(lastDay.getDate()).padStart(2, '0');
 
     var total = 0;
     clientes.forEach(function(c) {
@@ -1359,7 +1376,7 @@ async function ccLoadSoftwareClientes() {
 }
 
 async function ccLoadKpiFromDB() {
-  const { data } = await sb.from('kpi_scores').select('*').eq('anio', 2026);
+  const { data } = await sb.from('kpi_scores').select('*').eq('anio', ANIO);
   const kpi = {};
   (data || []).forEach(r => {
     const key = r.contadora + '_' + r.mes;
@@ -1371,26 +1388,26 @@ async function ccLoadKpiFromDB() {
 
 async function ccSaveKpiToDB(contadora, mes, scores) {
   const { data: existing } = await sb.from('kpi_scores')
-    .select('id').eq('contadora', contadora).eq('mes', mes).eq('anio', 2026).maybeSingle();
+    .select('id').eq('contadora', contadora).eq('mes', mes).eq('anio', ANIO).maybeSingle();
   const total = (scores.digitacion || 0) + (scores.resumenes || 0) + (scores.video_reunion || 0);
   if (existing) {
     await sb.from('kpi_scores').update({ digitacion: scores.digitacion, resumenes: scores.resumenes, video_reunion: scores.video_reunion, total: total }).eq('id', existing.id);
   } else {
-    await sb.from('kpi_scores').insert({ contadora: contadora, mes: mes, anio: 2026, digitacion: scores.digitacion, resumenes: scores.resumenes, video_reunion: scores.video_reunion, total: total });
+    await sb.from('kpi_scores').insert({ contadora: contadora, mes: mes, anio: ANIO, digitacion: scores.digitacion, resumenes: scores.resumenes, video_reunion: scores.video_reunion, total: total });
   }
 }
 
 // ─── CC Software Stats ───
 function ccGetSoftwareStats() {
   // Base = clientes con fecha_entrada anterior a 2026
-  const base = ccSOFTWARE_CLIENTES.filter(c => c.fecha_entrada && c.fecha_entrada < '2026-01-01');
+  const base = ccSOFTWARE_CLIENTES.filter(c => c.fecha_entrada && c.fecha_entrada < ANIO + '-01-01');
   const baseMonto = base.reduce((s,c) => s + c.monto, 0);
   var mesesActivos = ["enero","febrero","marzo","abril","mayo"];
   var MESES_MAP = {enero:'01',febrero:'02',marzo:'03',abril:'04',mayo:'05',junio:'06',julio:'07',agosto:'08',septiembre:'09',octubre:'10',noviembre:'11',diciembre:'12'};
   let acumClientes = base.length;
   let acumMonto = baseMonto;
   const rows = mesesActivos.map(m => {
-    var prefix = '2026-' + MESES_MAP[m];
+    var prefix = ANIO + '-' + MESES_MAP[m];
     var nuevos = ccSOFTWARE_CLIENTES.filter(c => c.fecha_entrada && c.fecha_entrada.indexOf(prefix) === 0);
     var churn = ccSOFTWARE_CLIENTES.filter(c => c.fecha_salida && c.fecha_salida.indexOf(prefix) === 0);
     const nuevosMonto = nuevos.reduce((s,c) => s + c.monto, 0);
@@ -1676,8 +1693,8 @@ var ccImplAdmData = [];
 
 function ccSwGetActivosMes(mesKey) {
   var mesIdx = MESES.indexOf(mesKey);
-  var lastDay = new Date(2026, mesIdx + 1, 0);
-  var lastDayStr = '2026-' + String(mesIdx + 1).padStart(2, '0') + '-' + String(lastDay.getDate()).padStart(2, '0');
+  var lastDay = new Date(ANIO, mesIdx + 1, 0);
+  var lastDayStr = ANIO + '-' + String(mesIdx + 1).padStart(2, '0') + '-' + String(lastDay.getDate()).padStart(2, '0');
   return ccSOFTWARE_CLIENTES.filter(function(c) {
     var entered = !c.fecha_entrada || c.fecha_entrada <= lastDayStr;
     var notLeft = !c.fecha_salida || c.fecha_salida > lastDayStr;
@@ -1699,8 +1716,8 @@ function ccSwLicFilter(lic) {
 
 function ccServGetActivosMes(mesKey) {
   var mesIdx = MESES.indexOf(mesKey);
-  var lastDay = new Date(2026, mesIdx + 1, 0);
-  var lastDayStr = '2026-' + String(mesIdx + 1).padStart(2, '0') + '-' + String(lastDay.getDate()).padStart(2, '0');
+  var lastDay = new Date(ANIO, mesIdx + 1, 0);
+  var lastDayStr = ANIO + '-' + String(mesIdx + 1).padStart(2, '0') + '-' + String(lastDay.getDate()).padStart(2, '0');
   return ccAllClientes.filter(function(c) {
     var entered = !c.fecha_entrada || c.fecha_entrada <= lastDayStr;
     var notLeft = !c.fecha_salida || c.fecha_salida > lastDayStr;
@@ -1747,7 +1764,7 @@ function ccRenderServicios(el) {
   html += '<div class="stats">';
   html += '<div class="' + statClass(null) + '" onclick="ccServFilter(null)" style="cursor:pointer">';
   html += '<div class="stat-label">Total clientes</div><div class="stat-value">' + total + '</div>';
-  html += '<div class="stat-sub">' + MESES_FULL[mesIdx] + ' 2026</div></div>';
+  html += '<div class="stat-sub">' + MESES_FULL[mesIdx] + ' ' + ANIO + '</div></div>';
 
   html += '<div class="' + statClass('Solo impuestos') + '" onclick="ccServFilter(\'Solo impuestos\')" style="cursor:pointer">';
   html += '<div class="stat-label">Tax One</div><div class="stat-value" style="color:var(--blue)">' + imp.length + '</div>';
@@ -1776,7 +1793,7 @@ function ccRenderServicios(el) {
 
   // ── Movement pills (Inicio / Nuevos / Churn / Cierre) ──
   var MESES_MAP_SERV2 = {enero:'01',febrero:'02',marzo:'03',abril:'04',mayo:'05',junio:'06',julio:'07',agosto:'08',septiembre:'09',octubre:'10',noviembre:'11',diciembre:'12'};
-  var servPrefix = '2026-' + MESES_MAP_SERV2[ccServMes];
+  var servPrefix = ANIO + '-' + MESES_MAP_SERV2[ccServMes];
   var servNuevos = ccAllClientes.filter(function(c) { return c.fecha_entrada && c.fecha_entrada.indexOf(servPrefix) === 0; });
   var servChurn = ccAllClientes.filter(function(c) { return c.fecha_salida && c.fecha_salida.indexOf(servPrefix) === 0; });
   var servInicio = total - servNuevos.length + servChurn.length;
@@ -1801,7 +1818,7 @@ function ccRenderServicios(el) {
   }
 
   // Resumen mensual (movimiento mes a mes)
-  var ccServBase = ccAllClientes.filter(function(c) { return !c.fecha_entrada || c.fecha_entrada < '2026-01-01'; });
+  var ccServBase = ccAllClientes.filter(function(c) { return !c.fecha_entrada || c.fecha_entrada < ANIO + '-01-01'; });
   var ccServAcum = ccServBase.length;
   var MESES_MAP_SERV = {enero:'01',febrero:'02',marzo:'03',abril:'04',mayo:'05',junio:'06',julio:'07',agosto:'08',septiembre:'09',octubre:'10',noviembre:'11',diciembre:'12'};
   html += '<div class="card" style="margin-bottom:16px">';
@@ -1814,7 +1831,7 @@ function ccRenderServicios(el) {
   html += '<tr><th>Mes</th><th>Inicio</th><th>Nuevos</th><th>Churn</th><th>Neto</th><th>Cierre</th><th>Crecimiento</th></tr>';
   MESES.forEach(function(m, i) {
     if (i > currentMonthIdx) return;
-    var prefix = '2026-' + MESES_MAP_SERV[m];
+    var prefix = ANIO + '-' + MESES_MAP_SERV[m];
     var mNuevos = ccAllClientes.filter(function(c) { return c.fecha_entrada && c.fecha_entrada.indexOf(prefix) === 0; });
     var mChurn = ccAllClientes.filter(function(c) { return c.fecha_salida && c.fecha_salida.indexOf(prefix) === 0; });
     var inicio = ccServAcum;
@@ -1876,7 +1893,7 @@ function ccRenderServicios(el) {
   });
 
   html += '<div class="card">';
-  html += '<h3>' + titulo + ' (' + lista.length + ') — ' + MESES_FULL[mesIdx] + ' 2026</h3>';
+  html += '<h3>' + titulo + ' (' + lista.length + ') — ' + MESES_FULL[mesIdx] + ' ' + ANIO + '</h3>';
 
   if (sinTipo.length > 0 && ccServFiltro === null) {
     html += '<div class="note">' + sinTipo.length + ' cliente(s) sin tipo de servicio. Asígnalo desde BD Clientes → Editar.</div>';
@@ -1965,9 +1982,9 @@ function ccRenderDashboard(el) {
   html += '<div style="margin-bottom:8px"><span style="font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--muted)">Outsourcing</span></div>';
   html += `<div class="stats">
     <div class="stat"><div class="stat-label">Clientes actuales · ${fechaHoy}</div><div class="stat-value">${last.total}</div><div class="stat-sub">Base inicio de año: ${baseLine}</div></div>
-    <div class="stat"><div class="stat-label">Nuevos en 2026</div><div class="stat-value stat-green">${totalNuevos}</div><div class="stat-sub">${baseLine > 0 ? (totalNuevos / baseLine * 100).toFixed(1) : 0}% de crecimiento</div></div>
-    <div class="stat"><div class="stat-label">Churn en 2026</div><div class="stat-value stat-red">${totalChurn}</div><div class="stat-sub">${baseLine > 0 ? (totalChurn / baseLine * 100).toFixed(1) : 0}% de churn</div></div>
-    <div class="stat"><div class="stat-label">Crecimiento 2026</div><div class="stat-value ${ytdColor}">${ytdPctStr}</div><div class="stat-sub">${ytdSign}${ytdNeto} clientes neto vs inicio de año</div></div>
+    <div class="stat"><div class="stat-label">Nuevos en ${ANIO}</div><div class="stat-value stat-green">${totalNuevos}</div><div class="stat-sub">${baseLine > 0 ? (totalNuevos / baseLine * 100).toFixed(1) : 0}% de crecimiento</div></div>
+    <div class="stat"><div class="stat-label">Churn en ${ANIO}</div><div class="stat-value stat-red">${totalChurn}</div><div class="stat-sub">${baseLine > 0 ? (totalChurn / baseLine * 100).toFixed(1) : 0}% de churn</div></div>
+    <div class="stat"><div class="stat-label">Crecimiento ${ANIO}</div><div class="stat-value ${ytdColor}">${ytdPctStr}</div><div class="stat-sub">${ytdSign}${ytdNeto} clientes neto vs inicio de año</div></div>
   </div>`;
   html += `<div class="charts-grid">
     <div class="card"><h3>Evolucion de clientes</h3><canvas id="chartEvo"></canvas></div>
@@ -2004,9 +2021,9 @@ function ccRenderDashboard(el) {
   html += '<div style="margin:28px 0 8px"><span style="font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--muted)">Software</span></div>';
   html += `<div class="stats">
     <div class="stat"><div class="stat-label">Clientes software</div><div class="stat-value">${swCurrent}</div><div class="stat-sub">Base inicio de año: ${swBaseLine}</div></div>
-    <div class="stat"><div class="stat-label">Nuevos en 2026</div><div class="stat-value stat-green">${swTotalNuevos}</div><div class="stat-sub">${swBaseLine > 0 ? (swTotalNuevos / swBaseLine * 100).toFixed(1) : 0}% de crecimiento</div></div>
-    <div class="stat"><div class="stat-label">Churn en 2026</div><div class="stat-value stat-red">${swTotalChurn}</div><div class="stat-sub">${swBaseLine > 0 ? (swTotalChurn / swBaseLine * 100).toFixed(1) : 0}% de churn</div></div>
-    <div class="stat"><div class="stat-label">Crecimiento 2026</div><div class="stat-value ${swYtdColor}">${swYtdPctStr}</div><div class="stat-sub">${swYtdSign}${swYtdNeto} clientes neto vs inicio de año</div></div>
+    <div class="stat"><div class="stat-label">Nuevos en ${ANIO}</div><div class="stat-value stat-green">${swTotalNuevos}</div><div class="stat-sub">${swBaseLine > 0 ? (swTotalNuevos / swBaseLine * 100).toFixed(1) : 0}% de crecimiento</div></div>
+    <div class="stat"><div class="stat-label">Churn en ${ANIO}</div><div class="stat-value stat-red">${swTotalChurn}</div><div class="stat-sub">${swBaseLine > 0 ? (swTotalChurn / swBaseLine * 100).toFixed(1) : 0}% de churn</div></div>
+    <div class="stat"><div class="stat-label">Crecimiento ${ANIO}</div><div class="stat-value ${swYtdColor}">${swYtdPctStr}</div><div class="stat-sub">${swYtdSign}${swYtdNeto} clientes neto vs inicio de año</div></div>
   </div>`;
   html += `<div class="charts-grid">
     <div class="card"><h3>Evolucion de clientes software</h3><canvas id="chartSwEvo"></canvas></div>
@@ -2106,13 +2123,13 @@ var FE_ITEMS_GER = [
 var ADM_ITEMS_GER = [
   'Correo de presentacion y link para agendar',
   'Primera sesion agendada',
-  'Creacion de cuenta en base',
-  'Creacion de cuenta en Adm',
+  'Creación de cuenta en base',
+  'Creación de cuenta en Adm',
   'Sesion 1 impartida',
   'Sesion 2 impartida',
   'Sesion 3 impartida',
-  'Recepcion de Plantillas',
-  'Revision de plantillas',
+  'Recepción de Plantillas',
+  'Revisión de plantillas',
   'Carga de plantillas previo al go live',
   'Sesion 4 (Go Live)',
   'Firma de Actas 1-4',
@@ -2121,7 +2138,7 @@ var ADM_ITEMS_GER = [
   'Correo de asignacion de contadora',
   'Envio de correo al cliente con link',
   'Sesion 5 de presentacion de contadora',
-  'Correo de encuesta de satisfaccion'
+  'Correo de encuesta de satisfacción'
 ];
 
 function ccImplSwitchPill(pill) {
@@ -2293,7 +2310,7 @@ function ccRenderSoftware(el) {
   var total = swActivos.length;
 
   // Calcular nuevos y churn del mes
-  var mesPrefix = '2026-' + String(swMesIdx + 1).padStart(2, '0');
+  var mesPrefix = ANIO + '-' + String(swMesIdx + 1).padStart(2, '0');
   var ccSwNuevos = ccSOFTWARE_CLIENTES.filter(function(c) {
     return c.fecha_entrada && c.fecha_entrada.indexOf(mesPrefix) === 0;
   });
@@ -2398,8 +2415,8 @@ function ccRenderSoftware(el) {
       lista = ccSwGetActivosMes(MESES[swMesIdx - 1]);
     } else {
       lista = ccSOFTWARE_CLIENTES.filter(function(c) {
-        var entered = !c.fecha_entrada || c.fecha_entrada < '2026-01-01';
-        var notLeft = !c.fecha_salida || c.fecha_salida >= '2026-01-01';
+        var entered = !c.fecha_entrada || c.fecha_entrada < ANIO + '-01-01';
+        var notLeft = !c.fecha_salida || c.fecha_salida >= ANIO + '-01-01';
         return entered && notLeft;
       });
     }
@@ -2415,7 +2432,7 @@ function ccRenderSoftware(el) {
   });
 
   html += '<div class="card">';
-  html += '<h3>' + titulo + ' (' + lista.length + ') — ' + MESES_FULL[swMesIdx] + ' 2026</h3>';
+  html += '<h3>' + titulo + ' (' + lista.length + ') — ' + MESES_FULL[swMesIdx] + ' ' + ANIO + '</h3>';
   html += '<div class="table-wrap"><table>';
   html += '<tr><th>#</th><th>Cliente</th><th>Licencia</th><th>Monto</th><th>Entrada</th></tr>';
 
@@ -2479,9 +2496,9 @@ function ccGetPrecioSoftware(licencia) {
 function ccRenderFacturacion(el) {
   var currentMonthIdx = new Date().getMonth();
   var mesIdx = MESES.indexOf(ccFactMes);
-  var mesPrefix = '2026-' + String(mesIdx + 1).padStart(2, '0');
-  var lastDay = new Date(2026, mesIdx + 1, 0);
-  var lastDayStr = '2026-' + String(mesIdx + 1).padStart(2, '0') + '-' + String(lastDay.getDate()).padStart(2, '0');
+  var mesPrefix = ANIO + '-' + String(mesIdx + 1).padStart(2, '0');
+  var lastDay = new Date(ANIO, mesIdx + 1, 0);
+  var lastDayStr = ANIO + '-' + String(mesIdx + 1).padStart(2, '0') + '-' + String(lastDay.getDate()).padStart(2, '0');
 
   // Month tabs
   var html = '<div class="nav-area" style="padding:12px 24px;background:var(--bg);border-bottom:1px solid var(--border);margin:-24px -24px 20px -24px">';
@@ -2566,7 +2583,7 @@ function ccRenderFacturacion(el) {
   var totalNuevoServ = outNuevoServicio;
 
   html += '<div class="stats stats-sm">';
-  html += '<div class="stat"><div class="stat-label">Facturas del mes</div><div class="stat-value">' + totalFacturas + '</div><div class="stat-sub">' + MESES_FULL[mesIdx] + ' 2026</div></div>';
+  html += '<div class="stat"><div class="stat-label">Facturas del mes</div><div class="stat-value">' + totalFacturas + '</div><div class="stat-sub">' + MESES_FULL[mesIdx] + ' ' + ANIO + '</div></div>';
   html += '<div class="stat"><div class="stat-label">Agregar</div><div class="stat-value stat-green">' + totalAgregados + '</div><div class="stat-sub">Facturas nuevas</div></div>';
   html += '<div class="stat"><div class="stat-label">Quitar</div><div class="stat-value stat-red">' + totalQuitados + '</div><div class="stat-sub">Facturas a eliminar</div></div>';
   html += '<div class="stat"><div class="stat-label">Nuevo servicio</div><div class="stat-value" style="color:var(--blue)">US$ ' + totalNuevoServ.toLocaleString() + '</div><div class="stat-sub">Outsourcing</div></div>';
@@ -2820,7 +2837,7 @@ function ccRenderMonth(el, mes, d) {
       <div class="card"><h3>Clientes por contadora</h3><canvas id="chartMonthC"></canvas></div>
       <div class="card"><h3>Transacciones por contadora</h3><canvas id="chartMonthTx"></canvas></div>
     </div>
-    <div class="card"><h3>Detalle por contadora — ${MESES_FULL[idx]} 2026</h3>
+    <div class="card"><h3>Detalle por contadora — ${MESES_FULL[idx]} ${ANIO}</h3>
       <div class="table-wrap"><table>
         <tr><th>Contadora</th><th>Clientes</th><th>Serv.</th><th>Adm</th><th>Brecha</th>${hasCap?'<th>Capacidad</th><th>Uso</th>':''}</tr>
         ${names.map((n,ni)=>{
@@ -2926,6 +2943,7 @@ function ccRenderMonth(el, mes, d) {
 // ─── Cobros data (from Supabase, synced by Cowork from Adm Cloud) ───
 var cobFacturas = [];
 var cobNotas = [];
+var cobPagos = [];      // registros de cobros_pagos (recibos)
 var cobView = 'lista'; // 'lista' | 'detalle'
 var cobDetalleCliente = null;
 
@@ -2979,6 +2997,11 @@ async function cobLoadNotas() {
   return data || [];
 }
 
+async function cobLoadPagos() {
+  var { data } = await sb.from('cobros_pagos').select('*').order('fecha_pago', { ascending: false });
+  return data || [];
+}
+
 // ─── Agrupar facturas por cliente ───
 function cobGroupByCustomer(facturas) {
   var groups = {};
@@ -3009,7 +3032,12 @@ function cobGroupByCustomer(facturas) {
 }
 
 function cobGetScore(nombre) {
-  // Match exact or partial (Adm uses full legal names)
+  // Primero intentar scoring automático basado en pagos reales
+  if (cobPagos.length > 0) {
+    var auto = cobCalcAutoScore(nombre);
+    if (auto && auto.score && auto.score !== 'unknown') return auto.score;
+  }
+  // Fallback: score manual hardcodeado
   if (COB_SCORES[nombre]) return COB_SCORES[nombre];
   var keys = Object.keys(COB_SCORES);
   for (var i = 0; i < keys.length; i++) {
@@ -3084,7 +3112,7 @@ var cobFilteredClientes = []; // cache after pill/aging filter, before search
 var cobTareaAsigFiltro = 'todos'; // 'todos' | 'Esmeralda' | 'Felix'
 var cobWaLevel = 1; // 1=notificación, 2=recordatorio, 3=personal
 var cobEmailLevel = 1; // 1=notificación, 2=recordatorio, 3=personal
-var COB_TC_USD = 61; // tasa de cambio USD→DOP aproximada
+var COB_TC_USD = 61; // tasa de cambio USD→DOP apróximada
 
 // ─── Helpers ───
 function cobGetGreeting() {
@@ -3217,9 +3245,10 @@ async function cobRenderApp() {
 
   // Load from Supabase (only first time or on explicit reload)
   if (!cobDataLoaded) {
-    var results = await Promise.all([cobLoadFacturas(), cobLoadNotas()]);
+    var results = await Promise.all([cobLoadFacturas(), cobLoadNotas(), cobLoadPagos()]);
     cobFacturas = results[0];
     cobNotas = results[1];
+    cobPagos = results[2];
     cobDataLoaded = true;
   }
 
@@ -3298,6 +3327,13 @@ async function cobRenderApp() {
   html += '📂 Cargar análisis de saldo';
   html += '<input type="file" accept=".xlsx,.xls,.csv" onchange="cobUploadExcel(this)" style="display:none">';
   html += '</label>';
+  html += '<label style="padding:4px 12px;border-radius:8px;font-size:0.72rem;font-weight:600;cursor:pointer;border:1px solid var(--green);background:#ecfdf5;color:var(--green)">';
+  html += '📂 Cargar recibos';
+  html += '<input type="file" accept=".xlsx,.xls,.csv" onchange="cobUploadRecibos(this)" style="display:none">';
+  html += '</label>';
+  if (cobPagos.length > 0) {
+    html += '<span style="font-size:0.72rem;color:var(--green)">' + cobPagos.length + ' recibos cargados</span>';
+  }
   html += '</div>';
 
   // ── Greeting ──
@@ -4056,6 +4092,138 @@ async function cobUploadExcel(input) {
   input.value = ''; // reset for re-upload
 }
 
+// ─── Upload de recibos (pagos) ───
+async function cobUploadRecibos(input) {
+  if (!input.files || !input.files[0]) return;
+  var file = input.files[0];
+  gerShowToast('Leyendo recibos...');
+
+  var reader = new FileReader();
+  reader.onload = async function(e) {
+    try {
+      var wb = XLSX.read(e.target.result, { type: 'array', cellDates: false });
+      var ws = wb.Sheets[wb.SheetNames[0]];
+      var rows = XLSX.utils.sheet_to_json(ws, { defval: '' });
+
+      if (rows.length === 0) { gerShowToast('El archivo está vacío', 'error'); return; }
+
+      // Auto-detect columns
+      var cols = Object.keys(rows[0]);
+      var colMap = { numero: null, tipo: null, fecha: null, cliente: null, factura: null, moneda: null, monto: null };
+
+      cols.forEach(function(c) {
+        var cl = c.toLowerCase().trim();
+        if (cl === 'número' || cl === 'numero' || cl === 'no.' || cl === 'no') colMap.numero = c;
+        if (cl.indexOf('tipo') >= 0) colMap.tipo = c;
+        if (cl.indexOf('fecha') >= 0 || cl.indexOf('date') >= 0) { if (!colMap.fecha) colMap.fecha = c; }
+        if (cl.indexOf('cliente') >= 0 || cl.indexOf('relacion') >= 0) colMap.cliente = c;
+        if (cl.indexOf('factura') >= 0 || cl.indexOf('invoice') >= 0) colMap.factura = c;
+        if (cl.indexOf('moneda') >= 0 || cl.indexOf('currency') >= 0) colMap.moneda = c;
+        if (cl.indexOf('monto') >= 0 || cl === 'total' || cl.indexOf('amount') >= 0) colMap.monto = c;
+      });
+
+      if (!colMap.cliente || !colMap.monto) {
+        gerShowToast('No se encontraron columnas de Cliente y Monto.', 'error');
+        return;
+      }
+
+      // Helper: Excel serial date to ISO string
+      function excelDateToISO(val) {
+        if (!val) return null;
+        if (val instanceof Date) return val.toISOString().slice(0, 10);
+        if (typeof val === 'number') {
+          var d = new Date((val - 25569) * 86400 * 1000);
+          return d.toISOString().slice(0, 10);
+        }
+        if (typeof val === 'string' && val.length >= 8) return val.slice(0, 10);
+        return null;
+      }
+
+      // Build records
+      var records = [];
+      var skipped = 0;
+      rows.forEach(function(r) {
+        var clienteNombre = String(r[colMap.cliente] || '').trim();
+        if (!clienteNombre) return;
+        var monto = parseFloat(r[colMap.monto]) || 0;
+        if (monto === 0) return;
+
+        records.push({
+          recibo_no: colMap.numero ? String(r[colMap.numero] || '') : '',
+          cliente_nombre: clienteNombre,
+          factura_ref: colMap.factura ? String(r[colMap.factura] || '') : null,
+          monto: Math.abs(monto),
+          moneda: colMap.moneda ? (String(r[colMap.moneda] || 'DOP').toUpperCase().trim()) : 'DOP',
+          fecha_pago: excelDateToISO(r[colMap.fecha]),
+          tipo_doc: colMap.tipo ? String(r[colMap.tipo] || 'Recibo') : 'Recibo',
+          synced_at: new Date().toISOString()
+        });
+      });
+
+      if (records.length === 0) { gerShowToast('No hay recibos válidos en el archivo.', 'error'); return; }
+
+      if (!confirm('Se encontraron ' + records.length + ' recibos. Los duplicados (mismo número) se ignoran. ¿Continuar?')) return;
+
+      gerShowToast('Cargando ' + records.length + ' recibos...');
+
+      // Upsert in batches (ON CONFLICT ignora duplicados)
+      var inserted = 0;
+      for (var i = 0; i < records.length; i += 50) {
+        var batch = records.slice(i, i + 50);
+        var res = await sb.from('cobros_pagos').upsert(batch, { onConflict: 'recibo_no,moneda', ignoreDuplicates: true });
+        if (res.error) {
+          gerShowToast('Error en fila ' + (i+1) + ': ' + res.error.message, 'error');
+          return;
+        }
+        inserted += batch.length;
+      }
+
+      gerShowToast(records.length + ' recibos procesados');
+      cobPagos = await cobLoadPagos();
+      cobDataLoaded = false;
+      cobRenderApp();
+
+    } catch(err) {
+      gerShowToast('Error leyendo recibos: ' + err.message, 'error');
+      console.error(err);
+    }
+  };
+  reader.readAsArrayBuffer(file);
+  input.value = '';
+}
+
+// ─── Scoring automático basado en historial de pagos ───
+function cobCalcAutoScore(clienteNombre) {
+  // Buscar pagos de este cliente
+  var pagosCliente = cobPagos.filter(function(p) {
+    return p.cliente_nombre.toLowerCase().indexOf(clienteNombre.toLowerCase()) >= 0
+      || clienteNombre.toLowerCase().indexOf(p.cliente_nombre.toLowerCase()) >= 0;
+  });
+
+  if (pagosCliente.length === 0) return null; // sin datos, usar score manual
+
+  // Buscar facturas correspondientes para calcular días
+  var diasPago = [];
+  pagosCliente.forEach(function(pago) {
+    if (!pago.factura_ref || !pago.fecha_pago) return;
+    // Buscar la factura original en cobros_facturas
+    var factura = cobFacturas.find(function(f) { return f.doc_id === pago.factura_ref; });
+    if (factura && factura.fecha_factura) {
+      var fechaFact = new Date(factura.fecha_factura);
+      var fechaPago = new Date(pago.fecha_pago);
+      var dias = Math.round((fechaPago - fechaFact) / (1000 * 60 * 60 * 24));
+      if (dias >= 0) diasPago.push(dias);
+    }
+  });
+
+  if (diasPago.length === 0) return { score: 'unknown', avgDias: 0, totalPagos: pagosCliente.length, diasData: [] };
+
+  var avg = Math.round(diasPago.reduce(function(s, d) { return s + d; }, 0) / diasPago.length);
+  var score = avg <= 30 ? 'good' : (avg <= 60 ? 'occasional' : 'repeat');
+
+  return { score: score, avgDias: avg, totalPagos: pagosCliente.length, diasData: diasPago };
+}
+
 async function cobCompletarTarea(id) {
   var { error } = await sb.from('notas_cobro').update({ resultado: 'completada' }).eq('id', id);
   if (error) { gerShowToast('Error: ' + error.message, 'error'); return; }
@@ -4101,8 +4269,8 @@ var ctdCONTADORA_LAST = ['Sin asignar'];
 
 var ctdITEMS = [
   { id:'presupuesto', label:'Presupuesto', short:'Pres.' },
-  { id:'proyeccion', label:'Proyeccion de impuestos', short:'Proy.' },
-  { id:'resumen', label:'Resumen de declaracion', short:'Resumen' },
+  { id:'proyeccion', label:'Proyección de impuestos', short:'Proy.' },
+  { id:'resumen', label:'Resumen de declaración', short:'Resumen' },
   { id:'video', label:'Video mensual', short:'Video' }
 ];
 
@@ -4122,14 +4290,14 @@ var ctdKPI_GROUPS = [
 // ─── CTD 24-Task Items (same as contabilidad.html) ───
 var ctdCHECKLIST_ITEMS = [
   { id:'solicitud_nomina',        n:1,  label:'Solicitud de Nomina',                       impuesto:'TSS / IR-3',    dia:3,  mesRel:1 },
-  { id:'recepcion_nomina',        n:2,  label:'Recepcion de Nomina',                        impuesto:'TSS / IR-3',    dia:3,  mesRel:1 },
+  { id:'recepcion_nomina',        n:2,  label:'Recepción de Nomina',                        impuesto:'TSS / IR-3',    dia:3,  mesRel:1 },
   { id:'registro_nomina',         n:3,  label:'Registro de Nomina',                         impuesto:'TSS / IR-3',    dia:3,  mesRel:1 },
   { id:'informar_impuestos',      n:4,  label:'Informar a Impuestos (via Trello)',           impuesto:'TSS / IR-3',    dia:3,  mesRel:1 },
   { id:'autorizacion_tss_nomina', n:5,  label:'Subir autorizacion de TSS al cliente',       impuesto:'TSS / IR-3',    dia:3,  mesRel:1 },
   { id:'autorizacion_tss',        n:6,  label:'Subir autorizacion al cliente (TSS)',         impuesto:'TSS / IR-3',    dia:3,  mesRel:1 },
-  { id:'autorizacion_ir3',        n:7,  label:'Subir Autorizacion de IR-3 al cliente',      impuesto:'TSS / IR-3',    dia:3,  mesRel:1 },
+  { id:'autorizacion_ir3',        n:7,  label:'Subir Autorización de IR-3 al cliente',      impuesto:'TSS / IR-3',    dia:3,  mesRel:1 },
   { id:'solicitar_proveedores',   n:8,  label:'Solicitar Proveedores Informales',           impuesto:'Proveedores',   dia:10, mesRel:1 },
-  { id:'recepcion_proveedores',   n:9,  label:'Recepcion de Proveedores Informales',        impuesto:'Proveedores',   dia:10, mesRel:1 },
+  { id:'recepcion_proveedores',   n:9,  label:'Recepción de Proveedores Informales',        impuesto:'Proveedores',   dia:10, mesRel:1 },
   { id:'registrar_proveedores',   n:10, label:'Registrar gastos de Proveedores Informales', impuesto:'Proveedores',   dia:10, mesRel:1 },
   { id:'borrador_ir17',           n:11, label:'Realizar Borrador de IR-17',                 impuesto:'Proveedores',   dia:10, mesRel:1 },
   { id:'enviar_ir17',             n:12, label:'Enviar borrador de IR-17 al cliente',        impuesto:'Proveedores',   dia:10, mesRel:1 },
@@ -4140,11 +4308,11 @@ var ctdCHECKLIST_ITEMS = [
   { id:'facturas_registradas',    n:17, label:'Facturas de Gastos registradas',             impuesto:'ITBIS',         dia:20, mesRel:1 },
   { id:'borrador_itbis',          n:18, label:'Realizar Borrador ITBIS',                    impuesto:'ITBIS',         dia:20, mesRel:1 },
   { id:'enviar_itbis',            n:19, label:'Enviar autorizacion de pago ITBIS',          impuesto:'ITBIS',         dia:20, mesRel:1 },
-  { id:'registros_realizados',    n:20, label:'Registrar gastos',                           impuesto:'Presentacion',  dia:5,  mesRel:1, firmaOffset:4 },
-  { id:'presupuesto',             n:21, label:'Realizar Presupuesto y ejecucion',           impuesto:'Presentacion',  dia:30, mesRel:1 },
-  { id:'proyeccion_impuestos',    n:22, label:'Realizar Proyeccion de impuestos',           impuesto:'Presentacion',  dia:30, mesRel:1 },
-  { id:'resumen_declaracion',     n:23, label:'Realizar resumen de declaracion del mes',    impuesto:'Presentacion',  dia:30, mesRel:1 },
-  { id:'video_reunion',           n:24, label:'Grabar video o reunion con cliente',         impuesto:'Presentacion',  dia:30, mesRel:1 }
+  { id:'registros_realizados',    n:20, label:'Registrar gastos',                           impuesto:'Presentación',  dia:5,  mesRel:1, firmaOffset:4 },
+  { id:'presupuesto',             n:21, label:'Realizar Presupuesto y ejecucion',           impuesto:'Presentación',  dia:30, mesRel:1 },
+  { id:'proyeccion_impuestos',    n:22, label:'Realizar Proyección de impuestos',           impuesto:'Presentación',  dia:30, mesRel:1 },
+  { id:'resumen_declaracion',     n:23, label:'Realizar resumen de declaracion del mes',    impuesto:'Presentación',  dia:30, mesRel:1 },
+  { id:'video_reunion',           n:24, label:'Grabar video o reunión con cliente',         impuesto:'Presentación',  dia:30, mesRel:1 }
 ];
 
 // ─── CTD State ───
@@ -4234,7 +4402,7 @@ function ctdCalcKPI(clients, lookup, contadora) {
 async function ctdLoadContadoras() {
   var result = await sb.from('asignaciones')
     .select('contadora, cliente, mes')
-    .eq('anio', 2026)
+    .eq('anio', ANIO)
     .order('contadora');
 
   var data = result.data || [];
@@ -4260,12 +4428,12 @@ async function ctdLoadContadoras() {
 
 async function ctdLoadReporteData(mes) {
   var result = await sb.from('reporte_mensual')
-    .select('*').eq('mes', mes).eq('anio', 2026).order('contadora');
+    .select('*').eq('mes', mes).eq('anio', ANIO).order('contadora');
   return result.data || [];
 }
 
 async function ctdLoadChecklistData() {
-  var result = await sb.from('checklist_contadores').select('*').eq('anio', 2026);
+  var result = await sb.from('checklist_contadores').select('*').eq('anio', ANIO);
   if (result.error) { console.error('Error cargando checklist:', result.error); return; }
   ctdChecklistData = {};
   (result.data || []).forEach(function(r) {
@@ -4296,7 +4464,7 @@ function ctdGetProgress(contadora, cliente, mes) {
 }
 
 async function ctdSaveReporte(contadora, cliente, mes, fields) {
-  var record = { contadora: contadora, cliente: cliente, mes: mes, anio: 2026 };
+  var record = { contadora: contadora, cliente: cliente, mes: mes, anio: ANIO };
   for (var key in fields) record[key] = fields[key];
   var result = await sb.from('reporte_mensual').upsert(record, { onConflict: 'contadora,cliente,mes,anio' });
   if (result.error) { console.error('Error guardando:', result.error); alert('Error guardando. Verifica tus permisos.'); return false; }
@@ -4465,7 +4633,7 @@ function ctdRenderDetail(el) {
   // Header card
   html += '<div class="ctd-detail-header">';
   html += '<div class="ctd-detail-name">' + ctdDetailCliente + '</div>';
-  html += '<div class="ctd-detail-sub">Contadora: ' + ctdDetailContadora + ' · ' + mesFull + ' 2026</div>';
+  html += '<div class="ctd-detail-sub">Contadora: ' + ctdDetailContadora + ' · ' + mesFull + ' ' + ANIO + '</div>';
   html += '<div class="ctd-detail-stats">';
   html += '<div class="ctd-detail-pending"><strong>' + (prog.total - prog.done) + '</strong> tareas pendientes de ' + prog.total + '</div>';
   html += '<div class="ctd-detail-progress-bar"><div class="ctd-detail-progress-fill" style="width:' + prog.pct + '%;background:' + barColor + '"></div></div>';
@@ -4492,7 +4660,7 @@ function ctdRenderDetail(el) {
     // Deadline calculation
     var dlDay = item.dia;
     var dlMonth = mesIdx + (item.mesRel || 1);
-    var dlYear = 2026;
+    var dlYear = ANIO;
     if (dlMonth > 11) { dlMonth -= 12; dlYear++; }
     var dlDate = new Date(dlYear, dlMonth, dlDay);
     var dlStr = dlDay + ' ' + ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'][dlMonth];
@@ -4529,7 +4697,7 @@ async function ctdToggleTask(contadora, cliente, mes, itemId, checked) {
         .eq('id', entry._id);
     } else {
       var result = await sb.from('checklist_contadores')
-        .insert({ contadora: contadora, cliente: cliente, mes: mes, anio: 2026, datos: entry.datos })
+        .insert({ contadora: contadora, cliente: cliente, mes: mes, anio: ANIO, datos: entry.datos })
         .select();
       if (result.data && result.data[0]) entry._id = result.data[0].id;
     }
@@ -4559,7 +4727,7 @@ async function ctdRenderContadoraView() {
       var tryName = nameVariants[v];
       if (!tryName) continue;
       var asigResult = await sb.from('asignaciones')
-        .select('cliente, contadora').eq('contadora', tryName).eq('anio', 2026);
+        .select('cliente, contadora').eq('contadora', tryName).eq('anio', ANIO);
       if (asigResult.data && asigResult.data.length > 0) {
         myName = tryName;
         var seen = {};
@@ -4774,7 +4942,7 @@ async function bdLoadContadoras() {
 }
 
 async function bdLoadAsignaciones() {
-  var { data, error } = await sb.from('asignaciones').select('*').eq('anio', 2026).order('cliente');
+  var { data, error } = await sb.from('asignaciones').select('*').eq('anio', ANIO).order('cliente');
   if (error) { console.error('Error cargando asignaciones:', error); return; }
   bdAsignaciones = data || [];
 }
@@ -4871,8 +5039,8 @@ function clFormatDate(d) {
 
 function bdGetClientesForMes(mesName) {
   var mesIdx = BD_MESES.indexOf(mesName);
-  var lastDay = new Date(2026, mesIdx + 1, 0);
-  var lastDayStr = '2026-' + String(mesIdx + 1).padStart(2, '0') + '-' + String(lastDay.getDate()).padStart(2, '0');
+  var lastDay = new Date(ANIO, mesIdx + 1, 0);
+  var lastDayStr = ANIO + '-' + String(mesIdx + 1).padStart(2, '0') + '-' + String(lastDay.getDate()).padStart(2, '0');
   return bdClientes.filter(function(c) {
     var entered = !c.fecha_entrada || c.fecha_entrada <= lastDayStr;
     var notLeft = !c.fecha_salida || c.fecha_salida > lastDayStr;
@@ -4923,8 +5091,8 @@ function bdRenderClientes() {
   // Combine active clients for selected month + inactive clients
   var clActivosMes = bdGetClientesForMes(bdClMes);
   var clMesIdx = BD_MESES.indexOf(bdClMes);
-  var clLastDayObj = new Date(2026, clMesIdx + 1, 0);
-  var clLastDayStr = '2026-' + String(clMesIdx + 1).padStart(2, '0') + '-' + String(clLastDayObj.getDate()).padStart(2, '0');
+  var clLastDayObj = new Date(ANIO, clMesIdx + 1, 0);
+  var clLastDayStr = ANIO + '-' + String(clMesIdx + 1).padStart(2, '0') + '-' + String(clLastDayObj.getDate()).padStart(2, '0');
   // Inactivos: cualquier cliente que NO está activo al cierre del mes,
   // pero que sí existía (entró antes o durante ese mes, o no tiene fecha_entrada = pre-existente)
   var clInactivosMes = bdClientes.filter(function(c) {
@@ -4935,7 +5103,7 @@ function bdRenderClientes() {
   var allForMes = clActivosMes.concat(clInactivosMes);
 
   // Calcular nuevos y churn del mes
-  var clMesPrefix = '2026-' + String(clMesIdx + 1).padStart(2, '0');
+  var clMesPrefix = ANIO + '-' + String(clMesIdx + 1).padStart(2, '0');
   var clNuevosMes = bdClientes.filter(function(c) {
     return c.fecha_entrada && c.fecha_entrada.indexOf(clMesPrefix) === 0;
   });
@@ -4981,8 +5149,8 @@ function bdRenderClientes() {
       filtered = bdGetClientesForMes(BD_MESES[clMesIdx - 1]);
     } else {
       filtered = bdClientes.filter(function(c) {
-        var entered = !c.fecha_entrada || c.fecha_entrada < '2026-01-01';
-        var notLeft = !c.fecha_salida || c.fecha_salida >= '2026-01-01';
+        var entered = !c.fecha_entrada || c.fecha_entrada < ANIO + '-01-01';
+        var notLeft = !c.fecha_salida || c.fecha_salida >= ANIO + '-01-01';
         return entered && notLeft;
       });
     }
@@ -5508,8 +5676,8 @@ function bdSwitchSwMes(mes) {
 
 function swGetClientesForMes(mes) {
   var mesIdx = BD_MESES.indexOf(mes);
-  var lastDay = new Date(2026, mesIdx + 1, 0);
-  var lastDayStr = '2026-' + String(mesIdx + 1).padStart(2, '0') + '-' + String(lastDay.getDate()).padStart(2, '0');
+  var lastDay = new Date(ANIO, mesIdx + 1, 0);
+  var lastDayStr = ANIO + '-' + String(mesIdx + 1).padStart(2, '0') + '-' + String(lastDay.getDate()).padStart(2, '0');
   return bdSoftwareClientes.filter(function(c) {
     var entered = !c.fecha_entrada || c.fecha_entrada <= lastDayStr;
     var notExited = !c.fecha_salida || c.fecha_salida > lastDayStr;
@@ -5548,8 +5716,8 @@ function bdRenderSoftware() {
 
   var swActivosMes = swGetClientesForMes(bdSwMes);
   var swMesIdx = BD_MESES.indexOf(bdSwMes);
-  var swLastDayObj = new Date(2026, swMesIdx + 1, 0);
-  var swLastDayStr = '2026-' + String(swMesIdx + 1).padStart(2, '0') + '-' + String(swLastDayObj.getDate()).padStart(2, '0');
+  var swLastDayObj = new Date(ANIO, swMesIdx + 1, 0);
+  var swLastDayStr = ANIO + '-' + String(swMesIdx + 1).padStart(2, '0') + '-' + String(swLastDayObj.getDate()).padStart(2, '0');
   var swInactivosMes = bdSoftwareClientes.filter(function(c) {
     if (swActivosMes.indexOf(c) >= 0) return false;
     var entered = !c.fecha_entrada || c.fecha_entrada <= swLastDayStr;
@@ -5561,7 +5729,7 @@ function bdRenderSoftware() {
   var facturacionMes = swActivosMes.reduce(function(sum, c) { return sum + (c.monto_mensual || 0); }, 0);
 
   // Calcular nuevos (fecha_entrada cae en el mes seleccionado)
-  var mesPrefix = '2026-' + String(swMesIdx + 1).padStart(2, '0');
+  var mesPrefix = ANIO + '-' + String(swMesIdx + 1).padStart(2, '0');
   var swNuevosMes = bdSoftwareClientes.filter(function(c) {
     return c.fecha_entrada && c.fecha_entrada.indexOf(mesPrefix) === 0;
   });
@@ -5614,8 +5782,8 @@ function bdRenderSoftware() {
       filtered = swGetClientesForMes(prevMes);
     } else {
       filtered = bdSoftwareClientes.filter(function(c) {
-        var entered = !c.fecha_entrada || c.fecha_entrada < '2026-01-01';
-        var notLeft = !c.fecha_salida || c.fecha_salida >= '2026-01-01';
+        var entered = !c.fecha_entrada || c.fecha_entrada < ANIO + '-01-01';
+        var notLeft = !c.fecha_salida || c.fecha_salida >= ANIO + '-01-01';
         return entered && notLeft;
       });
     }
@@ -6159,7 +6327,7 @@ function bdRenderAsignaciones() {
   h += '</div>';
 
   if (rows.length === 0) {
-    h += '<div class="cl-empty"><p>No hay asignaciones para ' + bdAsigMes.charAt(0).toUpperCase() + bdAsigMes.slice(1) + ' 2026.</p></div>';
+    h += '<div class="cl-empty"><p>No hay asignaciones para ' + bdAsigMes.charAt(0).toUpperCase() + bdAsigMes.slice(1) + ' ' + ANIO + '.</p></div>';
     el.innerHTML = h;
     return;
   }
@@ -6306,7 +6474,7 @@ async function bdAsigAddRow() {
   }
 
   var { error } = await sb.from('asignaciones').insert({
-    mes: bdAsigMes, anio: 2026, contadora: 'Sin asignar', cliente: match.nombre, serv: 0, adm: 0
+    mes: bdAsigMes, anio: ANIO, contadora: 'Sin asignar', cliente: match.nombre, serv: 0, adm: 0
   });
 
   if (error) {
@@ -6355,7 +6523,7 @@ async function bdLoadContadoras() {
 }
 
 async function bdLoadAsignaciones() {
-  var { data, error } = await sb.from('asignaciones').select('*').eq('anio', 2026).order('cliente');
+  var { data, error } = await sb.from('asignaciones').select('*').eq('anio', ANIO).order('cliente');
   if (error) { console.error('Error cargando asignaciones:', error); return; }
   bdAsignaciones = data || [];
 }
@@ -6592,7 +6760,7 @@ function bdRenderAsignaciones() {
   h += '</div>';
 
   if (rows.length === 0) {
-    h += '<div class="cl-empty"><p>No hay asignaciones para ' + bdAsigMes.charAt(0).toUpperCase() + bdAsigMes.slice(1) + ' 2026.</p></div>';
+    h += '<div class="cl-empty"><p>No hay asignaciones para ' + bdAsigMes.charAt(0).toUpperCase() + bdAsigMes.slice(1) + ' ' + ANIO + '.</p></div>';
     el.innerHTML = h;
     return;
   }
@@ -6771,7 +6939,7 @@ async function bdAsigAddRow() {
   }
 
   var { error } = await sb.from('asignaciones').insert({
-    mes: bdAsigMes, anio: 2026, contadora: 'Sin asignar', cliente: match.nombre, serv: 0, adm: 0
+    mes: bdAsigMes, anio: ANIO, contadora: 'Sin asignar', cliente: match.nombre, serv: 0, adm: 0
   });
 
   if (error) {
@@ -6949,8 +7117,8 @@ function clFormatDate(d) {
 
 function bdGetClientesForMes(mesName) {
   var mesIdx = BD_MESES.indexOf(mesName);
-  var lastDay = new Date(2026, mesIdx + 1, 0);
-  var lastDayStr = '2026-' + String(mesIdx + 1).padStart(2, '0') + '-' + String(lastDay.getDate()).padStart(2, '0');
+  var lastDay = new Date(ANIO, mesIdx + 1, 0);
+  var lastDayStr = ANIO + '-' + String(mesIdx + 1).padStart(2, '0') + '-' + String(lastDay.getDate()).padStart(2, '0');
   return bdClientes.filter(function(c) {
     var entered = !c.fecha_entrada || c.fecha_entrada <= lastDayStr;
     var notLeft = !c.fecha_salida || c.fecha_salida > lastDayStr;
@@ -7004,8 +7172,8 @@ function bdRenderClientes() {
   // Combine active clients for selected month + inactive clients
   var clActivosMes = bdGetClientesForMes(bdClMes);
   var clMesIdx = BD_MESES.indexOf(bdClMes);
-  var clLastDayObj = new Date(2026, clMesIdx + 1, 0);
-  var clLastDayStr = '2026-' + String(clMesIdx + 1).padStart(2, '0') + '-' + String(clLastDayObj.getDate()).padStart(2, '0');
+  var clLastDayObj = new Date(ANIO, clMesIdx + 1, 0);
+  var clLastDayStr = ANIO + '-' + String(clMesIdx + 1).padStart(2, '0') + '-' + String(clLastDayObj.getDate()).padStart(2, '0');
   var clInactivosMes = bdClientes.filter(function(c) {
     if (clActivosMes.indexOf(c) >= 0) return false;
     var entered = !c.fecha_entrada || c.fecha_entrada <= clLastDayStr;
@@ -7014,7 +7182,7 @@ function bdRenderClientes() {
   var allForMes = clActivosMes.concat(clInactivosMes);
 
   // Calcular nuevos y churn del mes
-  var clMesPrefix = '2026-' + String(clMesIdx + 1).padStart(2, '0');
+  var clMesPrefix = ANIO + '-' + String(clMesIdx + 1).padStart(2, '0');
   var clNuevosMes = bdClientes.filter(function(c) {
     return c.fecha_entrada && c.fecha_entrada.indexOf(clMesPrefix) === 0;
   });
@@ -7060,8 +7228,8 @@ function bdRenderClientes() {
       filtered = bdGetClientesForMes(BD_MESES[clMesIdx - 1]);
     } else {
       filtered = bdClientes.filter(function(c) {
-        var entered = !c.fecha_entrada || c.fecha_entrada < '2026-01-01';
-        var notLeft = !c.fecha_salida || c.fecha_salida >= '2026-01-01';
+        var entered = !c.fecha_entrada || c.fecha_entrada < ANIO + '-01-01';
+        var notLeft = !c.fecha_salida || c.fecha_salida >= ANIO + '-01-01';
         return entered && notLeft;
       });
     }
@@ -7573,8 +7741,8 @@ function bdSwitchSwMes(mes) {
 
 function swGetClientesForMes(mes) {
   var mesIdx = BD_MESES.indexOf(mes);
-  var lastDay = new Date(2026, mesIdx + 1, 0);
-  var lastDayStr = '2026-' + String(mesIdx + 1).padStart(2, '0') + '-' + String(lastDay.getDate()).padStart(2, '0');
+  var lastDay = new Date(ANIO, mesIdx + 1, 0);
+  var lastDayStr = ANIO + '-' + String(mesIdx + 1).padStart(2, '0') + '-' + String(lastDay.getDate()).padStart(2, '0');
   return bdSoftwareClientes.filter(function(c) {
     var entered = !c.fecha_entrada || c.fecha_entrada <= lastDayStr;
     var notExited = !c.fecha_salida || c.fecha_salida > lastDayStr;
@@ -7621,8 +7789,8 @@ function bdRenderSoftwareCrud() {
 
   var swActivosMes = swGetClientesForMes(bdSwMes);
   var swMesIdx = BD_MESES.indexOf(bdSwMes);
-  var swLastDayObj = new Date(2026, swMesIdx + 1, 0);
-  var swLastDayStr = '2026-' + String(swMesIdx + 1).padStart(2, '0') + '-' + String(swLastDayObj.getDate()).padStart(2, '0');
+  var swLastDayObj = new Date(ANIO, swMesIdx + 1, 0);
+  var swLastDayStr = ANIO + '-' + String(swMesIdx + 1).padStart(2, '0') + '-' + String(swLastDayObj.getDate()).padStart(2, '0');
   var swInactivosMes = bdSoftwareClientes.filter(function(c) {
     if (swActivosMes.indexOf(c) >= 0) return false;
     var entered = !c.fecha_entrada || c.fecha_entrada <= swLastDayStr;
@@ -7632,7 +7800,7 @@ function bdRenderSoftwareCrud() {
 
   var facturacionMes = swActivosMes.reduce(function(sum, c) { return sum + (c.monto_mensual || 0); }, 0);
 
-  var mesPrefix = '2026-' + String(swMesIdx + 1).padStart(2, '0');
+  var mesPrefix = ANIO + '-' + String(swMesIdx + 1).padStart(2, '0');
   var swNuevosMes = bdSoftwareClientes.filter(function(c) {
     return c.fecha_entrada && c.fecha_entrada.indexOf(mesPrefix) === 0;
   });
@@ -7681,8 +7849,8 @@ function bdRenderSoftwareCrud() {
       filtered = swGetClientesForMes(prevMes);
     } else {
       filtered = bdSoftwareClientes.filter(function(c) {
-        var entered = !c.fecha_entrada || c.fecha_entrada < '2026-01-01';
-        var notLeft = !c.fecha_salida || c.fecha_salida >= '2026-01-01';
+        var entered = !c.fecha_entrada || c.fecha_entrada < ANIO + '-01-01';
+        var notLeft = !c.fecha_salida || c.fecha_salida >= ANIO + '-01-01';
         return entered && notLeft;
       });
     }
@@ -8030,6 +8198,27 @@ async function showApp() {
   // Render
   renderGerMainTabs();
   switchGerTab(gerMainTab);
+  updateModHeader();
+}
+
+function updateModHeader() {
+  var el = document.getElementById('modHeaderSub');
+  if (!el) return;
+  var months = ccGetAllMonths();
+  if (months.length === 0) return;
+  var lastMes = months[months.length - 1];
+  var d = ccDATA[lastMes];
+  if (!d) return;
+
+  var total = d.total;
+  var contadoras = Object.keys(d.asignaciones).length;
+  var software = ccSOFTWARE_CLIENTES ? ccSOFTWARE_CLIENTES.length : 0;
+
+  var now = new Date();
+  var lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+  var diasRestantes = lastDay - now.getDate();
+
+  el.innerHTML = total + ' clientes outsource · ' + software + ' clientes software · ' + contadoras + ' contadoras · 2 analistas · cierre en <strong>' + diasRestantes + ' días</strong>';
 }
 
 // Enter key handlers
@@ -8047,7 +8236,7 @@ async function init() {
   var result = await sb.auth.getSession();
   var session = result.data ? result.data.session : null;
   if (session) { await loadUserProfile(); await loadMisPermisos(); await showApp(); }
-  else if (isEmbed) { document.body.innerHTML = '<div style="text-align:center;padding:60px;color:#7c8495;">Sesion no encontrada. Recarga la pagina principal.</div>'; }
+  else if (isEmbed) { document.body.innerHTML = '<div style="text-align:center;padding:60px;color:#7c8495;">Sesión no encontrada. Recarga la página principal.</div>'; }
 }
 init();
 </script>
