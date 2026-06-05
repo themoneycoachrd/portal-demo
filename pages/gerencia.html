@@ -4322,7 +4322,7 @@ async function cobUploadRecibos(input) {
       var inserted = 0;
       for (var i = 0; i < records.length; i += 50) {
         var batch = records.slice(i, i + 50);
-        var res = await sb.from('cobros_pagos').upsert(batch, { onConflict: 'recibo_no,moneda', ignoreDuplicates: true });
+        var res = await sb.from('cobros_pagos').upsert(batch, { onConflict: 'recibo_no,moneda,factura_ref', ignoreDuplicates: true });
         if (res.error) {
           gerShowToast('Error en fila ' + (i+1) + ': ' + res.error.message, 'error');
           return;
