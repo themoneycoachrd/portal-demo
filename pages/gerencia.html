@@ -3014,7 +3014,7 @@ function cobGroupByCustomer(facturas) {
     var name = f.cliente_nombre || 'Sin nombre';
     var balance = parseFloat(f.balance || 0);
     var total = parseFloat(f.total || 0);
-    if (balance <= 0.01) return;
+    if (balance === 0) return; // solo saltar si es exactamente 0
 
     if (!groups[name]) {
       groups[name] = { nombre: name, facturas: [], totalPendiente: 0, maxDias: 0, currency: f.moneda || 'DOP', monedaMix: false };
@@ -3108,6 +3108,9 @@ function cobBuildClientList() {
       // Restar pagos de facturas específicas
       var pagosSinAplicar = 0;
       pagosCliente.forEach(function(p) {
+        // Solo aplicar recibos con monto positivo (pagos reales).
+        // Notas de crédito (monto negativo) ya están reflejadas en el análisis de saldo.
+        if (p.monto <= 0) return;
         if (p.factura_ref) {
           var fact = c.facturas.find(function(f) { return f.no === p.factura_ref; });
           if (fact) {
@@ -3136,7 +3139,10 @@ function cobBuildClientList() {
       c.totalDop = 0;
       c.facturas.forEach(function(f) {
         c.totalPendiente += f.balance;
-        c.totalDop = (c.totalDop || 0) + (f.balanceDop ? f.balanceDop * (f.balance / (f.total || 1)) : f.balance);
+        // Usar la tasa implícita del balance_dop original para convertir el balance actualizado
+        var originalBal = parseFloat(f.total) || f.balance || 1;
+        var tasa = f.balanceDop ? (f.balanceDop / originalBal) : 1;
+        c.totalDop += f.balance * tasa;
       });
       c.totalPagos = pagosCliente.length;
     });
@@ -3834,7 +3840,7 @@ function cobRenderDetalle(el) {
       html += '<td>' + tipoBadge + '</td>';
       html += '<td style="font-size:0.78rem">' + refDisplay + '</td>';
       html += '<td style="text-align:right;font-weight:700;color:' + montoColor + ';font-variant-numeric:tabular-nums">' + montoSign + cobFmtAmount(m.monto) + '</td>';
-      html += '<td style="text-align:right;font-weight:600;color:' + balColor + ';font-variant-numeric:tabular-nums">' + cobFmtAmount(Math.abs(m.runningTotal)) + '</td>';
+      html += '<td style="text-align:right;font-weight:600;color:' + balColor + ';font-variant-numeric:tabular-nums">' + (m.runningTotal < 0 ? '-' : '') + cobFmtAmount(Math.abs(m.runningTotal)) + '</td>';
       html += '</tr>';
     });
 
@@ -4319,7 +4325,7 @@ async function cobUploadExcel(input) {
         var clienteNombre = String(r[colMap.cliente] || '').trim();
         if (!clienteNombre) return;
         var bal = parseFloat(r[colMap.balance]) || 0;
-        if (bal <= 0.01 && bal >= -0.01) return; // skip zero balance
+        if (bal === 0) return; // solo saltar si es exactamente 0
         // Balance en DOP: si hay columna local, usarla. Si no, asumir que balance ya es DOP.
         var balDop = useLocalBalance ? (parseFloat(r[colMap.balanceLocal]) || bal) : bal;
 
@@ -4333,7 +4339,7 @@ async function cobUploadExcel(input) {
         records.push({
           cliente_nombre: clienteNombre,
           doc_id: colMap.docId ? String(r[colMap.docId] || '') : null,
-          total: colMap.total ? (parseFloat(r[colMap.total]) || 0) : Math.abs(bal),
+          total: colMap.total ? (parseFloat(r[colMap.total]) || 0) : bal,
           balance: bal,
           fecha_factura: fechaVal,
           dias_atraso: colMap.dias ? (parseInt(r[colMap.dias]) || 0) : 0,
@@ -4430,7 +4436,7 @@ async function cobUploadRecibos(input) {
           recibo_no: colMap.numero ? String(r[colMap.numero] || '') : '',
           cliente_nombre: clienteNombre,
           factura_ref: colMap.factura ? String(r[colMap.factura] || '') : null,
-          monto: Math.abs(monto),
+          monto: monto, // respetar signo: positivo = pago, negativo = nota de crédito
           moneda: colMap.moneda ? (String(r[colMap.moneda] || 'DOP').toUpperCase().trim()) : 'DOP',
           fecha_pago: excelDateToISO(r[colMap.fecha]),
           tipo_doc: colMap.tipo ? String(r[colMap.tipo] || 'Recibo') : 'Recibo',
