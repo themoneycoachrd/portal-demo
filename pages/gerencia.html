@@ -2992,7 +2992,7 @@ var COB_SCORE_ORDER = { repeat: 0, occasional: 1, unknown: 2, good: 3 };
 
 // ─── Supabase data loaders ───
 async function cobLoadFacturas() {
-  var { data } = await sb.from('cobros_facturas').select('*').gt('balance', 0).order('balance', { ascending: false });
+  var { data } = await sb.from('cobros_facturas').select('*').neq('balance', 0).order('balance', { ascending: false });
   return data || [];
 }
 
