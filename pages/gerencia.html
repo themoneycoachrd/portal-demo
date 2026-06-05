@@ -2946,6 +2946,10 @@ var cobNotas = [];
 var cobPagos = [];      // registros de cobros_pagos (recibos)
 var cobView = 'lista'; // 'lista' | 'detalle'
 var cobDetalleCliente = null;
+var cobListaMode = 'facturas'; // 'facturas' | 'recibos'
+var cobRecibosFechaDesde = '';
+var cobRecibosFechaHasta = '';
+var cobRecibosSearch = '';
 
 // Score overrides from invoice-chase analysis
 var COB_SCORES = {
@@ -3182,8 +3186,78 @@ function cobToDOP(monto, moneda) {
 }
 function cobSwitchPill(pill) {
   cobActivePill = pill;
-  cobActiveAging = 'todos'; // reset aging al cambiar pill
+  cobActiveAging = 'todos';
   cobRenderApp();
+}
+
+function cobSwitchListaMode(mode) {
+  cobListaMode = mode;
+  cobRenderApp();
+}
+
+function cobRecibosFilter() {
+  cobRecibosFechaDesde = document.getElementById('cob-rec-desde') ? document.getElementById('cob-rec-desde').value : '';
+  cobRecibosFechaHasta = document.getElementById('cob-rec-hasta') ? document.getElementById('cob-rec-hasta').value : '';
+  cobRecibosSearch = document.getElementById('cob-rec-search') ? document.getElementById('cob-rec-search').value.toLowerCase() : '';
+  cobRenderRecibosTable();
+}
+
+function cobRenderRecibosTable() {
+  var wrap = document.getElementById('cob-recibos-wrap');
+  if (!wrap) return;
+
+  var filtered = cobPagos.slice();
+  if (cobRecibosFechaDesde) {
+    filtered = filtered.filter(function(p) { return p.fecha_pago >= cobRecibosFechaDesde; });
+  }
+  if (cobRecibosFechaHasta) {
+    filtered = filtered.filter(function(p) { return p.fecha_pago <= cobRecibosFechaHasta; });
+  }
+  if (cobRecibosSearch) {
+    filtered = filtered.filter(function(p) {
+      return (p.cliente_nombre || '').toLowerCase().indexOf(cobRecibosSearch) >= 0
+        || (p.recibo_no || '').indexOf(cobRecibosSearch) >= 0
+        || (p.factura_ref || '').indexOf(cobRecibosSearch) >= 0;
+    });
+  }
+
+  // Totals by currency
+  var totals = {};
+  filtered.forEach(function(p) {
+    var mon = p.moneda || 'DOP';
+    if (!totals[mon]) totals[mon] = 0;
+    totals[mon] += p.monto;
+  });
+
+  var h = '';
+
+  // Summary
+  h += '<div style="padding:16px 20px;display:flex;gap:16px;align-items:center;flex-wrap:wrap;border-bottom:1px solid var(--border)">';
+  h += '<span style="font-size:0.82rem;font-weight:700">' + filtered.length + ' recibos</span>';
+  Object.keys(totals).forEach(function(mon) {
+    h += '<span style="font-size:0.82rem;font-weight:700;color:var(--green)">' + cobFormatMoney(totals[mon], mon) + '</span>';
+  });
+  h += '</div>';
+
+  // Table
+  h += '<table class="cob-table"><thead><tr>';
+  h += '<th>Recibo</th><th>Fecha</th><th>Cliente</th><th>Factura</th><th style="text-align:center">Moneda</th><th style="text-align:right">Monto</th>';
+  h += '</tr></thead><tbody>';
+
+  filtered.forEach(function(p) {
+    var fecha = p.fecha_pago ? new Date(p.fecha_pago).toLocaleDateString('es-DO', { day:'numeric', month:'short', year:'numeric' }) : '-';
+    h += '<tr>';
+    h += '<td style="font-weight:600">' + (p.recibo_no || '-') + '</td>';
+    h += '<td style="font-size:0.74rem;white-space:nowrap">' + fecha + '</td>';
+    h += '<td>' + (p.cliente_nombre || '-') + '</td>';
+    h += '<td style="font-size:0.78rem;color:var(--muted)">' + (p.factura_ref || '-') + '</td>';
+    h += '<td style="text-align:center;font-size:0.72rem">' + (p.moneda || 'DOP') + '</td>';
+    h += '<td style="text-align:right;font-weight:600;color:var(--green);font-variant-numeric:tabular-nums">' + cobFmtAmount(p.monto) + '</td>';
+    h += '</tr>';
+  });
+  h += '</tbody></table>';
+
+  wrap.innerHTML = h;
 }
 function cobSwitchAging(aging) {
   cobActiveAging = cobActiveAging === aging ? 'todos' : aging;
@@ -3506,16 +3580,30 @@ async function cobRenderApp() {
   html += '</div>';
   html += '</div>';
 
-  // ── Search bar ──
-  html += '<div style="margin-bottom:12px">';
-  html += '<input type="text" placeholder="Buscar cliente..." value="' + (cobSearchText || '') + '" oninput="cobOnSearch(this.value)" style="width:100%;max-width:320px;padding:8px 12px;border:1px solid var(--border);border-radius:8px;font-size:0.82rem">';
+  // ── Mode toggle: Facturas / Recibos ──
+  html += '<div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;flex-wrap:wrap">';
+  html += '<div style="display:flex;gap:2px;background:#f0f2f5;border-radius:10px;padding:2px">';
+  html += '<button style="padding:6px 14px;border-radius:8px;font-size:0.78rem;font-weight:600;cursor:pointer;border:none;font-family:inherit;background:' + (cobListaMode === 'facturas' ? 'white' : 'transparent') + ';color:' + (cobListaMode === 'facturas' ? 'var(--navy)' : 'var(--muted)') + ';' + (cobListaMode === 'facturas' ? 'box-shadow:0 1px 3px rgba(0,0,0,0.1)' : '') + '" onclick="cobSwitchListaMode(\'facturas\')">Facturas pendientes</button>';
+  html += '<button style="padding:6px 14px;border-radius:8px;font-size:0.78rem;font-weight:600;cursor:pointer;border:none;font-family:inherit;background:' + (cobListaMode === 'recibos' ? 'white' : 'transparent') + ';color:' + (cobListaMode === 'recibos' ? 'var(--green)' : 'var(--muted)') + ';' + (cobListaMode === 'recibos' ? 'box-shadow:0 1px 3px rgba(0,0,0,0.1)' : '') + '" onclick="cobSwitchListaMode(\'recibos\')">Recibos (' + cobPagos.length + ')</button>';
   html += '</div>';
 
-  // Cache clientes for search/sort (before search filter)
-  cobFilteredClientes = clientes.slice();
+  if (cobListaMode === 'facturas') {
+    html += '<input type="text" placeholder="Buscar cliente..." value="' + (cobSearchText || '') + '" oninput="cobOnSearch(this.value)" style="flex:1;max-width:320px;padding:8px 12px;border:1px solid var(--border);border-radius:8px;font-size:0.82rem">';
+  } else {
+    html += '<input type="text" id="cob-rec-search" placeholder="Buscar cliente o recibo..." value="' + (cobRecibosSearch || '') + '" oninput="cobRecibosFilter()" style="flex:1;max-width:240px;padding:8px 12px;border:1px solid var(--border);border-radius:8px;font-size:0.82rem">';
+    html += '<input type="date" id="cob-rec-desde" value="' + (cobRecibosFechaDesde || '') + '" onchange="cobRecibosFilter()" style="padding:6px 10px;border:1px solid var(--border);border-radius:8px;font-size:0.78rem;font-family:inherit">';
+    html += '<input type="date" id="cob-rec-hasta" value="' + (cobRecibosFechaHasta || '') + '" onchange="cobRecibosFilter()" style="padding:6px 10px;border:1px solid var(--border);border-radius:8px;font-size:0.78rem;font-family:inherit">';
+  }
+  html += '</div>';
 
-  // Table container (rendered by cobRenderTableOnly)
-  html += '<div id="cob-table-wrap" style="background:white;border-radius:12px;border:1px solid var(--border);overflow-x:auto"></div>';
+  if (cobListaMode === 'facturas') {
+    // Cache clientes for search/sort (before search filter)
+    cobFilteredClientes = clientes.slice();
+    // Table container (rendered by cobRenderTableOnly)
+    html += '<div id="cob-table-wrap" style="background:white;border-radius:12px;border:1px solid var(--border);overflow-x:auto"></div>';
+  } else {
+    html += '<div id="cob-recibos-wrap" style="background:white;border-radius:12px;border:1px solid var(--border);overflow-x:auto"></div>';
+  }
 
   el.innerHTML = html;
 
@@ -3549,8 +3637,12 @@ async function cobRenderApp() {
     }
   }
 
-  // Render table (first time)
-  cobRenderTableOnly();
+  // Render table or recibos (first time)
+  if (cobListaMode === 'recibos') {
+    cobRenderRecibosTable();
+  } else {
+    cobRenderTableOnly();
+  }
 }
 
 // ─── Vista detalle de cliente ───
