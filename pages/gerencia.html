@@ -3141,8 +3141,11 @@ function cobBuildClientList() {
       c.totalPagos = pagosCliente.length;
     });
 
-    // Quitar clientes cuyo balance quedó en 0
-    clientes = clientes.filter(function(c) { return c.totalPendiente > 0.01 || c.sinData; });
+    // No ocultar clientes con balance 0 — se mantienen para ver historial
+    // Los que quedaron en 0 se marcan para mostrar diferente
+    clientes.forEach(function(c) {
+      if (c.totalPendiente <= 0.01 && c.facturas.length > 0) c.saldado = true;
+    });
   }
 
   // Sort by score (worst first), then by totalPendiente desc, then alphabetical
@@ -3206,6 +3209,14 @@ function cobRenderRecibosTable() {
   var wrap = document.getElementById('cob-recibos-wrap');
   if (!wrap) return;
 
+  // Calcular tasa USD→DOP de los datos de facturas (balance_dop / balance)
+  var tasaUSD = COB_TC_USD; // fallback
+  cobFacturas.forEach(function(f) {
+    if (f.moneda === 'USD' && f.balance > 0 && f.balance_dop > 0) {
+      tasaUSD = Math.round(f.balance_dop / f.balance * 100) / 100;
+    }
+  });
+
   var filtered = cobPagos.slice();
   if (cobRecibosFechaDesde) {
     filtered = filtered.filter(function(p) { return p.fecha_pago >= cobRecibosFechaDesde; });
@@ -3221,12 +3232,14 @@ function cobRenderRecibosTable() {
     });
   }
 
-  // Totals by currency
+  // Totals
   var totals = {};
+  var grandTotalDOP = 0;
   filtered.forEach(function(p) {
     var mon = p.moneda || 'DOP';
     if (!totals[mon]) totals[mon] = 0;
     totals[mon] += p.monto;
+    grandTotalDOP += (mon === 'USD') ? p.monto * tasaUSD : p.monto;
   });
 
   var h = '';
@@ -3237,26 +3250,47 @@ function cobRenderRecibosTable() {
   Object.keys(totals).forEach(function(mon) {
     h += '<span style="font-size:0.82rem;font-weight:700;color:var(--green)">' + cobFormatMoney(totals[mon], mon) + '</span>';
   });
+  h += '<span style="font-size:0.82rem;font-weight:700;color:var(--navy)">Total local: ' + cobFormatMoney(grandTotalDOP, 'DOP') + '</span>';
+  if (totals['USD']) {
+    h += '<span style="font-size:0.68rem;color:var(--muted)">(Tasa: ' + tasaUSD + ')</span>';
+  }
   h += '</div>';
 
   // Table
   h += '<table class="cob-table"><thead><tr>';
-  h += '<th>Recibo</th><th>Fecha</th><th>Cliente</th><th>Factura</th><th style="text-align:center">Moneda</th><th style="text-align:right">Monto</th>';
+  h += '<th>Recibo</th><th>Fecha</th><th>Cliente</th><th>Factura</th><th style="text-align:center">Moneda</th><th style="text-align:right">Monto</th><th style="text-align:right">Monto local</th>';
   h += '</tr></thead><tbody>';
 
+  var runTotalDOP = 0;
   filtered.forEach(function(p) {
     var fecha = p.fecha_pago ? new Date(p.fecha_pago).toLocaleDateString('es-DO', { day:'numeric', month:'short', year:'numeric' }) : '-';
+    var mon = p.moneda || 'DOP';
+    var montoLocal = (mon === 'USD') ? p.monto * tasaUSD : p.monto;
+    runTotalDOP += montoLocal;
+
     h += '<tr>';
     h += '<td style="font-weight:600">' + (p.recibo_no || '-') + '</td>';
     h += '<td style="font-size:0.74rem;white-space:nowrap">' + fecha + '</td>';
     h += '<td>' + (p.cliente_nombre || '-') + '</td>';
     h += '<td style="font-size:0.78rem;color:var(--muted)">' + (p.factura_ref || '-') + '</td>';
-    h += '<td style="text-align:center;font-size:0.72rem">' + (p.moneda || 'DOP') + '</td>';
+    h += '<td style="text-align:center;font-size:0.72rem">' + mon + '</td>';
     h += '<td style="text-align:right;font-weight:600;color:var(--green);font-variant-numeric:tabular-nums">' + cobFmtAmount(p.monto) + '</td>';
+    h += '<td style="text-align:right;font-variant-numeric:tabular-nums;color:var(--navy)">' + cobFormatMoney(montoLocal, 'DOP') + '</td>';
     h += '</tr>';
   });
-  h += '</tbody></table>';
 
+  // Total row
+  h += '<tr style="background:#f8fafc;font-weight:700;border-top:2px solid var(--border)">';
+  h += '<td colspan="5" style="text-align:right">Total</td>';
+  Object.keys(totals).forEach(function(mon) {
+    // solo mostrar el primer total en la columna monto
+  });
+  var montoColText = Object.keys(totals).map(function(mon) { return cobFormatMoney(totals[mon], mon); }).join(' + ');
+  h += '<td style="text-align:right;color:var(--green)">' + montoColText + '</td>';
+  h += '<td style="text-align:right;color:var(--navy)">' + cobFormatMoney(grandTotalDOP, 'DOP') + '</td>';
+  h += '</tr>';
+
+  h += '</tbody></table>';
   wrap.innerHTML = h;
 }
 function cobSwitchAging(aging) {
