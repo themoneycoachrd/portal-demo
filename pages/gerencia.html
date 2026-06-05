@@ -3419,11 +3419,9 @@ async function cobRenderApp() {
 
   var allClientes = cobBuildClientList();
 
-  // Calculate montoDOP for all clients (usando balance_dop real, no tasa hardcodeada)
+  // montoDOP: usar totalDop ya calculado (incluye ajuste por pagos si aplica)
   allClientes.forEach(function(c) {
-    var montoDOP = 0;
-    c.facturas.forEach(function(f) { montoDOP += (f.balanceDop || cobToDOP(f.balance, f.currency)); });
-    c.montoDOP = montoDOP;
+    c.montoDOP = c.totalDop || 0;
   });
 
   // Count by score (always from allClientes for pill labels)
