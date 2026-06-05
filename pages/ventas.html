@@ -1002,7 +1002,7 @@ function tengoPermiso(modId, scrId, habId, subtabId) {
 let APP = {
   data: null,
   activeTab: 'roas',
-  currentMonth: 'abril',
+  currentMonth: (function() { var m = new Date().getMonth(); var meses = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre']; return meses[m]; })(),
   filterTemp: 'Todos',
   filterStep: 'Todos',
   searchText: '',
@@ -2235,6 +2235,7 @@ function showCrearChecklistModal() {
 // ==================== MAIN APP ====================
 
 function renderApp() {
+  // Siempre renderizar el tab activo
   if (APP.activeTab === 'pipeline') {
     renderPipeline();
   } else if (APP.activeTab === 'movimiento') {
@@ -2243,6 +2244,13 @@ function renderApp() {
     renderChecklistComercial();
   } else {
     renderROAS();
+  }
+  // Pre-renderizar los demás tabs para que estén listos al cambiar
+  if (APP.activeTab !== 'movimiento' && document.getElementById('tab-movimiento')) {
+    try { renderMovimiento(); } catch(e) {}
+  }
+  if (APP.activeTab !== 'checklist-com' && document.getElementById('tab-checklist-com')) {
+    try { renderChecklistComercial(); } catch(e) {}
   }
 }
 
