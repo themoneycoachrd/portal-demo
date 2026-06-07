@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Formato Reporte de Bugs — Portal Account One</title>
+<style>
+  body { font-family: 'Segoe UI', -apple-system, sans-serif; max-width: 700px; margin: 24px auto; color: #1a2332; line-height: 1.6; }
+  h1 { font-size: 1.3rem; color: #1a2332; border-bottom: 3px solid #4361ee; padding-bottom: 8px; }
+  h2 { font-size: 1rem; color: #4361ee; margin-top: 24px; margin-bottom: 8px; }
+  .field { background: #f4f6f9; border: 1px solid #e8ecf1; border-radius: 8px; padding: 12px 16px; margin-bottom: 12px; }
+  .field-label { font-weight: 700; font-size: 0.82rem; text-transform: uppercase; letter-spacing: 0.3px; color: #7c8495; margin-bottom: 4px; }
+  .field-value { min-height: 20px; font-size: 0.95rem; color: #1a2332; }
+  .field-hint { font-size: 0.75rem; color: #a3aab8; margin-top: 4px; }
+  .options { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 4px; }
+  .option { padding: 4px 14px; border-radius: 20px; font-size: 0.78rem; font-weight: 600; border: 1.5px solid #e8ecf1; background: white; }
+  .option.selected { background: #4361ee; color: white; border-color: #4361ee; }
+  .severity { display: flex; gap: 8px; }
+  .sev-low { background: #ecfdf5; color: #065f46; border-color: #a7f3d0; }
+  .sev-med { background: #fef3c7; color: #92400e; border-color: #fde68a; }
+  .sev-high { background: #fee2e2; color: #991b1b; border-color: #fecaca; }
+  .instructions { background: #eff6ff; border-left: 4px solid #4361ee; padding: 12px 16px; border-radius: 0 8px 8px 0; margin-bottom: 20px; font-size: 0.85rem; color: #1e40af; }
+  table { width: 100%; border-collapse: collapse; margin-top: 8px; }
+  th { text-align: left; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.3px; color: #7c8495; padding: 8px 12px; background: #f4f6f9; }
+  td { padding: 10px 12px; border-bottom: 1px solid #e8ecf1; font-size: 0.88rem; }
+  .footer { margin-top: 24px; padding-top: 12px; border-top: 1px solid #e8ecf1; font-size: 0.75rem; color: #a3aab8; text-align: center; }
+</style>
+</head>
+<body>
+
+<h1>Reporte de Bug / Sugerencia — Portal Account One</h1>
+
+<div class="instructions">
+  <strong>Instrucciones:</strong> Llena los campos que apliquen. No necesitas llenar todo, pero mientras más detalle des, más rápido lo resolvemos. Copia esta plantilla, pégala en OneNote y completa los campos.
+</div>
+
+<h2>Información básica</h2>
+
+<div class="field">
+  <div class="field-label">Reportado por</div>
+  <div class="field-value">&nbsp;</div>
+</div>
+
+<div class="field">
+  <div class="field-label">Fecha</div>
+  <div class="field-value">&nbsp;</div>
+</div>
+
+<div class="field">
+  <div class="field-label">Tipo</div>
+  <div class="options">
+    <span class="option">Bug (algo no funciona)</span>
+    <span class="option">Mejora (algo podría ser mejor)</span>
+    <span class="option">Pregunta (no entiendo algo)</span>
+  </div>
+</div>
+
+<div class="field">
+  <div class="field-label">Urgencia</div>
+  <div class="severity">
+    <span class="option sev-high">Urgente (bloquea el trabajo)</span>
+    <span class="option sev-med">Medio (molesta pero puedo seguir)</span>
+    <span class="option sev-low">Bajo (cuando se pueda)</span>
+  </div>
+</div>
+
+<h2>El problema</h2>
+
+<div class="field">
+  <div class="field-label">Módulo / Pantalla</div>
+  <div class="options">
+    <span class="option">Contabilidad</span>
+    <span class="option">Impuestos</span>
+    <span class="option">Clientes</span>
+    <span class="option">Cobros</span>
+    <span class="option">Ventas</span>
+    <span class="option">KPI</span>
+    <span class="option">Implementaciones</span>
+    <span class="option">Personal</span>
+    <span class="option">Portal clientes</span>
+    <span class="option">Usuarios</span>
+    <span class="option">Login</span>
+  </div>
+</div>
+
+<div class="field">
+  <div class="field-label">¿Qué estabas haciendo?</div>
+  <div class="field-value">&nbsp;</div>
+  <div class="field-hint">Ejemplo: "Estaba marcando el checklist de ITBIS de mayo para el cliente X"</div>
+</div>
+
+<div class="field">
+  <div class="field-label">¿Qué esperabas que pasara?</div>
+  <div class="field-value">&nbsp;</div>
+  <div class="field-hint">Ejemplo: "Que se guardara el check y apareciera en verde"</div>
+</div>
+
+<div class="field">
+  <div class="field-label">¿Qué pasó en realidad?</div>
+  <div class="field-value">&nbsp;</div>
+  <div class="field-hint">Ejemplo: "No pasó nada, el botón no reacciona" o "Me salió un error"</div>
+</div>
+
+<div class="field">
+  <div class="field-label">Screenshot o foto (si tienes)</div>
+  <div class="field-value">&nbsp;</div>
+  <div class="field-hint">Pega aquí la imagen o describe lo que ves en pantalla</div>
+</div>
+
+<h2>Contexto adicional (opcional)</h2>
+
+<div class="field">
+  <div class="field-label">¿Desde qué dispositivo?</div>
+  <div class="options">
+    <span class="option">Computadora</span>
+    <span class="option">Celular</span>
+    <span class="option">Tablet</span>
+  </div>
+</div>
+
+<div class="field">
+  <div class="field-label">¿Le pasa a otros también?</div>
+  <div class="options">
+    <span class="option">Solo a mí</span>
+    <span class="option">A otros también</span>
+    <span class="option">No sé</span>
+  </div>
+</div>
+
+<div class="field">
+  <div class="field-label">Notas adicionales</div>
+  <div class="field-value">&nbsp;</div>
+</div>
+
+<div class="footer">
+  Portal Account One — Formato de reporte v1.0
+</div>
+
+</body>
+</html>
