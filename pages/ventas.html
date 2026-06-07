@@ -605,6 +605,10 @@ body.embed .footer { display: none !important; }
 }
 .btn-logout:hover { background: rgba(255,255,255,0.25); }
 </style>
+
+<!-- Account One Refinado theme layer (override) -->
+<link rel="stylesheet" href="assets/theme.css">
+<script src="assets/theme.js" defer></script>
 </head>
 <body>
 
@@ -646,6 +650,15 @@ body.embed .footer { display: none !important; }
   <a href="index.html">Account One</a>
   <span class="sep">›</span>
   <span class="current">Pipeline de Ventas</span>
+</div>
+
+
+<div class="mod-header">
+  <div>
+    <div class="mod-header-eye">Comercial</div>
+    <h1 class="mod-header-title">Pipeline de ventas</h1>
+    <p class="mod-header-sub">Leads, cierres y ROAS del equipo comercial</p>
+  </div>
 </div>
 
 <div class="main-tabs" id="main-tabs-container">
@@ -730,6 +743,7 @@ function leadVendido(lead, includeSoft) {
 const SUPABASE_URL = 'https://ouetusstqvpyjeycfdio.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im91ZXR1c3N0cXZweWpleWNmZGlvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY2NDcwNzksImV4cCI6MjA5MjIyMzA3OX0.Bsys947JLGEuf3zdBF2GPFdbJVJtaZdC4YEmyBU5Bow';
 const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+var ANIO = new Date().getFullYear();
 
 // ==================== SERVICES ====================
 
@@ -742,8 +756,8 @@ async function loadData() {
 
   // Cargar leads y ROAS en paralelo
   const [leadsRes, roasRes] = await Promise.all([
-    sb.from('leads').select('*').eq('anio', 2026),
-    sb.from('roas_mensual').select('*').eq('anio', 2026)
+    sb.from('leads').select('*').eq('anio', ANIO),
+    sb.from('roas_mensual').select('*').eq('anio', ANIO)
   ]);
 
   if (leadsRes.error) console.error('Error cargando leads:', leadsRes.error);
@@ -792,7 +806,7 @@ async function loadData() {
 // Guardar un lead nuevo en Supabase y devolver el ID
 async function dbInsertLead(mes, lead) {
   const { data, error } = await sb.from('leads').insert({
-    mes, anio: 2026,
+    mes, anio: ANIO,
     nombre: lead.n, tipo: lead.t || '', empresa: lead.e || '',
     temperatura: lead.temp || 'Tibio', demo: lead.demo || null,
     funnel: lead.f, impl: lead.impl || 0, fe: lead.fe || 0,
@@ -864,7 +878,7 @@ async function dbCreatePendienteFromLead(lead) {
       destino: destinos[i],
       monto_vendido: vendido > 0 ? vendido : null,
       mes_cierre: APP.currentMonth,
-      anio_cierre: 2026,
+      anio_cierre: ANIO,
       estado: 'pendiente'
     });
   }
@@ -924,7 +938,7 @@ async function dbDeleteLead(lead) {
 // Actualizar o crear ROAS de un mes (upsert por mes+anio)
 async function dbUpdateRoas(mes, r) {
   const payload = {
-    mes: mes, anio: 2026,
+    mes: mes, anio: ANIO,
     leads: r.leads, presupuesto: r.presupuesto,
     ejecutado: r.ejecutado, cierres: r.cierres,
     vendido: r.vendido, cotizado: r.cotizado,
@@ -1002,7 +1016,7 @@ function tengoPermiso(modId, scrId, habId, subtabId) {
 let APP = {
   data: null,
   activeTab: 'roas',
-  currentMonth: (function() { var m = new Date().getMonth(); var meses = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre']; return meses[m]; })(),
+  currentMonth: MONTHS[new Date().getMonth()],
   filterTemp: 'Todos',
   filterStep: 'Todos',
   searchText: '',
@@ -1294,7 +1308,7 @@ function renderAddLeadForm() {
 }
 
 function esc(str) {
-  return (str || '').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  return (str || '').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/'/g,'&#39;');
 }
 
 function bindPipelineEvents() {
@@ -1352,7 +1366,7 @@ function bindPipelineEvents() {
       if (lead.demo) {
         var demoDate = new Date(lead.demo + 'T00:00:00');
         var demoMes = MONTHS[demoDate.getMonth()];
-        if (demoMes && demoMes !== APP.currentMonth && demoDate.getFullYear() === 2026) {
+        if (demoMes && demoMes !== APP.currentMonth && demoDate.getFullYear() === ANIO) {
           // Mover: quitar del mes actual, agregar al mes destino, actualizar mes en Supabase
           APP.data.pipeline[APP.currentMonth].splice(idx, 1);
           if (!APP.data.pipeline[demoMes]) APP.data.pipeline[demoMes] = [];
@@ -1419,7 +1433,7 @@ function bindPipelineEvents() {
       if (newLead.demo) {
         var demoDate = new Date(newLead.demo + 'T00:00:00');
         var demoMes = MONTHS[demoDate.getMonth()];
-        if (demoMes && demoDate.getFullYear() === 2026) targetMonth = demoMes;
+        if (demoMes && demoDate.getFullYear() === ANIO) targetMonth = demoMes;
       }
       // Insertar en Supabase y obtener ID antes de agregar al array
       const newId = await dbInsertLead(targetMonth, newLead);
@@ -1463,7 +1477,7 @@ function renderROAS() {
 
   // General summary cards
   if (activeMonths.length > 0) {
-    html += '<h3 style="font-size:1rem;margin-bottom:12px;">Resumen General 2026</h3>';
+    html += '<h3 style="font-size:1rem;margin-bottom:12px;">Resumen General ' + ANIO + '</h3>';
     if (isVentas) {
       // Ventas solo ve: Leads, Cierres, % de Cierre
       html += '<div class="stats-grid" style="grid-template-columns:repeat(3,1fr);">';
@@ -1771,7 +1785,7 @@ function renderMovimiento() {
   html += '</div>';
 
   // Acumulado anual
-  html += '<h3 style="font-size:0.95rem;margin-bottom:12px;color:var(--muted)">Acumulado 2026</h3>';
+  html += '<h3 style="font-size:0.95rem;margin-bottom:12px;color:var(--muted)">Acumulado ' + ANIO + '</h3>';
   html += '<div class="stats-grid" style="grid-template-columns:repeat(' + CATEGORIAS.length + ',1fr);margin-bottom:24px">';
   var acumByCat = {};
   CATEGORIAS.forEach(c => { acumByCat[c] = 0; });
@@ -1867,7 +1881,7 @@ const CHK_ITEMS = [
   { id: 'espera_firma_seguimiento', label: '↳ 1-2 días max, seguimiento WhatsApp', group: 'Contrato', sub: true },
   { id: 'correo_onboarding', label: 'Correo de Onboarding enviado', group: 'Post-firma' },
   { id: 'correo_onboarding_post_firma', label: '↳ Luego de firmar contrato', group: 'Post-firma', sub: true },
-  { id: 'encuesta_satisfaccion', label: 'Correo con encuesta de satisfacción del proceso comercial', group: 'Post-firma' }
+  { id: 'encuesta_satisfacción', label: 'Correo con encuesta de satisfacción del proceso comercial', group: 'Post-firma' }
 ];
 
 const CHK_GROUPS = ['Cierre', 'Implementación', 'Contrato', 'Post-firma'];
@@ -1907,7 +1921,7 @@ function chkGetProgress(row) {
 }
 
 async function loadChecklistComercial() {
-  var { data, error } = await sb.from('checklist_comercial').select('*').eq('anio', 2026);
+  var { data, error } = await sb.from('checklist_comercial').select('*').eq('anio', ANIO);
   if (error) { console.error('Error cargando checklist comercial:', error); return; }
   APP.chkData = data || [];
 }
@@ -1928,7 +1942,7 @@ async function createChecklistComercial(leadId, cliente, empresa, responsable, m
     empresa: empresa || '',
     responsable: responsable,
     mes: mes,
-    anio: 2026,
+    anio: ANIO,
     data: {}
   };
   // Si es lead cerrado, marcar el primer item con fecha
@@ -2100,7 +2114,7 @@ function renderChecklistComercialDetail(container) {
   html += '<button class="chk-detail-back" id="chk-back-btn">&#8592; Volver</button>';
   html += '<div><div class="chk-detail-title">' + row.cliente + '</div>';
   var respColor = row.responsable === 'Naomi' ? '#8b5cf6' : row.responsable === 'Felix' ? '#4361ee' : 'var(--muted)';
-  html += '<div class="chk-detail-sub"><span style="font-weight:700;color:' + respColor + '">' + (row.responsable || 'Sin asignar') + '</span> · ' + MONTH_LABELS[MONTHS.indexOf(row.mes)] + ' 2026' + (row.empresa ? ' · ' + row.empresa : '') + (row.lead_id ? ' <span style="font-size:0.68rem;color:var(--light)">(editar desde Pipeline)</span>' : '') + '</div></div>';
+  html += '<div class="chk-detail-sub"><span style="font-weight:700;color:' + respColor + '">' + (row.responsable || 'Sin asignar') + '</span> · ' + MONTH_LABELS[MONTHS.indexOf(row.mes)] + ' ' + ANIO + (row.empresa ? ' · ' + row.empresa : '') + (row.lead_id ? ' <span style="font-size:0.68rem;color:var(--light)">(editar desde Pipeline)</span>' : '') + '</div></div>';
   html += '</div>';
 
   // Progress bar
@@ -2235,7 +2249,6 @@ function showCrearChecklistModal() {
 // ==================== MAIN APP ====================
 
 function renderApp() {
-  // Siempre renderizar el tab activo
   if (APP.activeTab === 'pipeline') {
     renderPipeline();
   } else if (APP.activeTab === 'movimiento') {
@@ -2244,13 +2257,6 @@ function renderApp() {
     renderChecklistComercial();
   } else {
     renderROAS();
-  }
-  // Pre-renderizar los demás tabs para que estén listos al cambiar
-  if (APP.activeTab !== 'movimiento' && document.getElementById('tab-movimiento')) {
-    try { renderMovimiento(); } catch(e) {}
-  }
-  if (APP.activeTab !== 'checklist-com' && document.getElementById('tab-checklist-com')) {
-    try { renderChecklistComercial(); } catch(e) {}
   }
 }
 
@@ -2366,7 +2372,7 @@ async function init() {
     showApp();
   } else if (isEmbed) {
     // In embed mode without session, show nothing (parent handles auth)
-    document.body.innerHTML = '<div style="text-align:center;padding:60px;color:#7c8495;">Sesion no encontrada. Recarga la pagina principal.</div>';
+    document.body.innerHTML = '<div style="text-align:center;padding:60px;color:#7c8495;">Sesión no encontrada. Recarga la página principal.</div>';
   }
 }
 

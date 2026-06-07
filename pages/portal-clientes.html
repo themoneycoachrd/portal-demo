@@ -338,6 +338,10 @@ body.embed .content { padding-top:12px; }
 .cal-grid-legend-item { display:flex; align-items:center; gap:5px; font-size:0.72rem; color:var(--muted); }
 .cal-grid-legend-dot { width:10px; height:10px; border-radius:3px; }
 </style>
+
+<!-- Account One Refinado theme layer (override) -->
+<link rel="stylesheet" href="assets/theme.css">
+<script src="assets/theme.js" defer></script>
 </head>
 <body>
 
@@ -395,6 +399,7 @@ body.embed .content { padding-top:12px; }
 var SUPABASE_URL = 'https://ouetusstqvpyjeycfdio.supabase.co';
 var SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im91ZXR1c3N0cXZweWpleWNmZGlvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY2NDcwNzksImV4cCI6MjA5MjIyMzA3OX0.Bsys947JLGEuf3zdBF2GPFdbJVJtaZdC4YEmyBU5Bow';
 var sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+var ANIO = new Date().getFullYear();
 
 var MESES_KEY = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
 var MESES_LABEL = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
@@ -442,7 +447,7 @@ var CHECKLIST = {
   ],
   'ITBIS': [
     { id: 'facturas_mes', label: 'Cargaste todas las facturas del mes', type: 'yesno' },
-    { id: 'facturas_estimadas', label: 'Facturas estimadas (monto aproximado)', type: 'monto' },
+    { id: 'facturas_estimadas', label: 'Facturas estimadas (monto apróximado)', type: 'monto' },
     { id: 'cargar_excel_facturas', label: 'Cargaste el Excel de las facturas', type: 'upload', accept: '.xlsx,.xls,.csv', fileType: 'facturas_excel' },
     { id: 'ncf_bancos', label: 'Cargaste los NCF de los bancos', type: 'yesno' },
     { id: 'facturas_atrasadas', label: 'Tienes facturas atrasadas', type: 'yesno' },
@@ -467,11 +472,11 @@ var saving = false;
 // Presentación Mensual state
 var pmDetail = null;
 var pmPresupuesto = null;
-var pmEjecucion = [];
+var pmEjecución = [];
 var pmImpConfig = null;
 var pmDeclaraciones = [];
 var pmImpChecklist = [];
-var pmYear = 2026;
+var pmYear = ANIO;
 
 // ==================== PERMISOS POR GRUPO ====================
 var misPermisos = {};
@@ -527,7 +532,7 @@ function fileKey(impuesto, mes, fileType) {
 function getDeadlineDate(impuestoId, mesKey) {
   var mi = MESES_KEY.indexOf(mesKey);
   var deadlineMonth = mi + 1;
-  var deadlineYear = 2026;
+  var deadlineYear = ANIO;
   if (deadlineMonth > 11) { deadlineMonth = 0; deadlineYear++; }
   var imp = IMPUESTOS.find(function(i) { return i.id === impuestoId; });
   if (!imp) return null;
@@ -665,17 +670,20 @@ async function saveData(impuesto, mes) {
   if (saving) return;
   if (new URLSearchParams(location.search).get('demo') === '1') return; // Demo: no guarda
   saving = true;
-  var dk = dataKey(impuesto, mes);
-  var datos = portalData[dk] || {};
-  var { error } = await sb.from('portal_clientes_data').upsert({
-    cliente: clienteNombre,
-    mes: mes,
-    impuesto: impuesto,
-    datos: datos,
-    updated_at: new Date().toISOString()
-  }, { onConflict: 'cliente,mes,impuesto' });
-  saving = false;
-  if (error) { console.error('Error guardando:', error); showToast('Error al guardar'); }
+  try {
+    var dk = dataKey(impuesto, mes);
+    var datos = portalData[dk] || {};
+    var { error } = await sb.from('portal_clientes_data').upsert({
+      cliente: clienteNombre,
+      mes: mes,
+      impuesto: impuesto,
+      datos: datos,
+      updated_at: new Date().toISOString()
+    }, { onConflict: 'cliente,mes,impuesto' });
+    if (error) { console.error('Error guardando:', error); showToast('Error al guardar'); }
+  } finally {
+    saving = false;
+  }
 }
 
 async function uploadFile(impuesto, mes, fileType, file) {
@@ -723,7 +731,7 @@ async function loadPresentacionData() {
       sb.rpc('portal_load_declaraciones', { p_token: clienteToken, p_anio: anio })
     ]);
     pmPresupuesto = (presRes.data && presRes.data.length > 0) ? presRes.data[0] : null;
-    pmEjecucion = ejRes.data || [];
+    pmEjecución = ejRes.data || [];
     pmImpConfig = (confRes.data && confRes.data.length > 0) ? confRes.data[0] : null;
     pmDeclaraciones = declRes.data || [];
     pmImpChecklist = [];
@@ -737,7 +745,7 @@ async function loadPresentacionData() {
       sb.from('impuestos_checklist').select('mes, impuesto, datos').eq('cliente', nombre).eq('anio', anio)
     ]);
     pmPresupuesto = presRes.data || null;
-    pmEjecucion = ejRes.data || [];
+    pmEjecución = ejRes.data || [];
     pmImpConfig = confRes.data || null;
     pmDeclaraciones = declRes.data || [];
     pmImpChecklist = ckRes.data || [];
@@ -747,8 +755,8 @@ async function loadPresentacionData() {
 // Helpers de cálculo
 function pmGetMesIdx(mesKey) { return MESES_KEY.indexOf(mesKey) + 1; }
 
-function pmGetEjecucionMes(mesNum) {
-  return pmEjecucion.find(function(e) { return e.mes === mesNum; }) || null;
+function pmGetEjecuciónMes(mesNum) {
+  return pmEjecución.find(function(e) { return e.mes === mesNum; }) || null;
 }
 
 function pmGetMetaMensual(campo) {
@@ -905,10 +913,10 @@ function initDemo() {
     { v: 1050000, c: 480000, g: 548000, ino: 12000, gno: 25000, gna: 28000 },
     { v: 1390000, c: 560000, g: 483000, ino: 20000, gno: 16000, gna: 31000 }
   ];
-  pmEjecucion = [];
+  pmEjecución = [];
   ejData.forEach(function(d, i) {
     if (i > mesActual) return;
-    pmEjecucion.push({
+    pmEjecución.push({
       mes: i + 1, ventas_it1: d.v, costos_operativos: d.c, gastos: d.g,
       ingreso_no_operacional: d.ino, gasto_no_operacional: d.gno, gastos_no_admitidos: d.gna,
       ventas_simple: d.v, gastos_simple: d.c + d.g
@@ -936,7 +944,7 @@ function initDemo() {
             mes: mi + 1, obligacion: ob,
             monto: oi === 0 ? montosBase[ob] : 0,
             estado: oi === 0 ? 'a_tiempo' : 'pendiente',
-            fecha_presentado: oi === 0 ? '2026-' + String(mi+1).padStart(2,'0') + '-03' : null
+            fecha_presentado: oi === 0 ? ANIO + '-' + String(mi+1).padStart(2,'0') + '-03' : null
           });
         });
       }
@@ -951,7 +959,7 @@ function initDemo() {
       if (mi === 1 && ob === 'IR-17') { estado = 'no_aplico'; monto = 0; }
       pmDeclaraciones.push({
         mes: mi + 1, obligacion: ob, monto: monto, estado: estado,
-        fecha_presentado: estado === 'pendiente' ? null : '2026-' + String(mi+1).padStart(2,'0') + '-' + String(3 + Math.floor(Math.random()*12)).padStart(2,'0')
+        fecha_presentado: estado === 'pendiente' ? null : ANIO + '-' + String(mi+1).padStart(2,'0') + '-' + String(3 + Math.floor(Math.random()*12)).padStart(2,'0')
       });
     });
   });
@@ -1164,7 +1172,7 @@ function pcBackToIndex() {
   selectedTab = 'dashboard';
   pmDetail = null;
   pmPresupuesto = null;
-  pmEjecucion = [];
+  pmEjecución = [];
   pmImpConfig = null;
   pmDeclaraciones = [];
 
@@ -1343,9 +1351,9 @@ function getCalendarEvents(mesIdx) {
     if (!events[key]) events[key] = [];
     events[key].push({ tipo: tipo, label: label });
   }
-  var year = 2026;
+  var year = ANIO;
   var nextMonth = (mesIdx + 1) % 12;
-  var nextYear = mesIdx === 11 ? 2027 : 2026;
+  var nextYear = mesIdx === 11 ? ANIO + 1 : ANIO;
   CAL_RESPONSABILIDADES.forEach(function(r) {
     if (r.periodo === 'mes') { addEvent(year, mesIdx, r.day, r.tipo, r.short); }
     else { addEvent(nextYear, nextMonth, r.day, r.tipo, r.short); }
@@ -1356,20 +1364,20 @@ function getCalendarEvents(mesIdx) {
   if (dgiiForReminder) {
     var itbisDay = dgiiForReminder.itbis.d;
     var itbisMonth = dgiiForReminder.itbis.m;
-    var itbisYear = (mesIdx === 11 && itbisMonth === 0) ? 2027 : 2026;
+    var itbisYear = (mesIdx === 11 && itbisMonth === 0) ? ANIO + 1 : ANIO;
     addEvent(itbisYear, itbisMonth, itbisDay, 'ao', 'Último recordatorio: confirmar que ITBIS se pagó');
   }
 
   var dgii = CALENDARIO_DGII_2026[mesIdx];
   if (dgii) {
     var tssDate = CALENDARIO_TSS_2026[mesIdx];
-    var tssYear = mesIdx === 11 ? 2027 : 2026;
+    var tssYear = mesIdx === 11 ? ANIO + 1 : ANIO;
     addEvent(tssYear, tssDate.m, tssDate.d, 'dgii', 'Pagar TSS');
-    var irYear = mesIdx === 11 && dgii.ir3.m === 0 ? 2027 : 2026;
+    var irYear = mesIdx === 11 && dgii.ir3.m === 0 ? ANIO + 1 : ANIO;
     addEvent(irYear, dgii.ir3.m, dgii.ir3.d, 'dgii', 'Pagar IR-3 / IR-17');
-    var antYear = mesIdx === 11 && dgii.anticipo.m === 0 ? 2027 : 2026;
+    var antYear = mesIdx === 11 && dgii.anticipo.m === 0 ? ANIO + 1 : ANIO;
     addEvent(antYear, dgii.anticipo.m, dgii.anticipo.d, 'dgii', 'Pagar Anticipo ISR');
-    var itbYear = mesIdx === 11 && dgii.itbis.m === 0 ? 2027 : 2026;
+    var itbYear = mesIdx === 11 && dgii.itbis.m === 0 ? ANIO + 1 : ANIO;
     addEvent(itbYear, dgii.itbis.m, dgii.itbis.d, 'dgii', 'Pagar ITBIS');
   }
   return events;
@@ -1377,7 +1385,7 @@ function getCalendarEvents(mesIdx) {
 
 function renderCalGrid() {
   var mesIdx = calActiveMes;
-  var year = 2026;
+  var year = ANIO;
   var nextMonth = (mesIdx + 1) % 12;
   var nextYear = mesIdx === 11 ? 2027 : year;
   var MESES_ABR = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
@@ -1409,7 +1417,7 @@ function renderCalGrid() {
 
   h += '<div class="cal-grid-wrap">';
   var mesPresentacion = (mesIdx + 1) % 12;
-  var anioPres = mesIdx === 11 ? 2027 : 2026;
+  var anioPres = mesIdx === 11 ? ANIO + 1 : ANIO;
   h += '<div class="cal-grid-header"><span class="cal-grid-title">Presentación fiscal de ' + MESES_FULL_CAL[mesIdx] + ' — se presenta en ' + MESES_FULL_CAL[mesPresentacion] + ' ' + anioPres + '</span>';
   h += '<span class="cal-grid-range">' + startDate.getDate() + ' ' + MESES_ABR[startDate.getMonth()] + ' – ' + endDate.getDate() + ' ' + MESES_ABR[endDate.getMonth()] + '</span></div>';
 
@@ -1653,7 +1661,7 @@ function render() {
 function renderDashboard(el) {
   var h = '';
 
-  h += '<div style="margin-bottom:20px"><span style="font-size:1.1rem;font-weight:700">' + MESES_FULL[MESES_KEY.indexOf(selectedMes)] + ' 2026</span>';
+  h += '<div style="margin-bottom:20px"><span style="font-size:1.1rem;font-weight:700">' + MESES_FULL[MESES_KEY.indexOf(selectedMes)] + ' ' + ANIO + '</span>';
   h += '<span style="font-size:0.85rem;color:var(--muted);margin-left:12px">Resumen de impuestos</span></div>';
 
   IMPUESTOS.forEach(function(imp) {
@@ -1703,7 +1711,7 @@ function renderChecklist(el, impuesto) {
   var h = '';
 
   h += '<div style="margin-bottom:16px"><span style="font-size:1.1rem;font-weight:700">' + esc(impuesto) + '</span>';
-  h += '<span style="font-size:0.85rem;color:var(--muted);margin-left:12px">' + MESES_FULL[MESES_KEY.indexOf(selectedMes)] + ' 2026</span></div>';
+  h += '<span style="font-size:0.85rem;color:var(--muted);margin-left:12px">' + MESES_FULL[MESES_KEY.indexOf(selectedMes)] + ' ' + ANIO + '</span></div>';
 
   h += '<div class="task-section">';
 
@@ -1873,7 +1881,7 @@ function renderPresentacion(el) {
     h += '<p>Hitos, fechas límite y estado de formularios.</p></div>';
     h += '</div>';
 
-    if (pmEjecucion.length === 0 && !pmPresupuesto) {
+    if (pmEjecución.length === 0 && !pmPresupuesto) {
       h += '<div class="pm-no-data" style="margin-top:24px"><p>Aún no hay datos cargados para este período.</p></div>';
     }
   } else if (pmDetail === 'presupuesto-simple') {
@@ -1881,7 +1889,7 @@ function renderPresentacion(el) {
   } else if (pmDetail === 'presupuesto') {
     h += renderPresupuestoDetail();
   } else if (pmDetail === 'proyeccion') {
-    h += renderProyeccionDetail();
+    h += renderProyecciónDetail();
   } else if (pmDetail === 'declaraciones') {
     h += renderDeclaracionesDetail();
   }
@@ -1951,7 +1959,7 @@ function renderPresupuestoDetail() {
   h += '<td class="pm-text-right" style="color:' + ganPresColor + '">$' + pmFormatMoney(ganAnual / 12) + '</td></tr>';
   h += '</tbody></table></div></div>';
 
-  var ejMes = pmGetEjecucionMes(mesNum);
+  var ejMes = pmGetEjecuciónMes(mesNum);
   h += '<div class="pm-panel"><div class="pm-panel-hdr" style="background:var(--navy);color:white;border-bottom:none">';
   h += '<h3 style="color:white;text-transform:uppercase;font-size:0.78rem;letter-spacing:0.3px"><span class="pm-hdot" style="background:var(--green)"></span> Ejecución (Realidad)</h3>';
   h += '<span class="pm-period" style="color:rgba(255,255,255,0.7)">' + pmYear + '-' + String(mesNum).padStart(2, '0') + '</span></div>';
@@ -2052,7 +2060,7 @@ function renderPresupuestoDetail() {
     h += '<tr><td class="pm-font-bold">' + c.label + '</td>';
     h += '<td class="pm-text-right" style="color:var(--muted)">' + pmFormatMoney(meta) + '</td>';
     qRange.forEach(function(m) {
-      var ej = pmGetEjecucionMes(m);
+      var ej = pmGetEjecuciónMes(m);
       var val = ej ? (ej[c.key] || 0) : 0;
       var pct, color;
       if (c.key === 'costos_operativos') {
@@ -2078,7 +2086,7 @@ function renderPresupuestoDetail() {
   h += '<tr class="pm-row-total"><td class="pm-font-bold">Resultado Op.</td>';
   h += '<td class="pm-text-right" style="color:var(--muted)">' + pmFormatMoney(metaResOpMes) + '</td>';
   qRange.forEach(function(m) {
-    var ej = pmGetEjecucionMes(m);
+    var ej = pmGetEjecuciónMes(m);
     var v = ej ? (ej.ventas_it1 || 0) : 0;
     var c = ej ? (ej.costos_operativos || 0) : 0;
     var g = ej ? (ej.gastos || 0) : 0;
@@ -2095,7 +2103,7 @@ function renderPresupuestoDetail() {
   h += '<tr><td class="pm-font-bold" style="color:var(--muted)">Ing./Gto. No Op.</td>';
   h += '<td class="pm-text-right" style="color:var(--muted)">' + pmFormatMoney(metaINO) + '</td>';
   qRange.forEach(function(m) {
-    var ej = pmGetEjecucionMes(m);
+    var ej = pmGetEjecuciónMes(m);
     var val = ej ? ((ej.ingreso_no_operacional || 0) - (ej.gasto_no_operacional || 0)) : 0;
     var pctIF = metaINO ? (val / metaINO * 100) : 0;
     var colorIF = metaINO ? pmPctColor(pctIF, true) : '#999';
@@ -2109,7 +2117,7 @@ function renderPresupuestoDetail() {
   h += '<tr><td class="pm-font-bold" style="color:var(--muted)">Gtos. No Admitidos</td>';
   h += '<td class="pm-text-right" style="color:var(--muted)">' + pmFormatMoney(metaGNAmes) + '</td>';
   qRange.forEach(function(m) {
-    var ej = pmGetEjecucionMes(m);
+    var ej = pmGetEjecuciónMes(m);
     var val = ej ? (ej.gastos_no_admitidos || 0) : 0;
     var pctGNA = metaGNAmes ? (val / metaGNAmes * 100) : 0;
     var colorGNA = metaGNAmes ? pmPctColor(pctGNA, true) : '#999';
@@ -2123,7 +2131,7 @@ function renderPresupuestoDetail() {
   h += '<tr class="pm-row-total pm-row-ganancia"><td class="pm-font-bold" style="color:white">Ganancia/Pérdida</td>';
   h += '<td class="pm-text-right" style="color:white">' + pmFormatMoney(metaGanMes) + '</td>';
   qRange.forEach(function(m) {
-    var ej = pmGetEjecucionMes(m);
+    var ej = pmGetEjecuciónMes(m);
     var v = ej ? (ej.ventas_it1 || 0) : 0;
     var c = ej ? (ej.costos_operativos || 0) : 0;
     var g = ej ? (ej.gastos || 0) : 0;
@@ -2141,7 +2149,7 @@ function renderPresupuestoDetail() {
 
   var qTotalV = 0, qTotalC = 0, qTotalG = 0, qTotalINO = 0, qTotalGNO = 0, qTotalGNA = 0;
   qRange.forEach(function(m) {
-    var e = pmGetEjecucionMes(m);
+    var e = pmGetEjecuciónMes(m);
     if (e) {
       qTotalV += (e.ventas_it1 || 0); qTotalC += (e.costos_operativos || 0);
       qTotalG += (e.gastos || 0); qTotalINO += (e.ingreso_no_operacional || 0);
@@ -2278,7 +2286,7 @@ function renderPresupuestoMSH() {
   h += '</tbody></table></div></div>';
 
   // Panel Ejecución
-  var ejMes = pmGetEjecucionMes(mesNum);
+  var ejMes = pmGetEjecuciónMes(mesNum);
   h += '<div class="pm-panel"><div class="pm-panel-hdr" style="background:var(--navy);color:white;border-bottom:none">';
   h += '<h3 style="color:white;text-transform:uppercase;font-size:0.78rem;letter-spacing:0.3px"><span class="pm-hdot" style="background:var(--green)"></span> Ejecución (Realidad)</h3>';
   h += '<span class="pm-period" style="color:rgba(255,255,255,0.7)">' + pmYear + '-' + String(mesNum).padStart(2, '0') + '</span></div>';
@@ -2334,7 +2342,7 @@ function renderPresupuestoMSH() {
     h += '<tr><td class="pm-font-bold">' + c.label + '</td>';
     h += '<td class="pm-text-right">' + pmFormatMoney(c.meta) + '</td>';
     qRange.forEach(function(m) {
-      var ej = pmGetEjecucionMes(m);
+      var ej = pmGetEjecuciónMes(m);
       var val = ej ? (ej[c.key] || 0) : 0;
       var pct = pmPctMeta(val, c.meta);
       var color = pmPctColor(pct, c.tipo !== 'ventas');
@@ -2348,7 +2356,7 @@ function renderPresupuestoMSH() {
   h += '<tr class="pm-row-total pm-row-ganancia"><td class="pm-font-bold" style="color:white">Beneficio / Pérdida</td>';
   h += '<td class="pm-text-right" style="color:white">' + pmFormatMoney(metaBen) + '</td>';
   qRange.forEach(function(m) {
-    var ej = pmGetEjecucionMes(m);
+    var ej = pmGetEjecuciónMes(m);
     var v = ej ? (ej.ventas_simple || 0) : 0;
     var g = ej ? (ej.gastos_simple || 0) : 0;
     var ben = v - g;
@@ -2364,7 +2372,7 @@ function renderPresupuestoMSH() {
   // ── 3. Trimestre completo ──
   var qTotV = 0, qTotG = 0;
   qRange.forEach(function(m) {
-    var e = pmGetEjecucionMes(m);
+    var e = pmGetEjecuciónMes(m);
     if (e) { qTotV += (e.ventas_simple || 0); qTotG += (e.gastos_simple || 0); }
   });
   var qBen = qTotV - qTotG;
@@ -2407,13 +2415,13 @@ function renderPresupuestoMSH() {
 }
 
 // ── PROYECCIÓN DE IMPUESTOS ──
-function renderProyeccionDetail() {
+function renderProyecciónDetail() {
   var h = '<button class="pc-back-btn" onclick="pmCloseDetail()">← Volver</button>';
   h += '<div style="margin:8px 0 4px;font-size:1.1rem;font-weight:700;color:var(--navy)">' + esc(clienteNombre) + '</div>';
 
   var totalV = 0, totalCO = 0, totalG = 0, totalINO = 0, totalGNO = 0, totalGNA = 0;
   var mesesConData = 0;
-  pmEjecucion.forEach(function(e) {
+  pmEjecución.forEach(function(e) {
     totalV += (e.ventas_it1 || 0);
     totalCO += (e.costos_operativos || 0);
     totalG += (e.gastos || 0);
@@ -2503,7 +2511,7 @@ function renderProyeccionDetail() {
   h += '<div class="pm-panel-body" style="overflow-x:auto"><div style="display:inline-block;min-width:100%"><table class="pm-table-compact"><thead><tr>';
   h += '<th>Mes</th><th class="pm-text-right">Ventas IT1</th><th class="pm-text-right">Costos Op.</th><th class="pm-text-right">Gastos</th><th class="pm-text-right">Ing./Gto. No Op.</th><th class="pm-text-right">Gtos. N/A</th>';
   h += '</tr></thead><tbody>';
-  pmEjecucion.forEach(function(e) {
+  pmEjecución.forEach(function(e) {
     var eIF = (e.ingreso_no_operacional || 0) - (e.gasto_no_operacional || 0);
     h += '<tr><td class="pm-font-bold">' + MESES_FULL[e.mes - 1] + '</td>';
     h += '<td class="pm-text-right">' + pmFormatMoneyShort(e.ventas_it1) + '</td>';
@@ -2529,7 +2537,7 @@ function renderProyeccionDetail() {
   h += '</tr></thead><tbody>';
   var avgIF = avgINO - avgGNO;
   for (var m = 1; m <= 12; m++) {
-    var realRow = pmEjecucion.find(function(e) { return e.mes === m; });
+    var realRow = pmEjecución.find(function(e) { return e.mes === m; });
     if (realRow) {
       var rIF = (realRow.ingreso_no_operacional || 0) - (realRow.gasto_no_operacional || 0);
       h += '<tr><td>' + MESES_FULL[m - 1] + '</td>';
@@ -2867,7 +2875,7 @@ function renderDeclaracionesDetail() {
   h += '</tr></tbody></table></div>';
 
   // Nota del mes (solo lectura en vista cliente)
-  var ejMes = pmGetEjecucionMes(mesNum);
+  var ejMes = pmGetEjecuciónMes(mesNum);
   var notaVal = ejMes ? (ejMes.nota_declaraciones || '') : '';
   if (notaVal) {
     h += '<div class="pm-card"><div class="pm-card-title">Nota del Mes</div>';

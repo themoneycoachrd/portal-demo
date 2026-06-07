@@ -427,6 +427,10 @@ body.embed .content { padding-top:12px; }
 .cal-grid-legend-item { display:flex; align-items:center; gap:5px; font-size:0.72rem; color:var(--muted); }
 .cal-grid-legend-dot { width:10px; height:10px; border-radius:3px; }
 </style>
+
+<!-- Account One Refinado theme layer (override) -->
+<link rel="stylesheet" href="assets/theme.css">
+<script src="assets/theme.js" defer></script>
 </head>
 <body>
 
@@ -481,6 +485,7 @@ body.embed .content { padding-top:12px; }
 var SUPABASE_URL = 'https://ouetusstqvpyjeycfdio.supabase.co';
 var SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im91ZXR1c3N0cXZweWpleWNmZGlvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY2NDcwNzksImV4cCI6MjA5MjIyMzA3OX0.Bsys947JLGEuf3zdBF2GPFdbJVJtaZdC4YEmyBU5Bow';
 var sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+var ANIO = new Date().getFullYear();
 
 var MESES_KEY = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
 var MESES_LABEL = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
@@ -528,7 +533,7 @@ var CHECKLIST = {
   ],
   'ITBIS': [
     { id: 'facturas_mes', label: 'Cargaste todas las facturas del mes', type: 'yesno' },
-    { id: 'facturas_estimadas', label: 'Facturas estimadas (monto aproximado)', type: 'monto' },
+    { id: 'facturas_estimadas', label: 'Facturas estimadas (monto apróximado)', type: 'monto' },
     { id: 'cargar_excel_facturas', label: 'Cargaste el Excel de las facturas', type: 'upload', accept: '.xlsx,.xls,.csv', fileType: 'facturas_excel' },
     { id: 'ncf_bancos', label: 'Cargaste los NCF de los bancos', type: 'yesno' },
     { id: 'facturas_atrasadas', label: 'Tienes facturas atrasadas', type: 'yesno' },
@@ -584,15 +589,15 @@ var saving = false;
 // Presentación Mensual state
 var pmDetail = null;
 var pmPresupuesto = null;
-var pmEjecucion = [];
+var pmEjecución = [];
 var pmImpConfig = null;
 var pmDeclaraciones = [];
 var pmImpChecklist = [];
-var pmYear = 2026;
+var pmYear = ANIO;
 
 // Bulk presentación data for index view
 var allPresupuesto = [];
-var allEjecucionBulk = [];
+var allEjecuciónBulk = [];
 var allImpConfigBulk = [];
 var allDeclaracionesBulk = [];
 
@@ -614,7 +619,7 @@ function fileKey(impuesto, mes, fileType) {
 function getDeadlineDate(impuestoId, mesKey) {
   var mi = MESES_KEY.indexOf(mesKey);
   var deadlineMonth = mi + 1;
-  var deadlineYear = 2026;
+  var deadlineYear = ANIO;
   if (deadlineMonth > 11) { deadlineMonth = 0; deadlineYear++; }
   var imp = IMPUESTOS.find(function(i) { return i.id === impuestoId; });
   if (!imp) return null;
@@ -803,7 +808,7 @@ async function loadPresentacionData() {
   ]);
 
   pmPresupuesto = presRes.data || null;
-  pmEjecucion = ejRes.data || [];
+  pmEjecución = ejRes.data || [];
   pmImpConfig = confRes.data || null;
   pmDeclaraciones = declRes.data || [];
   pmImpChecklist = ckRes.data || [];
@@ -812,8 +817,8 @@ async function loadPresentacionData() {
 // Helpers de cálculo
 function pmGetMesIdx(mesKey) { return MESES_KEY.indexOf(mesKey) + 1; }
 
-function pmGetEjecucionMes(mesNum) {
-  return pmEjecucion.find(function(e) { return e.mes === mesNum; }) || null;
+function pmGetEjecuciónMes(mesNum) {
+  return pmEjecución.find(function(e) { return e.mes === mesNum; }) || null;
 }
 
 function pmGetMetaMensual(campo) {
@@ -922,7 +927,7 @@ async function init() {
   var { data: { session } } = await sb.auth.getSession();
   if (!session) {
     if (isEmbed) {
-      document.body.innerHTML = '<div style="text-align:center;padding:60px;color:#7c8495;">Sesion no encontrada. Recarga la pagina principal.</div>';
+      document.body.innerHTML = '<div style="text-align:center;padding:60px;color:#7c8495;">Sesión no encontrada. Recarga la página principal.</div>';
     } else {
       document.getElementById('loginOverlay').style.display = 'flex';
     }
@@ -969,7 +974,7 @@ async function initAdmin(isEmbed) {
   allClientes = clientesRes.data || [];
   allPortalData = portalDataRes.data || [];
   allPresupuesto = presBulkRes.data || [];
-  allEjecucionBulk = ejBulkRes.data || [];
+  allEjecuciónBulk = ejBulkRes.data || [];
   allImpConfigBulk = icBulkRes.data || [];
   allDeclaracionesBulk = declBulkRes.data || [];
 
@@ -1123,9 +1128,9 @@ function idxSwitchContadora(name) {
 function hasPresupuesto(nombre) {
   return allPresupuesto.some(function(p) { return p.cliente === nombre; });
 }
-function hasEjecucionMes(nombre, mesKey) {
+function hasEjecuciónMes(nombre, mesKey) {
   var mesNum = MESES_KEY.indexOf(mesKey) + 1;
-  return allEjecucionBulk.some(function(e) { return e.cliente === nombre && e.mes === mesNum; });
+  return allEjecuciónBulk.some(function(e) { return e.cliente === nombre && e.mes === mesNum; });
 }
 function hasImpConfig(nombre) {
   return allImpConfigBulk.some(function(c) { return c.cliente === nombre; });
@@ -1136,8 +1141,8 @@ function getDeclCount(nombre, mesKey) {
     return d.cliente === nombre && d.mes === mesNum && (d.estado === 'a_tiempo' || d.estado === 'tarde' || d.estado === 'no_aplico');
   }).length;
 }
-function getEjecucionCount(nombre) {
-  return allEjecucionBulk.filter(function(e) { return e.cliente === nombre; }).length;
+function getEjecuciónCount(nombre) {
+  return allEjecuciónBulk.filter(function(e) { return e.cliente === nombre; }).length;
 }
 
 /* ── Calendario de entregas ── */
@@ -1254,9 +1259,9 @@ function getCalendarEvents(mesIdx) {
     if (!events[key]) events[key] = [];
     events[key].push({ tipo: tipo, label: label });
   }
-  var year = 2026;
+  var year = ANIO;
   var nextMonth = (mesIdx + 1) % 12;
-  var nextYear = mesIdx === 11 ? 2027 : 2026;
+  var nextYear = mesIdx === 11 ? ANIO + 1 : ANIO;
 
   // Responsabilidades cliente/AO
   CAL_RESPONSABILIDADES.forEach(function(r) {
@@ -1272,7 +1277,7 @@ function getCalendarEvents(mesIdx) {
   if (dgiiForReminder) {
     var itbisDay = dgiiForReminder.itbis.d;
     var itbisMonth = dgiiForReminder.itbis.m;
-    var itbisYear = (mesIdx === 11 && itbisMonth === 0) ? 2027 : 2026;
+    var itbisYear = (mesIdx === 11 && itbisMonth === 0) ? ANIO + 1 : ANIO;
     addEvent(itbisYear, itbisMonth, itbisDay, 'ao', 'Último recordatorio: confirmar que ITBIS se pagó');
   }
 
@@ -1280,13 +1285,13 @@ function getCalendarEvents(mesIdx) {
   var dgii = CALENDARIO_DGII_2026[mesIdx];
   if (dgii) {
     var tssDate = CALENDARIO_TSS_2026[mesIdx];
-    var tssYear = mesIdx === 11 ? 2027 : 2026;
+    var tssYear = mesIdx === 11 ? ANIO + 1 : ANIO;
     addEvent(tssYear, tssDate.m, tssDate.d, 'dgii', 'Pagar TSS');
-    var irYear = mesIdx === 11 && dgii.ir3.m === 0 ? 2027 : 2026;
+    var irYear = mesIdx === 11 && dgii.ir3.m === 0 ? ANIO + 1 : ANIO;
     addEvent(irYear, dgii.ir3.m, dgii.ir3.d, 'dgii', 'Pagar IR-3 / IR-17');
-    var antYear = mesIdx === 11 && dgii.anticipo.m === 0 ? 2027 : 2026;
+    var antYear = mesIdx === 11 && dgii.anticipo.m === 0 ? ANIO + 1 : ANIO;
     addEvent(antYear, dgii.anticipo.m, dgii.anticipo.d, 'dgii', 'Pagar Anticipo ISR');
-    var itbYear = mesIdx === 11 && dgii.itbis.m === 0 ? 2027 : 2026;
+    var itbYear = mesIdx === 11 && dgii.itbis.m === 0 ? ANIO + 1 : ANIO;
     addEvent(itbYear, dgii.itbis.m, dgii.itbis.d, 'dgii', 'Pagar ITBIS');
   }
 
@@ -1295,7 +1300,7 @@ function getCalendarEvents(mesIdx) {
 
 function renderCalGrid() {
   var mesIdx = calActiveMes;
-  var year = 2026;
+  var year = ANIO;
   var nextMonth = (mesIdx + 1) % 12;
   var nextYear = mesIdx === 11 ? 2027 : year;
   var MESES_ABR = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
@@ -1328,7 +1333,7 @@ function renderCalGrid() {
 
   h += '<div class="cal-grid-wrap">';
   var mesPresentacion = (mesIdx + 1) % 12;
-  var anioPres = mesIdx === 11 ? 2027 : 2026;
+  var anioPres = mesIdx === 11 ? ANIO + 1 : ANIO;
   h += '<div class="cal-grid-header"><span class="cal-grid-title">Presentación fiscal de ' + MESES_FULL_CAL[mesIdx] + ' — se presenta en ' + MESES_FULL_CAL[mesPresentacion] + ' ' + anioPres + '</span>';
   h += '<span class="cal-grid-range">' + startDate.getDate() + ' ' + MESES_ABR[startDate.getMonth()] + ' – ' + endDate.getDate() + ' ' + MESES_ABR[endDate.getMonth()] + '</span></div>';
 
@@ -1599,7 +1604,7 @@ function renderAdminIndex() {
     var conPres = 0, conEjMes = 0, conConfig = 0, declCompletas = 0;
     clientes.forEach(function(c) {
       if (hasPresupuesto(c.nombre)) conPres++;
-      if (hasEjecucionMes(c.nombre, selectedMes)) conEjMes++;
+      if (hasEjecuciónMes(c.nombre, selectedMes)) conEjMes++;
       if (hasImpConfig(c.nombre)) conConfig++;
       if (getDeclCount(c.nombre, selectedMes) >= 6) declCompletas++;
     });
@@ -1634,9 +1639,9 @@ function renderAdminIndex() {
       clientes.forEach(function(c, i) {
         var ct = c.contadora_contabilidad || 'Sin asignar';
         var hasPres = hasPresupuesto(c.nombre);
-        var hasEj = hasEjecucionMes(c.nombre, selectedMes);
+        var hasEj = hasEjecuciónMes(c.nombre, selectedMes);
         var hasConf = hasImpConfig(c.nombre);
-        var ejCount = getEjecucionCount(c.nombre);
+        var ejCount = getEjecuciónCount(c.nombre);
         var declCt = getDeclCount(c.nombre, selectedMes);
 
         var partsLoaded = (hasPres ? 1 : 0) + (hasEj ? 1 : 0) + (hasConf ? 1 : 0);
@@ -1666,7 +1671,7 @@ function renderAdminIndex() {
       clientes.forEach(function(c) {
         var ct = c.contadora_contabilidad || 'Sin asignar';
         var hasPres = hasPresupuesto(c.nombre);
-        var hasEj = hasEjecucionMes(c.nombre, selectedMes);
+        var hasEj = hasEjecuciónMes(c.nombre, selectedMes);
         var hasConf = hasImpConfig(c.nombre);
         var partsLoaded = (hasPres ? 1 : 0) + (hasEj ? 1 : 0) + (hasConf ? 1 : 0);
         var pct = Math.round(partsLoaded / 3 * 100);
@@ -1807,7 +1812,7 @@ function idxBackToIndex() {
   selectedTab = 'dashboard';
   pmDetail = null;
   pmPresupuesto = null;
-  pmEjecucion = [];
+  pmEjecución = [];
   pmImpConfig = null;
   pmDeclaraciones = [];
 
@@ -1918,7 +1923,7 @@ function renderDashboard(el, backHtml) {
   if (clienteNombre) {
     h += '<div style="margin-bottom:12px;font-size:1.2rem;font-weight:800;color:var(--navy)">' + esc(clienteNombre) + '</div>';
   }
-  h += '<div style="margin-bottom:20px"><span style="font-size:1.1rem;font-weight:700">' + MESES_FULL[MESES_KEY.indexOf(selectedMes)] + ' 2026</span>';
+  h += '<div style="margin-bottom:20px"><span style="font-size:1.1rem;font-weight:700">' + MESES_FULL[MESES_KEY.indexOf(selectedMes)] + ' ' + ANIO + '</span>';
   h += '<span style="font-size:0.85rem;color:var(--muted);margin-left:12px">Resumen de impuestos</span></div>';
 
   IMPUESTOS.forEach(function(imp) {
@@ -2028,20 +2033,20 @@ function formatFechaCorreo(year, monthIdx, day) {
 function generarCorreo() {
   var mesIdx = MESES_KEY.indexOf(selectedMes);
   var mesNombre = MESES_FULL[mesIdx];
-  var year = 2026;
+  var year = ANIO;
   var nextMonth = (mesIdx + 1) % 12;
-  var nextYear = mesIdx === 11 ? 2027 : 2026;
+  var nextYear = mesIdx === 11 ? ANIO + 1 : ANIO;
 
   // Fechas de pago del calendario fiscal
   var dgii = CALENDARIO_DGII_2026[mesIdx];
   var tss = CALENDARIO_TSS_2026[mesIdx];
-  var tssYear = mesIdx === 11 ? 2027 : 2026;
+  var tssYear = mesIdx === 11 ? ANIO + 1 : ANIO;
 
   var fTss = formatFechaCorreo(tssYear, tss.m, tss.d);
-  var fIr3 = formatFechaCorreo(dgii.ir3.m === 0 && mesIdx === 11 ? 2027 : 2026, dgii.ir3.m, dgii.ir3.d);
-  var fIr17 = formatFechaCorreo(dgii.ir17.m === 0 && mesIdx === 11 ? 2027 : 2026, dgii.ir17.m, dgii.ir17.d);
-  var fAnticipo = formatFechaCorreo(dgii.anticipo.m === 0 && mesIdx === 11 ? 2027 : 2026, dgii.anticipo.m, dgii.anticipo.d);
-  var fItbis = formatFechaCorreo(dgii.itbis.m === 0 && mesIdx === 11 ? 2027 : 2026, dgii.itbis.m, dgii.itbis.d);
+  var fIr3 = formatFechaCorreo(dgii.ir3.m === 0 && mesIdx === 11 ? ANIO + 1 : ANIO, dgii.ir3.m, dgii.ir3.d);
+  var fIr17 = formatFechaCorreo(dgii.ir17.m === 0 && mesIdx === 11 ? ANIO + 1 : ANIO, dgii.ir17.m, dgii.ir17.d);
+  var fAnticipo = formatFechaCorreo(dgii.anticipo.m === 0 && mesIdx === 11 ? ANIO + 1 : ANIO, dgii.anticipo.m, dgii.anticipo.d);
+  var fItbis = formatFechaCorreo(dgii.itbis.m === 0 && mesIdx === 11 ? ANIO + 1 : ANIO, dgii.itbis.m, dgii.itbis.d);
 
   // Fechas relativas al mes de trabajo
   var f25 = formatFechaCorreo(year, mesIdx, 25);
@@ -2132,7 +2137,7 @@ function renderChecklist(el, impuesto, backHtml) {
     h += '<div style="margin-bottom:12px;font-size:1.2rem;font-weight:800;color:var(--navy)">' + esc(clienteNombre) + '</div>';
   }
   h += '<div style="margin-bottom:16px"><span style="font-size:1.1rem;font-weight:700">' + esc(impuesto) + '</span>';
-  h += '<span style="font-size:0.85rem;color:var(--muted);margin-left:12px">' + MESES_FULL[MESES_KEY.indexOf(selectedMes)] + ' 2026</span></div>';
+  h += '<span style="font-size:0.85rem;color:var(--muted);margin-left:12px">' + MESES_FULL[MESES_KEY.indexOf(selectedMes)] + ' ' + ANIO + '</span></div>';
 
   h += '<div class="task-section">';
 
@@ -2313,7 +2318,7 @@ function renderPresentacion(el, backHtml) {
     h += '<p>Hitos, fechas límite y estado de formularios.</p></div>';
     h += '</div>';
 
-    if (pmEjecucion.length === 0 && !pmPresupuesto) {
+    if (pmEjecución.length === 0 && !pmPresupuesto) {
       h += '<div class="pm-no-data" style="margin-top:24px"><p>Aún no hay datos cargados para este período.</p></div>';
     }
   } else if (pmDetail === 'admin-datos-simple') {
@@ -2325,7 +2330,7 @@ function renderPresentacion(el, backHtml) {
   } else if (pmDetail === 'presupuesto') {
     h += renderPresupuestoDetail();
   } else if (pmDetail === 'proyeccion') {
-    h += renderProyeccionDetail();
+    h += renderProyecciónDetail();
   } else if (pmDetail === 'declaraciones') {
     h += renderDeclaracionesDetail();
   }
@@ -2394,7 +2399,7 @@ function renderPresupuestoDetail() {
   h += '<td class="pm-text-right" style="color:' + ganPresColor + '">$' + pmFormatMoney(ganAnual / 12) + '</td></tr>';
   h += '</tbody></table></div></div>';
 
-  var ejMes = pmGetEjecucionMes(mesNum);
+  var ejMes = pmGetEjecuciónMes(mesNum);
   h += '<div class="pm-panel"><div class="pm-panel-hdr" style="background:var(--navy);color:white;border-bottom:none">';
   h += '<h3 style="color:white;text-transform:uppercase;font-size:0.78rem;letter-spacing:0.3px"><span class="pm-hdot" style="background:var(--green)"></span> Ejecución (Realidad)</h3>';
   h += '<span class="pm-period" style="color:rgba(255,255,255,0.7)">' + pmYear + '-' + String(mesNum).padStart(2, '0') + '</span></div>';
@@ -2495,7 +2500,7 @@ function renderPresupuestoDetail() {
     h += '<tr><td class="pm-font-bold">' + c.label + '</td>';
     h += '<td class="pm-text-right" style="color:var(--muted)">' + pmFormatMoney(meta) + '</td>';
     qRange.forEach(function(m) {
-      var ej = pmGetEjecucionMes(m);
+      var ej = pmGetEjecuciónMes(m);
       var val = ej ? (ej[c.key] || 0) : 0;
       var pct, color;
       if (c.key === 'costos_operativos') {
@@ -2520,7 +2525,7 @@ function renderPresupuestoDetail() {
   h += '<tr class="pm-row-total"><td class="pm-font-bold">Resultado Op.</td>';
   h += '<td class="pm-text-right" style="color:var(--muted)">' + pmFormatMoney(metaResOpMes) + '</td>';
   qRange.forEach(function(m) {
-    var ej = pmGetEjecucionMes(m);
+    var ej = pmGetEjecuciónMes(m);
     var v = ej ? (ej.ventas_it1 || 0) : 0;
     var c = ej ? (ej.costos_operativos || 0) : 0;
     var g = ej ? (ej.gastos || 0) : 0;
@@ -2537,7 +2542,7 @@ function renderPresupuestoDetail() {
   h += '<tr><td class="pm-font-bold" style="color:var(--muted)">Ing./Gto. No Op.</td>';
   h += '<td class="pm-text-right" style="color:var(--muted)">' + pmFormatMoney(metaINO) + '</td>';
   qRange.forEach(function(m) {
-    var ej = pmGetEjecucionMes(m);
+    var ej = pmGetEjecuciónMes(m);
     var val = ej ? ((ej.ingreso_no_operacional || 0) - (ej.gasto_no_operacional || 0)) : 0;
     var pctIF = metaINO ? (val / metaINO * 100) : 0;
     var colorIF = metaINO ? pmPctColor(pctIF, true) : '#999';
@@ -2551,7 +2556,7 @@ function renderPresupuestoDetail() {
   h += '<tr><td class="pm-font-bold" style="color:var(--muted)">Gtos. No Admitidos</td>';
   h += '<td class="pm-text-right" style="color:var(--muted)">' + pmFormatMoney(metaGNAmes) + '</td>';
   qRange.forEach(function(m) {
-    var ej = pmGetEjecucionMes(m);
+    var ej = pmGetEjecuciónMes(m);
     var val = ej ? (ej.gastos_no_admitidos || 0) : 0;
     var pctGNA = metaGNAmes ? (val / metaGNAmes * 100) : 0;
     var colorGNA = metaGNAmes ? pmPctColor(pctGNA, true) : '#999';
@@ -2565,7 +2570,7 @@ function renderPresupuestoDetail() {
   h += '<tr class="pm-row-total pm-row-ganancia"><td class="pm-font-bold" style="color:white">Ganancia/Pérdida</td>';
   h += '<td class="pm-text-right" style="color:white">' + pmFormatMoney(metaGanMes) + '</td>';
   qRange.forEach(function(m) {
-    var ej = pmGetEjecucionMes(m);
+    var ej = pmGetEjecuciónMes(m);
     var v = ej ? (ej.ventas_it1 || 0) : 0;
     var c = ej ? (ej.costos_operativos || 0) : 0;
     var g = ej ? (ej.gastos || 0) : 0;
@@ -2583,7 +2588,7 @@ function renderPresupuestoDetail() {
 
   var qTotalV = 0, qTotalC = 0, qTotalG = 0, qTotalINO = 0, qTotalGNO = 0, qTotalGNA = 0;
   qRange.forEach(function(m) {
-    var e = pmGetEjecucionMes(m);
+    var e = pmGetEjecuciónMes(m);
     if (e) {
       qTotalV += (e.ventas_it1 || 0); qTotalC += (e.costos_operativos || 0);
       qTotalG += (e.gastos || 0); qTotalINO += (e.ingreso_no_operacional || 0);
@@ -2720,7 +2725,7 @@ function renderPresupuestoMSH() {
   h += '</tbody></table></div></div>';
 
   // Panel Ejecución
-  var ejMes = pmGetEjecucionMes(mesNum);
+  var ejMes = pmGetEjecuciónMes(mesNum);
   h += '<div class="pm-panel"><div class="pm-panel-hdr" style="background:var(--navy);color:white;border-bottom:none">';
   h += '<h3 style="color:white;text-transform:uppercase;font-size:0.78rem;letter-spacing:0.3px"><span class="pm-hdot" style="background:var(--green)"></span> Ejecución (Realidad)</h3>';
   h += '<span class="pm-period" style="color:rgba(255,255,255,0.7)">' + pmYear + '-' + String(mesNum).padStart(2, '0') + '</span></div>';
@@ -2776,7 +2781,7 @@ function renderPresupuestoMSH() {
     h += '<tr><td class="pm-font-bold">' + c.label + '</td>';
     h += '<td class="pm-text-right">' + pmFormatMoney(c.meta) + '</td>';
     qRange.forEach(function(m) {
-      var ej = pmGetEjecucionMes(m);
+      var ej = pmGetEjecuciónMes(m);
       var val = ej ? (ej[c.key] || 0) : 0;
       var pct = pmPctMeta(val, c.meta);
       var color = pmPctColor(pct, c.tipo !== 'ventas');
@@ -2790,7 +2795,7 @@ function renderPresupuestoMSH() {
   h += '<tr class="pm-row-total pm-row-ganancia"><td class="pm-font-bold" style="color:white">Beneficio / Pérdida</td>';
   h += '<td class="pm-text-right" style="color:white">' + pmFormatMoney(metaBen) + '</td>';
   qRange.forEach(function(m) {
-    var ej = pmGetEjecucionMes(m);
+    var ej = pmGetEjecuciónMes(m);
     var v = ej ? (ej.ventas_simple || 0) : 0;
     var g = ej ? (ej.gastos_simple || 0) : 0;
     var ben = v - g;
@@ -2806,7 +2811,7 @@ function renderPresupuestoMSH() {
   // ── 3. Trimestre completo ──
   var qTotV = 0, qTotG = 0;
   qRange.forEach(function(m) {
-    var e = pmGetEjecucionMes(m);
+    var e = pmGetEjecuciónMes(m);
     if (e) { qTotV += (e.ventas_simple || 0); qTotG += (e.gastos_simple || 0); }
   });
   var qBen = qTotV - qTotG;
@@ -2849,12 +2854,12 @@ function renderPresupuestoMSH() {
 }
 
 // ── PROYECCIÓN DE IMPUESTOS ──
-function renderProyeccionDetail() {
+function renderProyecciónDetail() {
   var h = '<button class="pc-back-btn" onclick="pmCloseDetail()">← Volver</button>';
 
   var totalV = 0, totalCO = 0, totalG = 0, totalINO = 0, totalGNO = 0, totalGNA = 0;
   var mesesConData = 0;
-  pmEjecucion.forEach(function(e) {
+  pmEjecución.forEach(function(e) {
     totalV += (e.ventas_it1 || 0);
     totalCO += (e.costos_operativos || 0);
     totalG += (e.gastos || 0);
@@ -2944,7 +2949,7 @@ function renderProyeccionDetail() {
   h += '<div class="pm-panel-body" style="overflow-x:auto"><div style="display:inline-block;min-width:100%"><table class="pm-table-compact"><thead><tr>';
   h += '<th>Mes</th><th class="pm-text-right">Ventas IT1</th><th class="pm-text-right">Costos Op.</th><th class="pm-text-right">Gastos</th><th class="pm-text-right">Ing./Gto. No Op.</th><th class="pm-text-right">Gtos. N/A</th>';
   h += '</tr></thead><tbody>';
-  pmEjecucion.forEach(function(e) {
+  pmEjecución.forEach(function(e) {
     var eIF = (e.ingreso_no_operacional || 0) - (e.gasto_no_operacional || 0);
     h += '<tr><td class="pm-font-bold">' + MESES_FULL[e.mes - 1] + '</td>';
     h += '<td class="pm-text-right">' + pmFormatMoneyShort(e.ventas_it1) + '</td>';
@@ -2970,7 +2975,7 @@ function renderProyeccionDetail() {
   h += '</tr></thead><tbody>';
   var avgIF = avgINO - avgGNO;
   for (var m = 1; m <= 12; m++) {
-    var realRow = pmEjecucion.find(function(e) { return e.mes === m; });
+    var realRow = pmEjecución.find(function(e) { return e.mes === m; });
     if (realRow) {
       var rIF = (realRow.ingreso_no_operacional || 0) - (realRow.gasto_no_operacional || 0);
       h += '<tr><td>' + MESES_FULL[m - 1] + '</td>';
@@ -3297,7 +3302,7 @@ function renderDeclaracionesDetail() {
   h += '</tr></tbody></table></div>';
 
   // Nota general del mes
-  var ejMes = pmGetEjecucionMes(mesNum);
+  var ejMes = pmGetEjecuciónMes(mesNum);
   var notaVal = ejMes ? (ejMes.nota_declaraciones || '') : '';
   h += '<div class="pm-card"><div class="pm-card-title">Nota del Mes</div>';
   if (true) {
@@ -3342,23 +3347,23 @@ function renderAdminDatosSimple() {
   h += '<div class="pm-form-group" style="margin:0"><label style="margin-bottom:4px">Mes a cargar</label>';
   h += '<select class="pm-form-input" id="pmSimpEjMes" style="width:180px" onchange="pmUpdateSimpEjFields()">';
   for (var em = 1; em <= 12; em++) {
-    var hasMes = pmEjecucion.some(function(e) { return e.mes === em; });
+    var hasMes = pmEjecución.some(function(e) { return e.mes === em; });
     h += '<option value="' + em + '"' + (em === pmGetMesIdx(selectedMes) ? ' selected' : '') + '>' + MESES_FULL[em - 1] + (hasMes ? ' ✓' : '') + '</option>';
   }
   h += '</select></div></div>';
 
-  var ej = pmGetEjecucionMes(pmGetMesIdx(selectedMes));
+  var ej = pmGetEjecuciónMes(pmGetMesIdx(selectedMes));
   h += '<div class="pm-form-grid">';
   h += '<div class="pm-form-group"><label>Ventas</label><input type="number" class="pm-form-input" id="pmSimpEjVentas" value="' + (ej ? (ej.ventas_simple || '') : '') + '" placeholder="0.00" step="0.01"></div>';
   h += '<div class="pm-form-group"><label>Gastos</label><input type="number" class="pm-form-input" id="pmSimpEjGastos" value="' + (ej ? (ej.gastos_simple || '') : '') + '" placeholder="0.00" step="0.01"></div>';
   h += '</div>';
 
-  h += '<div class="pm-btn-row"><button class="pm-btn-save primary" onclick="pmSaveEjecucionSimple()">Guardar Ejecución</button></div>';
+  h += '<div class="pm-btn-row"><button class="pm-btn-save primary" onclick="pmSaveEjecuciónSimple()">Guardar Ejecución</button></div>';
 
-  if (pmEjecucion.length > 0) {
+  if (pmEjecución.length > 0) {
     h += '<div style="margin-top:14px;padding:10px 14px;background:#f8fafc;border-radius:8px;font-size:0.78rem;color:var(--muted)">';
     h += '<strong>Meses cargados:</strong> ';
-    pmEjecucion.forEach(function(e, i) {
+    pmEjecución.forEach(function(e, i) {
       if (i > 0) h += ', ';
       h += MESES_FULL[e.mes - 1];
     });
@@ -3371,7 +3376,7 @@ function renderAdminDatosSimple() {
 
 function pmUpdateSimpEjFields() {
   var mes = parseInt(document.getElementById('pmSimpEjMes').value);
-  var ej = pmGetEjecucionMes(mes);
+  var ej = pmGetEjecuciónMes(mes);
   document.getElementById('pmSimpEjVentas').value = ej ? (ej.ventas_simple || '') : '';
   document.getElementById('pmSimpEjGastos').value = ej ? (ej.gastos_simple || '') : '';
 }
@@ -3397,13 +3402,13 @@ async function pmSavePresupuestoSimple() {
   render();
 }
 
-async function pmSaveEjecucionSimple() {
+async function pmSaveEjecuciónSimple() {
   var mes = parseInt(document.getElementById('pmSimpEjMes').value);
   var v = parseFloat(document.getElementById('pmSimpEjVentas').value) || 0;
   var g = parseFloat(document.getElementById('pmSimpEjGastos').value) || 0;
 
   // Escribe a columnas _simple. Preserva las columnas del form completo.
-  var existing = pmGetEjecucionMes(mes);
+  var existing = pmGetEjecuciónMes(mes);
   var record = {
     cliente: clienteNombre, anio: pmYear, mes: mes,
     ventas_simple: v, gastos_simple: g,
@@ -3477,14 +3482,14 @@ function renderAdminDatos() {
   h += '<div class="pm-form-group" style="margin:0"><label style="margin-bottom:4px">Mes a cargar</label>';
   h += '<select class="pm-form-input" id="pmEjMes" style="width:180px" onchange="pmUpdateEjFields()">';
   for (var em = 1; em <= 12; em++) {
-    var hasMes = pmEjecucion.some(function(e) { return e.mes === em; });
+    var hasMes = pmEjecución.some(function(e) { return e.mes === em; });
     h += '<option value="' + em + '"' + (em === pmGetMesIdx(selectedMes) ? ' selected' : '') + '>' + MESES_FULL[em - 1] + (hasMes ? ' ✓' : '') + '</option>';
   }
   h += '</select></div>';
   h += '<div style="font-size:0.78rem;color:var(--muted);margin-top:16px">Puedes llenar manual o subir el Excel arriba</div>';
   h += '</div>';
 
-  var ej = pmGetEjecucionMes(pmGetMesIdx(selectedMes));
+  var ej = pmGetEjecuciónMes(pmGetMesIdx(selectedMes));
   h += '<div class="pm-form-grid">';
   h += '<div class="pm-form-group"><label>Ventas</label><input type="number" class="pm-form-input" id="pmEjVentas" value="' + (ej ? ej.ventas_it1 : '') + '" placeholder="0.00" step="0.01"></div>';
   h += '<div class="pm-form-group"><label>Costos Operativos</label><input type="number" class="pm-form-input" id="pmEjCostos" value="' + (ej ? ej.costos_operativos : '') + '" placeholder="0.00" step="0.01"></div>';
@@ -3493,12 +3498,12 @@ function renderAdminDatos() {
   h += '<div class="pm-form-group"><label>Gasto No Operacional</label><input type="number" class="pm-form-input" id="pmEjGNO" value="' + (ej ? ej.gasto_no_operacional : '') + '" placeholder="0.00" step="0.01"></div>';
   h += '<div class="pm-form-group"><label>Gastos No Admitidos</label><input type="number" class="pm-form-input" id="pmEjGNA" value="' + (ej ? ej.gastos_no_admitidos : '') + '" placeholder="0.00" step="0.01"></div>';
   h += '</div>';
-  h += '<div class="pm-btn-row"><button class="pm-btn-save primary" onclick="pmSaveEjecucion()">Guardar Ejecución</button></div>';
+  h += '<div class="pm-btn-row"><button class="pm-btn-save primary" onclick="pmSaveEjecución()">Guardar Ejecución</button></div>';
 
-  if (pmEjecucion.length > 0) {
+  if (pmEjecución.length > 0) {
     h += '<div style="margin-top:14px;padding:10px 14px;background:#f8fafc;border-radius:8px;font-size:0.78rem;color:var(--muted)">';
     h += '<strong>Meses cargados:</strong> ';
-    pmEjecucion.forEach(function(e, i) {
+    pmEjecución.forEach(function(e, i) {
       if (i > 0) h += ', ';
       h += MESES_FULL[e.mes - 1];
     });
@@ -3566,7 +3571,7 @@ function renderAdminDatos() {
 
 function pmUpdateEjFields() {
   var mes = parseInt(document.getElementById('pmEjMes').value);
-  var ej = pmGetEjecucionMes(mes);
+  var ej = pmGetEjecuciónMes(mes);
   document.getElementById('pmEjVentas').value = ej ? ej.ventas_it1 : '';
   document.getElementById('pmEjCostos').value = ej ? ej.costos_operativos : '';
   document.getElementById('pmEjGastos').value = ej ? ej.gastos : '';
@@ -3783,7 +3788,7 @@ function pmShowExcelPreview(parsed, meses, fileName) {
   h += '<div style="margin-bottom:12px"><span style="font-size:0.85rem;font-weight:600">Meses detectados:</span>';
   h += '<div style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap">';
   meses.forEach(function(m) {
-    var hasMes = pmEjecucion.some(function(e) { return e.mes === m.mes; });
+    var hasMes = pmEjecución.some(function(e) { return e.mes === m.mes; });
     h += '<button class="pm-excel-mes-btn' + (hasMes ? ' loaded' : '') + '" data-mes="' + m.mes + '" onclick="pmSelectExcelMes(' + m.mes + ')">';
     h += m.label + (hasMes ? ' ✓' : '') + '</button>';
   });
@@ -3942,7 +3947,7 @@ async function pmSavePresupuesto() {
   render();
 }
 
-async function pmSaveEjecucion() {
+async function pmSaveEjecución() {
   var mes = parseInt(document.getElementById('pmEjMes').value);
   var v = parseFloat(document.getElementById('pmEjVentas').value) || 0;
   var c = parseFloat(document.getElementById('pmEjCostos').value) || 0;
@@ -4054,9 +4059,9 @@ async function pmSaveDeclNota() {
   if (error) { showToast('Error: ' + error.message); return; }
   showToast('Nota guardada');
   // Actualizar el dato local
-  var ej = pmGetEjecucionMes(mesNum);
+  var ej = pmGetEjecuciónMes(mesNum);
   if (ej) { ej.nota_declaraciones = nota; }
-  else { pmEjecucion.push({ cliente: clienteNombre, anio: pmYear, mes: mesNum, nota_declaraciones: nota }); }
+  else { pmEjecución.push({ cliente: clienteNombre, anio: pmYear, mes: mesNum, nota_declaraciones: nota }); }
 }
 
 function pmFormatDate(dateStr) {

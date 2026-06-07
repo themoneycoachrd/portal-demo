@@ -283,6 +283,10 @@ body.embed .nav-area { margin-top:-12px; }
 .res-td-center { text-align:center; font-size:0.74rem; color:var(--muted); }
 .res-items-table tbody tr:hover td { background:#fafbfc; }
 </style>
+
+<!-- Account One Refinado theme layer (override) -->
+<link rel="stylesheet" href="assets/theme.css">
+<script src="assets/theme.js" defer></script>
 </head>
 <body>
 
@@ -319,6 +323,15 @@ body.embed .nav-area { margin-top:-12px; }
     <a href="index.html">Inicio</a>
     <span class="sep">›</span>
     <span class="current">Impuestos</span>
+  </div>
+
+
+  <div class="mod-header">
+    <div>
+      <div class="mod-header-eye">Impuestos</div>
+      <h1 class="mod-header-title">Declaraciones DGII</h1>
+      <p class="mod-header-sub">Control y checklist de declaraciones fiscales · 2 analistas</p>
+    </div>
   </div>
 
   <div class="main-tabs" id="mainTabs">
@@ -363,6 +376,7 @@ body.embed .nav-area { margin-top:-12px; }
 var SUPABASE_URL = 'https://ouetusstqvpyjeycfdio.supabase.co';
 var SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im91ZXR1c3N0cXZweWpleWNmZGlvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY2NDcwNzksImV4cCI6MjA5MjIyMzA3OX0.Bsys947JLGEuf3zdBF2GPFdbJVJtaZdC4YEmyBU5Bow';
 var sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+var ANIO = new Date().getFullYear();
 
 var MESES_KEY = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
 var MESES_LABEL = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
@@ -490,7 +504,11 @@ function getCurrentMonth() {
   return MESES_KEY[m];
 }
 
-var ANALISTAS_IMPUESTOS = ['Karina', 'Lovelis', 'Doriluz'];
+var ANALISTAS_IMPUESTOS = []; // Se carga desde tabla equipo
+async function loadAnalistas() {
+  var res = await sb.from('equipo').select('nombre').eq('rol_portal', 'analista').eq('activo', true);
+  if (res.data) ANALISTAS_IMPUESTOS = res.data.map(function(e) { return e.nombre; });
+}
 
 function firstName(fullName) {
   if (!fullName) return '';
@@ -598,7 +616,7 @@ function calcStatus(taxId, datos, enAtraso) {
 function calcStatusWithVencer(taxId, datos, enAtraso, mesKey) {
   var status = calcStatus(taxId, datos, enAtraso);
   if (status !== 'finalizado' && status !== 'en-atraso') {
-    var daysLeft = getDaysUntilDeadline(taxId, mesKey, 2026);
+    var daysLeft = getDaysUntilDeadline(taxId, mesKey, ANIO);
     if (daysLeft <= 2 && daysLeft >= 0) status = 'por-vencer';
   }
   return status;
@@ -684,7 +702,7 @@ async function initApp() {
   document.getElementById('userName').textContent = userNameVal;
   selectedMes = getCurrentMonth();
 
-  await Promise.all([loadContadoras(), loadImpuestos()]);
+  await Promise.all([loadAnalistas(), loadContadoras(), loadImpuestos()]);
 
   // Sin edicion: pre-filtrar por su nombre
   if (!tengoPermiso('impuestos', 'checklist', 'edicion') && userNameVal) {
@@ -1092,7 +1110,7 @@ function renderDetail() {
   h += '<div class="detail-header">';
   h += '<button class="detail-back" onclick="closeDetail()">&#8592; Volver</button>';
   h += '<div><div class="detail-title">' + esc(detCliente) + '</div>';
-  h += '<div class="detail-sub">' + esc(detContadora) + ' · ' + MESES_FULL[mesIdx] + ' 2026</div></div>';
+  h += '<div class="detail-sub">' + esc(detContadora) + ' · ' + MESES_FULL[mesIdx] + ' ' + ANIO + '</div></div>';
   h += '</div>';
 
   // Calculate progress
@@ -1170,8 +1188,8 @@ function renderDetail() {
     h += 'En atraso</label>';
     h += '</td></tr>';
 
-    var dlDate = getDeadlineDate(imp.id, selectedMes, 2026);
-    var firmaDate = getFirmaDate(imp.id, selectedMes, 2026);
+    var dlDate = getDeadlineDate(imp.id, selectedMes, ANIO);
+    var firmaDate = getFirmaDate(imp.id, selectedMes, ANIO);
     var firmaStr = formatDateShort(firmaDate);
     var limiteStr = formatDateShort(dlDate);
 
@@ -1440,7 +1458,7 @@ async function handleSave() {
         contadora: d.contadora,
         cliente: cliente,
         mes: mes,
-        anio: 2026,
+        anio: ANIO,
         impuesto: impuesto,
         datos: d.datos,
         en_atraso: d.en_atraso,
@@ -1652,9 +1670,9 @@ function renderResContent() {
   if (totalAtrasadas > 0) {
     h += '<p>Tienes ' + totalAtrasadas + ' declaracion' + (totalAtrasadas > 1 ? 'es' : '') + ' que requieren atencion.</p>';
   } else if (proximos.length > 0) {
-    h += '<p>' + proximos.length + ' declaracion' + (proximos.length > 1 ? 'es' : '') + ' proxima' + (proximos.length > 1 ? 's' : '') + ' a vencer.</p>';
+    h += '<p>' + proximos.length + ' declaracion' + (proximos.length > 1 ? 'es' : '') + ' próxima' + (proximos.length > 1 ? 's' : '') + ' a vencer.</p>';
   } else {
-    h += '<p>Estas al dia con todas las declaraciones fiscales.</p>';
+    h += '<p>Estás al día con todas las declaraciones fiscales.</p>';
   }
   h += '</div>';
 
@@ -1733,7 +1751,7 @@ function renderResContent() {
 
   // ── Próximo section ──
   if (fProximos.length > 0 && showProximo) {
-    h += impResRenderSection('Proximo a vencer', fProximos, 'soon', '#4361ee', isAdmin);
+    h += impResRenderSection('Próximo a vencer', fProximos, 'soon', '#4361ee', isAdmin);
   }
 
   // ── Al dia ──
@@ -1808,6 +1826,7 @@ function impResRenderSection(titulo, items, colorClass, iconColor, isAdmin) {
   return h;
 }
 
+var _impResChartCliente = null;
 function impResRenderCharts(todos) {
   if (typeof Chart === 'undefined') return;
 
@@ -1820,7 +1839,8 @@ function impResRenderCharts(todos) {
 
   var c2 = document.getElementById('impResChartCliente');
   if (c2) {
-    new Chart(c2, {
+    if (_impResChartCliente) _impResChartCliente.destroy();
+    _impResChartCliente = new Chart(c2, {
       type: 'doughnut',
       data: { labels: cliSorted, datasets: [{ data: cliData, backgroundColor: cliColors.slice(0, cliSorted.length), borderWidth: 2, borderColor: '#fff' }] },
       options: {

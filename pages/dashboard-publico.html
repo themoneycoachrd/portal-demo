@@ -92,6 +92,10 @@ body {
 /* Loading */
 .loading { text-align:center; padding:80px 20px; color:var(--muted); font-size:0.9rem; }
 </style>
+
+<!-- Account One Refinado theme layer (override) -->
+<link rel="stylesheet" href="assets/theme.css">
+<script src="assets/theme.js" defer></script>
 </head>
 <body>
 
@@ -103,6 +107,7 @@ body {
 var SUPABASE_URL = 'https://ouetusstqvpyjeycfdio.supabase.co';
 var SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im91ZXR1c3N0cXZweWpleWNmZGlvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY2NDcwNzksImV4cCI6MjA5MjIyMzA3OX0.Bsys947JLGEuf3zdBF2GPFdbJVJtaZdC4YEmyBU5Bow';
 var sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+var ANIO = new Date().getFullYear();
 
 var MESES_LABEL = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
 
@@ -145,19 +150,19 @@ async function init() {
   // ─── OUTSOURCING ───
   var outData = [];
   for (var m = 0; m <= currentMonth; m++) {
-    var year = 2026;
+    var year = ANIO;
     var lastDay = new Date(year, m + 1, 0);
     var lastDayStr = year + '-' + String(m+1).padStart(2,'0') + '-' + String(lastDay.getDate()).padStart(2,'0');
 
     var nuevos = clientes.filter(function(c) {
       if (!c.fecha_entrada) return false;
       var d = new Date(c.fecha_entrada + 'T00:00:00');
-      return d.getFullYear() === 2026 && d.getMonth() === m;
+      return d.getFullYear() === ANIO && d.getMonth() === m;
     });
     var churn = clientes.filter(function(c) {
       if (!c.fecha_salida) return false;
       var d = new Date(c.fecha_salida + 'T00:00:00');
-      return d.getFullYear() === 2026 && d.getMonth() === m;
+      return d.getFullYear() === ANIO && d.getMonth() === m;
     });
     var activos = clientes.filter(function(c) {
       var entered = !c.fecha_entrada || c.fecha_entrada <= lastDayStr;
@@ -181,7 +186,7 @@ async function init() {
   var swClientes = software.map(function(r) {
     return { nombre:r.nombre, monto:parseFloat(r.monto_mensual)||0, fecha_entrada:r.fecha_entrada, fecha_salida:r.fecha_salida, activo:r.activo !== false, licencia:r.tipo_licencia || '' };
   });
-  var baseCount = swClientes.filter(function(c) { return c.fecha_entrada && c.fecha_entrada < '2026-01-01'; }).length;
+  var baseCount = swClientes.filter(function(c) { return c.fecha_entrada && c.fecha_entrada < ANIO + '-01-01'; }).length;
 
   var swData = [];
   var swRunning = baseCount;
@@ -189,16 +194,16 @@ async function init() {
     var nuevos = swClientes.filter(function(c) {
       if (!c.fecha_entrada) return false;
       var d = new Date(c.fecha_entrada + 'T00:00:00');
-      return d.getFullYear() === 2026 && d.getMonth() === m;
+      return d.getFullYear() === ANIO && d.getMonth() === m;
     });
     var churn = swClientes.filter(function(c) {
       if (!c.fecha_salida) return false;
       var d = new Date(c.fecha_salida + 'T00:00:00');
-      return d.getFullYear() === 2026 && d.getMonth() === m;
+      return d.getFullYear() === ANIO && d.getMonth() === m;
     });
     swRunning = swRunning + nuevos.length - churn.length;
 
-    var year = 2026;
+    var year = ANIO;
     var lastDay = new Date(year, m + 1, 0);
     var lastDayStr = year + '-' + String(m+1).padStart(2,'0') + '-' + String(lastDay.getDate()).padStart(2,'0');
     var activosSw = swClientes.filter(function(c) {
@@ -331,9 +336,9 @@ async function init() {
 
   // Pills
   html += '<div class="tv-pills">';
-  html += '<div class="tv-pill"><div class="tv-pill-label">Clientes</div><div class="tv-pill-value t-navy">' + last.total + '</div><div class="tv-pill-sub">' + MESES_LABEL[currentMonth] + ' 2026</div></div>';
-  html += '<div class="tv-pill"><div class="tv-pill-label">Nuevos 2026</div><div class="tv-pill-value t-green">' + totalNuevos + '</div><div class="tv-pill-sub">' + nuevoPct + '% crec.</div></div>';
-  html += '<div class="tv-pill"><div class="tv-pill-label">Churn 2026</div><div class="tv-pill-value t-red">' + totalChurn + '</div><div class="tv-pill-sub">' + churnPct + '% churn</div></div>';
+  html += '<div class="tv-pill"><div class="tv-pill-label">Clientes</div><div class="tv-pill-value t-navy">' + last.total + '</div><div class="tv-pill-sub">' + MESES_LABEL[currentMonth] + ' ' + ANIO + '</div></div>';
+  html += '<div class="tv-pill"><div class="tv-pill-label">Nuevos ' + ANIO + '</div><div class="tv-pill-value t-green">' + totalNuevos + '</div><div class="tv-pill-sub">' + nuevoPct + '% crec.</div></div>';
+  html += '<div class="tv-pill"><div class="tv-pill-label">Churn ' + ANIO + '</div><div class="tv-pill-value t-red">' + totalChurn + '</div><div class="tv-pill-sub">' + churnPct + '% churn</div></div>';
   html += '<div class="tv-pill"><div class="tv-pill-label">Crecimiento</div><div class="tv-pill-value ' + crecClass + '">' + crecSign + crecPct.toFixed(1) + '%</div><div class="tv-pill-sub">' + crecSign + crecNeto + ' neto</div></div>';
   html += '</div>';
 
@@ -376,9 +381,9 @@ async function init() {
 
   // Pills
   html += '<div class="tv-pills">';
-  html += '<div class="tv-pill"><div class="tv-pill-label">Clientes</div><div class="tv-pill-value t-purple">' + swLast.total + '</div><div class="tv-pill-sub">' + MESES_LABEL[currentMonth] + ' 2026</div></div>';
-  html += '<div class="tv-pill"><div class="tv-pill-label">Nuevos 2026</div><div class="tv-pill-value t-green">' + swTotalNuevos + '</div><div class="tv-pill-sub">' + swNuevoPct + '% crec.</div></div>';
-  html += '<div class="tv-pill"><div class="tv-pill-label">Churn 2026</div><div class="tv-pill-value t-red">' + swTotalChurn + '</div><div class="tv-pill-sub">' + swChurnPct + '% churn</div></div>';
+  html += '<div class="tv-pill"><div class="tv-pill-label">Clientes</div><div class="tv-pill-value t-purple">' + swLast.total + '</div><div class="tv-pill-sub">' + MESES_LABEL[currentMonth] + ' ' + ANIO + '</div></div>';
+  html += '<div class="tv-pill"><div class="tv-pill-label">Nuevos ' + ANIO + '</div><div class="tv-pill-value t-green">' + swTotalNuevos + '</div><div class="tv-pill-sub">' + swNuevoPct + '% crec.</div></div>';
+  html += '<div class="tv-pill"><div class="tv-pill-label">Churn ' + ANIO + '</div><div class="tv-pill-value t-red">' + swTotalChurn + '</div><div class="tv-pill-sub">' + swChurnPct + '% churn</div></div>';
   html += '<div class="tv-pill"><div class="tv-pill-label">Crecimiento</div><div class="tv-pill-value ' + swCrecClass + '">' + swCrecSign + swCrecPct.toFixed(1) + '%</div><div class="tv-pill-sub">' + swCrecSign + swCrecNeto + ' neto</div></div>';
   html += '</div>';
 

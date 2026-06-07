@@ -206,7 +206,7 @@ body { font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-se
 .toast.success { background:var(--green); }
 .toast.error { background:var(--red); }
 
-/* ─── Proximamente ─── */
+/* ─── Próximamente ─── */
 .coming-soon { text-align:center; padding:60px 20px; }
 .coming-soon h2 { font-size:1.2rem; color:var(--muted); margin-bottom:8px; }
 .coming-soon p { font-size:0.85rem; color:var(--light); }
@@ -313,6 +313,10 @@ body.embed .footer { display:none !important; }
 .res-insight-item { font-size:0.82rem; color:var(--navy); line-height:1.4; }
 .res-insight-icon { font-weight:700; margin-right:4px; }
 </style>
+
+<!-- Account One Refinado theme layer (override) -->
+<link rel="stylesheet" href="assets/theme.css">
+<script src="assets/theme.js" defer></script>
 </head>
 <body>
 
@@ -320,7 +324,7 @@ body.embed .footer { display:none !important; }
 <div class="login-overlay" id="login-screen">
   <div class="login-box">
     <h2>Account One</h2>
-    <p class="subtitle">Inicia sesion para continuar</p>
+    <p class="subtitle">Inicia sesión para continuar</p>
     <div class="field">
       <label>Email</label>
       <input type="email" id="login-email" placeholder="tu@accountone.do">
@@ -354,6 +358,15 @@ body.embed .footer { display:none !important; }
   <a href="index.html">Account One</a>
   <span class="sep">›</span>
   <span class="current">Implementaciones</span>
+</div>
+
+
+<div class="mod-header">
+  <div>
+    <div class="mod-header-eye">Implementaciones</div>
+    <h1 class="mod-header-title">Onboarding de nuevos clientes</h1>
+    <p class="mod-header-sub">Implementaciones completas y facturación electrónica</p>
+  </div>
 </div>
 
 <div class="main-tabs" id="mainTabs">
@@ -403,22 +416,22 @@ var FE_ITEMS = [
 var FE_GROUPS = [
   { label: 'SERVICIO', responsable: 'Esmeralda', from: 0, to: 2 },
   { label: 'GERENCIA', responsable: 'Felix', from: 3, to: 4 },
-  { label: 'IMPLEMENTACION', responsable: null, from: 5, to: 14 }
+  { label: 'IMPLEMENTACIÓN', responsable: null, from: 5, to: 14 }
 ];
 
 var ADM_ITEMS = [
   // Onboarding
   { id: 'paso_1', n: 1, label: 'Correo de presentacion y link para agendar la primera sesion', responsable: 'Implementadora', grupo: 'Onboarding' },
   { id: 'paso_2', n: 2, label: 'Primera sesion agendada', responsable: 'Implementadora', grupo: 'Onboarding' },
-  { id: 'paso_3', n: 3, label: 'Creacion de cuenta en base', responsable: 'Implementadora', grupo: 'Onboarding' },
+  { id: 'paso_3', n: 3, label: 'Creación de cuenta en base', responsable: 'Implementadora', grupo: 'Onboarding' },
   // Gerencia
-  { id: 'paso_4', n: 4, label: 'Creacion de cuenta en Adm', responsable: 'Felix', grupo: 'Gerencia' },
+  { id: 'paso_4', n: 4, label: 'Creación de cuenta en Adm', responsable: 'Felix', grupo: 'Gerencia' },
   // Implementacion
   { id: 'paso_5', n: 5, label: 'Sesion 1 impartida', responsable: 'Implementadora', grupo: 'Implementacion' },
   { id: 'paso_6', n: 6, label: 'Sesion 2 impartida', responsable: 'Implementadora', grupo: 'Implementacion' },
   { id: 'paso_7', n: 7, label: 'Sesion 3 impartida', responsable: 'Implementadora', grupo: 'Implementacion' },
-  { id: 'paso_8', n: 8, label: 'Recepcion de Plantillas', responsable: 'Implementadora', grupo: 'Implementacion' },
-  { id: 'paso_9', n: 9, label: 'Revision de plantillas', responsable: 'Implementadora', grupo: 'Implementacion' },
+  { id: 'paso_8', n: 8, label: 'Recepción de Plantillas', responsable: 'Implementadora', grupo: 'Implementacion' },
+  { id: 'paso_9', n: 9, label: 'Revisión de plantillas', responsable: 'Implementadora', grupo: 'Implementacion' },
   { id: 'paso_10', n: 10, label: 'Carga de plantillas previo al go live', responsable: 'Implementadora', grupo: 'Implementacion' },
   { id: 'paso_11', n: 11, label: 'Sesion 4 (Go Live)', responsable: 'Implementadora', grupo: 'Implementacion' },
   { id: 'paso_12', n: 12, label: 'Firma de Actas 1-4', responsable: 'Implementadora', grupo: 'Implementacion' },
@@ -428,14 +441,14 @@ var ADM_ITEMS = [
   { id: 'paso_15', n: 15, label: 'Correo de asignacion de contadora y firma de recepcion de cliente', responsable: 'Implementadora', grupo: 'Transicion' },
   { id: 'paso_16', n: 16, label: 'Envio de correo al cliente con link para agendar reunion presentacion contadora', responsable: 'Implementadora', grupo: 'Transicion' },
   { id: 'paso_17', n: 17, label: 'Sesion 5 de presentacion de contadora agendada', responsable: 'Implementadora', grupo: 'Transicion' },
-  { id: 'paso_18', n: 18, label: 'Correo de encuesta de satisfaccion de Implementacion', responsable: 'Implementadora', grupo: 'Transicion' }
+  { id: 'paso_18', n: 18, label: 'Correo de encuesta de satisfacción de Implementacion', responsable: 'Implementadora', grupo: 'Transicion' }
 ];
 
 var ADM_GROUPS = [
   { label: 'ONBOARDING', responsable: null, from: 0, to: 2 },
   { label: 'GERENCIA', responsable: 'Felix', from: 3, to: 3 },
-  { label: 'IMPLEMENTACION', responsable: null, from: 4, to: 12 },
-  { label: 'TRANSICION', responsable: null, from: 13, to: 17 }
+  { label: 'IMPLEMENTACIÓN', responsable: null, from: 4, to: 12 },
+  { label: 'TRANSICIÓN', responsable: null, from: 13, to: 17 }
 ];
 
 // Helpers to get current tab config
@@ -517,7 +530,7 @@ function getBarColor(pct) {
   return '#10b981';
 }
 
-function esc(s) { return s ? s.replace(/'/g, "\\'") : ''; }
+function esc(s) { return (s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/'/g,'&#39;'); }
 
 function canEdit() {
   var scrId = mainTab === 'adm' ? 'checklist-adm' : 'checklist-fe';
@@ -748,7 +761,7 @@ function resClassifyUrgency(rows) {
 }
 
 function resRenderSection(titulo, items, colorClass, iconColor) {
-  if (!items.length) return '<div class="res-section"><div class="res-section-hdr"><div class="res-icon" style="background:' + iconColor + '">✓</div><h3>' + titulo + '</h3></div><div class="res-ok">Todo al dia</div></div>';
+  if (!items.length) return '<div class="res-section"><div class="res-section-hdr"><div class="res-icon" style="background:' + iconColor + '">✓</div><h3>' + titulo + '</h3></div><div class="res-ok">Todo al día</div></div>';
 
   // Group by client
   var groups = {};
@@ -833,7 +846,7 @@ function renderResumen(el) {
   }
 
   // ===== CHARTS ROW: Barras por tipo + Funnel por fase (side by side) =====
-  var allPhases = ['SERVICIO', 'ONBOARDING', 'GERENCIA', 'IMPLEMENTACION', 'TRANSICION'];
+  var allPhases = ['SERVICIO', 'ONBOARDING', 'GERENCIA', 'IMPLEMENTACIÓN', 'TRANSICIÓN'];
   var phaseCounts = {};
   allPhases.forEach(function(p) { phaseCounts[p] = 0; });
   rows.forEach(function(r) {
@@ -841,8 +854,8 @@ function renderResumen(el) {
     if (phaseCounts[r.fase] !== undefined) phaseCounts[r.fase]++;
   });
   var maxPhase = Math.max.apply(null, allPhases.map(function(p) { return phaseCounts[p]; })) || 1;
-  var phaseColors = { 'SERVICIO': '#8b5cf6', 'ONBOARDING': '#6366f1', 'GERENCIA': '#4361ee', 'IMPLEMENTACION': '#059669', 'TRANSICION': '#d97706' };
-  var phaseLabels = { 'SERVICIO': 'Servicio', 'ONBOARDING': 'Onboarding', 'GERENCIA': 'Gerencia', 'IMPLEMENTACION': 'Implementacion', 'TRANSICION': 'Transicion' };
+  var phaseColors = { 'SERVICIO': '#8b5cf6', 'ONBOARDING': '#6366f1', 'GERENCIA': '#4361ee', 'IMPLEMENTACIÓN': '#059669', 'TRANSICIÓN': '#d97706' };
+  var phaseLabels = { 'SERVICIO': 'Servicio', 'ONBOARDING': 'Onboarding', 'GERENCIA': 'Gerencia', 'IMPLEMENTACIÓN': 'Implementacion', 'TRANSICIÓN': 'Transicion' };
 
   // Count by type
   var feActivas = 0, feCompletas = 0, admActivas = 0, admCompletas = 0;
