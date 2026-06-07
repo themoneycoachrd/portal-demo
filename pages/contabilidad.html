@@ -584,6 +584,10 @@ body.embed .footer { display:none !important; }
   .header h1 { font-size:1rem; }
 }
 </style>
+
+<!-- Account One Refinado theme layer (override) -->
+<link rel="stylesheet" href="assets/theme.css">
+<script src="assets/theme.js" defer></script>
 </head>
 <body>
 
@@ -591,7 +595,7 @@ body.embed .footer { display:none !important; }
 <div class="login-overlay" id="login-screen">
   <div class="login-box">
     <h2>Account One</h2>
-    <p class="subtitle">Inicia sesion para continuar</p>
+    <p class="subtitle">Inicia sesión para continuar</p>
     <div class="field">
       <label>Email</label>
       <input type="email" id="login-email" placeholder="tu@accountone.do">
@@ -627,6 +631,15 @@ body.embed .footer { display:none !important; }
   <span class="current">Contabilidad</span>
 </div>
 
+
+<div class="mod-header">
+  <div>
+    <div class="mod-header-eye">Contabilidad</div>
+    <h1 class="mod-header-title">Cierres y estados financieros</h1>
+    <p class="mod-header-sub" id="modHeaderSub">Checklist mensual y evaluación KPI</p>
+  </div>
+</div>
+
 <div class="main-tabs" id="mainTabs"></div>
 <div id="navArea"></div>
 <div class="content" id="content"></div>
@@ -652,6 +665,7 @@ body.embed .footer { display:none !important; }
 const SUPABASE_URL = 'https://ouetusstqvpyjeycfdio.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im91ZXR1c3N0cXZweWpleWNmZGlvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY2NDcwNzksImV4cCI6MjA5MjIyMzA3OX0.Bsys947JLGEuf3zdBF2GPFdbJVJtaZdC4YEmyBU5Bow';
 const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+var ANIO = new Date().getFullYear();
 
 const MESES = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
 const MESES_LABEL = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
@@ -664,12 +678,17 @@ const QUARTERS = [
   { id:4, label:'Q4', meses:['octubre','noviembre','diciembre'], cierre:'Diciembre' }
 ];
 
-const KPI_CONTADORAS = [
-  { nombre:'Beliani', tier:'Contadora I', objetivo:1000, salario:45000, color:'#8b5cf6' },
-  { nombre:'Yessica', tier:'Contadora I', objetivo:1000, salario:45000, color:'#f59e0b' },
-  { nombre:'Morelia', tier:'Contadora II', objetivo:500, salario:60000, color:'#4361ee' },
-  { nombre:'Victoria', tier:'Por definir', objetivo:500, salario:45000, color:'#ec4899' }
-];
+var KPI_CONTADORAS = []; // Se carga desde tabla equipo
+async function loadKpiContadoras() {
+  var res = await sb.from('equipo').select('nombre, cargo, objetivo_kpi, salario, color').eq('rol_portal', 'contadora').eq('activo', true).eq('excluida_contadoras', false);
+  if (res.data) {
+    KPI_CONTADORAS = res.data.map(function(e) {
+      return { nombre: e.nombre, tier: e.cargo || '', objetivo: e.objetivo_kpi || 500, salario: e.salario || 0, color: e.color || '#6b7280' };
+    });
+    var sub = document.getElementById('modHeaderSub');
+    if (sub) sub.textContent = 'Checklist mensual y evaluación KPI · ' + KPI_CONTADORAS.length + ' contadoras';
+  }
+}
 
 const KPI_ESCALA = [
   { min:90, max:100, label:'Excelente', bonoPct:100, color:'#10b981', bg:'#ecfdf5', css:'score-excelente', bonoCss:'bono-100' },
@@ -681,7 +700,11 @@ const KPI_ESCALA = [
 // MV_EXCEPTION desactivada (2026-06-02): Mv Creative ahora cuenta en el scoring de Beliani
 const MV_EXCEPTION = null;
 
-const EXCLUIDAS = ['Milka', 'Yolenny'];
+var EXCLUIDAS = []; // Se carga desde tabla equipo
+async function loadExcluidasContab() {
+  var res = await sb.from('equipo').select('nombre').eq('excluida_contadoras', true);
+  if (res.data) EXCLUIDAS = res.data.map(function(e) { return e.nombre; });
+}
 
 // ─── 23 items del checklist, ordenados por fecha cronologica ───
 const ITEM_GROUPS = [
@@ -690,13 +713,13 @@ const ITEM_GROUPS = [
   { label: 'IR-17 — Presentacion dia 10', from: 6, to: 11 },
   { label: 'Anticipo — Presentacion dia 15', from: 12, to: 12 },
   { label: 'ITBIS — Presentacion dia 20', from: 13, to: 17 },
-  { label: 'Presentacion mensual', from: 18, to: 22 }
+  { label: 'Presentación mensual', from: 18, to: 22 }
 ];
 
 const ITEMS = [
   // ── Nomina → TSS (deadline dia 3, firma dia 28) ──
   { id:'solicitud_nomina',        n:1,  label:'Solicitud de Nomina',                       tipoCss:'tipo-nomina',   impuesto:'TSS',           dia:3,  mesRel:1 },
-  { id:'recepcion_nomina',        n:2,  label:'Recepcion de Nomina',                        tipoCss:'tipo-nomina',   impuesto:'TSS',           dia:3,  mesRel:1 },
+  { id:'recepcion_nomina',        n:2,  label:'Recepción de Nomina',                        tipoCss:'tipo-nomina',   impuesto:'TSS',           dia:3,  mesRel:1 },
   { id:'registro_nomina',         n:3,  label:'Registro de Nomina',                         tipoCss:'tipo-nomina',   impuesto:'TSS',           dia:3,  mesRel:1 },
   { id:'informar_impuestos',      n:4,  label:'Informar a Impuestos (via Trello)',           tipoCss:'tipo-nomina',   impuesto:'TSS',           dia:3,  mesRel:1 },
   { id:'autorizacion_tss',        n:5,  label:'Subir autorizacion de pago de TSS',          tipoCss:'tipo-tss',      impuesto:'TSS',           dia:3,  mesRel:1 },
@@ -706,7 +729,7 @@ const ITEMS = [
 
   // ── Proveedores informales (deadline dia 10, firma dia 5) ──
   { id:'solicitar_proveedores',   n:7,  label:'Solicitar Proveedores Informales',           tipoCss:'tipo-ir17',     impuesto:'IR-17',   dia:10, mesRel:1 },
-  { id:'recepcion_proveedores',   n:8,  label:'Recepcion de Proveedores Informales',        tipoCss:'tipo-ir17',     impuesto:'IR-17',   dia:10, mesRel:1 },
+  { id:'recepcion_proveedores',   n:8,  label:'Recepción de Proveedores Informales',        tipoCss:'tipo-ir17',     impuesto:'IR-17',   dia:10, mesRel:1 },
   { id:'registrar_proveedores',   n:9,  label:'Registrar gastos de Proveedores Informales', tipoCss:'tipo-ir17',     impuesto:'IR-17',   dia:10, mesRel:1 },
   { id:'borrador_ir17',           n:10, label:'Realizar Borrador de IR-17',                 tipoCss:'tipo-ir17',     impuesto:'IR-17',   dia:10, mesRel:1 },
   { id:'enviar_ir17',             n:11, label:'Enviar borrador de IR-17 al cliente',        tipoCss:'tipo-ir17',     impuesto:'IR-17',   dia:10, mesRel:1 },
@@ -722,12 +745,12 @@ const ITEMS = [
   { id:'borrador_itbis',          n:17, label:'Realizar Borrador ITBIS',                    tipoCss:'tipo-itbis',    impuesto:'ITBIS',         dia:20, mesRel:1 },
   { id:'enviar_itbis',            n:18, label:'Subir autorizacion de pago de ITBIS',         tipoCss:'tipo-itbis',    impuesto:'ITBIS',         dia:20, mesRel:1 },
 
-  // ── Presentacion mensual (registro gastos dia 5, lo demas dia 30) ──
-  { id:'registros_realizados',    n:19, label:'Registrar gastos',                           tipoCss:'tipo-cierre',   impuesto:'Presentacion',  dia:5,  mesRel:1, firmaOffset:4 },
-  { id:'presupuesto',             n:20, label:'Realizar Presupuesto y ejecucion',           tipoCss:'tipo-cierre',   impuesto:'Presentacion',  dia:30, mesRel:1 },
-  { id:'proyeccion_impuestos',    n:21, label:'Realizar Proyeccion de impuestos',           tipoCss:'tipo-cierre',   impuesto:'Presentacion',  dia:30, mesRel:1 },
-  { id:'resumen_declaracion',     n:22, label:'Realizar resumen de declaracion del mes',    tipoCss:'tipo-cierre',   impuesto:'Presentacion',  dia:30, mesRel:1 },
-  { id:'video_reunion',           n:23, label:'Grabar video o reunion con cliente',         tipoCss:'tipo-cierre',   impuesto:'Presentacion',  dia:30, mesRel:1 }
+  // ── Presentación mensual (registro gastos dia 5, lo demas dia 30) ──
+  { id:'registros_realizados',    n:19, label:'Registrar gastos',                           tipoCss:'tipo-cierre',   impuesto:'Presentación',  dia:5,  mesRel:1, firmaOffset:4 },
+  { id:'presupuesto',             n:20, label:'Realizar Presupuesto y ejecucion',           tipoCss:'tipo-cierre',   impuesto:'Presentación',  dia:30, mesRel:1 },
+  { id:'proyeccion_impuestos',    n:21, label:'Realizar Proyección de impuestos',           tipoCss:'tipo-cierre',   impuesto:'Presentación',  dia:30, mesRel:1 },
+  { id:'resumen_declaracion',     n:22, label:'Realizar resumen de declaracion del mes',    tipoCss:'tipo-cierre',   impuesto:'Presentación',  dia:30, mesRel:1 },
+  { id:'video_reunion',           n:23, label:'Grabar video o reunión con cliente',         tipoCss:'tipo-cierre',   impuesto:'Presentación',  dia:30, mesRel:1 }
 ];
 
 // ==================== SHARED HELPERS ====================
@@ -749,7 +772,7 @@ function getBarColor(pct) {
   return pct >= 90 ? 'var(--green)' : pct >= 70 ? 'var(--amber)' : 'var(--red)';
 }
 
-function esc(s) { return s.replace(/'/g, "\\'"); }
+function esc(s) { return (s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/'/g,'&#39;'); }
 
 function showToast(msg) {
   var t = document.getElementById('toast');
@@ -811,12 +834,12 @@ function formatMoney(n) { return 'RD$' + n.toLocaleString(); }
 function getVideoTipo(mes) { const idx = MESES.indexOf(mes); return (idx % 3 === 2) ? 'Reunion' : 'Video'; }
 function getQuarterInfo(mes) { const idx = MESES.indexOf(mes); const q = Math.floor(idx / 3) + 1; const pos = (idx % 3) + 1; return { q, pos, label:'Q' + q + ' — Mes ' + pos + ' de 3' }; }
 function getCategoriaColor(total) { if (total >= 90) return '#10b981'; if (total >= 80) return '#4361ee'; if (total >= 70) return '#f59e0b'; return '#ef4444'; }
-function isMonthPast(mesIdx) { const now = new Date(); const end = new Date(2026, mesIdx + 1, 0, 23, 59, 59); return now > end; }
+function isMonthPast(mesIdx) { const now = new Date(); const end = new Date(ANIO, mesIdx + 1, 0, 23, 59, 59); return now > end; }
 function isMvException(contadora, cliente) { return false; }
 function isFriday(dateStr) { if (!dateStr) return null; return new Date(dateStr + 'T12:00:00').getDay() === 5; }
 
 function getWeekRanges(mesIdx) {
-  const year = 2026;
+  const year = ANIO;
   const lastDay = new Date(year, mesIdx + 1, 0).getDate();
   const mc = MESES_LABEL[mesIdx].toLowerCase();
   let firstMon = 1;
@@ -836,7 +859,7 @@ function getWeekRanges(mesIdx) {
 // Checklist-specific helpers
 function getDeadlineDate(mesIdx, item) {
   let targetMonth = mesIdx + item.mesRel;
-  let targetYear = 2026;
+  let targetYear = ANIO;
   if (targetMonth > 11) { targetMonth -= 12; targetYear++; }
   const lastDay = new Date(targetYear, targetMonth + 1, 0).getDate();
   const dia = Math.min(item.dia, lastDay);
@@ -1078,7 +1101,7 @@ function getContadoraNames() {
 // ==================== CHECKLIST DATA ====================
 
 async function loadChecklistData() {
-  const { data, error } = await sb.from('checklist_contadores').select('*').eq('anio', 2026);
+  const { data, error } = await sb.from('checklist_contadores').select('*').eq('anio', ANIO);
   if (error) { console.error('Error cargando checklist:', error); return; }
   CHECKLIST_DATA = {};
   (data || []).forEach(r => {
@@ -1125,7 +1148,7 @@ async function saveChecklist(contadora, cliente, mes) {
       if (error) { console.error('Error guardando:', error); alert('Error guardando. Verifica tus permisos.'); }
     } else {
       const { data, error } = await sb.from('checklist_contadores')
-        .insert({ contadora: contadora, cliente: cliente, mes: mes, anio: 2026, datos: entry.datos })
+        .insert({ contadora: contadora, cliente: cliente, mes: mes, anio: ANIO, datos: entry.datos })
         .select();
       if (error) { console.error('Error insertando:', error); alert('Error guardando. Verifica tus permisos.'); }
       else if (data && data[0]) entry._id = data[0].id;
@@ -1138,7 +1161,7 @@ async function saveChecklist(contadora, cliente, mes) {
 // ==================== KPI DATA ====================
 
 async function loadDetalle() {
-  const { data, error } = await sb.from('kpi_detalle').select('*').eq('anio', 2026);
+  const { data, error } = await sb.from('kpi_detalle').select('*').eq('anio', ANIO);
   if (error) { console.error('Error cargando kpi_detalle:', error); return; }
   DETALLE = {};
   (data || []).forEach(r => {
@@ -1253,7 +1276,7 @@ async function saveDetalle(contadora, mes) {
       const { error } = await sb.from('kpi_detalle').update({ datos: entry.datos, updated_at: new Date().toISOString() }).eq('id', entry._id);
       if (error) { console.error('Error guardando:', error); alert('Error guardando. Verifica tus permisos.'); }
     } else {
-      const { data, error } = await sb.from('kpi_detalle').insert({ contadora, mes, anio: 2026, datos: entry.datos }).select();
+      const { data, error } = await sb.from('kpi_detalle').insert({ contadora, mes, anio: ANIO, datos: entry.datos }).select();
       if (error) { console.error('Error insertando:', error); alert('Error guardando. Verifica tus permisos.'); }
       else if (data && data[0]) entry._id = data[0].id;
     }
@@ -1267,7 +1290,7 @@ async function syncKpiScores(contadora, mes) {
   const scores = calcScoresForContadora(contadora, mes);
   const total = calcTotal(scores.digScore, scores.resScore, scores.vidScore);
   const { error } = await sb.from('kpi_scores').upsert({
-    contadora, mes, anio: 2026,
+    contadora, mes, anio: ANIO,
     digitacion: scores.digScore,
     resumenes: scores.resScore,
     video_reunion: scores.vidScore,
@@ -1394,7 +1417,7 @@ function getQuarterBonoData(contadora, qNum) {
   const avgProjected = getAvg(projectedScores);
   const escala = getEscala(avgProjected);
   const bonoReal = Math.round(bonoBase * escala.bonoPct / 100);
-  return { monthScores, projectedScores, avgScore: avgReal, avgProjected, escala, bonoBase, bonoReal, cierre: q.cierre, qLabel: q.label + ' 2026' };
+  return { monthScores, projectedScores, avgScore: avgReal, avgProjected, escala, bonoBase, bonoReal, cierre: q.cierre, qLabel: q.label + ' ' + ANIO };
 }
 
 function getAvg(arr) {
@@ -1587,7 +1610,7 @@ function getATiempoDate(mesIdx, item) {
   const cal = AO_CALENDARIO[item.id];
   if (!cal) return getDeadlineDate(mesIdx, item); // fallback al límite DGII
   let targetMonth = mesIdx + cal.aTiempoMesRel;
-  let targetYear = 2026;
+  let targetYear = ANIO;
   if (targetMonth > 11) { targetMonth -= 12; targetYear++; }
   const lastDay = new Date(targetYear, targetMonth + 1, 0).getDate();
   const dia = Math.min(cal.aTiempoDia, lastDay);
@@ -1748,9 +1771,9 @@ function renderResContent() {
   if (totalAtrasadas > 0) {
     html += '<p>Tienes ' + totalAtrasadas + ' autorizacion' + (totalAtrasadas > 1 ? 'es' : '') + ' de pago que requieren atencion.</p>';
   } else if (proximos.length > 0) {
-    html += '<p>' + proximos.length + ' autorizacion' + (proximos.length > 1 ? 'es' : '') + ' proxima' + (proximos.length > 1 ? 's' : '') + ' a vencer.</p>';
+    html += '<p>' + proximos.length + ' autorizacion' + (proximos.length > 1 ? 'es' : '') + ' próxima' + (proximos.length > 1 ? 's' : '') + ' a vencer.</p>';
   } else {
-    html += '<p>Estas al dia con todas las autorizaciones de pago.</p>';
+    html += '<p>Estás al día con todas las autorizaciones de pago.</p>';
   }
   html += '</div>';
 
@@ -1758,7 +1781,7 @@ function renderResContent() {
   html += '<div class="res-urgency">';
   html += '<div class="res-urg-card res-urg-urgent" style="cursor:pointer;opacity:' + (resUrgFilter && resUrgFilter !== 'urgente' ? '0.4' : '1') + ';' + (resUrgFilter === 'urgente' ? 'box-shadow:0 0 0 2px #ef4444' : '') + '" onclick="resToggleUrgFilter(\'urgente\')"><p class="urg-label">Urgente</p><p class="urg-num">' + urgentes.length + '</p><p class="urg-sub">a 2 dias o pasado limite</p></div>';
   html += '<div class="res-urg-card res-urg-warn" style="cursor:pointer;opacity:' + (resUrgFilter && resUrgFilter !== 'vencido' ? '0.4' : '1') + ';' + (resUrgFilter === 'vencido' ? 'box-shadow:0 0 0 2px #f59e0b' : '') + '" onclick="resToggleUrgFilter(\'vencido\')"><p class="urg-label">Vencido</p><p class="urg-num">' + vencidos.length + '</p><p class="urg-sub">a 5 dias del limite</p></div>';
-  html += '<div class="res-urg-card res-urg-soon" style="cursor:pointer;opacity:' + (resUrgFilter && resUrgFilter !== 'proximo' ? '0.4' : '1') + ';' + (resUrgFilter === 'proximo' ? 'box-shadow:0 0 0 2px #4361ee' : '') + '" onclick="resToggleUrgFilter(\'proximo\')"><p class="urg-label">Proximo a vencer</p><p class="urg-num">' + proximos.length + '</p><p class="urg-sub">cerca de fecha AO</p></div>';
+  html += '<div class="res-urg-card res-urg-soon" style="cursor:pointer;opacity:' + (resUrgFilter && resUrgFilter !== 'proximo' ? '0.4' : '1') + ';' + (resUrgFilter === 'proximo' ? 'box-shadow:0 0 0 2px #4361ee' : '') + '" onclick="resToggleUrgFilter(\'proximo\')"><p class="urg-label">Próximo a vencer</p><p class="urg-num">' + proximos.length + '</p><p class="urg-sub">cerca de fecha AO</p></div>';
   html += '</div>';
 
   // ── Insights rápidos (solo admins) ──
@@ -1937,7 +1960,7 @@ function resRenderCategorySection(titulo, items, colorClass, iconColor, isAdmin)
 function resRenderProximoSection(items, isAdmin) {
   let html = '<div class="res-section">';
   html += '<div class="res-section-hdr"><div class="res-icon" style="background:#4361ee">⏳</div>';
-  html += '<h3>Proximo a vencer</h3></div>';
+  html += '<h3>Próximo a vencer</h3></div>';
 
   const groups = {};
   items.forEach(p => {
@@ -1977,6 +2000,7 @@ function resRenderProximoSection(items, isAdmin) {
 }
 
 // Charts
+var _resChartCliente = null;
 function resRenderCharts(todos) {
   if (typeof Chart === 'undefined') return;
 
@@ -1989,7 +2013,8 @@ function resRenderCharts(todos) {
 
   var c2 = document.getElementById('resChartCliente');
   if (c2) {
-    new Chart(c2, {
+    if (_resChartCliente) _resChartCliente.destroy();
+    _resChartCliente = new Chart(c2, {
       type: 'doughnut',
       data: { labels: cliSorted, datasets: [{ data: cliData, backgroundColor: cliColors.slice(0, cliSorted.length), borderWidth: 2, borderColor: '#fff' }] },
       options: {
@@ -2082,6 +2107,34 @@ function renderCkContent() {
   renderCkClientList(el);
 }
 
+// Resumen KPI del mes (3 tarjetas) — agrega el KPI real sobre las contadoras visibles.
+// Una contadora ve el suyo; admin (varias) ve el agregado de todas.
+function ckKpiResumen(contadoras, mes) {
+  var digA = 0, admT = 0, resD = 0, resT = 0, vidD = 0, vidT = 0;
+  (contadoras || []).forEach(function(c) {
+    if (!c || c === 'Sin asignar') return;
+    var s = calcScoresForContadora(c, mes);
+    digA += s.digActual; admT += s.admTotal;
+    resD += s.resDone; resT += s.resTotal;
+    vidD += s.vidDone; vidT += s.vidTotal;
+  });
+  return {
+    digPct: admT > 0 ? Math.round(digA / admT * 100) : 0,
+    resPct: resT > 0 ? Math.round(resD / resT * 100) : 0,
+    vidPct: vidT > 0 ? Math.round(vidD / vidT * 100) : 0,
+    digActual: digA, admTotal: admT, resDone: resD, resTotal: resT, vidDone: vidD, vidTotal: vidT
+  };
+}
+function ckKpiCardHTML(label, pct, sub) {
+  var color = pct >= 80 ? 'var(--green)' : pct >= 50 ? 'var(--amber)' : 'var(--red)';
+  return '<div style="background:#fff;border:1px solid var(--border);border-radius:12px;padding:16px 18px">' +
+    '<div style="font-size:0.72rem;font-weight:700;letter-spacing:0.5px;text-transform:uppercase;color:var(--muted)">' + label + '</div>' +
+    '<div style="font-size:2rem;font-weight:800;color:' + color + ';margin:4px 0 2px">' + pct + '%</div>' +
+    '<div style="font-size:0.78rem;color:var(--muted)">' + sub + '</div>' +
+    '<div style="height:6px;background:#eef1f5;border-radius:99px;margin-top:10px;overflow:hidden"><div style="height:100%;width:' + pct + '%;background:' + color + '"></div></div>' +
+    '</div>';
+}
+
 function renderCkClientList(el) {
   const mesIdx = MESES.indexOf(ckMes);
   let contadoras = getContadoraNames();
@@ -2130,14 +2183,17 @@ function renderCkClientList(el) {
   const asignadosCount = CLIENTES_CONTAB.length - sinAsignarCount;
 
   let html = '';
-  html += '<div class="summary-stats">';
-  html += '<div class="summary-stat"><div class="summary-stat-label">Total clientes</div><div class="summary-stat-value">' + totalActivos + '</div></div>';
-  html += '<div class="summary-stat"><div class="summary-stat-label">Asignados</div><div class="summary-stat-value">' + asignadosCount + '</div></div>';
-  html += '<div class="summary-stat"><div class="summary-stat-label">Sin asignar</div><div class="summary-stat-value" style="color:' + (sinAsignarCount > 0 ? 'var(--amber)' : 'var(--green)') + '">' + sinAsignarCount + '</div></div>';
-  html += '<div class="summary-stat"><div class="summary-stat-label">Sin resp. contable</div><div class="summary-stat-value" style="color:var(--muted)">' + sinRespCount + '</div></div>';
-  html += '<div class="summary-stat"><div class="summary-stat-label">Completados</div><div class="summary-stat-value" style="color:var(--green)">' + completados + '</div></div>';
-  html += '<div class="summary-stat"><div class="summary-stat-label">En progreso</div><div class="summary-stat-value" style="color:var(--amber)">' + enProgreso + '</div></div>';
-  html += '<div class="summary-stat"><div class="summary-stat-label">Avance promedio</div><div class="summary-stat-value" style="color:' + getBarColor(avgPct) + '">' + avgPct + '%</div></div>';
+  // Resumen KPI del mes (3 tarjetas) — reemplaza los conteos de clientes.
+  // Cada contadora ve el suyo; gerencia ("Todas") ve el agregado de todas.
+  const ckKpi = ckKpiResumen(contadoras, ckMes);
+  const ckKpiTitulo = contadoras.length === 1
+    ? ('KPI · ' + contadoras[0] + ' · ' + MESES_FULL[mesIdx])
+    : ('KPI general · todas · ' + MESES_FULL[mesIdx]);
+  html += '<div style="font-size:0.82rem;font-weight:700;color:var(--navy);margin-bottom:10px">' + ckKpiTitulo + '</div>';
+  html += '<div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin-bottom:18px">';
+  html += ckKpiCardHTML('Facturas', ckKpi.digPct, ckKpi.digActual + ' de ' + ckKpi.admTotal + ' tx digitadas');
+  html += ckKpiCardHTML('Resúmenes', ckKpi.resPct, ckKpi.resDone + ' de ' + ckKpi.resTotal + ' clientes');
+  html += ckKpiCardHTML('Video / Reunión', ckKpi.vidPct, ckKpi.vidDone + ' de ' + ckKpi.vidTotal + ' clientes');
   html += '</div>';
 
   // View toggle
@@ -2265,7 +2321,7 @@ function renderCkDetail(el) {
   html += '<div class="detail-header">';
   html += '<button class="detail-back" onclick="ckBackToClients()">&#8592; Volver</button>';
   html += '<div><div class="detail-title">' + cliente + '</div>';
-  html += '<div class="detail-sub">' + contadora + ' · ' + MESES_FULL[mesIdx] + ' 2026</div></div>';
+  html += '<div class="detail-sub">' + contadora + ' · ' + MESES_FULL[mesIdx] + ' ' + ANIO + '</div></div>';
   html += '</div>';
 
   // Progress
@@ -2485,7 +2541,7 @@ function renderKPIDetail(el) {
   html += '</div></div></div>';
 
   // ── Bono trimestral (narrativa invertida) ──
-  html += '<div class="bono-card"><div class="bono-header"><div class="bono-icon">💰</div><div class="bono-header-text"><h3>Bono ' + q.label + ' 2026</h3><span>Cierre: ' + q.cierre + ' · Promedio de ' + bono.monthScores.filter(s => s !== null).length + ' mes(es)</span></div></div>';
+  html += '<div class="bono-card"><div class="bono-header"><div class="bono-icon">💰</div><div class="bono-header-text"><h3>Bono ' + q.label + ' ' + ANIO + '</h3><span>Cierre: ' + q.cierre + ' · Promedio de ' + bono.monthScores.filter(s => s !== null).length + ' mes(es)</span></div></div>';
   html += '<div class="bono-body">';
   html += '<div class="bono-item"><div class="bono-item-label">Bono base</div><div class="bono-item-value">' + formatMoney(bono.bonoBase) + '</div><div class="bono-item-sub">1/3 del salario</div></div>';
   html += '<div class="bono-item"><div class="bono-item-label">Score actual</div><div class="bono-item-value">' + bono.avgProjected + '<span style="font-size:14px;opacity:0.5">/100</span></div>';
@@ -2771,9 +2827,9 @@ function renderKpiReporte(el) {
 
   // Deadline para llenado portal y correo: día 30 del mes de la vista
   var limiteDay = 30;
-  var lastDayOfMonth = new Date(2026, mesIdx + 1, 0).getDate();
+  var lastDayOfMonth = new Date(ANIO, mesIdx + 1, 0).getDate();
   if (limiteDay > lastDayOfMonth) limiteDay = lastDayOfMonth;
-  var limiteFecha = '2026-' + String(mesIdx + 1).padStart(2, '0') + '-' + String(limiteDay).padStart(2, '0');
+  var limiteFecha = ANIO + '-' + String(mesIdx + 1).padStart(2, '0') + '-' + String(limiteDay).padStart(2, '0');
 
   var digPts = Math.round(scores.digScore * 5);
   var resPts = Math.round(scores.resScore * 3);
@@ -2784,7 +2840,7 @@ function renderKpiReporte(el) {
   // ── Score resumen arriba ──
   html += '<div class="rpt-score-card">';
   html += '<div><div class="rpt-score-big" style="color:' + escala.color + '">' + total + '<span style="font-size:1rem;color:var(--muted)">/100</span></div>';
-  html += '<div style="font-size:0.75rem;color:var(--muted);margin-top:2px">' + contadora + ' · ' + MESES_FULL[mesIdx] + ' 2026</div></div>';
+  html += '<div style="font-size:0.75rem;color:var(--muted);margin-top:2px">' + contadora + ' · ' + MESES_FULL[mesIdx] + ' ' + ANIO + '</div></div>';
   html += '<div class="rpt-score-detail">';
   html += 'Digitacion: <span style="color:' + getCategoriaColor(digPts * 2) + '">' + digPts + '/50</span> · ';
   html += 'Portal: <span style="color:' + getCategoriaColor(resPts * 100/30) + '">' + resPts + '/30</span> · ';
@@ -3038,13 +3094,13 @@ function renderTrimestral(el) {
 
   let html = '';
   html += '<div class="stats">';
-  html += '<div class="stat"><div class="stat-label">Promedio equipo</div><div class="stat-value" style="color:' + getCategoriaColor(teamAvg) + '">' + teamAvg + '</div><div class="stat-sub">' + q.label + ' 2026</div></div>';
+  html += '<div class="stat"><div class="stat-label">Promedio equipo</div><div class="stat-value" style="color:' + getCategoriaColor(teamAvg) + '">' + teamAvg + '</div><div class="stat-sub">' + q.label + ' ' + ANIO + '</div></div>';
   html += '<div class="stat"><div class="stat-label">Excelentes</div><div class="stat-value" style="color:var(--green)">' + excelentes + '</div><div class="stat-sub">de ' + contadoras.length + '</div></div>';
   html += '<div class="stat"><div class="stat-label">Sin bono</div><div class="stat-value" style="color:var(--red)">' + sinBono + '</div><div class="stat-sub">&lt; 70 pts</div></div>';
   html += '<div class="stat"><div class="stat-label">Bono total ' + q.label + '</div><div class="stat-value" style="color:var(--navy)">RD$ ' + totalBonoPool.toLocaleString() + '</div><div class="stat-sub">del pool disponible</div></div>';
   html += '</div>';
 
-  html += '<div class="card"><h3>Scores ' + q.label + ' 2026</h3><div style="overflow-x:auto"><table class="tri-table"><thead><tr><th>Contadora</th><th>Tier</th>';
+  html += '<div class="card"><h3>Scores ' + q.label + ' ' + ANIO + '</h3><div style="overflow-x:auto"><table class="tri-table"><thead><tr><th>Contadora</th><th>Tier</th>';
   q.meses.forEach(m => { html += '<th class="center">' + MESES_FULL[MESES.indexOf(m)] + '</th>'; });
   html += '<th class="center">Promedio</th><th class="center">Categoria</th><th class="center">Bono</th></tr></thead><tbody>';
 
@@ -3246,7 +3302,7 @@ function verTplCorreo(clientName) {
     + 'Te comparto el resumen de lo que sucedio este mes en tu empresa. Este correo tiene tres componentes:\n\n'
     + '1. Tu presupuesto vs. ejecucion\n'
     + '2. Tu proyeccion de impuestos\n'
-    + '3. Un comparativo de lo que has pagado de impuestos en los ultimos dos meses\n\n'
+    + '3. Un comparativo de lo que has pagado de impuestos en los últimos dos meses\n\n'
     + 'Aqui debajo estan las capturas de cada componente. Cualquier duda, estoy a tu orden.\n\n'
     + '[Espacio para pegar fotos]\n\n'
     + 'Saludos,\n' + contadoraNombre;
@@ -3330,6 +3386,8 @@ async function showApp() {
   document.getElementById('app-wrapper').classList.remove('hidden');
   document.getElementById('user-display-name').textContent = userName;
 
+  // Load equipo data first (contadoras + excluidas)
+  await Promise.all([loadKpiContadoras(), loadExcluidasContab()]);
   // Load all data
   await Promise.all([loadAsignaciones(), loadChecklistData(), loadDetalle(), loadNotasContadora()]);
 
@@ -3360,7 +3418,7 @@ async function init() {
     await loadMisPermisos();
     await showApp();
   } else if (isEmbed) {
-    document.body.innerHTML = '<div style="text-align:center;padding:60px;color:#7c8495;">Sesion no encontrada. Recarga la pagina principal.</div>';
+    document.body.innerHTML = '<div style="text-align:center;padding:60px;color:#7c8495;">Sesión no encontrada. Recarga la página principal.</div>';
   }
 }
 

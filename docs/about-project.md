@@ -14,11 +14,11 @@ Account One opera con 10 personas y 40 clientes. Antes de este portal, el contro
 |---|---|---|
 | Frontend | HTML + CSS + JS vanilla | Un archivo .html por módulo. Sin frameworks. |
 | Base de datos | Supabase (PostgreSQL) | Proyecto: "Portal Account One", región us-east-1 |
-| Hosting | GitHub Pages | Repo: `themoneycoachrd/portal-accountone` |
+| Hosting | Vercel | URL: `portal-accountone.vercel.app`, repo: `themoneycoachrd/portal-accountone` |
 | Auth | Supabase Auth (email/password) | Usuarios creados manualmente por admin |
 | Permisos | Sistema de grupos con JSONB | Tabla `grupos` + `usuario_grupos` (many-to-many) |
 
-URL en producción: `themoneycoachrd.github.io/portal-accountone/`
+URL en producción: `portal-accountone.vercel.app`
 
 ## Decisiones de arquitectura que ya se tomaron
 
@@ -76,5 +76,5 @@ Las descripciones funcionales detalladas (qué exactamente hace cada módulo) es
 
 1. Editar los archivos .html o .sql en `Projects/Portal-account-one/`
 2. Subir a GitHub (repo `themoneycoachrd/portal-accountone`)
-3. GitHub Pages publica automáticamente
+3. Vercel despliega automáticamente desde el repo
 4. Los .sql se ejecutan manualmente en el SQL Editor de Supabase

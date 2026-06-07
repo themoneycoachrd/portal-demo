@@ -1,0 +1,1458 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Portal de Contadores — Account One 2026</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root {
+    --navy: #1e3a5f;
+    --blue: #3b82f6;
+    --green: #10b981;
+    --red: #ef4444;
+    --amber: #f59e0b;
+    --purple: #8b5cf6;
+    --pink: #ec4899;
+    --orange: #f97316;
+    --indigo: #6366f1;
+    --gray: #9ca3af;
+    --bg: #f8fafc;
+    --card: #ffffff;
+    --border: #e5e7eb;
+    --text: #1f2937;
+    --muted: #6b7280;
+    --light: #9ca3af;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif; background:var(--bg); color:var(--text); line-height:1.5; }
+
+  .header { background:linear-gradient(135deg, #1e3a5f, #2d4a7a); color:white; padding:24px; }
+  .header h1 { font-size:1.5rem; font-weight:700; }
+  .header p { font-size:0.9rem; opacity:0.8; margin-top:4px; }
+
+  .breadcrumb-bar { display:flex; align-items:center; gap:6px; padding:10px 24px; background:white; border-bottom:1px solid var(--border); font-size:13px; }
+  .breadcrumb-bar a { color:var(--muted); text-decoration:none; font-weight:500; }
+  .breadcrumb-bar a:hover { color:var(--navy); text-decoration:underline; }
+  .breadcrumb-bar .sep { color:var(--light); font-size:11px; }
+  .breadcrumb-bar .current { color:var(--text); font-weight:600; }
+
+  .main-tabs { display:flex; background:var(--card); border-bottom:2px solid var(--border); }
+  .main-tab { padding:12px 24px; cursor:pointer; font-weight:600; font-size:0.95rem; color:var(--muted); border-bottom:3px solid transparent; transition:all 0.2s; background:none; border-top:none; border-left:none; border-right:none; }
+  .main-tab:hover { color:var(--text); }
+  .main-tab.active { color:var(--navy); border-bottom-color:var(--navy); }
+  .sub-tabs { display:flex; gap:4px; padding:10px 24px; background:#f8fafc; border-bottom:1px solid var(--border); overflow-x:auto; }
+  .sub-tab { padding:6px 12px; border-radius:6px; font-size:12px; font-weight:600; cursor:pointer; border:1px solid var(--border); background:white; color:var(--muted); white-space:nowrap; transition:all 0.15s; }
+  .sub-tab:hover { background:#e2e8f0; }
+  .sub-tab.active { background:var(--navy); color:white; border-color:var(--navy); }
+  .sub-tab.disabled { opacity:0.35; cursor:not-allowed; }
+
+  .content { padding:20px 24px; max-width:1100px; margin:0 auto; }
+
+  .stats { display:grid; grid-template-columns:repeat(auto-fit, minmax(150px, 1fr)); gap:12px; margin-bottom:20px; }
+  .stat { background:var(--card); border-radius:12px; padding:16px; border:1px solid var(--border); }
+  .stat-label { font-size:11px; text-transform:uppercase; letter-spacing:0.5px; color:var(--light); }
+  .stat-value { font-size:28px; font-weight:800; margin-top:4px; }
+  .stat-sub { font-size:11px; color:var(--light); margin-top:4px; }
+  .stat-green { color:var(--green); }
+  .stat-red { color:var(--red); }
+
+  .card { background:var(--card); border-radius:12px; padding:16px; border:1px solid var(--border); margin-bottom:16px; }
+  .card h3 { font-size:13px; font-weight:700; color:var(--muted); margin-bottom:12px; }
+
+  .note { background:#fffbeb; border:1px solid #fde68a; border-radius:8px; padding:10px 14px; font-size:12px; color:#92400e; margin-bottom:16px; }
+
+  .bar-row { display:flex; align-items:center; gap:10px; padding:6px 0; }
+  .bar-name { font-size:13px; font-weight:600; width:100px; min-width:100px; color:var(--text); }
+  .bar-track { flex:1; height:24px; background:#f1f5f9; border-radius:6px; overflow:hidden; position:relative; }
+  .bar-fill { height:100%; border-radius:6px; display:flex; align-items:center; padding-left:8px; transition:width 0.4s ease; min-width:30px; }
+  .bar-fill span { font-size:11px; font-weight:700; color:white; }
+  .bar-extra { font-size:11px; color:var(--muted); width:60px; text-align:right; }
+
+  .client-group { margin-bottom:16px; }
+  .client-group-header { display:flex; align-items:center; gap:6px; margin-bottom:6px; }
+  .client-dot { width:10px; height:10px; border-radius:50%; }
+  .client-group-name { font-size:13px; font-weight:600; }
+  .client-group-count { font-size:11px; color:var(--light); }
+  .badges { display:flex; flex-wrap:wrap; gap:5px; margin-left:16px; }
+  .badge { display:inline-block; padding:4px 10px; border-radius:20px; font-size:11px; font-weight:500; border:1px solid; }
+  .badge-neutral { background:#f9fafb; color:#4b5563; border-color:#e5e7eb; }
+  .badge-new { background:#ecfdf5; color:#065f46; border-color:#a7f3d0; }
+  .badge-churn { background:#fef2f2; color:#991b1b; border-color:#fecaca; }
+
+  .charts-grid { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:16px; }
+  @media (max-width:768px) { .charts-grid { grid-template-columns:1fr; } }
+
+  .table-wrap { overflow-x:auto; }
+  table { width:100%; border-collapse:collapse; font-size:12px; }
+  th { text-align:left; padding:8px 10px; background:#f8fafc; border-bottom:2px solid var(--border); font-weight:700; color:var(--muted); text-transform:uppercase; font-size:10px; letter-spacing:0.5px; }
+  td { padding:8px 10px; border-bottom:1px solid #f1f5f9; }
+  tr:hover td { background:#f8fafc; }
+
+  .empty { text-align:center; padding:60px 20px; color:var(--light); font-size:14px; }
+
+  .footer { text-align:center; font-size:11px; color:var(--light); padding:20px; }
+
+  .toggle-row { display:flex; gap:8px; margin-bottom:12px; }
+  .toggle-btn { padding:6px 12px; border-radius:6px; font-size:11px; font-weight:600; cursor:pointer; border:1px solid var(--border); background:white; color:var(--muted); }
+  .toggle-btn.active { background:var(--navy); color:white; border-color:var(--navy); }
+
+  .contadora-card { border:1px solid var(--border); border-radius:10px; margin-bottom:10px; overflow:hidden; transition:all 0.2s; }
+  .contadora-card:hover { border-color:#cbd5e1; }
+  .contadora-header { display:flex; align-items:center; gap:10px; padding:12px 16px; cursor:pointer; background:white; transition:background 0.15s; }
+  .contadora-header:hover { background:#f8fafc; }
+  .contadora-header.expanded { background:#f1f5f9; border-bottom:1px solid var(--border); }
+  .contadora-color { width:12px; height:12px; border-radius:50%; flex-shrink:0; }
+  .contadora-info { flex:1; }
+  .contadora-name-row { display:flex; align-items:center; gap:8px; }
+  .contadora-title { font-size:14px; font-weight:700; }
+  .contadora-pills { display:flex; gap:6px; flex-wrap:wrap; }
+  .pill { font-size:10px; padding:2px 8px; border-radius:10px; font-weight:600; }
+  .pill-blue { background:#eff6ff; color:#1d4ed8; }
+  .pill-amber { background:#fffbeb; color:#b45309; }
+  .pill-green { background:#ecfdf5; color:#065f46; }
+  .pill-red { background:#fef2f2; color:#991b1b; }
+  .contadora-arrow { font-size:16px; color:var(--light); transition:transform 0.2s; }
+  .contadora-arrow.open { transform:rotate(180deg); }
+  .contadora-detail { padding:0; max-height:0; overflow:hidden; transition:max-height 0.3s ease, padding 0.3s ease; background:#fafbfc; }
+  .contadora-detail.open { max-height:800px; padding:16px; }
+  .detail-stats { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin-bottom:12px; }
+  .detail-stat { background:white; border-radius:8px; padding:10px; border:1px solid #f1f5f9; text-align:center; }
+  .detail-stat-label { font-size:10px; text-transform:uppercase; color:var(--light); letter-spacing:0.3px; }
+  .detail-stat-value { font-size:18px; font-weight:800; margin-top:2px; }
+  .detail-table { width:100%; border-collapse:collapse; font-size:12px; }
+  .detail-table th { text-align:left; padding:6px 10px; background:#f1f5f9; font-size:10px; text-transform:uppercase; color:var(--muted); letter-spacing:0.3px; border:none; }
+  .detail-table td { padding:6px 10px; border-bottom:1px solid #f1f5f9; }
+  .gap-positive { color:var(--green); }
+  .gap-negative { color:var(--red); }
+  .utilization-bar { width:60px; height:6px; background:#f1f5f9; border-radius:3px; display:inline-block; overflow:hidden; vertical-align:middle; margin-left:4px; }
+  .utilization-fill { height:100%; border-radius:3px; }
+
+  /* ─── Implementación cards ─── */
+  .impl-card { background:white; border-radius:12px; border:1px solid var(--border); padding:20px; margin-bottom:14px; }
+  .impl-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; }
+  .impl-name { font-size:16px; font-weight:800; }
+  .impl-status { padding:4px 12px; border-radius:8px; font-size:12px; font-weight:700; }
+  .impl-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-bottom:14px; }
+  .impl-item { background:#f8fafc; border-radius:8px; padding:10px; text-align:center; }
+  .impl-item-label { font-size:10px; text-transform:uppercase; color:var(--light); letter-spacing:0.3px; }
+  .impl-item-value { font-size:14px; font-weight:700; margin-top:2px; }
+  .impl-progress { width:100%; height:8px; background:#f1f5f9; border-radius:4px; overflow:hidden; }
+  .impl-progress-fill { height:100%; border-radius:4px; transition:width 0.3s; }
+  .impl-timeline { display:flex; justify-content:space-between; margin-top:6px; }
+  .impl-timeline span { font-size:10px; color:var(--light); }
+  @media (max-width:600px) { .impl-grid { grid-template-columns:repeat(2,1fr); } }
+
+  /* ─── Perfiles ─── */
+  .perfil-card { background:white; border-radius:12px; border:1px solid var(--border); margin-bottom:14px; overflow:hidden; }
+  .perfil-header { display:flex; align-items:center; justify-content:space-between; padding:16px 20px; cursor:pointer; transition:background 0.15s; }
+  .perfil-header:hover { background:#f8fafc; }
+  .perfil-header.expanded { background:#f1f5f9; border-bottom:1px solid var(--border); }
+  .perfil-name { font-size:15px; font-weight:700; }
+  .perfil-status { padding:3px 10px; border-radius:8px; font-size:11px; font-weight:600; }
+  .perfil-arrow { font-size:16px; color:var(--light); transition:transform 0.2s; }
+  .perfil-arrow.open { transform:rotate(180deg); }
+  .perfil-body { padding:0; max-height:0; overflow:hidden; transition:max-height 0.4s ease, padding 0.4s ease; }
+  .perfil-body.open { max-height:1200px; padding:20px; }
+  .perfil-section { margin-bottom:16px; }
+  .perfil-section-title { font-size:11px; text-transform:uppercase; letter-spacing:0.5px; color:var(--light); font-weight:700; margin-bottom:8px; }
+  .perfil-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+  @media (max-width:600px) { .perfil-grid { grid-template-columns:1fr; } }
+  .perfil-field { background:#f8fafc; border-radius:8px; padding:10px 14px; }
+  .perfil-field-label { font-size:10px; text-transform:uppercase; letter-spacing:0.3px; color:var(--light); font-weight:600; margin-bottom:3px; }
+  .perfil-field-value { font-size:14px; font-weight:600; color:var(--text); }
+  .perfil-field-input { width:100%; border:1px solid var(--border); border-radius:6px; padding:6px 10px; font-size:13px; font-family:inherit; background:white; }
+  .perfil-field-input:focus { outline:none; border-color:var(--blue); }
+  .perfil-actions { display:flex; gap:8px; margin-top:10px; }
+  .perfil-btn { padding:8px 16px; border-radius:8px; font-size:12px; font-weight:600; cursor:pointer; border:1px solid var(--border); background:white; color:var(--muted); transition:all 0.15s; }
+  .perfil-btn:hover { background:#f1f5f9; }
+  .perfil-btn-primary { background:var(--navy); color:white; border-color:var(--navy); }
+  .perfil-btn-primary:hover { background:#2d4a7a; }
+  .perfil-btn-danger { color:var(--red); border-color:#fecaca; }
+  .perfil-btn-danger:hover { background:#fef2f2; }
+  .perfil-empty { text-align:center; padding:40px 20px; color:var(--light); }
+  .perfil-empty p { font-size:14px; margin-bottom:16px; }
+
+  .hidden { display: none; }
+
+  /* Embed mode: hide login, header, breadcrumb */
+  body.embed .login-overlay { display: none !important; }
+  body.embed .header { display: none !important; }
+  body.embed .breadcrumb-bar { display: none !important; }
+  body.embed #app-wrapper { display: block !important; }
+  body.embed .footer { display: none !important; }
+
+  /* ==================== LOGIN SCREEN ==================== */
+  .login-overlay {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: linear-gradient(135deg, #1e3a5f 0%, #2d4a7a 50%, #1e3a5f 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+  }
+  .login-box {
+    background: white;
+    border-radius: 16px;
+    padding: 40px;
+    width: 100%;
+    max-width: 400px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+  }
+  .login-box h2 {
+    font-size: 1.4rem;
+    color: var(--navy);
+    margin-bottom: 4px;
+  }
+  .login-box .subtitle {
+    font-size: 0.85rem;
+    color: var(--muted);
+    margin-bottom: 24px;
+  }
+  .login-box .field {
+    margin-bottom: 16px;
+  }
+  .login-box .field label {
+    display: block;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--text);
+    margin-bottom: 6px;
+  }
+  .login-box .field input {
+    width: 100%;
+    padding: 10px 14px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-size: 0.95rem;
+    font-family: inherit;
+    transition: border-color 0.2s;
+  }
+  .login-box .field input:focus {
+    outline: none;
+    border-color: var(--blue);
+    box-shadow: 0 0 0 3px rgba(59,130,246,0.1);
+  }
+  .login-btn {
+    width: 100%;
+    padding: 12px;
+    background: var(--navy);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 0.95rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s;
+    margin-top: 8px;
+  }
+  .login-btn:hover { background: #2d4a7a; }
+  .login-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+  .login-error {
+    color: var(--red);
+    font-size: 0.8rem;
+    margin-top: 12px;
+    display: none;
+  }
+
+  /* ==================== USER BAR ==================== */
+  .user-bar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-top: 8px;
+  }
+  .user-bar .user-name {
+    font-size: 0.8rem;
+    opacity: 0.9;
+    background: rgba(255,255,255,0.15);
+    padding: 4px 12px;
+    border-radius: 20px;
+  }
+  .btn-logout {
+    font-size: 0.75rem;
+    padding: 4px 12px;
+    background: rgba(255,255,255,0.15);
+    color: white;
+    border: 1px solid rgba(255,255,255,0.3);
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background 0.2s;
+  }
+  .btn-logout:hover { background: rgba(255,255,255,0.25); }
+</style>
+</head>
+<body>
+
+<!-- LOGIN SCREEN -->
+<div class="login-overlay" id="login-screen">
+  <div class="login-box">
+    <h2>Account One</h2>
+    <p class="subtitle">Inicia sesión para continuar</p>
+    <div class="field">
+      <label>Email</label>
+      <input type="email" id="login-email" placeholder="tu@accountone.do">
+    </div>
+    <div class="field">
+      <label>Contraseña</label>
+      <input type="password" id="login-password" placeholder="••••••••">
+    </div>
+    <button class="login-btn" id="btn-login" onclick="handleLogin()">Entrar</button>
+    <div class="login-error" id="login-error"></div>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app-wrapper" class="hidden">
+
+<div class="header">
+  <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+    <div>
+      <h1>Clientes y Carga - Account One</h1>
+      <p>2026</p>
+    </div>
+    <div class="user-bar">
+      <span class="user-name" id="user-display-name"></span>
+      <button class="btn-logout" onclick="handleLogout()">Salir</button>
+    </div>
+  </div>
+</div>
+
+<div class="breadcrumb-bar" id="breadcrumbBar">
+  <a href="index.html">Account One</a>
+  <span class="sep">›</span>
+  <span class="current">Clientes y Carga</span>
+</div>
+
+<div class="main-tabs" id="mainTabs"></div>
+<div class="sub-tabs" id="subTabs" style="display:none"></div>
+<div class="content" id="content"></div>
+<div class="footer">Conectado a Supabase — los datos se guardan en la nube.</div>
+
+</div><!-- /app-wrapper -->
+
+<script>
+// ==================== SUPABASE ====================
+const SUPABASE_URL = 'https://ouetusstqvpyjeycfdio.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im91ZXR1c3N0cXZweWpleWNmZGlvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY2NDcwNzksImV4cCI6MjA5MjIyMzA3OX0.Bsys947JLGEuf3zdBF2GPFdbJVJtaZdC4YEmyBU5Bow';
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+let APP_userName = '';
+
+// ==================== TYPES ====================
+const MESES = ["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
+const MESES_LABEL = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
+const MESES_FULL = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
+
+const COLORS = {
+  Taina:"#3b82f6", Beliani:"#8b5cf6", Yessica:"#f59e0b",
+  "Karina":"#10b981", Victoria:"#ec4899", Yolenny:"#f97316",
+  Milka:"#6366f1", "Milka (freelance)":"#6366f1", "Sin asignar":"#9ca3af"
+};
+
+let DATA = {};
+let IMPLEMENTACIONES = [];
+let SOLO_IMPLEMENTACION = [];
+let IMPLEMENTACIONES_RIESGO = [];
+let SOFTWARE_CLIENTES = [];
+let PERFILES = [];
+
+const CAPACIDAD = { Taina:500, Beliani:1000, Yessica:1000 };
+const MESES_CON_CAPACIDAD = ["abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
+
+// ==================== SUPABASE DATA LOADING ====================
+
+async function loadData() {
+  const data = {};
+  MESES.forEach(m => { data[m] = null; });
+
+  const { data: resumen } = await sb.from('meses_resumen').select('*').eq('anio', 2026);
+  const { data: asig } = await sb.from('asignaciones').select('*').eq('anio', 2026);
+
+  if (resumen) {
+    resumen.forEach(r => {
+      const asigMes = (asig || []).filter(a => a.mes === r.mes);
+      const asignaciones = {};
+      asigMes.forEach(a => {
+        if (!asignaciones[a.contadora]) asignaciones[a.contadora] = [];
+        asignaciones[a.contadora].push({ n: a.cliente, s: parseFloat(a.serv) || 0, a: parseFloat(a.adm) || 0 });
+      });
+      data[r.mes] = {
+        total: r.total_clientes,
+        nuevos: r.nuevos || [],
+        churn: r.churn || [],
+        notas: r.notas || '',
+        txTotal: { serv: parseFloat(r.serv_total) || 0, adm: parseFloat(r.adm_total) || 0 },
+        asignaciones
+      };
+    });
+  }
+  return data;
+}
+
+async function loadImplementaciones() {
+  const { data } = await sb.from('implementaciones').select('*');
+  const normal = [], soloImpl = [], riesgo = [];
+  (data || []).forEach(r => {
+    const impl = {
+      cliente: r.cliente,
+      implInicio: r.impl_inicio,
+      implFin: r.impl_fin,
+      primerMes: r.primer_mes,
+      contadora: r.contadora,
+      notas: r.notas || ''
+    };
+    if (r.tipo === 'solo_impl') soloImpl.push(impl);
+    else if (r.tipo === 'riesgo') riesgo.push(impl);
+    else normal.push(impl);
+  });
+  return { normal, soloImpl, riesgo };
+}
+
+async function loadSoftwareClientes() {
+  const { data } = await sb.from('software_clientes').select('*');
+  return (data || []).map(r => ({ n: r.cliente, licencia: r.licencia, monto: parseFloat(r.monto) || 0, periodo: r.periodo }));
+}
+
+async function loadPerfilesFromDB() {
+  const { data } = await sb.from('perfiles_clientes').select('*');
+  return (data || []).map(r => ({
+    _id: r.id,
+    _nombre: r.nombre,
+    nombre_empresa: r.nombre_empresa || '',
+    rnc: r.rnc || '',
+    tipo_empresa: r.tipo_empresa || '',
+    contacto: r.contacto || '',
+    telefono: r.telefono || '',
+    email: r.email || '',
+    software: r.software || '',
+    servicio_impl: r.servicio_impl || '',
+    servicio_recurrente: r.servicio_recurrente || '',
+    inicio_impl: r.inicio_impl || '',
+    inicio_fiscal: r.inicio_fiscal || '',
+    estado_contabilidad: r.estado_contabilidad || '',
+    contadora_asignada: r.contadora_asignada || '',
+    notas: r.notas || ''
+  }));
+}
+
+async function savePerfilToDB(perfil) {
+  if (perfil._id) {
+    await sb.from('perfiles_clientes').update({
+      nombre: perfil._nombre, nombre_empresa: perfil.nombre_empresa,
+      rnc: perfil.rnc, tipo_empresa: perfil.tipo_empresa,
+      contacto: perfil.contacto, telefono: perfil.telefono, email: perfil.email,
+      software: perfil.software, servicio_impl: perfil.servicio_impl,
+      servicio_recurrente: perfil.servicio_recurrente, inicio_impl: perfil.inicio_impl,
+      inicio_fiscal: perfil.inicio_fiscal, estado_contabilidad: perfil.estado_contabilidad,
+      contadora_asignada: perfil.contadora_asignada, notas: perfil.notas
+    }).eq('id', perfil._id);
+  }
+}
+
+async function insertPerfilToDB(perfil) {
+  const { data } = await sb.from('perfiles_clientes').insert({
+    nombre: perfil._nombre, nombre_empresa: perfil.nombre_empresa || '',
+    rnc: perfil.rnc || '', tipo_empresa: perfil.tipo_empresa || '',
+    contacto: perfil.contacto || '', telefono: perfil.telefono || '', email: perfil.email || '',
+    software: perfil.software || '', servicio_impl: perfil.servicio_impl || '',
+    servicio_recurrente: perfil.servicio_recurrente || '', inicio_impl: perfil.inicio_impl || '',
+    inicio_fiscal: perfil.inicio_fiscal || '', estado_contabilidad: perfil.estado_contabilidad || '',
+    contadora_asignada: perfil.contadora_asignada || '', notas: perfil.notas || ''
+  }).select();
+  return data && data[0] ? data[0].id : null;
+}
+
+async function deletePerfilFromDB(id) {
+  await sb.from('perfiles_clientes').delete().eq('id', id);
+}
+
+// ==================== KPI SUPABASE ====================
+
+async function loadKpiFromDB() {
+  const { data } = await sb.from('kpi_scores').select('*').eq('anio', 2026);
+  const kpi = {};
+  (data || []).forEach(r => {
+    const key = r.contadora + '_' + r.mes;
+    kpi[key] = {
+      _id: r.id,
+      contadora: r.contadora,
+      mes: r.mes,
+      digitacion: r.digitacion,
+      resumenes: r.resumenes,
+      video_reunion: r.video_reunion,
+      total: r.total
+    };
+  });
+  return kpi;
+}
+
+async function saveKpiToDB(contadora, mes, scores) {
+  const { data: existing } = await sb.from('kpi_scores')
+    .select('id')
+    .eq('contadora', contadora)
+    .eq('mes', mes)
+    .eq('anio', 2026)
+    .maybeSingle();
+
+  const total = (scores.digitacion || 0) + (scores.resumenes || 0) + (scores.video_reunion || 0);
+
+  if (existing) {
+    await sb.from('kpi_scores').update({
+      digitacion: scores.digitacion,
+      resumenes: scores.resumenes,
+      video_reunion: scores.video_reunion,
+      total: total
+    }).eq('id', existing.id);
+  } else {
+    await sb.from('kpi_scores').insert({
+      contadora: contadora,
+      mes: mes,
+      anio: 2026,
+      digitacion: scores.digitacion,
+      resumenes: scores.resumenes,
+      video_reunion: scores.video_reunion,
+      total: total
+    });
+  }
+}
+
+let KPI_DATA = {};
+
+// ==================== SOFTWARE STATS ====================
+
+function getSoftwareStats() {
+  const base = SOFTWARE_CLIENTES.filter(c => c.periodo === "2025");
+  const baseMonto = base.reduce((s,c) => s + c.monto, 0);
+  const mesesActivos = ["enero","febrero","marzo","abril"];
+  let acumClientes = base.length;
+  let acumMonto = baseMonto;
+
+  const rows = mesesActivos.map(m => {
+    const nuevos = SOFTWARE_CLIENTES.filter(c => c.periodo === m);
+    const nuevosMonto = nuevos.reduce((s,c) => s + c.monto, 0);
+    const prevTotal = acumClientes;
+    acumClientes += nuevos.length;
+    acumMonto += nuevosMonto;
+    const neto = nuevos.length;
+    const pct = prevTotal > 0 ? (neto / prevTotal * 100) : 0;
+    return { mes: m, total: acumClientes, nuevos: nuevos, churn: [], neto, pct, monto: acumMonto };
+  });
+  return { base, baseMonto, baseCount: base.length, rows };
+}
+
+// ==================== UTILS ====================
+function sumClients(asig) { return Object.values(asig).reduce((s,arr)=>s+arr.length,0); }
+function sumServ(asig) { return Object.values(asig).reduce((s,arr)=>s+arr.reduce((a,c)=>a+c.s,0),0); }
+function sumAdm(asig) { return Object.values(asig).reduce((s,arr)=>s+arr.reduce((a,c)=>a+c.a,0),0); }
+
+function contadoraServ(asig, name) { return (asig[name]||[]).reduce((s,c)=>s+c.s,0); }
+function contadoraAdm(asig, name) { return (asig[name]||[]).reduce((s,c)=>s+c.a,0); }
+
+function getImplStatus(impl) {
+  const hoy = new Date();
+  hoy.setHours(0,0,0,0);
+  if (!impl.implInicio) return { label:"Pendiente", color:"#9ca3af", bg:"#f1f5f9", icon:"\u23f3", pct:0 };
+  const inicio = parseLocalDate(impl.implInicio);
+  const fin = parseLocalDate(impl.implFin);
+  if (hoy < inicio) return { label:"Por iniciar", color:"#3b82f6", bg:"#eff6ff", icon:"\ud83d\udcc5", pct:0 };
+  if (hoy > fin) return { label:"Completada", color:"#10b981", bg:"#ecfdf5", icon:"\u2713", pct:100 };
+  const total = fin - inicio;
+  const avance = hoy - inicio;
+  const pct = total > 0 ? Math.round(avance / total * 100) : 0;
+  return { label:"En progreso", color:"#f59e0b", bg:"#fffbeb", icon:"\u26a1", pct:pct };
+}
+
+function parseLocalDate(dateStr) {
+  // "2026-04-15" → fecha local (evita desfase UTC)
+  const parts = dateStr.split('-');
+  return new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+}
+
+function formatFecha(dateStr) {
+  if (!dateStr) return "\u2014";
+  const d = parseLocalDate(dateStr);
+  const dia = d.getDate();
+  const mesLabel = ["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"][d.getMonth()];
+  return dia + ' ' + mesLabel + ' ' + d.getFullYear();
+}
+
+function diasRestantes(dateStr) {
+  if (!dateStr) return null;
+  const hoy = new Date();
+  hoy.setHours(0,0,0,0);
+  const fin = parseLocalDate(dateStr);
+  const diff = Math.ceil((fin - hoy) / (1000*60*60*24));
+  return diff;
+}
+
+function esc(str) { return (str||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+function getAllMonths(data) { return MESES.filter(m=>data[m]); }
+
+function getPrevMonth(data, mes) {
+  const idx = MESES.indexOf(mes);
+  if (idx <= 0) return null;
+  const prev = MESES[idx-1];
+  return data[prev] ? prev : null;
+}
+
+function getGrowth(data, mes, d) {
+  const prev = getPrevMonth(data, mes);
+  if (!prev) {
+    const prevTotal = d.total - d.nuevos.length + d.churn.length;
+    if (prevTotal === 0) return {neto: d.nuevos.length - d.churn.length, pct: 0, prevTotal: 0};
+    const neto = d.nuevos.length - d.churn.length;
+    return {neto, pct: (neto/prevTotal*100), prevTotal};
+  }
+  const prevTotal = data[prev].total;
+  const neto = d.nuevos.length - d.churn.length;
+  return {neto, pct: prevTotal>0?(neto/prevTotal*100):0, prevTotal};
+}
+
+function tieneCapacidad(mes, nombre) {
+  return MESES_CON_CAPACIDAD.includes(mes) && CAPACIDAD[nombre] !== undefined;
+}
+function getCapacidad(nombre) { return CAPACIDAD[nombre] || null; }
+function getUtilCapacidad(mes, nombre, admTotal) {
+  if (!tieneCapacidad(mes, nombre)) return null;
+  const cap = CAPACIDAD[nombre];
+  return cap > 0 ? Math.round(admTotal / cap * 100) : 0;
+}
+
+// ==================== HOOKS ====================
+let activeMainTab = "dashboard";
+let activeSubTab = null;
+let charts = [];
+
+function destroyCharts() { charts.forEach(c=>c.destroy()); charts=[]; }
+
+function navigateMain(tab) {
+  activeMainTab = tab;
+  activeSubTab = null;
+  renderAll();
+}
+
+function navigateSub(month) {
+  activeSubTab = month;
+  renderSubTabs();
+  renderContent();
+}
+
+function toggleDashDetail(mes) {
+  const row = document.getElementById('dash-detail-'+mes);
+  if (row) row.style.display = row.style.display === 'none' ? '' : 'none';
+}
+
+function toggleCargaDetail(rowId) {
+  const row = document.getElementById(rowId);
+  if (row) row.style.display = row.style.display === 'none' ? '' : 'none';
+}
+
+function toggleContadora(id) {
+  const detail = document.getElementById('detail-'+id);
+  const arrow = document.getElementById('arrow-'+id);
+  const header = document.getElementById('header-'+id);
+  if (detail.classList.contains('open')) {
+    detail.classList.remove('open');
+    arrow.classList.remove('open');
+    header.classList.remove('expanded');
+  } else {
+    detail.classList.add('open');
+    arrow.classList.add('open');
+    header.classList.add('expanded');
+  }
+}
+
+// ==================== SERVICES ====================
+function getMonthData(mes) { return DATA[mes]; }
+
+function getLastMonth() {
+  const months = getAllMonths(DATA);
+  return months[months.length-1];
+}
+
+function getDashboardStats() {
+  const months = getAllMonths(DATA);
+  const last = DATA[months[months.length-1]];
+  const first = DATA[months[0]];
+  const totalNuevos = months.reduce((s,m)=>s+DATA[m].nuevos.length,0);
+  const totalChurn = months.reduce((s,m)=>s+DATA[m].churn.length,0);
+  const baseLine = first.total - first.nuevos.length + first.churn.length;
+  const ytdGrowth = baseLine > 0 ? ((last.total - baseLine) / baseLine * 100) : 0;
+  const ytdNeto = last.total - baseLine;
+
+  const growthData = months.map((m,i)=>{
+    if (i===0) { const prev=DATA[m].total-DATA[m].nuevos.length+DATA[m].churn.length; return prev>0?((DATA[m].nuevos.length-DATA[m].churn.length)/prev*100):0; }
+    const prev=DATA[months[i-1]].total;
+    return prev>0?((DATA[m].nuevos.length-DATA[m].churn.length)/prev*100):0;
+  });
+
+  return { months, last, first, totalNuevos, totalChurn, growthData, ytdGrowth, ytdNeto, baseLine };
+}
+
+function getMonthViewData(mes) {
+  const d = DATA[mes];
+  const idx = MESES.indexOf(mes);
+  const asig = d.asignaciones;
+  const names = Object.keys(asig).sort((a,b)=>{
+    if (a==="Sin asignar") return 1;
+    if (b==="Sin asignar") return -1;
+    return asig[b].length - asig[a].length;
+  });
+  const maxC = Math.max(...names.map(n=>asig[n].length),1);
+  const growth = getGrowth(DATA, mes, d);
+  const growthSign = growth.neto >= 0 ? '+' : '';
+  const growthColor = growth.neto >= 0 ? 'stat-green' : 'stat-red';
+  const pctStr = growth.pct >= 0 ? '+'+growth.pct.toFixed(1)+'%' : growth.pct.toFixed(1)+'%';
+
+  const nuevosHtml = d.nuevos.length > 0
+    ? d.nuevos.map(n=>'<span class="badge badge-new" style="margin:1px 2px">'+n+'</span>').join('')
+    : '<span style="color:#94a3b8;font-size:13px">Ninguno</span>';
+  const churnHtml = d.churn.length > 0
+    ? d.churn.map(n=>'<span class="badge badge-churn" style="margin:1px 2px">'+n+'</span>').join('')
+    : '<span style="color:#94a3b8;font-size:13px">Ninguno</span>';
+
+  return { d, idx, asig, names, maxC, growth, growthSign, growthColor, pctStr, nuevosHtml, churnHtml };
+}
+
+// ==================== COMPONENTS ====================
+
+function renderMainTabs() {
+  const el = document.getElementById("mainTabs");
+  const tabs = [
+    {id:'dashboard', label:'Dashboard'},
+    {id:'implementacion', label:'Implementaciones'},
+    {id:'software', label:'Software'},
+    {id:'perfiles', label:'Perfiles'}
+  ];
+  el.innerHTML = tabs.map(t =>
+    `<button class="main-tab ${activeMainTab===t.id?'active':''}" onclick="navigateMain('${t.id}')">${t.label}</button>`
+  ).join('');
+}
+
+function renderSubTabs() {
+  const el = document.getElementById("subTabs");
+  if (activeMainTab !== 'dashboard') { el.style.display = 'none'; return; }
+  el.style.display = 'flex';
+  let html = `<div class="sub-tab ${activeSubTab===null?'active':''}" onclick="navigateSub(null)">Resumen</div>`;
+  MESES.forEach((m,i) => {
+    const has = DATA[m] !== null && DATA[m] !== undefined;
+    html += `<div class="sub-tab ${activeSubTab===m?'active':''} ${has?'':'disabled'}" onclick="${has?`navigateSub('${m}')`:''}">
+      ${MESES_LABEL[i]}</div>`;
+  });
+  el.innerHTML = html;
+}
+
+function renderAll() {
+  renderMainTabs();
+  renderSubTabs();
+  renderContent();
+}
+
+function renderContent() {
+  destroyCharts();
+  const el = document.getElementById("content");
+  if (activeMainTab === "implementacion") return renderImplementacion(el);
+  if (activeMainTab === "perfiles") return renderPerfiles(el);
+  if (activeMainTab === "software") return renderSoftware(el);
+  // Dashboard
+  if (activeSubTab === null) return renderDashboard(el);
+  const d = getMonthData(activeSubTab);
+  if (!d) { el.innerHTML = '<div class="empty">Sin datos para este mes todavía.</div>'; return; }
+  renderMonth(el, activeSubTab, d);
+}
+
+function renderDashboard(el) {
+  const { months, last, totalNuevos, totalChurn, growthData, ytdGrowth, ytdNeto, baseLine } = getDashboardStats();
+  const hoy = new Date();
+  const fechaHoy = hoy.getDate() + ' ' + ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'][hoy.getMonth()] + ' ' + hoy.getFullYear();
+  const ytdSign = ytdNeto >= 0 ? '+' : '';
+  const ytdColor = ytdNeto >= 0 ? 'stat-green' : 'stat-red';
+  const ytdPctStr = (ytdGrowth >= 0 ? '+' : '') + ytdGrowth.toFixed(1) + '%';
+
+  let html = `
+    <div class="stats">
+      <div class="stat"><div class="stat-label">Clientes actuales · ${fechaHoy}</div><div class="stat-value">${last.total}</div><div class="stat-sub">Base inicio de año: ${baseLine}</div></div>
+      <div class="stat"><div class="stat-label">Nuevos en 2026</div><div class="stat-value stat-green">${totalNuevos}</div><div class="stat-sub">${baseLine > 0 ? (totalNuevos / baseLine * 100).toFixed(1) : 0}% de crecimiento</div></div>
+      <div class="stat"><div class="stat-label">Churn en 2026</div><div class="stat-value stat-red">${totalChurn}</div><div class="stat-sub">${baseLine > 0 ? (totalChurn / baseLine * 100).toFixed(1) : 0}% de churn</div></div>
+      <div class="stat"><div class="stat-label">Crecimiento 2026</div><div class="stat-value ${ytdColor}">${ytdPctStr}</div><div class="stat-sub">${ytdSign}${ytdNeto} clientes neto vs inicio de año</div></div>
+    </div>
+    <div class="charts-grid">
+      <div class="card"><h3>Evolución de clientes</h3><canvas id="chartEvo"></canvas></div>
+      <div class="card"><h3>Crecimiento neto mensual (%)</h3><canvas id="chartGrowth"></canvas></div>
+    </div>
+    <div class="charts-grid">
+      <div class="card"><h3>Transacciones mensuales (Serv. Contratado)</h3><canvas id="chartTx"></canvas></div>
+      <div class="card"><h3>Resumen mensual</h3>
+        <div class="table-wrap"><table>
+          <tr><th>Mes</th><th>Inicio</th><th>Nuevos</th><th>Churn</th><th>Neto</th><th>Cierre</th><th>Crecimiento</th><th>Fact.</th></tr>
+          ${months.map((m,i)=>{
+            const d=DATA[m];
+            const inicio=d.total-d.nuevos.length+d.churn.length;
+            const neto=d.nuevos.length-d.churn.length;
+            const pct=growthData[i];
+            const pctStr=(pct>=0?'+':'')+pct.toFixed(1)+'%';
+            const rowId='dash-row-'+m;
+            const detailId='dash-detail-'+m;
+            const nuevosHtml=d.nuevos.length>0?d.nuevos.map(n=>'<span class="badge badge-new" style="margin:1px 2px">'+n+'</span>').join(''):'—';
+            const churnHtml=d.churn.length>0?d.churn.map(n=>'<span class="badge badge-churn" style="margin:1px 2px">'+n+'</span>').join(''):'—';
+            return `<tr id="${rowId}" style="cursor:pointer" onclick="toggleDashDetail('${m}')">
+            <td><strong>${MESES_FULL[MESES.indexOf(m)]}</strong></td><td>${inicio}</td>
+            <td style="color:var(--green)">${d.nuevos.length}</td><td style="color:var(--red)">${d.churn.length}</td>
+            <td style="color:${neto>=0?'var(--green)':'var(--red)'}">${neto>=0?'+':''}${neto}</td>
+            <td><strong>${d.total}</strong></td>
+            <td style="color:${pct>=0?'var(--green)':'var(--red)'}">${pctStr}</td>
+            <td>${d.txTotal.serv.toLocaleString()}</td></tr>
+            <tr id="${detailId}" style="display:none"><td colspan="8" style="padding:10px 14px;background:#f8fafc;border-bottom:2px solid var(--border)">
+              <div style="display:flex;gap:20px;flex-wrap:wrap">
+                <div><span style="font-size:11px;font-weight:700;color:var(--green);text-transform:uppercase;letter-spacing:0.3px">Entraron:</span><div style="margin-top:4px;display:flex;flex-wrap:wrap;gap:4px">${nuevosHtml}</div></div>
+                <div><span style="font-size:11px;font-weight:700;color:var(--red);text-transform:uppercase;letter-spacing:0.3px">Salieron:</span><div style="margin-top:4px;display:flex;flex-wrap:wrap;gap:4px">${churnHtml}</div></div>
+              </div>
+            </td></tr>`;
+          }).join('')}
+        </table></div>
+      </div>
+    </div>
+  `;
+  el.innerHTML = html;
+
+  const labels = months.map(m=>MESES_LABEL[MESES.indexOf(m)]);
+  charts.push(new Chart(document.getElementById("chartEvo"),{
+    type:"bar", data:{labels, datasets:[{label:"Clientes",data:months.map(m=>DATA[m].total),backgroundColor:"#3b82f6",borderRadius:4}]},
+    options:{responsive:true,plugins:{legend:{display:false}},scales:{y:{beginAtZero:false,min:Math.min(...months.map(m=>DATA[m].total))-3}}}
+  }));
+  charts.push(new Chart(document.getElementById("chartGrowth"),{
+    type:"bar", data:{labels, datasets:[{
+      label:"Crecimiento %",
+      data:growthData,
+      backgroundColor:growthData.map(v=>v>=0?'rgba(16,185,129,0.7)':'rgba(239,68,68,0.7)'),
+      borderRadius:4
+    }]},
+    options:{responsive:true,plugins:{legend:{display:false}},scales:{y:{ticks:{callback:v=>v+'%'}}}}
+  }));
+  charts.push(new Chart(document.getElementById("chartTx"),{
+    type:"line", data:{labels, datasets:[
+      {label:"Serv. Contratado",data:months.map(m=>DATA[m].txTotal.serv),borderColor:"#3b82f6",backgroundColor:"rgba(59,130,246,0.1)",fill:true,tension:0.3,pointRadius:5,pointBackgroundColor:"#3b82f6"}
+    ]}, options:{responsive:true,plugins:{legend:{display:false}},scales:{y:{beginAtZero:false}}}
+  }));
+}
+
+function renderImplCard(impl, opts) {
+  const st = getImplStatus(impl);
+  const dias = diasRestantes(impl.implFin);
+  let diasLabel = '';
+  if (st.label === 'En progreso' && dias !== null) {
+    diasLabel = dias > 0 ? dias + ' d\u00edas restantes' : dias === 0 ? 'Termina hoy' : Math.abs(dias) + ' d\u00edas de atraso';
+  } else if (st.label === 'Por iniciar' && impl.implInicio) {
+    const diasInicio = diasRestantes(impl.implInicio);
+    diasLabel = diasInicio > 0 ? 'Inicia en ' + diasInicio + ' d\u00edas' : 'Inicia hoy';
+  } else if (st.label === 'Completada') {
+    diasLabel = opts.completedLabel || 'Lista para asignar';
+  }
+
+  const borderStyle = opts.borderColor ? 'border-left:3px solid ' + opts.borderColor + ';' : '';
+  const statusBg = opts.statusBg || st.bg;
+  const statusColor = opts.statusColor || st.color;
+  const statusLabel = opts.statusLabel || st.label;
+
+  return `<div class="impl-card" style="${borderStyle}">
+    <div class="impl-header">
+      <div class="impl-name">${st.icon} ${impl.cliente}</div>
+      <span class="impl-status" style="background:${statusBg};color:${statusColor}">${statusLabel}</span>
+    </div>
+    <div class="impl-grid">
+      <div class="impl-item">
+        <div class="impl-item-label">Inicio implementaci\u00f3n</div>
+        <div class="impl-item-value">${formatFecha(impl.implInicio)}</div>
+      </div>
+      <div class="impl-item">
+        <div class="impl-item-label">Fin implementaci\u00f3n</div>
+        <div class="impl-item-value">${impl.implFin ? formatFecha(impl.implFin) : '\u2014'}</div>
+      </div>
+      <div class="impl-item">
+        <div class="impl-item-label">Primer mes fiscal</div>
+        <div class="impl-item-value" style="color:var(--navy)">${impl.primerMes || '\u2014'}</div>
+      </div>
+      <div class="impl-item">
+        <div class="impl-item-label">Asignada a</div>
+        <div class="impl-item-value">${impl.contadora || 'Por definir'}</div>
+      </div>
+    </div>
+    ${impl.implInicio ? `
+      <div class="impl-progress">
+        <div class="impl-progress-fill" style="width:${st.pct}%;background:${statusColor}"></div>
+      </div>
+      <div class="impl-timeline">
+        <span>${formatFecha(impl.implInicio)}</span>
+        <span style="font-weight:600;color:${statusColor}">${diasLabel}</span>
+        <span>${formatFecha(impl.implFin)}</span>
+      </div>
+    ` : `<div style="text-align:center;padding:8px;color:var(--light);font-size:12px">${impl.notas || 'Sin fechas definidas'}</div>`}
+  </div>`;
+}
+
+function renderImplementacion(el) {
+  const allImpl = IMPLEMENTACIONES.concat(SOLO_IMPLEMENTACION);
+  const enProgreso = allImpl.filter(i => { const s=getImplStatus(i); return s.label==="En progreso"; }).length;
+  const porIniciar = allImpl.filter(i => { const s=getImplStatus(i); return s.label==="Por iniciar"; }).length;
+  const completadas = allImpl.filter(i => { const s=getImplStatus(i); return s.label==="Completada"; }).length;
+
+  let html = `
+    <div class="stats" style="grid-template-columns:repeat(5,1fr);">
+      <div class="stat"><div class="stat-label" style="font-size:10px;">Impl. activas</div><div class="stat-value">${IMPLEMENTACIONES.length + SOLO_IMPLEMENTACION.length}</div></div>
+      <div class="stat"><div class="stat-label">En progreso</div><div class="stat-value" style="color:var(--amber)">${enProgreso}</div></div>
+      <div class="stat"><div class="stat-label">Por iniciar</div><div class="stat-value" style="color:var(--blue)">${porIniciar}</div></div>
+      <div class="stat"><div class="stat-label" style="font-size:10px;">Solo impl.</div><div class="stat-value" style="color:var(--purple)">${SOLO_IMPLEMENTACION.length}</div></div>
+      <div class="stat"><div class="stat-label">En riesgo</div><div class="stat-value stat-red">${IMPLEMENTACIONES_RIESGO.length}</div></div>
+    </div>
+
+    <h3 style="font-size:14px;font-weight:700;color:var(--navy);margin:20px 0 12px;">Implementaciones de clientes</h3>
+    ${IMPLEMENTACIONES.map(impl => renderImplCard(impl, {})).join('')}
+
+    <h3 style="font-size:14px;font-weight:700;color:var(--purple);margin:28px 0 12px;">Solo implementaci\u00f3n</h3>
+    <p style="font-size:12px;color:var(--muted);margin-bottom:12px;">Clientes que contrataron solo implementaci\u00f3n, no servicio mensual.</p>
+    ${SOLO_IMPLEMENTACION.map(impl => renderImplCard(impl, {
+      borderColor: 'var(--purple)',
+      statusBg: '#f3e8ff',
+      statusColor: '#8b5cf6',
+      statusLabel: 'Solo Impl.',
+      completedLabel: 'Implementaci\u00f3n completada'
+    })).join('')}
+
+    <h3 style="font-size:14px;font-weight:700;color:var(--red);margin:28px 0 12px;">\u26a0\ufe0f Implementaciones en riesgo</h3>
+    <p style="font-size:12px;color:var(--muted);margin-bottom:12px;">Implementaciones estancadas o con retrasos significativos.</p>
+    ${IMPLEMENTACIONES_RIESGO.map(impl => renderImplCard(impl, {
+      borderColor: 'var(--red)',
+      statusBg: '#fef2f2',
+      statusColor: '#ef4444',
+      statusLabel: 'En riesgo'
+    })).join('')}
+  `;
+  el.innerHTML = html;
+}
+
+function renderSoftware(el) {
+  const stats = getSoftwareStats();
+  const last = stats.rows[stats.rows.length - 1];
+  const totalNuevos = stats.rows.reduce((s,r) => s + r.nuevos.length, 0);
+  const totalChurn = stats.rows.reduce((s,r) => s + r.churn.length, 0);
+  const ytdPct = stats.baseCount > 0 ? ((last.total - stats.baseCount) / stats.baseCount * 100) : 0;
+
+  // Group clients by license type
+  const groups = {};
+  SOFTWARE_CLIENTES.forEach(c => {
+    if (!groups[c.licencia]) groups[c.licencia] = [];
+    groups[c.licencia].push(c);
+  });
+  const LICENCIA_ORDER = ['Punto de Venta','Starter','Starter + FE','Basic','Basic + FE','Standard','Standard + FE','Premium + FE','Nomina','Manufactura'];
+  const groupKeys = Object.keys(groups).sort((a,b) => {
+    const ia = LICENCIA_ORDER.indexOf(a); const ib = LICENCIA_ORDER.indexOf(b);
+    return (ia === -1 ? 99 : ia) - (ib === -1 ? 99 : ib);
+  });
+
+  const LICENCIA_COLORS = {
+    'Basic + FE': '#3b82f6', 'Basic': '#60a5fa', 'Starter + FE': '#10b981', 'Starter': '#34d399',
+    'Standard + FE': '#8b5cf6', 'Standard': '#a78bfa', 'Premium + FE': '#f59e0b', 'Manufactura': '#ec4899',
+    'Nomina': '#f97316', 'Punto de Venta': '#6366f1'
+  };
+
+  let html = `
+    <div class="stats" style="grid-template-columns:repeat(5,1fr);">
+      <div class="stat"><div class="stat-label">Software actual</div><div class="stat-value">${last.total}</div><div class="stat-sub">Base 2026: ${stats.baseCount}</div></div>
+      <div class="stat"><div class="stat-label">Nuevos 2026</div><div class="stat-value stat-green">${totalNuevos}</div><div class="stat-sub">${stats.baseCount > 0 ? (totalNuevos / stats.baseCount * 100).toFixed(1) : 0}% crecimiento</div></div>
+      <div class="stat"><div class="stat-label">Churn 2026</div><div class="stat-value stat-red">${totalChurn}</div><div class="stat-sub">${stats.baseCount > 0 ? (totalChurn / stats.baseCount * 100).toFixed(1) : 0}% churn</div></div>
+      <div class="stat"><div class="stat-label">Crecimiento</div><div class="stat-value ${ytdPct >= 0 ? 'stat-green' : 'stat-red'}">${ytdPct >= 0 ? '+' : ''}${ytdPct.toFixed(1)}%</div><div class="stat-sub">${ytdPct >= 0 ? '+' : ''}${last.total - stats.baseCount} neto</div></div>
+      <div class="stat"><div class="stat-label">Monto mensual</div><div class="stat-value" style="color:var(--navy)">US$ ${last.monto.toLocaleString()}</div><div class="stat-sub">Base: US$ ${stats.baseMonto.toLocaleString()}</div></div>
+    </div>
+
+    <div class="card">
+      <h3>Resumen mensual</h3>
+      <div class="table-wrap"><table>
+        <tr><th>Mes</th><th>Inicio</th><th>Nuevos</th><th>Churn</th><th>Neto</th><th>Cierre</th><th>Crecimiento</th><th>Monto</th></tr>
+        ${stats.rows.map(r => {
+          const mi = MESES.indexOf(r.mes);
+          const pctStr = (r.pct >= 0 ? '+' : '') + r.pct.toFixed(1) + '%';
+          const pctColor = r.pct >= 0 ? 'var(--green)' : 'var(--red)';
+          const netoStr = (r.neto >= 0 ? '+' : '') + r.neto;
+          const netoColor = r.neto >= 0 ? 'var(--green)' : 'var(--red)';
+          const nuevosHtml = r.nuevos.length > 0
+            ? r.nuevos.map(c => '<span class="badge badge-new" style="margin:1px 2px">' + c.n + '</span>').join('')
+            : '\u2014';
+          const churnHtml = r.churn.length > 0
+            ? r.churn.map(c => '<span class="badge badge-churn" style="margin:1px 2px">' + c.n + '</span>').join('')
+            : '\u2014';
+          const rowId = 'sw-row-' + r.mes;
+          const detailId = 'sw-detail-' + r.mes;
+          const inicio = r.total - r.nuevos.length + r.churn.length;
+          return '<tr id="' + rowId + '" style="cursor:pointer" onclick="toggleSwDetail(\'' + r.mes + '\')">' +
+            '<td><strong>' + MESES_FULL[mi] + '</strong></td>' +
+            '<td>' + inicio + '</td>' +
+            '<td style="color:var(--green)">' + r.nuevos.length + '</td>' +
+            '<td style="color:var(--red)">' + r.churn.length + '</td>' +
+            '<td style="color:' + netoColor + '">' + netoStr + '</td>' +
+            '<td><strong>' + r.total + '</strong></td>' +
+            '<td style="color:' + pctColor + '">' + pctStr + '</td>' +
+            '<td>US$ ' + r.monto.toLocaleString() + '</td></tr>' +
+            '<tr id="' + detailId + '" style="display:none"><td colspan="8" style="padding:10px 14px;background:#f8fafc;border-bottom:2px solid var(--border)">' +
+              '<div style="display:flex;gap:20px;flex-wrap:wrap">' +
+                '<div><span style="font-size:11px;font-weight:700;color:var(--green);text-transform:uppercase;letter-spacing:0.3px">Entraron:</span><div style="margin-top:4px;display:flex;flex-wrap:wrap;gap:4px">' + nuevosHtml + '</div></div>' +
+                '<div><span style="font-size:11px;font-weight:700;color:var(--red);text-transform:uppercase;letter-spacing:0.3px">Salieron:</span><div style="margin-top:4px;display:flex;flex-wrap:wrap;gap:4px">' + churnHtml + '</div></div>' +
+              '</div>' +
+            '</td></tr>';
+        }).join('')}
+      </table></div>
+    </div>
+
+    <div class="card">
+      <h3>Clientes por tipo de licencia</h3>
+      ${groupKeys.map(lic => {
+        const clientes = groups[lic];
+        const montoTotal = clientes.reduce((s,c) => s + c.monto, 0);
+        const color = LICENCIA_COLORS[lic] || '#6b7280';
+        const groupId = 'sw-lic-' + lic.replace(/[^a-zA-Z]/g, '');
+        return '<div class="contadora-card">' +
+          '<div class="contadora-header" onclick="toggleSwLic(\'' + groupId + '\', this)">' +
+            '<div class="contadora-color" style="background:' + color + '"></div>' +
+            '<div class="contadora-info"><div class="contadora-name-row">' +
+              '<span class="contadora-title">' + lic + '</span>' +
+              '<div class="contadora-pills">' +
+                '<span class="pill pill-blue">' + clientes.length + ' cliente' + (clientes.length > 1 ? 's' : '') + '</span>' +
+                '<span class="pill pill-green">US$ ' + montoTotal + '/mes</span>' +
+              '</div>' +
+            '</div></div>' +
+            '<span class="contadora-arrow">\u25BC</span>' +
+          '</div>' +
+          '<div class="contadora-detail" id="' + groupId + '">' +
+            '<table class="detail-table"><tr><th>Cliente</th><th>Monto</th><th>Desde</th></tr>' +
+            clientes.map(c => {
+              const desde = c.periodo === '2025' ? '2025' : c.periodo.charAt(0).toUpperCase() + c.periodo.slice(1) + ' 2026';
+              return '<tr><td><strong>' + c.n + '</strong></td><td>US$ ' + c.monto + '</td><td>' + desde + '</td></tr>';
+            }).join('') +
+            '</table>' +
+          '</div>' +
+        '</div>';
+      }).join('')}
+    </div>
+  `;
+  el.innerHTML = html;
+}
+
+function toggleSwDetail(mes) {
+  const detail = document.getElementById('sw-detail-' + mes);
+  if (detail) detail.style.display = detail.style.display === 'none' ? '' : 'none';
+}
+
+function toggleSwLic(id, headerEl) {
+  const detail = document.getElementById(id);
+  const arrow = headerEl.querySelector('.contadora-arrow');
+  if (detail) {
+    detail.classList.toggle('open');
+    headerEl.classList.toggle('expanded');
+    if (arrow) arrow.classList.toggle('open');
+  }
+}
+
+function renderMonth(el, mes, d) {
+  const { idx, asig, names, maxC, growth, growthSign, growthColor, pctStr, nuevosHtml, churnHtml } = getMonthViewData(mes);
+  const sinAsignar = asig["Sin asignar"] || [];
+  const hasCap = MESES_CON_CAPACIDAD.includes(mes);
+
+  let html = `
+    <div class="stats">
+      <div class="stat"><div class="stat-label">Total ${MESES_LABEL[idx]}</div><div class="stat-value">${d.total}</div></div>
+      <div class="stat"><div class="stat-label">Crecimiento neto</div><div class="stat-value ${growthColor}">${growthSign}${growth.neto}</div>
+        <div class="stat-sub">${pctStr} vs mes anterior</div></div>
+      <div class="stat" style="min-width:180px"><div class="stat-label" style="color:var(--green)">Entraron</div>
+        <div style="margin-top:6px;display:flex;flex-wrap:wrap;gap:4px">${nuevosHtml}</div></div>
+      <div class="stat" style="min-width:180px"><div class="stat-label" style="color:var(--red)">Salieron</div>
+        <div style="margin-top:6px;display:flex;flex-wrap:wrap;gap:4px">${churnHtml}</div></div>
+      <div class="stat"><div class="stat-label">Transacciones</div><div class="stat-value">${d.txTotal.serv.toLocaleString()}</div>
+        <div class="stat-sub">Adm: ${d.txTotal.adm.toLocaleString()}</div></div>
+    </div>
+    ${d.notas?`<div class="note">${d.notas}</div>`:''}
+
+    <div class="charts-grid">
+      <div class="card"><h3>Clientes por contadora</h3><canvas id="chartMonthC"></canvas></div>
+      <div class="card"><h3>Transacciones por contadora</h3><canvas id="chartMonthTx"></canvas></div>
+    </div>
+
+    <div class="card"><h3>Detalle por contadora — ${MESES_FULL[idx]} 2026</h3>
+      <div class="table-wrap"><table>
+        <tr><th>Contadora</th><th>Clientes</th><th>Serv.</th><th>Adm</th><th>Brecha</th>${hasCap?'<th>Capacidad</th><th>Uso</th>':''}</tr>
+        ${names.map((n,ni)=>{
+          const clients=asig[n];
+          const cnt=clients.length;
+          const sv=contadoraServ(asig,n);
+          const ad=contadoraAdm(asig,n);
+          const gap=ad-sv;
+          const gapClass=gap>=0?'gap-positive':'gap-negative';
+          const col=COLORS[n]||'#94a3b8';
+          const capUtil=getUtilCapacidad(mes,n,ad);
+          const cap=getCapacidad(n);
+          const isSinAsignar=n==="Sin asignar";
+          const tooltipAttr=isSinAsignar?` title="${sinAsignar.map(c=>c.n).join(', ')}"`:'';
+          const rowId='month-detail-'+mes+'-'+ni;
+
+          let capCell='';
+          if (hasCap) {
+            if (capUtil!==null) {
+              const capColor=capUtil<=70?'var(--green)':capUtil<=90?'var(--amber)':'var(--red)';
+              capCell=`<td>${cap.toLocaleString()}</td><td>${capUtil}% <div class="utilization-bar"><div class="utilization-fill" style="width:${Math.min(capUtil,100)}%;background:${capColor}"></div></div></td>`;
+            } else {
+              capCell='<td style="color:var(--light);font-size:11px">—</td><td style="color:var(--light);font-size:11px">—</td>';
+            }
+          }
+
+          return `<tr style="cursor:pointer" onclick="toggleCargaDetail('${rowId}')"${tooltipAttr}>
+            <td><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${col};margin-right:6px;vertical-align:middle"></span><strong>${n}</strong></td>
+            <td>${cnt}</td><td>${sv.toLocaleString()}</td><td>${ad.toLocaleString()}</td>
+            <td class="${gapClass}">${gap>=0?'+':''}${gap}</td>
+            ${capCell}
+          </tr>
+          <tr id="${rowId}" style="display:none"><td colspan="${hasCap?7:5}" style="padding:0;background:#f8fafc">
+            <table style="width:100%;border-collapse:collapse">
+              ${clients.map(c=>{
+                const cGap=c.a-c.s;
+                const isNew=d.nuevos.includes(c.n);
+                return `<tr style="border-bottom:1px solid #f1f5f9">
+                  <td style="padding:6px 10px 6px 32px;font-size:13px">${isNew?'<span class="badge badge-new" style="padding:1px 5px;font-size:9px;margin-right:4px">nuevo</span>':''}${c.n}</td>
+                  <td style="padding:6px 10px;width:60px;font-size:13px;text-align:right">${c.s.toLocaleString()}</td>
+                  <td style="padding:6px 10px;width:60px;font-size:13px;text-align:right">${c.a.toLocaleString()}</td>
+                  <td style="padding:6px 10px;width:60px;font-size:13px;text-align:right" class="${cGap>=0?'gap-positive':'gap-negative'}">${cGap>=0?'+':''}${cGap}</td>
+                </tr>`;
+              }).join('')}
+              <tr style="border-top:2px solid var(--border);background:#f1f5f9">
+                <td style="padding:8px 10px 8px 32px;font-size:12px;font-weight:700">Total ${n}</td>
+                <td style="padding:8px 10px;width:60px;font-size:12px;font-weight:700;text-align:right">${sv.toLocaleString()}</td>
+                <td style="padding:8px 10px;width:60px;font-size:12px;font-weight:700;text-align:right">${ad.toLocaleString()}</td>
+                <td style="padding:8px 10px;width:60px;font-size:12px;font-weight:700;text-align:right" class="${gap>=0?'gap-positive':'gap-negative'}">${gap>=0?'+':''}${gap}</td>
+              </tr>
+            </table>
+          </td></tr>`;
+        }).join('')}
+      </table></div>
+    </div>
+  `;
+
+  el.innerHTML = html;
+
+  const cColors = names.map(n=>COLORS[n]||'#94a3b8');
+  const sinNombres = sinAsignar.map(c=>c.n).join(', ');
+
+  charts.push(new Chart(document.getElementById("chartMonthC"),{
+    type:"bar",
+    data:{labels:names, datasets:[{data:names.map(n=>asig[n].length),backgroundColor:cColors,borderRadius:4}]},
+    options:{indexAxis:'y',responsive:true,
+      plugins:{legend:{display:false},tooltip:{callbacks:{
+        afterBody:function(ctx){
+          if(ctx[0].label==='Sin asignar') return sinNombres;
+          return '';
+        }
+      }}},
+      scales:{x:{beginAtZero:true,ticks:{stepSize:1}}}
+    }
+  }));
+
+  const servData = names.map(n=>contadoraServ(asig,n));
+  const admData = names.map(n=>contadoraAdm(asig,n));
+  charts.push(new Chart(document.getElementById("chartMonthTx"),{
+    type:"bar",
+    data:{labels:names, datasets:[
+      {label:"Serv. Contratado",data:servData,backgroundColor:cColors,borderRadius:4}
+    ]},
+    options:{indexAxis:'y',responsive:true,
+      plugins:{legend:{display:false},tooltip:{callbacks:{
+        label:function(ctx){
+          const i=ctx.dataIndex;
+          return 'Contratado: '+servData[i].toLocaleString();
+        },
+        afterLabel:function(ctx){
+          const i=ctx.dataIndex;
+          let lines = ['Según Adm: '+admData[i].toLocaleString()];
+          if(names[i]==='Sin asignar') lines.push(sinNombres);
+          return lines;
+        }
+      }}},
+      scales:{x:{beginAtZero:true}}
+    }
+  }));
+}
+
+// ==================== PERFILES ====================
+
+const PERFIL_FIELDS = [
+  {section:'Servicio Contratado', fields:[
+    {id:'software', label:'Software', placeholder:'Ej: Adm Basic + FE'},
+    {id:'servicio_impl', label:'Servicio de Implementación', placeholder:'Ej: Implementación ADM + FE'},
+    {id:'servicio_recurrente', label:'Servicio Recurrente', placeholder:'Ej: Tax One'}
+  ]},
+  {section:'Fechas', fields:[
+    {id:'inicio_impl', label:'Inicio de Implementación', placeholder:'Ej: 1ro al 30 mayo'},
+    {id:'inicio_fiscal', label:'Inicio de Responsabilidades Fiscales', placeholder:'Ej: 1ro junio'}
+  ]},
+  {section:'Generales de la Empresa', fields:[
+    {id:'nombre_empresa', label:'Nombre de la Empresa', placeholder:'Ej: Centro Adorartes SRL (RST)'},
+    {id:'rnc', label:'RNC', placeholder:'Ej: 132-04965-9'},
+    {id:'tipo_empresa', label:'Tipo de Empresa', placeholder:'Ej: Liderazgo y capacitación'},
+    {id:'contacto', label:'Contacto Principal', placeholder:'Nombre del contacto'},
+    {id:'telefono', label:'Teléfono', placeholder:'Número de contacto'},
+    {id:'email', label:'Email', placeholder:'Correo electrónico'},
+    {id:'estado_contabilidad', label:'Estado del Depto. de Contabilidad', placeholder:'Ej: No tiene / Tiene contador interno'}
+  ]},
+  {section:'Asignación Interna', fields:[
+    {id:'contadora_asignada', label:'Contadora Asignada', placeholder:'Nombre de la contadora'},
+    {id:'notas', label:'Notas', placeholder:'Notas adicionales sobre el cliente'}
+  ]}
+];
+
+let perfilOpen = {};
+let perfilEditing = {};
+
+function togglePerfil(idx) {
+  perfilOpen[idx] = !perfilOpen[idx];
+  renderPerfiles(document.getElementById('content'));
+}
+
+function startEditPerfil(idx) {
+  perfilEditing[idx] = true;
+  renderPerfiles(document.getElementById('content'));
+}
+
+function cancelEditPerfil(idx) {
+  delete perfilEditing[idx];
+  renderPerfiles(document.getElementById('content'));
+}
+
+async function savePerfil(idx) {
+  PERFIL_FIELDS.forEach(sec => {
+    sec.fields.forEach(f => {
+      const input = document.getElementById('pf-'+idx+'-'+f.id);
+      if (input) PERFILES[idx][f.id] = input.value.trim();
+    });
+  });
+  await savePerfilToDB(PERFILES[idx]);
+  delete perfilEditing[idx];
+  renderPerfiles(document.getElementById('content'));
+}
+
+async function addPerfil() {
+  const nombre = prompt('Nombre del cliente:');
+  if (!nombre || !nombre.trim()) return;
+  const nuevo = { _nombre: nombre.trim() };
+  PERFIL_FIELDS.forEach(sec => sec.fields.forEach(f => { nuevo[f.id] = ''; }));
+  const newId = await insertPerfilToDB(nuevo);
+  nuevo._id = newId;
+  PERFILES.push(nuevo);
+  const idx = PERFILES.length - 1;
+  perfilOpen[idx] = true;
+  perfilEditing[idx] = true;
+  renderPerfiles(document.getElementById('content'));
+}
+
+async function deletePerfil(idx) {
+  if (!confirm('¿Seguro que quieres eliminar este perfil?')) return;
+  const perfil = PERFILES[idx];
+  if (perfil._id) {
+    await deletePerfilFromDB(perfil._id);
+  }
+  PERFILES.splice(idx, 1);
+  perfilOpen = {};
+  perfilEditing = {};
+  renderPerfiles(document.getElementById('content'));
+}
+
+function getPerfilCompleteness(p) {
+  let total = 0, filled = 0;
+  PERFIL_FIELDS.forEach(sec => sec.fields.forEach(f => {
+    total++;
+    if (p[f.id] && p[f.id].trim()) filled++;
+  }));
+  return { total, filled, pct: total > 0 ? Math.round(filled/total*100) : 0 };
+}
+
+function parseFiscalOrder(str) {
+  if (!str) return 9999;
+  var s = str.toLowerCase();
+  var meses = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+  for (var i = 0; i < meses.length; i++) {
+    if (s.indexOf(meses[i]) !== -1) return i;
+  }
+  return 9999;
+}
+
+function renderPerfiles(el) {
+  const perfiles = PERFILES;
+  const indices = perfiles.map((p, i) => i);
+  indices.sort((a, b) => parseFiscalOrder(perfiles[a].inicio_fiscal) - parseFiscalOrder(perfiles[b].inicio_fiscal));
+  let html = '';
+
+  html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">';
+  html += '<div><div style="font-size:16px;font-weight:800">Fichas de Clientes</div><div style="font-size:12px;color:var(--muted)">Perfil de cada cliente con servicio contratado, fechas y datos generales</div></div>';
+  html += '<button class="perfil-btn perfil-btn-primary" onclick="addPerfil()">+ Nuevo cliente</button>';
+  html += '</div>';
+
+  if (perfiles.length === 0) {
+    html += '<div class="perfil-empty"><p>No hay perfiles creados todavía.</p><button class="perfil-btn perfil-btn-primary" onclick="addPerfil()">Crear primer perfil</button></div>';
+    el.innerHTML = html;
+    return;
+  }
+
+  indices.forEach(idx => {
+    const p = perfiles[idx];
+    const isOpen = perfilOpen[idx] || false;
+    const isEdit = perfilEditing[idx] || false;
+    const comp = getPerfilCompleteness(p);
+    const statusColor = comp.pct === 100 ? 'var(--green)' : comp.pct > 50 ? 'var(--amber)' : 'var(--light)';
+    const statusLabel = comp.pct === 100 ? 'Completo' : comp.filled + '/' + comp.total;
+
+    html += '<div class="perfil-card">';
+    html += '<div class="perfil-header '+(isOpen?'expanded':'')+'" onclick="togglePerfil('+idx+')">';
+    html += '<div style="flex:1">';
+    html += '<div class="perfil-name">'+(p.nombre_empresa||p._nombre||'Sin nombre')+'</div>';
+    html += '</div>';
+    html += '<div style="display:flex;align-items:center;gap:10px">';
+    if (p.inicio_fiscal) {
+      html += '<div class="impl-item" style="padding:6px 12px"><div class="impl-item-label">Primer mes fiscal</div><div class="impl-item-value" style="color:var(--navy)">'+p.inicio_fiscal+'</div></div>';
+    }
+    html += '<span class="perfil-arrow '+(isOpen?'open':'')+'">▼</span>';
+    html += '</div>';
+    html += '</div>';
+
+    html += '<div class="perfil-body '+(isOpen?'open':'')+'">';
+
+    PERFIL_FIELDS.forEach(sec => {
+      html += '<div class="perfil-section">';
+      html += '<div class="perfil-section-title">'+sec.section+'</div>';
+      html += '<div class="perfil-grid">';
+      sec.fields.forEach(f => {
+        const val = p[f.id] || '';
+        html += '<div class="perfil-field">';
+        html += '<div class="perfil-field-label">'+f.label+'</div>';
+        if (isEdit) {
+          html += '<input class="perfil-field-input" id="pf-'+idx+'-'+f.id+'" value="'+val.replace(/"/g,'&quot;')+'" placeholder="'+f.placeholder+'">';
+        } else {
+          html += '<div class="perfil-field-value">'+(val || '<span style="color:var(--light);font-weight:400">—</span>')+'</div>';
+        }
+        html += '</div>';
+      });
+      html += '</div></div>';
+    });
+
+    html += '<div class="perfil-actions">';
+    if (isEdit) {
+      html += '<button class="perfil-btn perfil-btn-primary" onclick="event.stopPropagation();savePerfil('+idx+')">Guardar</button>';
+      html += '<button class="perfil-btn" onclick="event.stopPropagation();cancelEditPerfil('+idx+')">Cancelar</button>';
+      html += '<button class="perfil-btn perfil-btn-danger" style="margin-left:auto" onclick="event.stopPropagation();deletePerfil('+idx+')">Eliminar</button>';
+    } else {
+      html += '<button class="perfil-btn" onclick="event.stopPropagation();startEditPerfil('+idx+')">Editar</button>';
+    }
+    html += '</div>';
+
+    html += '</div></div>';
+  });
+
+  el.innerHTML = html;
+}
+
+// ==================== AUTH ====================
+
+async function handleLogin() {
+  const email = document.getElementById('login-email').value.trim();
+  const password = document.getElementById('login-password').value;
+  const errorEl = document.getElementById('login-error');
+  const btn = document.getElementById('btn-login');
+
+  if (!email || !password) {
+    errorEl.textContent = 'Ingresa email y contraseña.';
+    errorEl.style.display = 'block';
+    return;
+  }
+
+  btn.disabled = true;
+  btn.textContent = 'Entrando...';
+  errorEl.style.display = 'none';
+
+  const { data, error } = await sb.auth.signInWithPassword({ email, password });
+
+  if (error) {
+    errorEl.textContent = 'Email o contraseña incorrectos.';
+    errorEl.style.display = 'block';
+    btn.disabled = false;
+    btn.textContent = 'Entrar';
+    return;
+  }
+
+  await loadUserProfile();
+  showApp();
+}
+
+async function handleLogout() {
+  await sb.auth.signOut();
+  APP_userName = '';
+  document.getElementById('app-wrapper').classList.add('hidden');
+  document.getElementById('login-screen').style.display = 'flex';
+  document.getElementById('login-password').value = '';
+}
+
+async function loadUserProfile() {
+  const { data: { user } } = await sb.auth.getUser();
+  if (!user) return;
+
+  const { data: profile } = await sb.from('profiles')
+    .select('nombre, rol')
+    .eq('id', user.id)
+    .single();
+
+  if (profile) {
+    APP_userName = profile.nombre || user.email;
+  } else {
+    APP_userName = user.email;
+  }
+}
+
+async function showApp() {
+  document.getElementById('login-screen').style.display = 'none';
+  document.getElementById('app-wrapper').classList.remove('hidden');
+  document.getElementById('user-display-name').textContent = APP_userName;
+
+  // Load all data from Supabase
+  DATA = await loadData();
+  const implData = await loadImplementaciones();
+  IMPLEMENTACIONES = implData.normal;
+  SOLO_IMPLEMENTACION = implData.soloImpl;
+  IMPLEMENTACIONES_RIESGO = implData.riesgo;
+  SOFTWARE_CLIENTES = await loadSoftwareClientes();
+  PERFILES = await loadPerfilesFromDB();
+  // KPI_DATA = await loadKpiFromDB(); // Descomentar cuando se active el módulo KPI
+
+  renderAll();
+}
+
+// Allow login with Enter key
+const loginPwdEl = document.getElementById('login-password');
+const loginEmailEl = document.getElementById('login-email');
+if (loginPwdEl) loginPwdEl.addEventListener('keydown', e => { if (e.key === 'Enter') handleLogin(); });
+if (loginEmailEl) loginEmailEl.addEventListener('keydown', e => { if (e.key === 'Enter') document.getElementById('login-password').focus(); });
+
+// Embed mode detection
+const isEmbed = new URLSearchParams(window.location.search).get('embed') === '1';
+if (isEmbed) document.body.classList.add('embed');
+
+// Check if already logged in
+async function init() {
+  const { data: { session } } = await sb.auth.getSession();
+  if (session) {
+    await loadUserProfile();
+    showApp();
+  } else if (isEmbed) {
+    document.body.innerHTML = '<div style="text-align:center;padding:60px;color:#7c8495;">Sesion no encontrada. Recarga la pagina principal.</div>';
+  }
+}
+
+init();
+</script>
+</body>
+</html>

@@ -149,6 +149,10 @@ body.embed .breadcrumb-bar { display:none !important; }
 body.embed #app-wrapper { display:block !important; }
 body.embed .footer { display:none !important; }
 </style>
+
+<!-- Account One Refinado theme layer (override) -->
+<link rel="stylesheet" href="assets/theme.css">
+<script src="assets/theme.js" defer></script>
 </head>
 <body>
 
@@ -156,13 +160,13 @@ body.embed .footer { display:none !important; }
 <div class="login-overlay" id="login-screen">
   <div class="login-box">
     <h2>Account One</h2>
-    <p class="subtitle">Inicia sesion para continuar</p>
+    <p class="subtitle">Inicia sesión para continuar</p>
     <div class="field">
       <label>Email</label>
       <input type="email" id="login-email" placeholder="tu@accountone.do">
     </div>
     <div class="field">
-      <label>Contrasena</label>
+      <label>Contraseña</label>
       <input type="password" id="login-password" placeholder="••••••••">
     </div>
     <button class="login-btn" id="btn-login" onclick="handleLogin()">Entrar</button>
@@ -203,17 +207,22 @@ body.embed .footer { display:none !important; }
 var SUPABASE_URL = 'https://ouetusstqvpyjeycfdio.supabase.co';
 var SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im91ZXR1c3N0cXZweWpleWNmZGlvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY2NDcwNzksImV4cCI6MjA5MjIyMzA3OX0.Bsys947JLGEuf3zdBF2GPFdbJVJtaZdC4YEmyBU5Bow';
 var sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+var ANIO = new Date().getFullYear();
 
 var MESES = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
 var MESES_LABEL = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
 var MESES_FULL = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
 
-var EXCLUIDAS = ['Karina', 'Milka', 'Yolenny'];
+var EXCLUIDAS = []; // Se carga desde tabla equipo
 function isExcluida(name) {
   for (var i = 0; i < EXCLUIDAS.length; i++) {
     if (name.indexOf(EXCLUIDAS[i]) === 0) return true;
   }
   return false;
+}
+async function loadExcluidas() {
+  var res = await sb.from('equipo').select('nombre').eq('excluida_checklist', true);
+  if (res.data) EXCLUIDAS = res.data.map(function(e) { return e.nombre; });
 }
 
 // ─── 23 items del checklist, ordenados por fecha cronologica ───
@@ -226,22 +235,22 @@ var ITEM_GROUPS = [
   { label: 'Proveedores informales — Presentacion dia 10', from: 7, to: 12 },
   { label: 'Anticipo — Presentacion dia 15', from: 13, to: 13 },
   { label: 'ITBIS — Presentacion dia 20', from: 14, to: 18 },
-  { label: 'Presentacion mensual', from: 19, to: 23 }
+  { label: 'Presentación mensual', from: 19, to: 23 }
 ];
 
 var ITEMS = [
   // ── Nomina → TSS / IR-3 (todo deadline dia 3, firma dia 28) ──
   { id:'solicitud_nomina',        n:1,  label:'Solicitud de Nomina',                       tipoCss:'tipo-nomina',   impuesto:'TSS / IR-3',    dia:3,  mesRel:1 },
-  { id:'recepcion_nomina',        n:2,  label:'Recepcion de Nomina',                        tipoCss:'tipo-nomina',   impuesto:'TSS / IR-3',    dia:3,  mesRel:1 },
+  { id:'recepcion_nomina',        n:2,  label:'Recepción de Nomina',                        tipoCss:'tipo-nomina',   impuesto:'TSS / IR-3',    dia:3,  mesRel:1 },
   { id:'registro_nomina',         n:3,  label:'Registro de Nomina',                         tipoCss:'tipo-nomina',   impuesto:'TSS / IR-3',    dia:3,  mesRel:1 },
   { id:'informar_impuestos',      n:4,  label:'Informar a Impuestos (via Trello)',           tipoCss:'tipo-nomina',   impuesto:'TSS / IR-3',    dia:3,  mesRel:1 },
   { id:'autorizacion_tss_nomina', n:5,  label:'Subir autorizacion de TSS al cliente',       tipoCss:'tipo-nomina',   impuesto:'TSS / IR-3',    dia:3,  mesRel:1 },
   { id:'autorizacion_tss',        n:6,  label:'Subir autorizacion al cliente (TSS)',        tipoCss:'tipo-tss',      impuesto:'TSS / IR-3',    dia:3,  mesRel:1 },
-  { id:'autorizacion_ir3',        n:7,  label:'Subir Autorizacion de IR-3 al cliente',      tipoCss:'tipo-ir3',      impuesto:'TSS / IR-3',    dia:3,  mesRel:1 },
+  { id:'autorizacion_ir3',        n:7,  label:'Subir Autorización de IR-3 al cliente',      tipoCss:'tipo-ir3',      impuesto:'TSS / IR-3',    dia:3,  mesRel:1 },
 
   // ── Proveedores informales (deadline dia 10, firma dia 5) ──
   { id:'solicitar_proveedores',   n:8,  label:'Solicitar Proveedores Informales',           tipoCss:'tipo-ir17',     impuesto:'Proveedores',   dia:10, mesRel:1 },
-  { id:'recepcion_proveedores',   n:9,  label:'Recepcion de Proveedores Informales',        tipoCss:'tipo-ir17',     impuesto:'Proveedores',   dia:10, mesRel:1 },
+  { id:'recepcion_proveedores',   n:9,  label:'Recepción de Proveedores Informales',        tipoCss:'tipo-ir17',     impuesto:'Proveedores',   dia:10, mesRel:1 },
   { id:'registrar_proveedores',   n:10, label:'Registrar gastos de Proveedores Informales', tipoCss:'tipo-ir17',     impuesto:'Proveedores',   dia:10, mesRel:1 },
   { id:'borrador_ir17',           n:11, label:'Realizar Borrador de IR-17',                 tipoCss:'tipo-ir17',     impuesto:'Proveedores',   dia:10, mesRel:1 },
   { id:'enviar_ir17',             n:12, label:'Enviar borrador de IR-17 al cliente',        tipoCss:'tipo-ir17',     impuesto:'Proveedores',   dia:10, mesRel:1 },
@@ -257,12 +266,12 @@ var ITEMS = [
   { id:'borrador_itbis',          n:18, label:'Realizar Borrador ITBIS',                    tipoCss:'tipo-itbis',    impuesto:'ITBIS',         dia:20, mesRel:1 },
   { id:'enviar_itbis',            n:19, label:'Enviar autorizacion de pago ITBIS',          tipoCss:'tipo-itbis',    impuesto:'ITBIS',         dia:20, mesRel:1 },
 
-  // ── Presentacion mensual (registro gastos dia 5, lo demas dia 30) ──
-  { id:'registros_realizados',    n:20, label:'Registrar gastos',                           tipoCss:'tipo-cierre',   impuesto:'Presentacion',  dia:5,  mesRel:1, firmaOffset:4 },
-  { id:'presupuesto',             n:21, label:'Realizar Presupuesto y ejecucion',           tipoCss:'tipo-cierre',   impuesto:'Presentacion',  dia:30, mesRel:1 },
-  { id:'proyeccion_impuestos',    n:22, label:'Realizar Proyeccion de impuestos',           tipoCss:'tipo-cierre',   impuesto:'Presentacion',  dia:30, mesRel:1 },
-  { id:'resumen_declaracion',     n:23, label:'Realizar resumen de declaracion del mes',    tipoCss:'tipo-cierre',   impuesto:'Presentacion',  dia:30, mesRel:1 },
-  { id:'video_reunion',           n:24, label:'Grabar video o reunion con cliente',         tipoCss:'tipo-cierre',   impuesto:'Presentacion',  dia:30, mesRel:1 }
+  // ── Presentación mensual (registro gastos dia 5, lo demas dia 30) ──
+  { id:'registros_realizados',    n:20, label:'Registrar gastos',                           tipoCss:'tipo-cierre',   impuesto:'Presentación',  dia:5,  mesRel:1, firmaOffset:4 },
+  { id:'presupuesto',             n:21, label:'Realizar Presupuesto y ejecucion',           tipoCss:'tipo-cierre',   impuesto:'Presentación',  dia:30, mesRel:1 },
+  { id:'proyeccion_impuestos',    n:22, label:'Realizar Proyección de impuestos',           tipoCss:'tipo-cierre',   impuesto:'Presentación',  dia:30, mesRel:1 },
+  { id:'resumen_declaracion',     n:23, label:'Realizar resumen de declaracion del mes',    tipoCss:'tipo-cierre',   impuesto:'Presentación',  dia:30, mesRel:1 },
+  { id:'video_reunion',           n:24, label:'Grabar video o reunión con cliente',         tipoCss:'tipo-cierre',   impuesto:'Presentación',  dia:30, mesRel:1 }
 ];
 
 // ==================== HELPERS ====================
@@ -282,7 +291,7 @@ function formatDateShort(dateStr) {
 
 function getDeadlineDate(mesIdx, item) {
   var targetMonth = mesIdx + item.mesRel;
-  var targetYear = 2026;
+  var targetYear = ANIO;
   if (targetMonth > 11) { targetMonth -= 12; targetYear++; }
   var lastDay = new Date(targetYear, targetMonth + 1, 0).getDate();
   var dia = Math.min(item.dia, lastDay);
@@ -332,7 +341,7 @@ function getCurrentMonth() {
   return MESES[m];
 }
 
-function esc(s) { return s.replace(/'/g, "\\'"); }
+function esc(s) { return (s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/'/g,'&#39;'); }
 
 // ==================== PERMISOS POR GRUPO ====================
 var misPermisos = {};
@@ -417,7 +426,7 @@ function getClientsForContadora(contadora, mes) {
 }
 
 async function loadChecklistData() {
-  var result = await sb.from('checklist_contadores').select('*').eq('anio', 2026);
+  var result = await sb.from('checklist_contadores').select('*').eq('anio', ANIO);
   if (result.error) { console.error('Error cargando checklist:', result.error); return; }
   CHECKLIST_DATA = {};
   (result.data || []).forEach(function(r) {
@@ -462,7 +471,7 @@ async function saveChecklist(contadora, cliente, mes) {
       if (res.error) { console.error('Error guardando:', res.error); alert('Error guardando. Verifica tus permisos.'); }
     } else {
       var res = await sb.from('checklist_contadores')
-        .insert({ contadora: contadora, cliente: cliente, mes: mes, anio: 2026, datos: entry.datos })
+        .insert({ contadora: contadora, cliente: cliente, mes: mes, anio: ANIO, datos: entry.datos })
         .select();
       if (res.error) { console.error('Error insertando:', res.error); alert('Error guardando. Verifica tus permisos.'); }
       else if (res.data && res.data[0]) entry._id = res.data[0].id;
@@ -479,10 +488,10 @@ async function handleLogin() {
   var password = document.getElementById('login-password').value;
   var errorEl = document.getElementById('login-error');
   var btn = document.getElementById('btn-login');
-  if (!email || !password) { errorEl.textContent = 'Ingresa email y contrasena.'; errorEl.style.display = 'block'; return; }
+  if (!email || !password) { errorEl.textContent = 'Ingresa email y contraseña.'; errorEl.style.display = 'block'; return; }
   btn.disabled = true; btn.textContent = 'Entrando...'; errorEl.style.display = 'none';
   var result = await sb.auth.signInWithPassword({ email: email, password: password });
-  if (result.error) { errorEl.textContent = 'Email o contrasena incorrectos.'; errorEl.style.display = 'block'; btn.disabled = false; btn.textContent = 'Entrar'; return; }
+  if (result.error) { errorEl.textContent = 'Email o contraseña incorrectos.'; errorEl.style.display = 'block'; btn.disabled = false; btn.textContent = 'Entrar'; return; }
   await loadUserProfile();
   await loadMisPermisos();
   await showApp();
@@ -662,7 +671,7 @@ function renderDetail(el) {
   html += '<div class="detail-header">';
   html += '<button class="detail-back" onclick="backToClients()">&#8592; Volver</button>';
   html += '<div><div class="detail-title">' + cliente + '</div>';
-  html += '<div class="detail-sub">' + contadora + ' · ' + MESES_FULL[mesIdx] + ' 2026</div></div>';
+  html += '<div class="detail-sub">' + contadora + ' · ' + MESES_FULL[mesIdx] + ' ' + ANIO + '</div></div>';
   html += '</div>';
 
   // Progress
@@ -769,7 +778,7 @@ async function showApp() {
   document.getElementById('app-wrapper').classList.remove('hidden');
   document.getElementById('user-display-name').textContent = userName;
 
-  await Promise.all([loadAsignaciones(), loadChecklistData()]);
+  await Promise.all([loadExcluidas(), loadAsignaciones(), loadChecklistData()]);
 
   // Contadora: auto-filter to their name
   if (!tengoPermiso('contabilidad', 'checklist', 'edicion')) {
@@ -789,7 +798,7 @@ async function init() {
     await loadMisPermisos();
     await showApp();
   } else if (isEmbed) {
-    document.body.innerHTML = '<div style="text-align:center;padding:60px;color:#7c8495;">Sesion no encontrada. Recarga la pagina principal.</div>';
+    document.body.innerHTML = '<div style="text-align:center;padding:60px;color:#7c8495;">Sesión no encontrada. Recarga la página principal.</div>';
   }
 }
 

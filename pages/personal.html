@@ -8,8 +8,8 @@
 <style>
 /* ==================== DESIGN SYSTEM ==================== */
 :root {
-  --navy: #1e3a5f;
-  --blue: #3b82f6;
+  --navy: #1a2332;
+  --blue: #4361ee;
   --green: #10b981;
   --red: #ef4444;
   --amber: #f59e0b;
@@ -33,7 +33,7 @@ body {
 
 /* ==================== LAYOUT ==================== */
 .header {
-  background: linear-gradient(135deg, #1e3a5f, #2d4a7a);
+  background: var(--navy);
   color: white;
   padding: 24px;
 }
@@ -58,24 +58,25 @@ body.embed #app-wrapper { display: block !important; }
 .login-overlay {
   position: fixed;
   top: 0; left: 0; right: 0; bottom: 0;
-  background: linear-gradient(135deg, #1e3a5f 0%, #2d4a7a 50%, #1e3a5f 100%);
+  background: var(--navy);
   display: flex; align-items: center; justify-content: center;
-  z-index: 1000;
+  z-index: 3000;
 }
 .login-box {
   background: white; border-radius: 16px; padding: 40px;
   width: 100%; max-width: 400px;
   box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+  border: 1px solid var(--border);
 }
 .login-box h2 { font-size: 1.4rem; color: var(--navy); margin-bottom: 4px; }
 .login-box .subtitle { font-size: 0.85rem; color: var(--muted); margin-bottom: 24px; }
 .login-box .field { margin-bottom: 16px; }
-.login-box .field label { display: block; font-size: 0.8rem; font-weight: 600; color: var(--text); margin-bottom: 6px; }
+.login-box .field label { display: block; font-size: 0.8rem; font-weight: 600; color: var(--muted); margin-bottom: 6px; }
 .login-box .field input {
   width: 100%; padding: 10px 14px; border: 1px solid var(--border);
   border-radius: 8px; font-size: 0.95rem; font-family: inherit; transition: border-color 0.2s;
 }
-.login-box .field input:focus { outline: none; border-color: var(--blue); box-shadow: 0 0 0 3px rgba(59,130,246,0.1); }
+.login-box .field input:focus { outline: none; border-color: var(--blue); box-shadow: 0 0 0 3px rgba(67,97,238,0.1); }
 .login-btn {
   width: 100%; padding: 12px; background: var(--navy); color: white; border: none;
   border-radius: 8px; font-size: 0.95rem; font-weight: 600; cursor: pointer;
@@ -168,7 +169,7 @@ body.embed #app-wrapper { display: block !important; }
 .modal-overlay {
   position: fixed; top: 0; left: 0; right: 0; bottom: 0;
   background: rgba(0,0,0,0.4); display: flex; align-items: center; justify-content: center;
-  z-index: 500;
+  z-index: 2000;
 }
 .modal-box {
   background: white; border-radius: 12px; padding: 28px; width: 100%; max-width: 440px;
@@ -272,9 +273,49 @@ body.embed #app-wrapper { display: block !important; }
 .copy-toast {
   position: fixed; bottom: 24px; right: 24px; background: var(--navy); color: white;
   padding: 10px 20px; border-radius: 8px; font-size: 0.85rem; font-weight: 600;
-  z-index: 999; opacity: 0; transition: opacity 0.3s; pointer-events: none;
+  z-index: 1000; opacity: 0; transition: opacity 0.3s; pointer-events: none;
 }
 .copy-toast.show { opacity: 1; }
+
+/* ─── Retroalimentación ─── */
+.retro-stats { display:grid; grid-template-columns:repeat(auto-fill, minmax(140px, 1fr)); gap:12px; margin-bottom:20px; }
+.retro-stat { background:var(--card); border:1px solid var(--border); border-radius:12px; padding:16px; text-align:center; }
+.retro-stat-count { font-size:1.5rem; font-weight:800; color:var(--navy); }
+.retro-stat-label { font-size:0.72rem; color:var(--muted); text-transform:uppercase; letter-spacing:0.5px; margin-top:4px; }
+.retro-toolbar { display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; flex-wrap:wrap; gap:8px; }
+.retro-filters { display:flex; gap:8px; flex-wrap:wrap; }
+.retro-filters select { padding:6px 10px; border:1px solid var(--border); border-radius:8px; font-size:0.8rem; font-family:inherit; background:white; }
+.retro-table { width:100%; border-collapse:collapse; font-size:0.82rem; }
+.retro-table th { text-align:left; font-size:0.68rem; text-transform:uppercase; letter-spacing:0.5px; color:var(--muted); padding:8px 10px; border-bottom:2px solid #e5e7eb; font-weight:600; }
+.retro-table td { padding:10px; border-bottom:1px solid #f1f5f9; }
+.retro-table tr:hover td { background:#fafbfc; }
+.retro-badge { font-size:0.68rem; font-weight:600; padding:3px 8px; border-radius:6px; }
+.retro-badge.queja_cliente { background:#fee2e2; color:#991b1b; }
+.retro-badge.error_operativo { background:#fef3c7; color:#92400e; }
+.retro-badge.feedback { background:#dbeafe; color:#1e40af; }
+.retro-sev { font-size:0.72rem; font-weight:600; }
+.retro-sev.alta { color:var(--red); }
+.retro-sev.media { color:var(--amber); }
+.retro-sev.baja { color:var(--green); }
+.retro-estado { font-size:0.68rem; font-weight:600; padding:3px 8px; border-radius:6px; }
+.retro-estado.abierto { background:#fee2e2; color:#991b1b; }
+.retro-estado.en_proceso { background:#fef3c7; color:#92400e; }
+.retro-estado.cerrado { background:#d1fae5; color:#065f46; }
+.retro-desc { max-width:250px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+</style>
+
+<!-- Account One Refinado theme layer (override) -->
+<link rel="stylesheet" href="assets/theme.css">
+<script src="assets/theme.js" defer></script>
+<!-- Quill: editor ligero para casos de retroalimentación -->
+<link href="https://cdn.quilljs.com/1.3.7/quill.snow.css" rel="stylesheet">
+<script src="https://cdn.quilljs.com/1.3.7/quill.min.js"></script>
+<style>
+  .retro-quill { background:#fff; }
+  .retro-quill .ql-container { min-height:80px; font-size:0.9rem; font-family:inherit; border-bottom-left-radius:8px; border-bottom-right-radius:8px; }
+  .retro-quill .ql-toolbar { border-top-left-radius:8px; border-top-right-radius:8px; }
+  .retro-read-body ul { margin:6px 0; padding-left:22px; }
+  .retro-read-body p { margin:0 0 8px; }
 </style>
 </head>
 <body>
@@ -292,7 +333,7 @@ body.embed #app-wrapper { display: block !important; }
       <label>Contraseña</label>
       <input type="password" id="login-pass" placeholder="••••••••">
     </div>
-    <button class="login-btn" id="btn-login" onclick="doLogin()">Iniciar sesión</button>
+    <button class="login-btn" id="btn-login" onclick="doLogin()">Entrar</button>
     <div class="login-error" id="login-error"></div>
   </div>
 </div>
@@ -314,11 +355,21 @@ body.embed #app-wrapper { display: block !important; }
     <span class="current">Personal</span>
   </div>
 
+
+  <div class="mod-header">
+    <div>
+      <div class="mod-header-eye">Personal</div>
+      <h1 class="mod-header-title">Equipo y reconocimiento</h1>
+      <p class="mod-header-sub">4 contadoras · 2 analistas · Puntos Wow y bonos</p>
+    </div>
+  </div>
+
   <div class="main-tabs">
     <button class="main-tab" data-tab="organigrama" onclick="switchTab('organigrama')">Organigrama</button>
     <button class="main-tab" data-tab="directorio" onclick="switchTab('directorio')">Directorio</button>
     <button class="main-tab active" data-tab="tablero" onclick="switchTab('tablero')">Wow Board</button>
     <button class="main-tab" data-tab="historial" onclick="switchTab('historial')">Historial</button>
+    <button class="main-tab" data-tab="retro" onclick="switchTab('retro')">Retroalimentación</button>
   </div>
 
   <div class="container">
@@ -326,6 +377,7 @@ body.embed #app-wrapper { display: block !important; }
     <div id="tab-directorio" class="tab-content"></div>
     <div id="tab-tablero" class="tab-content active"></div>
     <div id="tab-historial" class="tab-content"></div>
+    <div id="tab-retro" class="tab-content"></div>
   </div>
 </div>
 
@@ -374,6 +426,65 @@ body.embed #app-wrapper { display: block !important; }
   </div>
 </div>
 
+<!-- MODAL: Retroalimentación -->
+<div class="modal-overlay hidden" id="modal-retro">
+  <div class="modal-box" style="max-width:500px;max-height:90vh;overflow-y:auto">
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;position:sticky;top:0;background:#fff;z-index:5;padding-bottom:8px;margin-bottom:4px">
+      <h3 id="retro-modal-title" style="margin:0">Registrar caso</h3>
+      <button type="button" onclick="closeRetroModal()" aria-label="Cerrar" title="Cerrar" style="border:none;background:none;font-size:1.7rem;line-height:1;cursor:pointer;color:var(--muted);padding:0 2px">&times;</button>
+    </div>
+    <input type="hidden" id="retro-edit-id">
+    <div class="field">
+      <label>Empleado</label>
+      <select id="retro-empleado"></select>
+    </div>
+    <div class="field">
+      <label>Tipo</label>
+      <select id="retro-tipo">
+        <option value="queja_cliente">Queja de cliente</option>
+        <option value="error_operativo">Error operativo</option>
+        <option value="feedback">Feedback</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>Cliente (opcional)</label>
+      <input type="text" id="retro-cliente" placeholder="Nombre del cliente">
+    </div>
+    <div class="field">
+      <label>Fecha del incidente</label>
+      <input type="date" id="retro-fecha">
+    </div>
+    <div class="field">
+      <label>Severidad</label>
+      <select id="retro-severidad">
+        <option value="baja">Baja</option>
+        <option value="media">Media</option>
+        <option value="alta">Alta</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>Descripción</label>
+      <div id="retro-descripcion-editor" class="retro-quill"></div>
+    </div>
+    <div class="field">
+      <label>Acción tomada</label>
+      <div id="retro-accion-editor" class="retro-quill"></div>
+    </div>
+    <div class="field">
+      <label>Estado</label>
+      <select id="retro-estado">
+        <option value="abierto">Abierto</option>
+        <option value="en_proceso">En proceso</option>
+        <option value="cerrado">Cerrado</option>
+      </select>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-modal secondary" onclick="closeRetroModal()">Cancelar</button>
+      <button class="btn-modal" onclick="saveRetroCase()">Guardar</button>
+    </div>
+  </div>
+</div>
+
 <div class="copy-toast" id="copy-toast"></div>
 
 <script>
@@ -390,60 +501,51 @@ const PAGO_MONTO = 3000;
 
 // Lista del equipo elegible para Wow Points, organizada por departamento.
 // Para agregar o quitar personas, editar estos arrays.
-const TEAM_DEPARTMENTS = [
-  { name: 'Comercial', members: ['Felix Rosa', 'Naomi Villar'] },
-  { name: 'Implementación', members: ['Claudia Carrion', 'Lissette Peña'] },
-  { name: 'Impuestos', members: ['Karina Sánchez', 'Lovelis Guzman'] },
-  { name: 'Contadoras', members: ['Beliani Brito', 'Yessica Diaz', 'Victoria Vasquez', 'Taina Ramirez', 'Morelia Matos'] }
-];
-const TEAM_ROSTER = TEAM_DEPARTMENTS.reduce(function(arr, dept) { return arr.concat(dept.members); }, []);
+// Colores por departamento (fijos, para organigrama)
+const DEPT_COLORS_MAP = {
+  'Dirección': '#1e3a5f',
+  'Comercial': '#3b82f6',
+  'Implementación': '#8b5cf6',
+  'Impuestos': '#f59e0b',
+  'Contabilidad': '#10b981'
+};
 
-// Directorio completo del equipo (para organigrama y directorio)
-const TEAM_DIRECTORY = [
-  {
-    name: 'Dirección',
-    color: '#1e3a5f',
-    members: [
-      { nombre: 'Felix Rosa', cargo: 'Director', email: 'frosa@accountone.do' }
-    ]
-  },
-  {
-    name: 'Comercial',
-    color: '#3b82f6',
-    members: [
-      { nombre: 'Naomi Villar', cargo: 'Business Developer', email: 'nvillar@accountone.do' }
-    ]
-  },
-  {
-    name: 'Implementación',
-    color: '#8b5cf6',
-    members: [
-      { nombre: 'Lissette Peña', cargo: 'Implementadora 1', email: 'lpena@accountone.do' },
-      { nombre: 'Claudia Carrion', cargo: 'Implementadora 2', email: 'ccarrion@accountone.do' }
-    ]
-  },
-  {
-    name: 'Impuestos',
-    color: '#f59e0b',
-    members: [
-      { nombre: 'Karina Sánchez', cargo: 'Subgerente de impuestos', email: 'ksanchez@accountone.do' },
-      { nombre: 'Lovelis Guzman', cargo: 'Analista de impuestos 1', email: 'lguzman@accountone.do' },
-      { nombre: 'Doriluz Crisóstomo', cargo: 'Analista de impuestos 2', email: 'dcrisostomo@accountone.do', freelance: true }
-    ]
-  },
-  {
-    name: 'Contabilidad',
-    color: '#10b981',
-    members: [
-      { nombre: 'Beliani Brito', cargo: 'Contadora 1', email: 'bbrito@accountone.do' },
-      { nombre: 'Yessica Diaz', cargo: 'Contadora 1', email: 'ydiaz@accountone.do' },
-      { nombre: 'Victoria Vasquez', cargo: 'Contadora 1', email: 'vvasquez@accountone.do' },
-      { nombre: 'Taina Ramirez', cargo: 'Contadora 2', email: 'tramirez@accountone.do' },
-      { nombre: 'Morelia Matos', cargo: 'Contadora 2', email: 'mmatos@accountone.do' },
-      { nombre: 'Milka Paulino', cargo: 'Contadora 2', email: 'mpaulino@accountone.do', freelance: true }
-    ]
-  }
-];
+var TEAM_DEPARTMENTS = []; // Se carga desde tabla equipo
+var TEAM_ROSTER = [];
+var TEAM_DIRECTORY = [];
+
+async function loadEquipoPersonal() {
+  var res = await sb.from('equipo').select('nombre, apellido, email, cargo, departamento, dedicacion, activo, excluida_wowboard').eq('activo', true).order('departamento').order('nombre');
+  if (!res.data) return;
+
+  // Construir TEAM_DEPARTMENTS (sin Dirección ni excluidos, para wow board)
+  var deptMap = {};
+  res.data.forEach(function(e) {
+    if (e.departamento === 'Dirección') return;
+    if (e.excluida_wowboard) return;
+    var deptName = e.departamento === 'Contabilidad' ? 'Contadoras' : e.departamento;
+    if (!deptMap[deptName]) deptMap[deptName] = [];
+    deptMap[deptName].push(e.nombre + ' ' + e.apellido);
+  });
+  TEAM_DEPARTMENTS = Object.keys(deptMap).map(function(name) {
+    return { name: name, members: deptMap[name] };
+  });
+  TEAM_ROSTER = TEAM_DEPARTMENTS.reduce(function(arr, dept) { return arr.concat(dept.members); }, []);
+
+  // Construir TEAM_DIRECTORY (con Dirección, para organigrama)
+  var dirMap = {};
+  var deptOrder = ['Dirección', 'Comercial', 'Implementación', 'Impuestos', 'Contabilidad'];
+  deptOrder.forEach(function(d) { dirMap[d] = []; });
+  res.data.forEach(function(e) {
+    if (!dirMap[e.departamento]) dirMap[e.departamento] = [];
+    var member = { nombre: e.nombre + ' ' + e.apellido, cargo: e.cargo || '', email: e.email || '' };
+    if (e.dedicacion === 'freelance') member.freelance = true;
+    dirMap[e.departamento].push(member);
+  });
+  TEAM_DIRECTORY = deptOrder.filter(function(d) { return dirMap[d].length > 0; }).map(function(d) {
+    return { name: d, color: DEPT_COLORS_MAP[d] || '#6b7280', members: dirMap[d] };
+  });
+}
 
 // ==================== PERMISOS POR GRUPO ====================
 
@@ -486,7 +588,9 @@ var APP = {
   userId: null,
   activeTab: 'tablero',
   wowData: [],      // registros de wow_points
-  payTarget: null    // empleado (nombre) para modal de pago
+  payTarget: null,   // empleado (nombre) para modal de pago
+  retroData: [],     // registros de retroalimentacion
+  retroFilter: { empleado: '', tipo: '', severidad: '', estado: '' }
 };
 
 // ==================== AUTH ====================
@@ -542,9 +646,13 @@ function showApp() {
 
 // ==================== DATA ====================
 async function startApp() {
-  // Cargar todos los registros de wow_points
-  var { data: wow } = await sb.from('wow_points').select('*').order('created_at', { ascending: false });
-  APP.wowData = wow || [];
+  // Cargar wow_points y retroalimentacion en paralelo
+  var [wowRes, retroRes] = await Promise.all([
+    sb.from('wow_points').select('*').order('created_at', { ascending: false }),
+    sb.from('retroalimentacion').select('*').order('created_at', { ascending: false })
+  ]);
+  APP.wowData = wowRes.data || [];
+  APP.retroData = retroRes.data || [];
 
   render();
 }
@@ -563,7 +671,8 @@ function getEmployeeStats() {
       puntosCiclo: 0,
       totalHistorico: 0,
       pagos: 0,
-      ultimoWow: null
+      ultimoWow: null,
+      fechaListo: null
     };
   });
 
@@ -579,9 +688,12 @@ function getEmployeeStats() {
     if (row.tipo === 'pago') {
       s.puntosCiclo = 0;
       s.pagos++;
+      s.fechaListo = null;
     } else {
+      var antesCiclo = s.puntosCiclo;
       s.puntosCiclo += row.puntos;
       s.totalHistorico += row.puntos;
+      if (antesCiclo < PAGO_THRESHOLD && s.puntosCiclo >= PAGO_THRESHOLD) s.fechaListo = row.created_at;
     }
   });
 
@@ -603,6 +715,7 @@ function render() {
   renderDirectorio();
   renderTablero();
   renderHistorial();
+  renderRetro();
 }
 
 function switchTab(tab) {
@@ -646,6 +759,21 @@ function renderTablero() {
   html += '<div class="stat-card"><div class="label">Listos para cobrar</div><div class="value green">' + proxPago + '</div></div>';
   html += '<div class="stat-card"><div class="label">Bonos pagados</div><div class="value amber">' + totalPagos + '</div></div>';
   html += '</div>';
+
+  // Listos para pago de bono (≥ umbral) — destacado arriba
+  var listos = empList.filter(function(e) { return e.puntosCiclo >= PAGO_THRESHOLD; });
+  if (listos.length > 0) {
+    html += '<div style="background:#ecfdf5;border:1px solid #6ee7b7;border-radius:12px;padding:16px;margin-bottom:20px">';
+    html += '<h3 style="margin:0 0 10px;color:#047857;font-size:0.95rem">💵 Listos para pago de bono (' + listos.length + ')</h3>';
+    listos.forEach(function(e) {
+      var fl = e.fechaListo ? new Date(e.fechaListo).toLocaleDateString('es-DO', { day: '2-digit', month: 'short', year: 'numeric' }) : '—';
+      html += '<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;background:#fff;border-radius:8px;padding:10px 12px;margin-bottom:8px;flex-wrap:wrap">';
+      html += '<div><strong>' + esc(e.nombre) + '</strong> · ' + e.puntosCiclo + ' pts · <span style="color:var(--muted)">listo desde ' + fl + '</span></div>';
+      if (canManage()) html += '<button class="btn-sm btn-pay" onclick="openPayModal(\'' + esc(e.nombre).replace(/'/g, "\\'") + '\',' + e.puntosCiclo + ',\'' + (e.fechaListo || '') + '\')">Pagar bono RD$' + PAGO_MONTO.toLocaleString() + '</button>';
+      html += '</div>';
+    });
+    html += '</div>';
+  }
 
   // Botón agregar (solo admin/comercial)
   if (canManage()) {
@@ -691,7 +819,7 @@ function renderTablero() {
           html += '<div class="emp-actions">';
           html += '<button class="btn-sm btn-add-pts" onclick="openAddModal(\'' + esc(emp.nombre).replace(/'/g, "\\'") + '\')">+ Puntos</button>';
           if (emp.puntosCiclo >= PAGO_THRESHOLD) {
-            html += '<button class="btn-sm btn-pay" onclick="openPayModal(\'' + esc(emp.nombre).replace(/'/g, "\\'") + '\',' + emp.puntosCiclo + ')">Pagar bono</button>';
+            html += '<button class="btn-sm btn-pay" onclick="openPayModal(\'' + esc(emp.nombre).replace(/'/g, "\\'") + '\',' + emp.puntosCiclo + ',\'' + (emp.fechaListo || '') + '\')">Pagar bono</button>';
           }
           html += '</div>';
         }
@@ -733,7 +861,7 @@ function renderHistorial() {
     html += '<div class="empty-state"><div class="icon">📋</div><p>No hay registros todavía.</p></div>';
   } else {
     html += '<table class="wow-table">';
-    html += '<thead><tr><th>Fecha</th><th>Empleado</th><th>Tipo</th><th>Puntos</th><th>Reconocido por</th><th>Motivo</th>' + (canManage() ? '<th style="text-align:center"></th>' : '') + '</tr></thead>';
+    html += '<thead><tr><th>Fecha</th><th>Empleado</th><th>Tipo</th><th>Puntos</th><th>Reconocido por</th><th>Motivo</th>' + (canManage() ? '<th></th>' : '') + '</tr></thead>';
     html += '<tbody>';
     records.forEach(function(row) {
       var fecha = new Date(row.created_at);
@@ -748,13 +876,14 @@ function renderHistorial() {
       html += '<td style="font-weight:600;">' + esc(row.empleado) + '</td>';
       html += '<td>' + tipoBadge + '</td>';
       html += '<td style="font-weight:700;">' + pts + '</td>';
+      var motivoCell = esc(row.motivo || '-');
+      if (row.tipo === 'pago' && row.fecha_listo) {
+        motivoCell += ' <span style="color:var(--muted);font-size:0.8rem">(listo desde ' + new Date(row.fecha_listo).toLocaleDateString('es-DO', { day: '2-digit', month: 'short', year: 'numeric' }) + ')</span>';
+      }
       html += '<td>' + esc(row.otorgado_por || '-') + '</td>';
-      html += '<td>' + esc(row.motivo || '-') + '</td>';
+      html += '<td>' + motivoCell + '</td>';
       if (canManage()) {
-        html += '<td style="text-align:center;white-space:nowrap">';
-        html += '<button style="background:#eff6ff;color:var(--blue);border:1px solid #dbeafe;border-radius:6px;padding:3px 8px;font-size:0.68rem;cursor:pointer;font-family:inherit;margin-right:2px" onclick="wowEditarPunto(\'' + row.id + '\')" title="Editar">✎</button>';
-        html += '<button style="background:#fef2f2;color:var(--red);border:1px solid #fecaca;border-radius:6px;padding:3px 8px;font-size:0.68rem;cursor:pointer;font-family:inherit" onclick="wowEliminarPunto(\'' + row.id + '\')" title="Eliminar">✗</button>';
-        html += '</td>';
+        html += '<td style="white-space:nowrap"><button style="padding:3px 8px;border:1px solid var(--border);border-radius:6px;background:white;font-size:0.72rem;cursor:pointer;color:var(--blue)" onclick="editWowEntry(\'' + row.id + '\')">Editar</button></td>';
       }
       html += '</tr>';
     });
@@ -940,8 +1069,9 @@ async function savePoints() {
   render();
 }
 
-function openPayModal(empName, currentPoints) {
+function openPayModal(empName, currentPoints, fechaListo) {
   APP.payTarget = empName;
+  APP.payFechaListo = fechaListo || null;
   document.getElementById('pay-emp-name').textContent = empName;
   document.getElementById('pay-emp-points').textContent = currentPoints;
   document.getElementById('modal-pay').classList.remove('hidden');
@@ -961,6 +1091,7 @@ async function confirmPay() {
     puntos: 0,
     otorgado_por: null,
     motivo: 'Pago de bono RD$' + PAGO_MONTO.toLocaleString(),
+    fecha_listo: APP.payFechaListo || null,
     registrado_por: APP.userId
   }).select();
 
@@ -978,36 +1109,319 @@ async function confirmPay() {
   render();
 }
 
-// ==================== EDITAR / ELIMINAR PUNTOS ====================
-
-function wowEditarPunto(id) {
-  var row = APP.wowData.find(function(r) { return r.id === id; });
-  if (!row) return;
-  var nuevoMotivo = prompt('Motivo:', row.motivo || '');
-  if (nuevoMotivo === null) return; // canceló
-  var nuevosPuntos = row.tipo === 'puntos' ? prompt('Puntos:', row.puntos) : null;
-  if (row.tipo === 'puntos' && nuevosPuntos === null) return;
-  var puntosInt = row.tipo === 'puntos' ? parseInt(nuevosPuntos) : row.puntos;
-  if (row.tipo === 'puntos' && isNaN(puntosInt)) { alert('Puntos debe ser un numero.'); return; }
-
-  sb.from('wow_points').update({
-    motivo: nuevoMotivo.trim(),
-    puntos: puntosInt
-  }).eq('id', id).then(function(res) {
-    if (res.error) { alert('Error al editar: ' + res.error.message); return; }
-    // Actualizar en estado local
-    row.motivo = nuevoMotivo.trim();
-    row.puntos = puntosInt;
-    render();
-  });
+// ==================== EDITAR ENTRADA DEL HISTORIAL ====================
+function editWowEntry(id) {
+  var r = (APP.wowData || []).find(function(x) { return String(x.id) === String(id); });
+  if (!r) return;
+  var old = document.getElementById('wow-edit-modal'); if (old) old.remove();
+  var opts = TEAM_ROSTER.map(function(n) { return '<option value="' + esc(n) + '"' + (n === r.empleado ? ' selected' : '') + '>' + esc(n) + '</option>'; }).join('');
+  var esPago = r.tipo === 'pago';
+  var esAdmin = APP.userRole === 'admin';
+  var m = '';
+  m += '<div id="wow-edit-modal" style="position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:4000;display:flex;align-items:center;justify-content:center;padding:20px" onclick="if(event.target===this)this.remove()">';
+  m += '<div style="background:#fff;border-radius:14px;max-width:460px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,0.3)">';
+  m += '<div style="padding:18px 22px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between"><h3 style="margin:0">Editar entrada</h3><button onclick="document.getElementById(\'wow-edit-modal\').remove()" style="border:none;background:none;font-size:1.6rem;line-height:1;cursor:pointer;color:var(--muted)">&times;</button></div>';
+  m += '<div style="padding:18px 22px;display:flex;flex-direction:column;gap:12px">';
+  m += '<div><label style="font-size:0.75rem;font-weight:600;color:var(--muted)">Empleado</label><select id="we-empleado" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:6px">' + opts + '</select></div>';
+  m += '<div><label style="font-size:0.75rem;font-weight:600;color:var(--muted)">Reconocido por</label><input id="we-otorgado" value="' + esc(r.otorgado_por || '') + '" placeholder="¿Quién lo reconoció?" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:6px"></div>';
+  m += '<div><label style="font-size:0.75rem;font-weight:600;color:var(--muted)">Motivo</label><input id="we-motivo" value="' + esc(r.motivo || '') + '" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:6px"></div>';
+  if (!esPago) m += '<div><label style="font-size:0.75rem;font-weight:600;color:var(--muted)">Puntos</label><input id="we-puntos" type="number" value="' + (r.puntos || 0) + '" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:6px"></div>';
+  m += '</div>';
+  m += '<div style="padding:14px 22px;border-top:1px solid var(--border);display:flex;justify-content:space-between;gap:8px">';
+  m += esAdmin ? '<button onclick="deleteWowEntry(\'' + r.id + '\')" style="padding:8px 14px;border:1px solid #fecaca;border-radius:8px;background:#fff;color:var(--red);cursor:pointer">Eliminar</button>' : '<span></span>';
+  m += '<div style="display:flex;gap:8px"><button onclick="document.getElementById(\'wow-edit-modal\').remove()" style="padding:8px 14px;border:1px solid var(--border);border-radius:8px;background:#fff;cursor:pointer">Cancelar</button>';
+  m += '<button onclick="saveWowEntry(\'' + r.id + '\',' + esPago + ')" style="padding:8px 14px;border:none;border-radius:8px;background:var(--navy);color:#fff;cursor:pointer;font-weight:600">Guardar</button></div>';
+  m += '</div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', m);
 }
 
-async function wowEliminarPunto(id) {
-  if (!confirm('Eliminar este registro? Esta accion no se puede deshacer.')) return;
+async function saveWowEntry(id, esPago) {
+  var obj = {
+    empleado: document.getElementById('we-empleado').value,
+    otorgado_por: document.getElementById('we-otorgado').value.trim() || null,
+    motivo: document.getElementById('we-motivo').value.trim() || null
+  };
+  if (!esPago) obj.puntos = parseInt(document.getElementById('we-puntos').value) || 0;
+  var { error } = await sb.from('wow_points').update(obj).eq('id', id);
+  if (error) { alert('Error al guardar: ' + error.message); return; }
+  var modal = document.getElementById('wow-edit-modal'); if (modal) modal.remove();
+  var res = await sb.from('wow_points').select('*').order('created_at', { ascending: false });
+  APP.wowData = res.data || [];
+  render();
+}
+
+async function deleteWowEntry(id) {
+  if (!confirm('¿Eliminar esta entrada del historial? No se puede deshacer.')) return;
   var { error } = await sb.from('wow_points').delete().eq('id', id);
   if (error) { alert('Error al eliminar: ' + error.message); return; }
-  APP.wowData = APP.wowData.filter(function(r) { return r.id !== id; });
+  var modal = document.getElementById('wow-edit-modal'); if (modal) modal.remove();
+  var res = await sb.from('wow_points').select('*').order('created_at', { ascending: false });
+  APP.wowData = res.data || [];
   render();
+}
+
+// ==================== RETROALIMENTACIÓN ====================
+
+var RETRO_TIPO_LABELS = { queja_cliente: 'Queja de cliente', error_operativo: 'Error operativo', feedback: 'Feedback' };
+
+function renderRetro() {
+  var container = document.getElementById('tab-retro');
+  var data = APP.retroData;
+  var f = APP.retroFilter;
+  var isAdmin = APP.userRole === 'admin';
+
+  // Aplicar filtros
+  var filtered = data.filter(function(r) {
+    if (f.empleado && r.empleado !== f.empleado) return false;
+    if (f.tipo && r.tipo !== f.tipo) return false;
+    if (f.severidad && r.severidad !== f.severidad) return false;
+    if (f.estado && r.estado !== f.estado) return false;
+    return true;
+  });
+
+  // Stats
+  var totalCasos = data.length;
+  var abiertos = data.filter(function(r) { return r.estado === 'abierto'; }).length;
+  var enProceso = data.filter(function(r) { return r.estado === 'en_proceso'; }).length;
+  var cerrados = data.filter(function(r) { return r.estado === 'cerrado'; }).length;
+  var alta = data.filter(function(r) { return r.severidad === 'alta' && r.estado !== 'cerrado'; }).length;
+
+  var h = '';
+
+  // Stats cards
+  h += '<div class="retro-stats">';
+  h += '<div class="retro-stat"><div class="retro-stat-count">' + totalCasos + '</div><div class="retro-stat-label">Total casos</div></div>';
+  h += '<div class="retro-stat"><div class="retro-stat-count" style="color:var(--red)">' + abiertos + '</div><div class="retro-stat-label">Abiertos</div></div>';
+  h += '<div class="retro-stat"><div class="retro-stat-count" style="color:var(--amber)">' + enProceso + '</div><div class="retro-stat-label">En proceso</div></div>';
+  h += '<div class="retro-stat"><div class="retro-stat-count" style="color:var(--green)">' + cerrados + '</div><div class="retro-stat-label">Cerrados</div></div>';
+  if (alta > 0) {
+    h += '<div class="retro-stat"><div class="retro-stat-count" style="color:var(--red)">' + alta + '</div><div class="retro-stat-label">Sev. alta abiertos</div></div>';
+  }
+  h += '</div>';
+
+  // Toolbar con filtros y botón agregar
+  h += '<div class="retro-toolbar">';
+  h += '<div class="retro-filters">';
+
+  // Filtro empleado
+  var empleados = [];
+  data.forEach(function(r) { if (empleados.indexOf(r.empleado) === -1) empleados.push(r.empleado); });
+  empleados.sort();
+  h += '<select onchange="retroFilterChange(\'empleado\', this.value)">';
+  h += '<option value="">Todos los empleados</option>';
+  empleados.forEach(function(e) {
+    h += '<option value="' + esc(e) + '"' + (f.empleado === e ? ' selected' : '') + '>' + esc(e) + '</option>';
+  });
+  h += '</select>';
+
+  // Filtro tipo
+  h += '<select onchange="retroFilterChange(\'tipo\', this.value)">';
+  h += '<option value="">Todos los tipos</option>';
+  h += '<option value="queja_cliente"' + (f.tipo === 'queja_cliente' ? ' selected' : '') + '>Queja de cliente</option>';
+  h += '<option value="error_operativo"' + (f.tipo === 'error_operativo' ? ' selected' : '') + '>Error operativo</option>';
+  h += '<option value="feedback"' + (f.tipo === 'feedback' ? ' selected' : '') + '>Feedback</option>';
+  h += '</select>';
+
+  // Filtro severidad
+  h += '<select onchange="retroFilterChange(\'severidad\', this.value)">';
+  h += '<option value="">Toda severidad</option>';
+  h += '<option value="alta"' + (f.severidad === 'alta' ? ' selected' : '') + '>Alta</option>';
+  h += '<option value="media"' + (f.severidad === 'media' ? ' selected' : '') + '>Media</option>';
+  h += '<option value="baja"' + (f.severidad === 'baja' ? ' selected' : '') + '>Baja</option>';
+  h += '</select>';
+
+  // Filtro estado
+  h += '<select onchange="retroFilterChange(\'estado\', this.value)">';
+  h += '<option value="">Todo estado</option>';
+  h += '<option value="abierto"' + (f.estado === 'abierto' ? ' selected' : '') + '>Abierto</option>';
+  h += '<option value="en_proceso"' + (f.estado === 'en_proceso' ? ' selected' : '') + '>En proceso</option>';
+  h += '<option value="cerrado"' + (f.estado === 'cerrado' ? ' selected' : '') + '>Cerrado</option>';
+  h += '</select>';
+
+  h += '</div>';
+
+  if (isAdmin) {
+    h += '<button class="btn-modal" style="padding:8px 16px;font-size:0.82rem" onclick="openRetroModal()">+ Registrar caso</button>';
+  }
+  h += '</div>';
+
+  // Tabla
+  if (filtered.length === 0) {
+    h += '<div style="text-align:center;padding:40px;color:var(--muted);font-size:0.9rem">';
+    h += data.length === 0 ? 'No hay casos registrados.' : 'No hay casos que coincidan con los filtros.';
+    h += '</div>';
+  } else {
+    h += '<div style="overflow-x:auto"><table class="retro-table">';
+    h += '<thead><tr>';
+    h += '<th>Fecha</th><th>Empleado</th><th>Tipo</th><th>Cliente</th><th>Descripción</th><th>Severidad</th><th>Estado</th>';
+    h += '<th></th>';
+    h += '</tr></thead><tbody>';
+
+    filtered.forEach(function(r) {
+      var fecha = r.fecha_incidente ? new Date(r.fecha_incidente + 'T00:00:00').toLocaleDateString('es-DO', { day: '2-digit', month: 'short', year: 'numeric' }) : '';
+      h += '<tr>';
+      h += '<td style="white-space:nowrap">' + fecha + '</td>';
+      h += '<td style="font-weight:600;color:var(--navy)">' + esc(r.empleado) + '</td>';
+      h += '<td><span class="retro-badge ' + r.tipo + '">' + (RETRO_TIPO_LABELS[r.tipo] || r.tipo) + '</span></td>';
+      h += '<td>' + esc(r.cliente_nombre || '') + '</td>';
+      var descPrev = retroPlain(r.descripcion);
+      h += '<td class="retro-desc" title="' + esc(descPrev) + '">' + esc(descPrev) + '</td>';
+      h += '<td><span class="retro-sev ' + r.severidad + '">' + r.severidad.charAt(0).toUpperCase() + r.severidad.slice(1) + '</span></td>';
+      h += '<td><span class="retro-estado ' + r.estado + '">' + r.estado.replace('_', ' ').replace(/\b\w/g, function(c) { return c.toUpperCase(); }) + '</span></td>';
+      h += '<td style="white-space:nowrap">';
+      h += '<button style="padding:3px 8px;border:1px solid var(--border);border-radius:6px;background:white;font-size:0.72rem;cursor:pointer;color:var(--navy);font-weight:600" onclick="verRetroCaso(\'' + r.id + '\')">Leer caso</button>';
+      if (isAdmin) {
+        h += ' <button style="padding:3px 8px;border:1px solid var(--border);border-radius:6px;background:white;font-size:0.72rem;cursor:pointer;color:var(--blue)" onclick="editRetroCase(\'' + r.id + '\')">Editar</button>';
+      }
+      h += '</td>';
+      h += '</tr>';
+    });
+    h += '</tbody></table></div>';
+  }
+
+  container.innerHTML = h;
+}
+
+// Modal de solo lectura: ver un caso completo, bien formateado
+function verRetroCaso(id) {
+  var r = (APP.retroData || []).find(function(x) { return String(x.id) === String(id); });
+  if (!r) return;
+  var fecha = r.fecha_incidente ? new Date(r.fecha_incidente + 'T00:00:00').toLocaleDateString('es-DO', { day: '2-digit', month: 'long', year: 'numeric' }) : '—';
+  var tipo = RETRO_TIPO_LABELS[r.tipo] || r.tipo;
+  var sev = r.severidad ? r.severidad.charAt(0).toUpperCase() + r.severidad.slice(1) : '—';
+  var estado = r.estado ? r.estado.replace('_', ' ').replace(/\b\w/g, function(c) { return c.toUpperCase(); }) : '—';
+  var old = document.getElementById('retro-read-modal'); if (old) old.remove();
+  var m = '';
+  m += '<div id="retro-read-modal" style="position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:4000;display:flex;align-items:center;justify-content:center;padding:20px" onclick="if(event.target===this)this.remove()">';
+  m += '<div style="background:white;border-radius:14px;max-width:620px;width:100%;max-height:88vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.3)">';
+  m += '<div style="padding:20px 24px;border-bottom:1px solid var(--border);display:flex;align-items:flex-start;justify-content:space-between">';
+  m += '<div><div style="font-size:0.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px">Caso de retroalimentación</div><h3 style="margin:4px 0 0;color:var(--navy)">' + esc(r.empleado || '') + '</h3></div>';
+  m += '<button onclick="document.getElementById(\'retro-read-modal\').remove()" style="border:none;background:none;font-size:1.6rem;line-height:1;cursor:pointer;color:var(--muted)">&times;</button>';
+  m += '</div>';
+  m += '<div style="padding:16px 24px 4px;display:flex;gap:8px;flex-wrap:wrap">';
+  m += '<span class="retro-badge ' + r.tipo + '">' + esc(tipo) + '</span>';
+  m += '<span class="retro-sev ' + r.severidad + '">Severidad: ' + esc(sev) + '</span>';
+  m += '<span class="retro-estado ' + r.estado + '">' + esc(estado) + '</span>';
+  m += '</div>';
+  m += '<div style="padding:12px 24px;display:grid;grid-template-columns:1fr 1fr;gap:14px;font-size:0.9rem">';
+  m += '<div><div style="color:var(--muted);font-size:0.7rem;text-transform:uppercase;margin-bottom:2px">Cliente</div>' + esc(r.cliente_nombre || '—') + '</div>';
+  m += '<div><div style="color:var(--muted);font-size:0.7rem;text-transform:uppercase;margin-bottom:2px">Fecha</div>' + fecha + '</div>';
+  m += '</div>';
+  m += '<div style="padding:8px 24px"><div style="color:var(--muted);font-size:0.7rem;text-transform:uppercase;margin-bottom:6px">Descripción</div><div class="retro-read-body" style="line-height:1.6">' + (r.descripcion ? renderRetroBody(r.descripcion) : '—') + '</div></div>';
+  m += '<div style="padding:8px 24px 24px"><div style="color:var(--muted);font-size:0.7rem;text-transform:uppercase;margin-bottom:6px">Acción tomada</div><div class="retro-read-body" style="line-height:1.6;background:#f8fafc;border:1px solid var(--border);border-radius:8px;padding:12px">' + (r.accion_tomada ? renderRetroBody(r.accion_tomada) : 'Sin acción registrada.') + '</div></div>';
+  m += '</div></div>';
+  document.body.insertAdjacentHTML('beforeend', m);
+}
+
+function retroFilterChange(field, value) {
+  APP.retroFilter[field] = value;
+  renderRetro();
+}
+
+// ── Editores Quill para descripción y acción ──
+var retroQuillDesc = null, retroQuillAccion = null;
+function initRetroEditors() {
+  if (typeof Quill === 'undefined') return;
+  var tb = [['bold', 'italic'], [{ list: 'bullet' }, { list: 'ordered' }], ['clean']];
+  if (!retroQuillDesc) retroQuillDesc = new Quill('#retro-descripcion-editor', { theme: 'snow', placeholder: '¿Qué pasó?', modules: { toolbar: tb } });
+  if (!retroQuillAccion) retroQuillAccion = new Quill('#retro-accion-editor', { theme: 'snow', placeholder: '¿Qué se hizo al respecto?', modules: { toolbar: tb } });
+}
+function retroEditorHTML(q) { return (!q || q.getText().trim() === '') ? '' : q.root.innerHTML; }
+function retroEditorSet(q, html) { if (q) q.root.innerHTML = html || ''; }
+// Render seguro: HTML de Quill se muestra; texto viejo (plano) se escapa y conserva saltos
+function renderRetroBody(t) {
+  t = t || '';
+  if (/<[a-z][\s\S]*>/i.test(t)) return t;
+  return esc(t).replace(/\n/g, '<br>');
+}
+function retroPlain(t) { return (t || '').replace(/<[^>]*>/g, ' ').replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ').trim(); }
+
+function openRetroModal(id) {
+  initRetroEditors();
+  document.getElementById('retro-edit-id').value = id || '';
+  document.getElementById('retro-modal-title').textContent = id ? 'Editar caso' : 'Registrar caso';
+
+  // Llenar select de empleados
+  var sel = document.getElementById('retro-empleado');
+  sel.innerHTML = '';
+  TEAM_ROSTER.forEach(function(name) {
+    var opt = document.createElement('option');
+    opt.value = name;
+    opt.textContent = name;
+    sel.appendChild(opt);
+  });
+
+  if (id) {
+    var caso = APP.retroData.find(function(r) { return r.id === id; });
+    if (caso) {
+      sel.value = caso.empleado;
+      document.getElementById('retro-tipo').value = caso.tipo;
+      document.getElementById('retro-cliente').value = caso.cliente_nombre || '';
+      document.getElementById('retro-fecha').value = caso.fecha_incidente || '';
+      document.getElementById('retro-severidad').value = caso.severidad;
+      retroEditorSet(retroQuillDesc, caso.descripcion);
+      retroEditorSet(retroQuillAccion, caso.accion_tomada || '');
+      document.getElementById('retro-estado').value = caso.estado;
+    }
+  } else {
+    document.getElementById('retro-tipo').value = 'queja_cliente';
+    document.getElementById('retro-cliente').value = '';
+    document.getElementById('retro-fecha').value = new Date().toISOString().split('T')[0];
+    document.getElementById('retro-severidad').value = 'baja';
+    retroEditorSet(retroQuillDesc, '');
+    retroEditorSet(retroQuillAccion, '');
+    document.getElementById('retro-estado').value = 'abierto';
+  }
+
+  document.getElementById('modal-retro').classList.remove('hidden');
+}
+
+function editRetroCase(id) {
+  openRetroModal(id);
+}
+
+function closeRetroModal() {
+  document.getElementById('modal-retro').classList.add('hidden');
+}
+
+async function saveRetroCase() {
+  var id = document.getElementById('retro-edit-id').value;
+  var obj = {
+    empleado: document.getElementById('retro-empleado').value,
+    tipo: document.getElementById('retro-tipo').value,
+    cliente_nombre: document.getElementById('retro-cliente').value.trim() || null,
+    fecha_incidente: document.getElementById('retro-fecha').value || null,
+    severidad: document.getElementById('retro-severidad').value,
+    descripcion: retroEditorHTML(retroQuillDesc),
+    accion_tomada: retroEditorHTML(retroQuillAccion) || null,
+    estado: document.getElementById('retro-estado').value,
+    updated_at: new Date().toISOString()
+  };
+
+  if (!obj.descripcion) {
+    alert('La descripción es obligatoria.');
+    return;
+  }
+
+  var res;
+  if (id) {
+    res = await sb.from('retroalimentacion').update(obj).eq('id', id);
+  } else {
+    obj.registrado_por = APP.userId;
+    res = await sb.from('retroalimentacion').insert(obj);
+  }
+
+  if (res.error) {
+    alert('Error al guardar: ' + res.error.message);
+    return;
+  }
+
+  closeRetroModal();
+
+  // Recargar datos
+  var { data } = await sb.from('retroalimentacion').select('*').order('created_at', { ascending: false });
+  APP.retroData = data || [];
+  renderRetro();
 }
 
 // ==================== UTILS ====================
@@ -1023,7 +1437,7 @@ async function init() {
   var { data: { session } } = await sb.auth.getSession();
   if (session) {
     await loadUserProfile();
-    await loadMisPermisos();
+    await Promise.all([loadMisPermisos(), loadEquipoPersonal()]);
     showApp();
   } else if (isEmbed) {
     document.body.innerHTML = '<div style="text-align:center;padding:60px;color:#7c8495;">Sesión no encontrada. Recarga la página principal.</div>';

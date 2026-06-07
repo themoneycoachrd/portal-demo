@@ -226,6 +226,10 @@ body.embed .breadcrumb-bar { display:none !important; }
 body.embed #app-wrapper { display:block !important; }
 body.embed .footer { display:none !important; }
 </style>
+
+<!-- Account One Refinado theme layer (override) -->
+<link rel="stylesheet" href="assets/theme.css">
+<script src="assets/theme.js" defer></script>
 </head>
 <body>
 
@@ -233,13 +237,13 @@ body.embed .footer { display:none !important; }
 <div class="login-overlay" id="login-screen">
   <div class="login-box">
     <h2>Account One</h2>
-    <p class="subtitle">Inicia sesion para continuar</p>
+    <p class="subtitle">Inicia sesión para continuar</p>
     <div class="field">
       <label>Email</label>
       <input type="email" id="login-email" placeholder="tu@accountone.do">
     </div>
     <div class="field">
-      <label>Contrasena</label>
+      <label>Contraseña</label>
       <input type="password" id="login-password" placeholder="••••••••">
     </div>
     <button class="login-btn" id="btn-login" onclick="handleLogin()">Entrar</button>
@@ -281,6 +285,7 @@ body.embed .footer { display:none !important; }
 const SUPABASE_URL = 'https://ouetusstqvpyjeycfdio.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im91ZXR1c3N0cXZweWpleWNmZGlvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY2NDcwNzksImV4cCI6MjA5MjIyMzA3OX0.Bsys947JLGEuf3zdBF2GPFdbJVJtaZdC4YEmyBU5Bow';
 const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+var ANIO = new Date().getFullYear();
 
 const MESES = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
 const MESES_LABEL = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
@@ -293,12 +298,15 @@ const QUARTERS = [
   { id:4, label:'Q4', meses:['octubre','noviembre','diciembre'], cierre:'Diciembre' }
 ];
 
-const KPI_CONTADORAS = [
-  { nombre:'Beliani', tier:'Contadora I', objetivo:1000, salario:45000, color:'#8b5cf6' },
-  { nombre:'Yessica', tier:'Contadora I', objetivo:1000, salario:45000, color:'#f59e0b' },
-  { nombre:'Taina', tier:'Contadora II', objetivo:500, salario:60000, color:'#4361ee' },
-  { nombre:'Victoria', tier:'Por definir', objetivo:500, salario:45000, color:'#ec4899' }
-];
+var KPI_CONTADORAS = []; // Se carga desde tabla equipo
+async function loadKpiContadoras() {
+  var res = await sb.from('equipo').select('nombre, cargo, objetivo_kpi, salario, color').eq('rol_portal', 'contadora').eq('activo', true).eq('excluida_contadoras', false);
+  if (res.data) {
+    KPI_CONTADORAS = res.data.map(function(e) {
+      return { nombre: e.nombre, tier: e.cargo || '', objetivo: e.objetivo_kpi || 500, salario: e.salario || 0, color: e.color || '#6b7280' };
+    });
+  }
+}
 
 const KPI_ESCALA = [
   { min:90, max:100, label:'Excelente', bonoPct:100, color:'#10b981', bg:'#ecfdf5', css:'score-excelente', bonoCss:'bono-100' },
@@ -317,7 +325,7 @@ function getVideoTipo(mes) { const idx = MESES.indexOf(mes); return (idx % 3 ===
 function getQuarterInfo(mes) { const idx = MESES.indexOf(mes); const q = Math.floor(idx / 3) + 1; const pos = (idx % 3) + 1; return { q, pos, label:'Q' + q + ' — Mes ' + pos + ' de 3' }; }
 function getCategoriaColor(total) { if (total >= 90) return '#10b981'; if (total >= 80) return '#4361ee'; if (total >= 70) return '#f59e0b'; return '#ef4444'; }
 function getBarColor(pct) { return pct >= 90 ? 'var(--green)' : pct >= 70 ? 'var(--amber)' : 'var(--red)'; }
-function isMonthPast(mesIdx) { const now = new Date(); const end = new Date(2026, mesIdx + 1, 0, 23, 59, 59); return now > end; }
+function isMonthPast(mesIdx) { const now = new Date(); const end = new Date(ANIO, mesIdx + 1, 0, 23, 59, 59); return now > end; }
 function isMvException(contadora, cliente) { return contadora === MV_EXCEPTION.contadora && cliente === MV_EXCEPTION.cliente; }
 function todayStr() { const h = new Date(); return h.getFullYear() + '-' + String(h.getMonth()+1).padStart(2,'0') + '-' + String(h.getDate()).padStart(2,'0'); }
 function isFriday(dateStr) { if (!dateStr) return null; return new Date(dateStr + 'T12:00:00').getDay() === 5; }
@@ -434,7 +442,7 @@ function getEffectiveAdmTotal(contadora, mes) {
 }
 
 async function loadDetalle() {
-  const { data, error } = await sb.from('kpi_detalle').select('*').eq('anio', 2026);
+  const { data, error } = await sb.from('kpi_detalle').select('*').eq('anio', ANIO);
   if (error) { console.error('Error cargando kpi_detalle:', error); return; }
   DETALLE = {};
   (data || []).forEach(r => {
@@ -495,7 +503,7 @@ function getWeekQty(weekObj) {
 // Semanas por lunes: sem 1 = primer lunes hasta domingo, etc.
 // Si el mes empieza mid-week, sem 1 incluye esos días iniciales.
 function getWeekRanges(mesIdx) {
-  const year = 2026;
+  const year = ANIO;
   const lastDay = new Date(year, mesIdx + 1, 0).getDate();
   const MESES_CORTOS = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
   const mc = MESES_CORTOS[mesIdx];
@@ -532,7 +540,7 @@ async function saveDetalle(contadora, mes) {
       const { error } = await sb.from('kpi_detalle').update({ datos: entry.datos, updated_at: new Date().toISOString() }).eq('id', entry._id);
       if (error) { console.error('Error guardando:', error); alert('Error guardando. Verifica tus permisos.'); }
     } else {
-      const { data, error } = await sb.from('kpi_detalle').insert({ contadora, mes, anio: 2026, datos: entry.datos }).select();
+      const { data, error } = await sb.from('kpi_detalle').insert({ contadora, mes, anio: ANIO, datos: entry.datos }).select();
       if (error) { console.error('Error insertando:', error); alert('Error guardando. Verifica tus permisos.'); }
       else if (data && data[0]) entry._id = data[0].id;
     }
@@ -546,7 +554,7 @@ async function syncKpiScores(contadora, mes) {
   const scores = calcScoresForContadora(contadora, mes);
   const total = calcTotal(scores.digScore, scores.resScore, scores.vidScore);
   const { error } = await sb.from('kpi_scores').upsert({
-    contadora, mes, anio: 2026,
+    contadora, mes, anio: ANIO,
     digitacion: scores.digScore,
     resumenes: scores.resScore,
     video_reunion: scores.vidScore,
@@ -623,7 +631,7 @@ function getQuarterBonoData(contadora, qNum) {
   const avgProjected = getAvg(projectedScores);
   const escala = getEscala(avgProjected);
   const bonoReal = Math.round(bonoBase * escala.bonoPct / 100);
-  return { monthScores, projectedScores, avgScore: avgReal, avgProjected, escala, bonoBase, bonoReal, cierre: q.cierre, qLabel: q.label + ' 2026' };
+  return { monthScores, projectedScores, avgScore: avgReal, avgProjected, escala, bonoBase, bonoReal, cierre: q.cierre, qLabel: q.label + ' ' + ANIO };
 }
 
 function getAvg(arr) {
@@ -639,10 +647,10 @@ async function handleLogin() {
   const password = document.getElementById('login-password').value;
   const errorEl = document.getElementById('login-error');
   const btn = document.getElementById('btn-login');
-  if (!email || !password) { errorEl.textContent = 'Ingresa email y contrasena.'; errorEl.style.display = 'block'; return; }
+  if (!email || !password) { errorEl.textContent = 'Ingresa email y contraseña.'; errorEl.style.display = 'block'; return; }
   btn.disabled = true; btn.textContent = 'Entrando...'; errorEl.style.display = 'none';
   const { data, error } = await sb.auth.signInWithPassword({ email, password });
-  if (error) { errorEl.textContent = 'Email o contrasena incorrectos.'; errorEl.style.display = 'block'; btn.disabled = false; btn.textContent = 'Entrar'; return; }
+  if (error) { errorEl.textContent = 'Email o contraseña incorrectos.'; errorEl.style.display = 'block'; btn.disabled = false; btn.textContent = 'Entrar'; return; }
   await loadUserProfile();
   await loadMisPermisos();
   await showApp();
@@ -807,10 +815,10 @@ function renderKPIDetail(el) {
   html += '</div></div></div>';
 
   // ── Bono trimestral ──
-  html += '<div class="bono-card"><div class="bono-header"><div class="bono-icon">💰</div><div class="bono-header-text"><h3>Bono ' + q.label + ' 2026</h3><span>Cierre: ' + q.cierre + ' · Promedio de ' + bono.monthScores.filter(s => s !== null).length + ' mes(es)</span></div></div>';
+  html += '<div class="bono-card"><div class="bono-header"><div class="bono-icon">💰</div><div class="bono-header-text"><h3>Bono ' + q.label + ' ' + ANIO + '</h3><span>Cierre: ' + q.cierre + ' · Promedio de ' + bono.monthScores.filter(s => s !== null).length + ' mes(es)</span></div></div>';
   html += '<div class="bono-body">';
   html += '<div class="bono-item"><div class="bono-item-label">Bono base</div><div class="bono-item-value">' + formatMoney(bono.bonoBase) + '</div><div class="bono-item-sub">1/3 del salario</div></div>';
-  html += '<div class="bono-item"><div class="bono-item-label">Proyeccion ' + q.label + '</div><div class="bono-item-value">' + bono.avgProjected + '<span style="font-size:14px;opacity:0.5">/100</span></div>';
+  html += '<div class="bono-item"><div class="bono-item-label">Proyección ' + q.label + '</div><div class="bono-item-value">' + bono.avgProjected + '<span style="font-size:14px;opacity:0.5">/100</span></div>';
   html += '<div style="display:flex;gap:4px;justify-content:center;margin-top:6px;flex-wrap:wrap">';
   bono.monthScores.forEach((s, i) => {
     const mLabel = MESES_LABEL[MESES.indexOf(q.meses[i])];
@@ -991,13 +999,13 @@ function renderTrimestral(el) {
 
   let html = '';
   html += '<div class="stats">';
-  html += '<div class="stat"><div class="stat-label">Promedio equipo</div><div class="stat-value" style="color:' + getCategoriaColor(teamAvg) + '">' + teamAvg + '</div><div class="stat-sub">' + q.label + ' 2026</div></div>';
+  html += '<div class="stat"><div class="stat-label">Promedio equipo</div><div class="stat-value" style="color:' + getCategoriaColor(teamAvg) + '">' + teamAvg + '</div><div class="stat-sub">' + q.label + ' ' + ANIO + '</div></div>';
   html += '<div class="stat"><div class="stat-label">Excelentes</div><div class="stat-value" style="color:var(--green)">' + excelentes + '</div><div class="stat-sub">de ' + contadoras.length + '</div></div>';
   html += '<div class="stat"><div class="stat-label">Sin bono</div><div class="stat-value" style="color:var(--red)">' + sinBono + '</div><div class="stat-sub">&lt; 70 pts</div></div>';
   html += '<div class="stat"><div class="stat-label">Bono total ' + q.label + '</div><div class="stat-value" style="color:var(--navy)">RD$ ' + totalBonoPool.toLocaleString() + '</div><div class="stat-sub">del pool disponible</div></div>';
   html += '</div>';
 
-  html += '<div class="card"><h3>Scores ' + q.label + ' 2026</h3><div style="overflow-x:auto"><table class="tri-table"><thead><tr><th>Contadora</th><th>Tier</th>';
+  html += '<div class="card"><h3>Scores ' + q.label + ' ' + ANIO + '</h3><div style="overflow-x:auto"><table class="tri-table"><thead><tr><th>Contadora</th><th>Tier</th>';
   q.meses.forEach(m => { html += '<th class="center">' + MESES_FULL[MESES.indexOf(m)] + '</th>'; });
   html += '<th class="center">Promedio</th><th class="center">Categoria</th><th class="center">Bono</th></tr></thead><tbody>';
 
@@ -1146,6 +1154,7 @@ async function showApp() {
   const qObj = QUARTERS[activeQuarter - 1];
   activeMes = qObj.meses[0];
 
+  await loadKpiContadoras();
   await Promise.all([loadAsignaciones(), loadDetalle()]);
 
   // Contadora: auto-select their profile, no selector
@@ -1165,7 +1174,7 @@ async function init() {
     await loadMisPermisos();
     await showApp();
   } else if (isEmbed) {
-    document.body.innerHTML = '<div style="text-align:center;padding:60px;color:#7c8495;">Sesion no encontrada. Recarga la pagina principal.</div>';
+    document.body.innerHTML = '<div style="text-align:center;padding:60px;color:#7c8495;">Sesión no encontrada. Recarga la página principal.</div>';
   }
 }
 

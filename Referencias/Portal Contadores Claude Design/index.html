@@ -1,0 +1,1511 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Account One — Portal Interno</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root {
+  --navy: #1a2332;
+  --navy-mid: #2a3a4e;
+  --blue: #4361ee;
+  --blue-light: #eef2ff;
+  --green: #10b981;
+  --green-light: #ecfdf5;
+  --red: #ef4444;
+  --amber: #f59e0b;
+  --amber-light: #fffbeb;
+  --purple: #8b5cf6;
+  --purple-light: #f5f3ff;
+  --orange-light: #fff7ed;
+  --bg: #f4f6f9;
+  --card: #ffffff;
+  --border: #e8ecf1;
+  --text: #1a2332;
+  --muted: #7c8495;
+  --light: #a3aab8;
+  --sidebar-w: 264px;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.5;
+}
+
+/* ==================== LOGIN ==================== */
+.login-overlay {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: var(--bg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+.login-box {
+  background: white;
+  border-radius: 16px;
+  padding: 40px;
+  width: 100%;
+  max-width: 400px;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.08);
+  border: 1px solid var(--border);
+}
+.login-logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 28px;
+}
+.login-logo-icon {
+  width: 36px; height: 36px;
+  background: var(--navy);
+  border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+}
+.login-logo-icon svg { width: 18px; height: 18px; }
+.login-logo h2 { font-size: 1.15rem; font-weight: 700; color: var(--text); }
+.login-logo p { font-size: 0.7rem; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; font-weight: 600; }
+.login-box .field { margin-bottom: 16px; }
+.login-box .field label { display: block; font-size: 0.78rem; font-weight: 600; color: var(--muted); margin-bottom: 6px; }
+.login-box .field input {
+  width: 100%; padding: 10px 14px; border: 1px solid var(--border);
+  border-radius: 10px; font-size: 0.9rem; font-family: inherit;
+  background: #fafbfc;
+}
+.login-box .field input:focus { outline: none; border-color: var(--blue); box-shadow: 0 0 0 3px rgba(67,97,238,0.1); background: white; }
+.login-btn {
+  width: 100%; padding: 11px; background: var(--navy); color: white; border: none;
+  border-radius: 10px; font-size: 0.9rem; font-weight: 600; cursor: pointer; margin-top: 8px;
+  transition: background 0.15s;
+}
+.login-btn:hover { background: var(--navy-mid); }
+.login-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+.login-error { color: var(--red); font-size: 0.8rem; margin-top: 12px; display: none; }
+
+/* ==================== APP LAYOUT ==================== */
+.app-layout { display: flex; min-height: 100vh; }
+
+/* ==================== SIDEBAR ==================== */
+.sidebar {
+  width: var(--sidebar-w);
+  background: white;
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  position: fixed;
+  top: 0; left: 0; bottom: 0;
+  z-index: 100;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.sidebar-brand {
+  padding: 20px 18px 16px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+}
+.brand-icon {
+  width: 34px; height: 34px;
+  background: var(--navy);
+  border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.brand-icon svg { width: 16px; height: 16px; }
+.brand-text h1 { font-size: 1rem; font-weight: 700; color: var(--text); line-height: 1.2; }
+.brand-text p { font-size: 0.6rem; color: var(--light); text-transform: uppercase; letter-spacing: 1.2px; font-weight: 600; }
+
+.sidebar-divider { height: 1px; background: var(--border); margin: 0 16px; }
+
+.sidebar-nav { flex: 1; padding: 12px 10px; }
+
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 12px;
+  border-radius: 10px;
+  color: var(--muted);
+  text-decoration: none;
+  font-size: 0.85rem;
+  font-weight: 500;
+  transition: all 0.12s;
+  margin-bottom: 2px;
+  cursor: pointer;
+  border: none;
+  background: none;
+  width: 100%;
+  text-align: left;
+  font-family: inherit;
+}
+.nav-item:hover {
+  background: #f5f7fa;
+  color: var(--text);
+}
+.nav-item.active {
+  background: var(--navy);
+  color: white;
+}
+.nav-item.disabled {
+  opacity: 0.35;
+  cursor: default;
+  pointer-events: none;
+}
+.nav-icon {
+  width: 28px; height: 28px;
+  border-radius: 7px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 0.95rem;
+  flex-shrink: 0;
+  transition: background 0.12s;
+}
+.nav-item.active .nav-icon { background: rgba(255,255,255,0.15); }
+.nav-label { flex: 1; }
+
+/* ─── Section landing page ─── */
+.section-landing { padding: 32px; flex: 1; }
+.section-landing-title { font-size: 1.2rem; font-weight: 700; color: var(--text); margin-bottom: 4px; }
+.section-landing-desc { font-size: 0.85rem; color: var(--muted); margin-bottom: 24px; }
+
+.nav-badge {
+  font-size: 0.58rem;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+.nav-badge-active { background: rgba(16,185,129,0.12); color: #059669; }
+.nav-item.active .nav-badge-active { background: rgba(16,185,129,0.25); color: #6ee7b7; }
+.nav-badge-pending { background: rgba(245,158,11,0.1); color: #d97706; }
+.nav-item.active .nav-badge-pending { background: rgba(245,158,11,0.2); color: #fcd34d; }
+
+/* ─── User section ─── */
+.sidebar-user {
+  padding: 14px 14px 16px;
+  border-top: 1px solid var(--border);
+}
+.sidebar-user-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.user-avatar {
+  width: 34px; height: 34px;
+  border-radius: 50%;
+  background: var(--blue);
+  color: white;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 0.78rem;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+.user-meta { flex: 1; min-width: 0; }
+.user-meta-name {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.user-meta-role {
+  font-size: 0.68rem;
+  color: var(--light);
+  text-transform: capitalize;
+}
+.btn-logout-small {
+  background: none; border: none; cursor: pointer;
+  color: var(--light); font-size: 0.72rem; font-weight: 500;
+  padding: 4px 0; font-family: inherit;
+  transition: color 0.15s;
+}
+.btn-logout-small:hover { color: var(--red); }
+
+/* ─── Sidebar collapse ─── */
+.sidebar { transition: width 0.25s ease; }
+.sidebar.collapsed { width: 60px; }
+.sidebar.collapsed .brand-text,
+.sidebar.collapsed .brand-icon,
+.sidebar.collapsed .nav-label,
+.sidebar.collapsed .nav-text,
+.sidebar.collapsed .nav-badge,
+.sidebar.collapsed .sidebar-user .user-meta,
+.sidebar.collapsed .sidebar-user .btn-logout-small,
+.sidebar.collapsed .sidebar-version-label { display: none; }
+.sidebar.collapsed .sidebar-brand { justify-content: center; padding: 16px 8px; }
+.sidebar.collapsed .sidebar-nav { padding: 12px 6px; }
+.sidebar.collapsed .nav-item { justify-content: center; padding: 9px 0; }
+.sidebar.collapsed .sidebar-user { padding: 14px 6px 16px; justify-content: center; }
+.sidebar.collapsed .sidebar-user-info { justify-content: center; }
+.sidebar.collapsed .sidebar-version { justify-content: center; }
+.sidebar.collapsed .sidebar-version-num { font-size: 0.6rem; }
+
+.sidebar-toggle {
+  width: 28px; height: 28px;
+  border-radius: 8px;
+  background: none; border: 1px solid var(--border);
+  cursor: pointer; display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+  transition: background 0.15s;
+}
+.sidebar-toggle:hover { background: #f0f2f5; }
+.sidebar-toggle svg { width: 14px; height: 14px; stroke: var(--muted); fill: none; stroke-width: 2; transition: transform 0.2s; }
+.sidebar.collapsed .sidebar-toggle svg { transform: rotate(180deg); }
+
+/* ─── Role picker (pantalla intermedia, admin only) ─── */
+.role-picker-overlay {
+  position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+  background: var(--bg); display: flex; align-items: center; justify-content: center; z-index: 999;
+}
+.role-picker-overlay.hidden { display: none; }
+.role-picker-box {
+  background: white; border-radius: 16px; padding: 40px; width: 100%; max-width: 420px;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.08); border: 1px solid var(--border); text-align: center;
+}
+.role-picker-box h2 { font-size: 1.1rem; font-weight: 700; color: var(--text); margin-bottom: 6px; }
+.role-picker-box p { font-size: 0.82rem; color: var(--muted); margin-bottom: 24px; }
+.role-pills { display: flex; flex-direction: column; gap: 10px; }
+.role-pill {
+  display: flex; align-items: center; gap: 14px; padding: 14px 18px;
+  border: 2px solid var(--border); border-radius: 12px; cursor: pointer;
+  transition: all 0.15s; background: white; text-align: left;
+}
+.role-pill:hover { border-color: var(--blue); background: #f0f4ff; }
+.role-pill-icon { width: 38px; height: 38px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; flex-shrink: 0; }
+.role-pill-info h3 { font-size: 0.9rem; font-weight: 600; color: var(--text); margin: 0; }
+.role-pill-info span { font-size: 0.72rem; color: var(--muted); }
+
+/* ─── Botón cambiar rol en sidebar ─── */
+.btn-switch-role {
+  font-size: 0.68rem; color: var(--muted); background: none; border: 1px solid var(--border);
+  border-radius: 6px; padding: 3px 10px; cursor: pointer; margin-top: 4px; transition: all 0.15s;
+}
+.btn-switch-role:hover { background: #f0f4ff; border-color: var(--blue); color: var(--blue); }
+.sidebar.collapsed .btn-switch-role { display: none; }
+
+/* ─── Version tag ─── */
+.sidebar-version {
+  padding: 8px 18px 12px;
+  display: flex; align-items: center; gap: 6px;
+  position: relative;
+}
+.sidebar-version-num {
+  font-size: 0.68rem; font-weight: 600; color: var(--light);
+  cursor: default;
+}
+.sidebar-version-label {
+  font-size: 0.62rem; color: var(--light);
+}
+.sidebar-version-tooltip {
+  display: none;
+  position: absolute; bottom: 100%; left: 18px;
+  background: var(--navy); color: white;
+  padding: 12px 16px; border-radius: 10px;
+  font-size: 0.75rem; line-height: 1.5;
+  width: 260px; z-index: 200;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+  pointer-events: none;
+}
+.sidebar-version-tooltip::after {
+  content: ''; position: absolute; top: 100%; left: 20px;
+  border: 6px solid transparent; border-top-color: var(--navy);
+}
+.sidebar-version:hover .sidebar-version-tooltip { display: block; }
+
+/* ==================== MAIN CONTENT ==================== */
+.main-content {
+  margin-left: var(--sidebar-w);
+  flex: 1;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+  transition: margin-left 0.25s ease;
+}
+
+/* ─── Welcome / Home view ─── */
+.home-view { padding: 32px; flex: 1; }
+
+.welcome-banner {
+  background: var(--navy);
+  border-radius: 14px;
+  padding: 28px 32px;
+  color: white;
+  margin-bottom: 28px;
+}
+.welcome-banner h2 {
+  font-size: 1.25rem;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+.welcome-banner p {
+  font-size: 0.88rem;
+  opacity: 0.6;
+}
+.welcome-date {
+  font-size: 0.75rem;
+  opacity: 0.35;
+  margin-top: 10px;
+}
+
+/* ─── Dashboard ─── */
+.dash-section-title {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--navy);
+  margin-bottom: 12px;
+  margin-top: 24px;
+}
+.dash-section-title:first-child { margin-top: 0; }
+.dash-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 12px;
+  margin-bottom: 8px;
+}
+.dash-stat {
+  background: var(--card);
+  border-radius: 12px;
+  padding: 16px;
+  border: 1px solid var(--border);
+}
+.dash-stat-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--light);
+}
+.dash-stat-value {
+  font-size: 28px;
+  font-weight: 800;
+  margin-top: 4px;
+}
+.dash-stat-sub {
+  font-size: 11px;
+  color: var(--light);
+  margin-top: 4px;
+}
+.dash-green { color: #10b981; }
+.dash-red { color: #ef4444; }
+.dash-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.dash-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 6px;
+  text-align: center;
+}
+.dash-card .label { font-size: 0.65rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.3px; }
+.dash-card .value { font-size: 1.1rem; font-weight: 700; margin-top: 2px; }
+.dash-card .value.green { color: var(--green); }
+.dash-card .value.amber { color: #f59e0b; }
+.dash-card .value.red { color: var(--red); }
+.dash-card .value.blue { color: var(--blue); }
+.dash-card .value.navy { color: var(--navy); }
+.dash-loading {
+  text-align: center;
+  padding: 40px;
+  color: var(--light);
+  font-size: 0.85rem;
+}
+
+.modules-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 16px;
+}
+.module-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 20px;
+  text-decoration: none;
+  color: inherit;
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+  transition: all 0.15s;
+  cursor: pointer;
+}
+.module-card:hover {
+  border-color: var(--blue);
+  box-shadow: 0 2px 12px rgba(67,97,238,0.08);
+}
+.module-card.disabled { opacity: 0.4; cursor: default; pointer-events: none; }
+.module-card-icon {
+  width: 40px; height: 40px;
+  border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.1rem;
+  flex-shrink: 0;
+}
+.module-card-body h3 { font-size: 0.9rem; font-weight: 600; color: var(--text); margin-bottom: 3px; }
+.module-card-body p { font-size: 0.78rem; color: var(--muted); line-height: 1.5; }
+.module-card-badge {
+  margin-left: auto;
+  font-size: 0.6rem; font-weight: 700; padding: 2px 8px;
+  border-radius: 6px; text-transform: uppercase; letter-spacing: 0.3px;
+  white-space: nowrap; flex-shrink: 0; align-self: center;
+}
+.badge-active { background: #ecfdf5; color: #059669; }
+.badge-pending { background: #fef3c7; color: #d97706; }
+
+/* ─── Module iframe view ─── */
+.module-view {
+  flex: 1;
+  display: none;
+}
+.module-view.active { display: flex; flex-direction: column; }
+.module-iframe {
+  flex: 1;
+  width: 100%;
+  border: none;
+  min-height: 100vh;
+}
+
+.hidden { display: none; }
+</style>
+
+<!-- Account One B Claro theme layer (override) -->
+<link rel="stylesheet" href="assets/theme.css">
+<script src="assets/theme.js" defer></script>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div class="login-overlay" id="login-screen">
+  <div class="login-box">
+    <div class="login-logo">
+      <div class="login-logo-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+      </div>
+      <div>
+        <h2>Account One</h2>
+        <p>Portal Interno</p>
+      </div>
+    </div>
+    <div class="field">
+      <label>Email</label>
+      <input type="email" id="login-email" placeholder="tu@accountone.do">
+    </div>
+    <div class="field">
+      <label>Contrasena</label>
+      <input type="password" id="login-password" placeholder="••••••••">
+    </div>
+    <button class="login-btn" id="btn-login" onclick="handleLogin()">Entrar</button>
+    <div class="login-error" id="login-error"></div>
+  </div>
+</div>
+
+<!-- ROLE PICKER (admin only, aparece después del login) -->
+<div class="role-picker-overlay hidden" id="role-picker">
+  <div class="role-picker-box">
+    <h2>¿Con qué perfil quieres entrar?</h2>
+    <p>Puedes cambiar de perfil en cualquier momento.</p>
+    <div class="role-pills" id="role-pills"></div>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app-wrapper" class="hidden">
+<div class="app-layout">
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-brand">
+      <div class="brand-icon" onclick="goHome()" style="cursor:pointer">
+        <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+      </div>
+      <div class="brand-text" onclick="goHome()" style="cursor:pointer;flex:1">
+        <h1>Account One</h1>
+        <p>Portal Interno</p>
+      </div>
+      <button class="sidebar-toggle" onclick="toggleSidebar()" title="Colapsar menú">
+        <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
+      </button>
+    </div>
+
+    <div class="sidebar-divider"></div>
+
+    <nav class="sidebar-nav" id="sidebar-nav"></nav>
+
+    <div class="sidebar-user">
+      <div class="sidebar-user-info">
+        <div class="user-avatar" id="user-avatar"></div>
+        <div class="user-meta">
+          <div class="user-meta-name" id="user-display-name"></div>
+          <div class="user-meta-role" id="user-display-role"></div>
+          <button class="btn-switch-role hidden" id="btn-switch-role" onclick="showRolePicker()">Cambiar rol</button>
+        </div>
+        <button class="btn-logout-small" onclick="handleLogout()">Salir</button>
+      </div>
+    </div>
+
+    <div class="sidebar-version">
+      <span class="sidebar-version-num">v1.01</span>
+      <span class="sidebar-version-label">— Portal Account One</span>
+      <div class="sidebar-version-tooltip">
+        <strong>v1.00</strong> — 27 abr 2026<br>
+        Servicios con filtro por mes, Bookkeeping, fix conteos en Asignaciones, Sin asignar al fondo en contabilidad e impuestos, sidebar colapsable.
+      </div>
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <div class="main-content">
+    <!-- TOPBAR -->
+    <div class="portal-topbar" id="portal-topbar">
+      <div class="topbar-left">
+        <div class="topbar-trail" id="topbar-trail"><span class="topbar-current">Inicio</span></div>
+      </div>
+      <div class="topbar-right">
+        <button class="topbar-btn" title="Exportar"><svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Exportar</button>
+        <button class="topbar-btn" title="Filtros"><svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg> Filtros</button>
+        <span class="topbar-date" id="topbar-date"></span>
+        <button class="topbar-bell" title="Notificaciones"><svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg><span class="topbar-dot"></span></button>
+        <div class="topbar-avatar" id="topbar-avatar"></div>
+      </div>
+    </div>
+
+    <!-- Home / Welcome -->
+    <div class="home-view" id="home-view">
+      <div class="welcome-banner" id="welcome-banner"></div>
+      <div id="dashboard-kpis">
+        <div class="dash-loading">Cargando datos...</div>
+      </div>
+    </div>
+
+    <!-- Section landing (sub-module picker) -->
+    <div class="section-landing hidden" id="section-landing">
+      <div class="section-landing-title" id="section-title"></div>
+      <div class="section-landing-desc" id="section-desc"></div>
+      <div class="modules-grid" id="section-grid"></div>
+    </div>
+
+    <!-- Module iframe -->
+    <div class="module-view" id="module-view">
+      <iframe class="module-iframe" id="module-iframe"></iframe>
+    </div>
+  </div>
+
+</div>
+</div>
+
+<script>
+const SUPABASE_URL = 'https://ouetusstqvpyjeycfdio.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im91ZXR1c3N0cXZweWpleWNmZGlvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY2NDcwNzksImV4cCI6MjA5MjIyMzA3OX0.Bsys947JLGEuf3zdBF2GPFdbJVJtaZdC4YEmyBU5Bow';
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+let userRole = null;
+let userName = '';
+let activeModule = null;
+let activeSection = null;
+
+const ROLE_LABELS = {
+  admin: 'Administrador',
+  comercial: 'Comercial',
+  contadores: 'Contadores',
+  impuestos: 'Impuestos',
+  implementaciones: 'Implementaciones'
+};
+
+let realRole = null; // el rol verdadero del usuario (no cambia)
+
+// Estructura del menu: secciones con hijos (expandibles) o modulos directos
+const MENU = [
+  {
+    id: 'gerencia',
+    title: 'Clientes',
+    navDesc: 'Cartera de contabilidad',
+    icon: '\ud83c\udfe2',
+    iconBg: '#ecfdf5',
+    roles: ['admin', 'comercial'],
+    href: 'gerencia.html',
+    active: true,
+    desc: 'Control de clientes, carga de trabajo, reportes mensuales y contadoras.'
+  },
+  {
+    id: 'comercial',
+    title: 'Comercial',
+    navDesc: 'Pipeline de ventas y cierres',
+    icon: '\ud83d\udcc8',
+    iconBg: '#eef2ff',
+    roles: ['admin', 'comercial'],
+    href: 'ventas.html',
+    active: true,
+    desc: 'Leads, funnel de ventas, ROAS y seguimiento del pipeline comercial.'
+  },
+  {
+    id: 'contabilidad',
+    title: 'Contabilidad',
+    navDesc: 'Cierres y estados financieros',
+    icon: '\ud83c\udfaf',
+    iconBg: '#f5f3ff',
+    roles: ['admin', 'contadores'],
+    href: 'contabilidad.html',
+    active: true,
+    desc: 'Checklist mensual de tareas y evaluaci\u00f3n KPI por contadora.'
+  },
+  {
+    id: 'impuestos',
+    title: 'Impuestos',
+    navDesc: 'Declaraciones DGII',
+    icon: '\ud83d\udccb',
+    iconBg: '#fffbeb',
+    roles: ['admin', 'impuestos', 'contadores'],
+    href: 'impuestos.html',
+    active: true,
+    desc: 'Control y checklist de declaraciones fiscales por cliente.'
+  },
+  {
+    id: 'implementaciones',
+    title: 'Implementaciones',
+    navDesc: 'Onboarding de nuevos clientes',
+    icon: '\ud83d\ude80',
+    iconBg: '#fff7ed',
+    roles: ['admin', 'implementaciones', 'contadores'],
+    href: 'implementaciones.html',
+    active: true,
+    desc: 'Control de implementaciones completas y facturación electrónica.'
+  },
+  {
+    id: 'portal-admin',
+    title: 'Portal Clientes (A)',
+    navDesc: 'Datos del portal de clientes',
+    icon: '\ud83c\udf10',
+    iconBg: '#fef2f2',
+    roles: ['admin', 'contadores', 'impuestos'],
+    href: 'portal-admin.html',
+    active: true,
+    desc: 'Administrar datos del portal de clientes: checklist, presupuesto, impuestos.'
+  },
+  {
+    id: 'portal-clientes',
+    title: 'Portal Clientes (C)',
+    navDesc: 'Vista externa del cliente',
+    icon: '\ud83c\udf10',
+    iconBg: '#fef2f2',
+    roles: ['admin', 'contadores', 'comercial'],
+    href: 'portal-clientes.html',
+    active: true,
+    desc: 'Vista del cliente: lo que ve cuando entra con su token.'
+  },
+  {
+    id: 'personal',
+    title: 'Personal',
+    navDesc: 'Equipo y reconocimiento',
+    icon: '\u2b50',
+    iconBg: '#fef3c7',
+    roles: ['admin', 'comercial', 'contadores', 'impuestos', 'implementaciones'],
+    href: 'personal.html',
+    active: true,
+    desc: 'Puntos Wow, reconocimiento y bonos del equipo.'
+  },
+  {
+    id: 'configuracion',
+    title: 'Configuraci\u00f3n',
+    icon: '\u2699\ufe0f',
+    iconBg: '#f1f5f9',
+    roles: ['admin'],
+    navDesc: 'Roles y acceso al portal',
+    children: [
+      { id: 'usuarios', title: 'Usuarios y Permisos', href: 'usuarios.html', active: true,
+        desc: 'Gestiona accesos, habilidades y pantallas por usuario.' }
+    ]
+  }
+];
+
+// Helpers para buscar modulos en la estructura plana
+function findModule(moduleId) {
+  for (const section of MENU) {
+    if (section.children) {
+      const child = section.children.find(c => c.id === moduleId);
+      if (child) return child;
+    } else if (section.id === moduleId) {
+      return section;
+    }
+  }
+  return null;
+}
+
+function findParentSection(moduleId) {
+  for (const section of MENU) {
+    if (section.children && section.children.some(c => c.id === moduleId)) {
+      return section;
+    }
+  }
+  return null;
+}
+
+function getAllModulesFlat() {
+  const flat = [];
+  MENU.forEach(section => {
+    if (section.children) {
+      section.children.forEach(child => {
+        flat.push({ ...child, parentTitle: section.title, parentIcon: section.icon, parentIconBg: section.iconBg });
+      });
+    } else {
+      flat.push(section);
+    }
+  });
+  return flat;
+}
+
+function getInitials(name) {
+  const parts = name.trim().split(/\s+/);
+  if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
+  return name.substring(0, 2).toUpperCase();
+}
+
+function getGreeting() {
+  const h = new Date().getHours();
+  if (h < 12) return 'Buenos dias';
+  if (h < 18) return 'Buenas tardes';
+  return 'Buenas noches';
+}
+
+function formatToday() {
+  const d = new Date();
+  const dias = ['Domingo','Lunes','Martes','Miercoles','Jueves','Viernes','Sabado'];
+  const meses = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+  return dias[d.getDay()] + ' ' + d.getDate() + ' de ' + meses[d.getMonth()] + ', ' + d.getFullYear();
+}
+
+// ==================== DASHBOARD ====================
+
+const MESES_DASH = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+
+async function loadDashboardData() {
+  var mesIdx = new Date().getMonth();
+  var currentMes = MESES_DASH[mesIdx];
+  var prevMes = mesIdx > 0 ? MESES_DASH[mesIdx - 1] : null;
+  var mesLabel = currentMes.charAt(0).toUpperCase() + currentMes.slice(1);
+
+  // Helper: último día del mes como string YYYY-MM-DD
+  function lastDayStr(mi) {
+    var ld = new Date(2026, mi + 1, 0);
+    return '2026-' + String(mi + 1).padStart(2, '0') + '-' + String(ld.getDate()).padStart(2, '0');
+  }
+  function parseMonthIdx(dateStr) {
+    if (!dateStr) return -1;
+    var parts = dateStr.split('-');
+    return parts.length >= 2 ? parseInt(parts[1], 10) - 1 : -1;
+  }
+  function parseYear(dateStr) {
+    if (!dateStr) return 0;
+    return parseInt(dateStr.split('-')[0], 10);
+  }
+
+  // 1) Clientes — derivado de tabla clientes (maestra)
+  var contaTotal = 0, contaPrevTotal = 0, contaNuevos = [], contaChurn = [], contaTxServ = 0, contaTxAdm = 0;
+  try {
+    var res1 = await sb.from('clientes').select('nombre, fecha_entrada, fecha_salida, activo, monto_adm, responsabilidad_contabilidad');
+    var clientes = res1.data || [];
+    var currLastDay = lastDayStr(mesIdx);
+
+    // Total al cierre del mes actual
+    clientes.forEach(function(c) {
+      var entered = !c.fecha_entrada || c.fecha_entrada <= currLastDay;
+      var notLeft = !c.fecha_salida || c.fecha_salida > currLastDay;
+      if (entered && notLeft) {
+        contaTotal++;
+        if (c.responsabilidad_contabilidad !== false) contaTxServ += (parseInt(c.monto_adm) || 0);
+      }
+    });
+
+    // Total al cierre del mes anterior
+    if (prevMes !== null) {
+      var prevLastDay = lastDayStr(mesIdx - 1);
+      clientes.forEach(function(c) {
+        var entered = !c.fecha_entrada || c.fecha_entrada <= prevLastDay;
+        var notLeft = !c.fecha_salida || c.fecha_salida > prevLastDay;
+        if (entered && notLeft) contaPrevTotal++;
+      });
+    }
+
+    // Nuevos y churn del mes actual
+    clientes.forEach(function(c) {
+      if (c.fecha_entrada && parseYear(c.fecha_entrada) === 2026 && parseMonthIdx(c.fecha_entrada) === mesIdx) {
+        contaNuevos.push(c.nombre);
+      }
+      if (c.fecha_salida && parseYear(c.fecha_salida) === 2026 && parseMonthIdx(c.fecha_salida) === mesIdx) {
+        contaChurn.push(c.nombre);
+      }
+    });
+
+    // Adm real de asignaciones
+    var resAsig = await sb.from('asignaciones').select('adm').eq('anio', 2026).eq('mes', currentMes);
+    (resAsig.data || []).forEach(function(a) { contaTxAdm += (parseFloat(a.adm) || 0); });
+  } catch(e) { console.error('Dashboard clientes:', e); }
+
+  // 2) Clientes software (lee de clientes_software, tabla unificada)
+  var softTotal = 0, softPrev = 0, softBase = 0, softNuevosMes = [];
+  try {
+    var res2 = await sb.from('clientes_software').select('*');
+    var softData = res2.data || [];
+    var MESES_MAP_DASH = {enero:'01',febrero:'02',marzo:'03',abril:'04',mayo:'05',junio:'06',julio:'07',agosto:'08',septiembre:'09',octubre:'10',noviembre:'11',diciembre:'12'};
+    var curPrefix = '2026-' + MESES_MAP_DASH[currentMes];
+    var curLastDay = new Date(2026, mesIdx + 1, 0);
+    var curLastStr = '2026-' + String(mesIdx + 1).padStart(2, '0') + '-' + String(curLastDay.getDate()).padStart(2, '0');
+    var prevLastDay = mesIdx > 0 ? new Date(2026, mesIdx, 0) : new Date(2025, 12, 0);
+    var prevLastStr = mesIdx > 0
+      ? '2026-' + String(mesIdx).padStart(2, '0') + '-' + String(prevLastDay.getDate()).padStart(2, '0')
+      : '2025-12-31';
+    softData.forEach(function(c) {
+      var fe = c.fecha_entrada || '';
+      var fs = c.fecha_salida || '';
+      // Base = entrada antes de 2026
+      if (fe && fe < '2026-01-01') softBase++;
+      // Nuevos del mes actual
+      if (fe && fe.indexOf(curPrefix) === 0) softNuevosMes.push(c.nombre);
+      // Total actual: entró antes o durante este mes Y no salió antes del fin del mes
+      var enteredCur = !fe || fe <= curLastStr;
+      var notExitedCur = !fs || fs > curLastStr;
+      if (enteredCur && notExitedCur) softTotal++;
+      // Total mes anterior
+      var enteredPrev = !fe || fe <= prevLastStr;
+      var notExitedPrev = !fs || fs > prevLastStr;
+      if (enteredPrev && notExitedPrev) softPrev++;
+    });
+  } catch(e) { console.error('Dashboard clientes_software:', e); }
+
+  // 3) Leads y ROAS del mes actual
+  var totalLeads = 0, cierres = 0, vendido = 0, cotizado = 0, ejecutado = 0;
+  var nombresRec = [], nombresImpl = [], nombresFE = [], nombresSinCat = [], nombresSoft = [];
+  try {
+    var res3 = await sb.from('leads').select('*').eq('anio', 2026).eq('mes', currentMes);
+    var leads = res3.data || [];
+    var includeSoft = mesIdx >= 2;
+    totalLeads = leads.length;
+    leads.forEach(function(l) {
+      var impl = parseFloat(l.impl) || 0;
+      var lfe = parseFloat(l.fe) || 0;
+      var serv = parseFloat(l.serv) || 0;
+      var soft = parseFloat(l.soft) || 0;
+      var descRaw = l.descuento;
+      cotizado += impl + lfe + serv + soft;
+      if (l.funnel === 'Cerrado Ganado') {
+        cierres++;
+        var descPct = (descRaw != null ? parseFloat(descRaw) : 25) / 100;
+        var tl = (impl * (1 - descPct)) + (lfe * (1 - descPct)) + (includeSoft ? soft : 0);
+        vendido += tl;
+        var nombre = l.nombre || '';
+        var cat = (l.categoria || '').trim();
+        if (cat.indexOf('Servicios Recurrentes') >= 0) nombresRec.push(nombre);
+        else if (cat.indexOf('Implementacion') >= 0) nombresImpl.push(nombre);
+        else if (cat.indexOf('Facturacion Electronica') >= 0) nombresFE.push(nombre);
+        else nombresSinCat.push(nombre);
+        if (cat.indexOf('Adm') >= 0 || soft > 0) nombresSoft.push(nombre);
+      }
+    });
+    vendido = Math.round(vendido * 100) / 100;
+    cotizado = Math.round(cotizado * 100) / 100;
+  } catch(e) { console.error('Dashboard leads:', e); }
+
+  try {
+    var res4 = await sb.from('roas_mensual').select('*').eq('anio', 2026).eq('mes', currentMes);
+    if (res4.data && res4.data.length > 0) {
+      ejecutado = parseFloat(res4.data[0].ejecutado) || 0;
+    }
+  } catch(e) { console.error('Dashboard roas_mensual:', e); }
+
+  var cpl = totalLeads > 0 ? ejecutado / totalLeads : 0;
+  var cpa = cierres > 0 ? ejecutado / cierres : 0;
+  var pctCierre = totalLeads > 0 ? (cierres / totalLeads * 100) : 0;
+  var ganancia = vendido - ejecutado;
+  var roasVal = ejecutado > 0 ? vendido / ejecutado : 0;
+
+  return {
+    mesLabel: mesLabel,
+    contabilidad: { total: contaTotal, prevTotal: contaPrevTotal, nuevos: contaNuevos, churn: contaChurn, txServ: contaTxServ, txAdm: contaTxAdm },
+    software: { total: softTotal, prev: softPrev, base: softBase, nuevosMes: softNuevosMes },
+    comercial: { totalLeads: totalLeads, cierres: cierres, cpl: cpl, cpa: cpa, pctCierre: pctCierre, cotizado: cotizado, vendido: vendido, ejecutado: ejecutado, ganancia: ganancia, roas: roasVal, nombresRec: nombresRec, nombresImpl: nombresImpl, nombresFE: nombresFE, nombresSinCat: nombresSinCat, nombresSoft: nombresSoft }
+  };
+}
+
+function renderDashboard(d) {
+  var el = document.getElementById('dashboard-kpis');
+
+  function fmt(n) { return n.toLocaleString(); }
+  function fmtCurr(n) { return 'US$ ' + Math.round(n).toLocaleString(); }
+  function fmtPct(n) { return n.toFixed(1) + '%'; }
+  function pills(arr, color) {
+    if (!arr || arr.length === 0) return '<span style="font-size:11px;color:var(--light)">—</span>';
+    var bg = color === 'green' ? '#ecfdf5;color:#10b981' : '#fef2f2;color:#ef4444';
+    return arr.map(function(n) {
+      return '<span style="display:inline-block;padding:3px 10px;border-radius:6px;font-size:11px;font-weight:600;margin:2px;background:' + bg + '">' + n + '</span>';
+    }).join('');
+  }
+
+  var html = '';
+
+  // ── Seccion 1: Clientes Recurrentes ──
+  var neto = d.contabilidad.total - d.contabilidad.prevTotal;
+  var netoSign = neto > 0 ? '+' : '';
+  var netoColor = neto > 0 ? 'dash-green' : neto < 0 ? 'dash-red' : '';
+  var pctPrev = d.contabilidad.prevTotal > 0 ? (neto / d.contabilidad.prevTotal * 100).toFixed(1) : '0.0';
+
+  html += '<h3 class="dash-section-title">Clientes Recurrentes</h3>';
+  html += '<div class="dash-stats">';
+  html += '<div class="dash-stat"><div class="dash-stat-label">Total ' + d.mesLabel.substring(0,3) + '</div><div class="dash-stat-value">' + d.contabilidad.total + '</div></div>';
+  html += '<div class="dash-stat"><div class="dash-stat-label">Crecimiento neto</div><div class="dash-stat-value ' + netoColor + '">' + netoSign + neto + '</div>';
+  html += '<div class="dash-stat-sub">' + (neto >= 0 ? '+' : '') + pctPrev + '% vs mes anterior</div></div>';
+  html += '<div class="dash-stat" style="min-width:180px"><div class="dash-stat-label" style="color:#10b981">Entraron</div>';
+  html += '<div style="margin-top:6px;display:flex;flex-wrap:wrap;gap:4px">' + pills(d.contabilidad.nuevos, 'green') + '</div></div>';
+  html += '<div class="dash-stat" style="min-width:180px"><div class="dash-stat-label" style="color:#ef4444">Salieron</div>';
+  html += '<div style="margin-top:6px;display:flex;flex-wrap:wrap;gap:4px">' + pills(d.contabilidad.churn, 'red') + '</div></div>';
+  html += '<div class="dash-stat"><div class="dash-stat-label">Transacciones</div><div class="dash-stat-value">' + fmt(d.contabilidad.txServ) + '</div>';
+  html += '<div class="dash-stat-sub">Adm: ' + fmt(d.contabilidad.txAdm) + '</div></div>';
+  html += '</div>';
+
+  // ── Seccion 2: Clientes Software ──
+  var softDelta = d.software.total - d.software.prev;
+  var softSign = softDelta > 0 ? '+' : '';
+  var softColor = softDelta > 0 ? 'dash-green' : softDelta < 0 ? 'dash-red' : '';
+  var softPct = d.software.prev > 0 ? (softDelta / d.software.prev * 100).toFixed(1) : '0.0';
+
+  html += '<h3 class="dash-section-title">Clientes Software</h3>';
+  html += '<div class="dash-stats">';
+  html += '<div class="dash-stat"><div class="dash-stat-label">Software actual</div><div class="dash-stat-value">' + d.software.total + '</div>';
+  html += '<div class="dash-stat-sub">Base 2026: ' + d.software.base + '</div></div>';
+  html += '<div class="dash-stat"><div class="dash-stat-label">Crecimiento ultimo mes</div><div class="dash-stat-value ' + softColor + '">' + softSign + softDelta + '</div>';
+  html += '<div class="dash-stat-sub">' + (softDelta >= 0 ? '+' : '') + softPct + '% vs mes anterior</div></div>';
+  html += '<div class="dash-stat" style="min-width:180px"><div class="dash-stat-label" style="color:#10b981">Nuevos en ' + d.mesLabel + '</div>';
+  html += '<div style="margin-top:6px;display:flex;flex-wrap:wrap;gap:4px">' + pills(d.software.nuevosMes, 'green') + '</div></div>';
+  html += '</div>';
+
+  // ── Seccion 3: Cierres Equipo Comercial ──
+  html += '<h3 class="dash-section-title">Cierres Equipo Comercial — ' + d.mesLabel + '</h3>';
+  html += '<div class="dash-grid">';
+  html += '<div class="dash-card"><div class="label">Total Leads</div><div class="value navy">' + fmt(d.comercial.totalLeads) + '</div></div>';
+  html += '<div class="dash-card"><div class="label">Costo x Lead</div><div class="value amber">' + fmtCurr(d.comercial.cpl) + '</div></div>';
+  html += '<div class="dash-card"><div class="label">Cierres</div><div class="value green">' + fmt(d.comercial.cierres) + '</div></div>';
+  html += '<div class="dash-card"><div class="label">Costo Adquisicion</div><div class="value amber">' + fmtCurr(d.comercial.cpa) + '</div></div>';
+  html += '<div class="dash-card"><div class="label">% de Cierre</div><div class="value green">' + fmtPct(d.comercial.pctCierre) + '</div></div>';
+  html += '</div>';
+  html += '<div class="dash-grid">';
+  html += '<div class="dash-card"><div class="label">Total Cotizado</div><div class="value blue">' + fmtCurr(d.comercial.cotizado) + '</div></div>';
+  html += '<div class="dash-card"><div class="label">Total Vendido</div><div class="value green">' + fmtCurr(d.comercial.vendido) + '</div></div>';
+  html += '<div class="dash-card"><div class="label">Invertido</div><div class="value amber">' + fmtCurr(d.comercial.ejecutado) + '</div></div>';
+  html += '<div class="dash-card"><div class="label">Ganancia</div><div class="value ' + (d.comercial.ganancia >= 0 ? 'green' : 'red') + '">' + fmtCurr(d.comercial.ganancia) + '</div></div>';
+  html += '<div class="dash-card"><div class="label">ROAS</div><div class="value blue">' + d.comercial.roas.toFixed(2) + 'x</div></div>';
+  html += '</div>';
+
+  // ── Seccion 4: Cierres por categoria ──
+  if (d.comercial.cierres > 0) {
+    html += '<h3 class="dash-section-title">Cierres — ' + d.mesLabel + '</h3>';
+    html += '<div class="dash-stats">';
+    if (d.comercial.nombresRec.length > 0) {
+      html += '<div class="dash-stat" style="min-width:180px"><div class="dash-stat-label" style="color:#10b981">Recurrente (' + d.comercial.nombresRec.length + ')</div>';
+      html += '<div style="margin-top:6px;display:flex;flex-wrap:wrap;gap:4px">' + pills(d.comercial.nombresRec, 'green') + '</div></div>';
+    }
+    if (d.comercial.nombresImpl.length > 0) {
+      html += '<div class="dash-stat" style="min-width:180px"><div class="dash-stat-label" style="color:var(--blue)">Implementacion (' + d.comercial.nombresImpl.length + ')</div>';
+      html += '<div style="margin-top:6px;display:flex;flex-wrap:wrap;gap:4px">' + pills(d.comercial.nombresImpl, 'green') + '</div></div>';
+    }
+    if (d.comercial.nombresFE.length > 0) {
+      html += '<div class="dash-stat" style="min-width:180px"><div class="dash-stat-label" style="color:#8b5cf6">Facturacion Electronica (' + d.comercial.nombresFE.length + ')</div>';
+      html += '<div style="margin-top:6px;display:flex;flex-wrap:wrap;gap:4px">' + pills(d.comercial.nombresFE, 'green') + '</div></div>';
+    }
+    if (d.comercial.nombresSinCat.length > 0) {
+      html += '<div class="dash-stat" style="min-width:180px"><div class="dash-stat-label" style="color:var(--light)">Sin categoria (' + d.comercial.nombresSinCat.length + ')</div>';
+      html += '<div style="margin-top:6px;display:flex;flex-wrap:wrap;gap:4px">' + pills(d.comercial.nombresSinCat, 'green') + '</div></div>';
+    }
+    if (d.comercial.nombresSoft.length > 0) {
+      html += '<div class="dash-stat" style="min-width:180px"><div class="dash-stat-label" style="color:#8b5cf6">Software (' + d.comercial.nombresSoft.length + ')</div>';
+      html += '<div style="margin-top:6px;display:flex;flex-wrap:wrap;gap:4px">' + pills(d.comercial.nombresSoft, 'green') + '</div></div>';
+    }
+    html += '</div>';
+  }
+
+  el.innerHTML = html;
+}
+
+function hideAllViews() {
+  document.getElementById('home-view').style.display = 'none';
+  document.getElementById('section-landing').classList.add('hidden');
+  document.getElementById('module-view').classList.remove('active');
+  document.getElementById('module-iframe').src = '';
+}
+
+function toggleSidebar() {
+  var sb = document.getElementById('sidebar');
+  var main = document.querySelector('.main-content');
+  sb.classList.toggle('collapsed');
+  var collapsed = sb.classList.contains('collapsed');
+  main.style.marginLeft = collapsed ? '60px' : '';
+  localStorage.setItem('sidebar-collapsed', collapsed ? '1' : '0');
+}
+(function() {
+  if (localStorage.getItem('sidebar-collapsed') === '1') {
+    var sb = document.getElementById('sidebar');
+    var main = document.querySelector('.main-content');
+    if (sb) { sb.classList.add('collapsed'); main.style.marginLeft = '60px'; }
+  }
+})();
+
+async function goHome(skipHash) {
+  // Si el rol tiene módulo de inicio, ir a ese módulo
+  var homeModule = ROLE_HOME_MODULE[userRole];
+  if (homeModule) {
+    openModule(homeModule, skipHash);
+    return;
+  }
+
+  activeModule = null;
+  activeSection = null;
+  if (!skipHash) history.replaceState(null, '', '#inicio');
+  hideAllViews();
+  document.getElementById('home-view').style.display = '';
+  document.title = 'Account One — Portal Interno';
+  renderSidebar();
+
+  // Refrescar dashboard
+  try {
+    var dashData = await loadDashboardData();
+    renderDashboard(dashData);
+  } catch(e) { console.error('Error refrescando dashboard:', e); }
+}
+
+function openSection(sectionId, skipHash) {
+  const section = MENU.find(s => s.id === sectionId);
+  if (!section || !section.children) return;
+
+  activeModule = null;
+  activeSection = sectionId;
+  if (!skipHash) history.replaceState(null, '', '#' + sectionId);
+  hideAllViews();
+
+  // Mostrar landing con las tarjetas de sub-modulos
+  const landing = document.getElementById('section-landing');
+  landing.classList.remove('hidden');
+  document.getElementById('section-title').textContent = section.title;
+  document.getElementById('section-desc').textContent = 'Selecciona un modulo para continuar.';
+
+  const grid = document.getElementById('section-grid');
+  grid.innerHTML = section.children.map(child => {
+    const badgeClass = child.active ? 'badge-active' : 'badge-pending';
+    const badgeText = child.active ? 'Activo' : 'Pendiente';
+    const disabledClass = child.active ? '' : ' disabled';
+    const onclick = child.active ? ' onclick="openModule(\'' + child.id + '\')"' : '';
+
+    return '<div class="module-card' + disabledClass + '"' + onclick + '>' +
+      '<div class="module-card-icon" style="background:' + section.iconBg + '">' + section.icon + '</div>' +
+      '<div class="module-card-body">' +
+        '<h3>' + child.title + '</h3>' +
+        '<p>' + child.desc + '</p>' +
+      '</div>' +
+      '<span class="module-card-badge ' + badgeClass + '">' + badgeText + '</span>' +
+    '</div>';
+  }).join('');
+
+  renderSidebar();
+}
+
+function openModule(moduleId, skipHash) {
+  const m = findModule(moduleId);
+  if (!m || !m.active) return;
+
+  activeModule = moduleId;
+
+  // Detectar si pertenece a una seccion padre
+  const parent = findParentSection(moduleId);
+  activeSection = parent ? parent.id : null;
+
+  if (!skipHash) history.replaceState(null, '', '#' + moduleId);
+  hideAllViews();
+  document.getElementById('module-view').classList.add('active');
+  document.getElementById('module-iframe').src = m.href + '?embed=1';
+  renderSidebar();
+  // Actualizar título del browser tab
+  document.title = m.title + ' — Account One';
+}
+
+// Deep linking: navegar según el hash de la URL
+function navigateToHash() {
+  var hash = location.hash.replace('#', '');
+  if (!hash || hash === 'inicio') {
+    goHome(true);
+    return;
+  }
+  // Es un módulo directo?
+  var m = findModule(hash);
+  if (m && m.active && tieneAccesoModulo(hash)) {
+    openModule(hash, true);
+    return;
+  }
+  // Es una sección con hijos?
+  var section = MENU.find(function(s) { return s.id === hash && s.children; });
+  if (section && tieneAccesoModulo(hash)) {
+    openSection(hash, true);
+    return;
+  }
+  // Hash no reconocido, ir a inicio
+  goHome(true);
+}
+
+window.addEventListener('hashchange', function() { navigateToHash(); });
+
+function renderSidebar() {
+  const nav = document.getElementById('sidebar-nav');
+  const visible = MENU.filter(s => tieneAccesoModulo(s.id));
+
+  let html = '';
+
+  // Home
+  const isHome = activeModule === null && activeSection === null;
+  html += '<button class="nav-item' + (isHome ? ' active' : '') + '" onclick="goHome()">';
+  html += '<div class="nav-icon">';
+  html += '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>';
+  html += '</div>';
+  html += '<div class="nav-text"><span class="nav-label">Inicio</span><span class="nav-desc">Resumen ejecutivo</span></div>';
+  html += '</button>';
+
+  html += '<div style="height:6px"></div>';
+
+  visible.forEach(section => {
+    if (section.children) {
+      // Seccion con hijos: clic abre landing page
+      const isActive = activeSection === section.id;
+      const allDisabled = section.children.every(c => !c.active);
+
+      html += '<button class="nav-item' + (isActive ? ' active' : '') + (allDisabled ? ' disabled' : '') + '" onclick="openSection(\'' + section.id + '\')">';
+      html += '<div class="nav-icon" style="background:' + section.iconBg + '">' + section.icon + '</div>';
+      html += '<div class="nav-text"><span class="nav-label">' + section.title + '</span>';
+      if (section.navDesc) html += '<span class="nav-desc">' + section.navDesc + '</span>';
+      html += '</div></button>';
+
+    } else {
+      // Modulo directo
+      const isActive = activeModule === section.id;
+      const disabledClass = section.active ? '' : ' disabled';
+
+      html += '<button class="nav-item' + (isActive ? ' active' : '') + disabledClass + '" onclick="openModule(\'' + section.id + '\')">';
+      html += '<div class="nav-icon" style="background:' + section.iconBg + '">' + section.icon + '</div>';
+      html += '<div class="nav-text"><span class="nav-label">' + section.title + '</span>';
+      if (section.navDesc) html += '<span class="nav-desc">' + section.navDesc + '</span>';
+      html += '</div></button>';
+    }
+  });
+
+  nav.innerHTML = html;
+  updateTopbar();
+}
+
+function updateTopbar() {
+  var trail = document.getElementById('topbar-trail');
+  var dateEl = document.getElementById('topbar-date');
+  var avatarEl = document.getElementById('topbar-avatar');
+  if (!trail) return;
+
+  var crumbs = '';
+  if (activeModule === null && activeSection === null) {
+    crumbs = '<span class="topbar-current">Inicio</span>';
+  } else {
+    crumbs = '<span class="topbar-crumb" onclick="goHome()">Inicio</span>';
+    if (activeModule && !activeSection) {
+      var m = findModule(activeModule);
+      if (!m) { var s2 = MENU.find(function(x){return x.id===activeModule;}); if(s2) m = s2; }
+      if (m) crumbs += '<span class="topbar-sep">/</span><span class="topbar-current">' + m.title + '</span>';
+    } else if (activeSection && !activeModule) {
+      var sec = MENU.find(function(s) { return s.id === activeSection; });
+      if (sec) crumbs += '<span class="topbar-sep">/</span><span class="topbar-current">' + sec.title + '</span>';
+    } else if (activeSection && activeModule) {
+      var sec = MENU.find(function(s) { return s.id === activeSection; });
+      var m = findModule(activeModule);
+      if (sec) crumbs += '<span class="topbar-sep">/</span><span class="topbar-crumb">' + sec.title + '</span>';
+      if (m) crumbs += '<span class="topbar-sep">/</span><span class="topbar-current">' + m.title + '</span>';
+    }
+  }
+  trail.innerHTML = crumbs;
+  if (dateEl) dateEl.textContent = formatToday();
+  if (avatarEl && userName) avatarEl.textContent = getInitials(userName);
+}
+
+function renderModules() {
+  const grid = document.getElementById('modules-grid');
+  const allFlat = getAllModulesFlat().filter(function(m) {
+    var parent = findParentSection(m.id);
+    return tieneAccesoModulo(parent ? parent.id : m.id);
+  });
+
+  grid.innerHTML = allFlat.map(m => {
+    const badgeClass = m.active ? 'badge-active' : 'badge-pending';
+    const badgeText = m.active ? 'Activo' : 'Pendiente';
+    const disabledClass = m.active ? '' : ' disabled';
+    const onclick = m.active ? ' onclick="openModule(\'' + m.id + '\')"' : '';
+    const parentIcon = m.parentIcon || m.icon;
+    const parentIconBg = m.parentIconBg || m.iconBg;
+    const subtitle = m.parentTitle ? '<span style="font-size:0.68rem;color:var(--light);font-weight:400"> — ' + m.parentTitle + '</span>' : '';
+
+    return '<div class="module-card' + disabledClass + '"' + onclick + '>' +
+      '<div class="module-card-icon" style="background:' + (m.iconBg || parentIconBg) + '">' + parentIcon + '</div>' +
+      '<div class="module-card-body">' +
+        '<h3>' + m.title + subtitle + '</h3>' +
+        '<p>' + m.desc + '</p>' +
+      '</div>' +
+      '<span class="module-card-badge ' + badgeClass + '">' + badgeText + '</span>' +
+    '</div>';
+  }).join('');
+}
+
+function renderWelcome() {
+  const el = document.getElementById('welcome-banner');
+  const firstName = userName.split(' ')[0];
+
+  el.innerHTML =
+    '<h2>' + getGreeting() + ', ' + firstName + '</h2>' +
+    '<p>Resumen de la firma al dia de hoy.</p>' +
+    '<div class="welcome-date">' + formatToday() + '</div>';
+}
+
+function renderUserInfo() {
+  document.getElementById('user-avatar').textContent = getInitials(userName);
+  document.getElementById('user-display-name').textContent = userName;
+  document.getElementById('user-display-role').textContent = ROLE_LABELS[userRole] || userRole;
+}
+
+// ==================== AUTH ====================
+
+async function handleLogin() {
+  const email = document.getElementById('login-email').value.trim();
+  const password = document.getElementById('login-password').value;
+  const errorEl = document.getElementById('login-error');
+  const btn = document.getElementById('btn-login');
+
+  if (!email || !password) {
+    errorEl.textContent = 'Ingresa email y contrasena.';
+    errorEl.style.display = 'block';
+    return;
+  }
+
+  btn.disabled = true;
+  btn.textContent = 'Entrando...';
+  errorEl.style.display = 'none';
+
+  const { data, error } = await sb.auth.signInWithPassword({ email, password });
+
+  if (error) {
+    errorEl.textContent = 'Email o contrasena incorrectos.';
+    errorEl.style.display = 'block';
+    btn.disabled = false;
+    btn.textContent = 'Entrar';
+    return;
+  }
+
+  await loadUserProfile();
+  document.getElementById('login-screen').style.display = 'none';
+  showApp();
+}
+
+async function handleLogout() {
+  await sb.auth.signOut();
+  userRole = null;
+  realRole = null;
+  userName = '';
+  activeModule = null;
+  activeSection = null;
+  document.getElementById('app-wrapper').classList.add('hidden');
+  document.getElementById('role-picker').classList.add('hidden');
+  document.getElementById('login-screen').style.display = 'flex';
+  document.getElementById('login-password').value = '';
+  document.getElementById('module-iframe').src = '';
+}
+
+var userPermisos = {}; // permisos efectivos del usuario (jerárquicos)
+
+async function loadUserProfile() {
+  const { data: { user } } = await sb.auth.getUser();
+  if (!user) return;
+
+  const { data: profile } = await sb.from('profiles')
+    .select('nombre, rol')
+    .eq('id', user.id)
+    .single();
+
+  if (profile) {
+    userRole = profile.rol;
+    realRole = profile.rol;
+    userName = profile.nombre || user.email;
+  } else {
+    userRole = 'contadores';
+    realRole = 'contadores';
+    userName = user.email;
+  }
+
+  // Cargar permisos efectivos desde grupos
+  await loadUserPermisos(user.id);
+}
+
+async function loadUserPermisos(userId) {
+  // Obtener grupos del usuario
+  var { data: assignments } = await sb.from('usuario_grupos').select('grupo_id').eq('user_id', userId);
+  if (!assignments || assignments.length === 0) { userPermisos = {}; return; }
+
+  var grupoIds = assignments.map(function(a) { return a.grupo_id; });
+  var { data: grupos } = await sb.from('grupos').select('permisos').in('id', grupoIds);
+  if (!grupos) { userPermisos = {}; return; }
+
+  // Merge aditivo (OR de booleans)
+  userPermisos = {};
+  function mergeInto(target, source) {
+    if (!source || typeof source !== 'object') return;
+    Object.keys(source).forEach(function(k) {
+      if (typeof source[k] === 'boolean') {
+        if (source[k] === true) target[k] = true;
+        else if (target[k] === undefined) target[k] = false;
+      } else if (typeof source[k] === 'object') {
+        if (!target[k]) target[k] = {};
+        mergeInto(target[k], source[k]);
+      }
+    });
+  }
+  grupos.forEach(function(g) { mergeInto(userPermisos, g.permisos || {}); });
+}
+
+// Helper: verificar permiso específico
+// Uso: hasPermiso('gerencia', 'clientes', 'consulta', 'dashboard')
+//   o: hasPermiso('comercial', 'pipeline', 'edicion')
+function hasPermiso(modId, scrId, habId, subtabId) {
+  if (userRole === 'admin' || realRole === 'admin') return true;
+  var mod = userPermisos[modId];
+  if (!mod) return false;
+  var scr = mod[scrId];
+  if (!scr) return false;
+  if (subtabId) {
+    var st = scr[subtabId];
+    return st && st[habId] === true;
+  }
+  return scr[habId] === true;
+}
+
+// Helper: el usuario tiene al menos un permiso de consulta en algun screen del modulo
+function tieneAccesoModulo(modId) {
+  if (userRole === 'admin' || realRole === 'admin') return true;
+  var mod = userPermisos[modId];
+  if (!mod) return false;
+  var keys = Object.keys(mod);
+  for (var i = 0; i < keys.length; i++) {
+    var scr = mod[keys[i]];
+    if (!scr || typeof scr !== 'object') continue;
+    // Screen directo con consulta
+    if (scr.consulta === true) return true;
+    // Screen con subtabs: buscar consulta en cada subtab
+    var subKeys = Object.keys(scr);
+    for (var j = 0; j < subKeys.length; j++) {
+      var sub = scr[subKeys[j]];
+      if (sub && typeof sub === 'object' && sub.consulta === true) return true;
+    }
+  }
+  return false;
+}
+
+var ROLE_PICKER_DATA = [
+  { id: 'admin', label: 'Administrador', desc: 'Acceso completo a todos los módulos', icon: '🔑', bg: '#ecfdf5' },
+  { id: 'contadores', label: 'Contadores', desc: 'Checklist, KPI e impuestos', icon: '🎯', bg: '#f5f3ff' },
+  { id: 'impuestos', label: 'Impuestos', desc: 'Control de declaraciones fiscales', icon: '📋', bg: '#fffbeb' },
+  { id: 'comercial', label: 'Comercial', desc: 'Pipeline de ventas y leads', icon: '📈', bg: '#eef2ff' },
+  { id: 'implementaciones', label: 'Implementaciones', desc: 'FE e implementaciones completas', icon: '🚀', bg: '#fff7ed' }
+];
+
+function showRolePicker() {
+  // Ocultar app, mostrar picker
+  document.getElementById('app-wrapper').classList.add('hidden');
+  document.getElementById('module-iframe').src = '';
+  activeModule = null;
+  activeSection = null;
+
+  var el = document.getElementById('role-pills');
+  var h = '';
+  ROLE_PICKER_DATA.forEach(function(r) {
+    h += '<div class="role-pill" onclick="pickRole(\'' + r.id + '\')">';
+    h += '<div class="role-pill-icon" style="background:' + r.bg + '">' + r.icon + '</div>';
+    h += '<div class="role-pill-info"><h3>' + r.label + '</h3><span>' + r.desc + '</span></div>';
+    h += '</div>';
+  });
+  el.innerHTML = h;
+  document.getElementById('role-picker').classList.remove('hidden');
+}
+
+function pickRole(role) {
+  userRole = role;
+  document.getElementById('role-picker').classList.add('hidden');
+  showApp();
+}
+
+// Mapa de rol → módulo de inicio
+var ROLE_HOME_MODULE = {
+  contadores: 'contabilidad',
+  impuestos: 'impuestos',
+  implementaciones: 'implementaciones',
+  comercial: 'comercial'
+};
+
+async function showApp() {
+  document.getElementById('login-screen').style.display = 'none';
+  document.getElementById('app-wrapper').classList.remove('hidden');
+
+  renderUserInfo();
+  if (realRole === 'admin') {
+    document.getElementById('btn-switch-role').classList.remove('hidden');
+  } else {
+    document.getElementById('btn-switch-role').classList.add('hidden');
+  }
+  renderSidebar();
+
+  // Si hay hash en la URL, navegar a ese módulo
+  var hash = location.hash.replace('#', '');
+  if (hash && hash !== 'inicio') {
+    navigateToHash();
+  } else {
+    // Si el rol tiene un módulo de inicio, cargarlo directo
+    var homeModule = ROLE_HOME_MODULE[userRole];
+    if (homeModule) {
+      openModule(homeModule);
+    } else {
+      // Admin: mostrar dashboard
+      renderWelcome();
+      try {
+        var dashData = await loadDashboardData();
+        renderDashboard(dashData);
+      } catch(e) {
+        console.error('Error cargando dashboard:', e);
+        document.getElementById('dashboard-kpis').innerHTML = '<div class="dash-loading">Error cargando datos.</div>';
+      }
+    }
+  }
+}
+
+document.getElementById('login-password').addEventListener('keydown', e => {
+  if (e.key === 'Enter') handleLogin();
+});
+document.getElementById('login-email').addEventListener('keydown', e => {
+  if (e.key === 'Enter') document.getElementById('login-password').focus();
+});
+
+async function init() {
+  const { data: { session } } = await sb.auth.getSession();
+  if (session) {
+    await loadUserProfile();
+    showApp();
+  }
+}
+
+init();
+</script>
+</body>
+</html>

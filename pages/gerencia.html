@@ -378,6 +378,20 @@
   .bd-note { background:#fffbeb; border:1px solid #fde68a; border-radius:8px; padding:10px 14px; font-size:12px; color:#92400e; margin-bottom:16px; }
   .bd-dirty-indicator { display:inline-block; width:8px; height:8px; border-radius:50%; background:var(--amber); margin-left:6px; vertical-align:middle; }
 
+  /* ─── Asignaciones: Dashboard de carga ─── */
+  .asig-cards { display:grid; grid-template-columns:repeat(auto-fill, minmax(340px, 1fr)); gap:16px; margin-bottom:20px; }
+  .asig-card { background:var(--card); border:1px solid var(--border); border-radius:12px; padding:18px; }
+  .asig-card.overloaded { border-color:#fca5a5; background:#fef2f2; }
+  .asig-card-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; }
+  .asig-card-name { font-size:1rem; font-weight:700; color:var(--navy); }
+  .asig-cap-bar { height:10px; background:#e5e7eb; border-radius:5px; overflow:hidden; margin-bottom:4px; }
+  .asig-cap-fill { height:100%; border-radius:5px; transition:width 0.3s; }
+  .asig-unassigned { background:var(--card); border:1px solid var(--border); border-radius:12px; padding:18px; }
+  .asig-unassigned-title { font-size:0.85rem; font-weight:700; color:var(--navy); margin-bottom:12px; }
+  .asig-copy-btn { padding:8px 16px; background:var(--blue); color:white; border:none; border-radius:8px; font-size:0.82rem; font-weight:600; cursor:pointer; font-family:inherit; display:inline-flex; align-items:center; gap:6px; }
+  .asig-copy-btn:hover { background:#3451d1; }
+  .asig-copy-btn:disabled { opacity:0.5; cursor:not-allowed; }
+
   /* ─── Modal ─── */
   .modal-overlay { position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.4); z-index:500; display:flex; align-items:center; justify-content:center; }
   .modal { background:white; border-radius:16px; padding:28px; width:100%; max-width:520px; box-shadow:0 8px 40px rgba(0,0,0,0.15); max-height:90vh; overflow-y:auto; }
@@ -537,7 +551,7 @@
   <div>
     <div class="mod-header-eye">Clientes</div>
     <h1 class="mod-header-title">Cartera de contabilidad</h1>
-    <p class="mod-header-sub" id="modHeaderSub">Cargando datos...</p>
+    <p class="mod-header-sub" id="modHeaderSub">Cartera de clientes, outsourcing, software y base de datos</p>
   </div>
   <div class="mod-header-actions">
     <button class="mod-header-btn" onclick="if(typeof ccExportXLS==='function')ccExportXLS()">↓ Exportar</button>
@@ -557,8 +571,9 @@
   <div class="content" id="cob-content"></div>
 </div>
 
-<div id="ctd-area" class="hidden">
-  <div class="content" id="ctd-content"></div>
+
+<div id="datos-area" class="hidden">
+  <div class="content" id="datos-content"></div>
 </div>
 
 <div class="footer">Conectado a Supabase — los datos se guardan en la nube.</div>
@@ -1149,7 +1164,7 @@ function todayStr() {
   return hoy.getDate() + ' ' + ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'][hoy.getMonth()] + ' ' + hoy.getFullYear();
 }
 
-function esc(str) { return (str||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function esc(str) { return (str||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/'/g,'&#39;'); }
 
 // ==================== GERENCIA MAIN TAB STATE ====================
 let gerMainTab = 'clientes';
@@ -1159,13 +1174,14 @@ function renderGerMainTabs() {
   var tabs = [
     { id:'clientes', label:'Clientes' },
     { id:'cobros', label:'Cobros' },
-    { id:'contadoras', label:'Personal' }
+    { id:'datos', label:'Datos' }
   ];
   if (!tengoPermiso('cobros', 'cobros', 'consulta') && !tengoPermiso('gerencia', 'cobros', 'consulta')) {
     tabs = tabs.filter(t => t.id !== 'cobros');
   }
-  if (!tengoPermiso('gerencia', 'contadoras', 'consulta')) {
-    tabs = tabs.filter(t => t.id !== 'contadoras');
+  // Datos solo para admin
+  if (!tengoPermiso('gerencia', 'basedatos', 'edicion', 'clientes')) {
+    tabs = tabs.filter(t => t.id !== 'datos');
   }
   el.innerHTML = tabs.map(t => '<button class="main-tab ' + (gerMainTab === t.id ? 'active' : '') + '" onclick="switchGerTab(\'' + t.id + '\')">' + t.label + '</button>').join('');
 }
@@ -1175,16 +1191,16 @@ function switchGerTab(tab) {
   renderGerMainTabs();
   document.getElementById('cc-area').classList.add('hidden');
   document.getElementById('cob-area').classList.add('hidden');
-  document.getElementById('ctd-area').classList.add('hidden');
+  document.getElementById('datos-area').classList.add('hidden');
   if (tab === 'clientes') {
     document.getElementById('cc-area').classList.remove('hidden');
     ccRenderAll();
   } else if (tab === 'cobros') {
     document.getElementById('cob-area').classList.remove('hidden');
     cobRenderApp();
-  } else if (tab === 'contadoras') {
-    document.getElementById('ctd-area').classList.remove('hidden');
-    ctdRenderApp();
+  } else if (tab === 'datos') {
+    document.getElementById('datos-area').classList.remove('hidden');
+    datosLoadAll().then(function() { datosRenderApp(); });
   }
 }
 
@@ -1199,15 +1215,19 @@ function gerShowToast(msg, type) {
 // ██  CONTROL DE CLIENTES (CC) MODULE
 // ══════════════════════════════════════════════════════════════
 
-// ─── CC Constants ───
-const ccCOLORS = {
-  Taina:"#4361ee", Beliani:"#8b5cf6", Yessica:"#f59e0b",
-  "Karina":"#10b981", Victoria:"#ec4899", Yolenny:"#f97316",
-  Milka:"#6366f1", "Milka (freelance)":"#6366f1", "Sin asignar":"#a3aab8"
-};
-
-const ccCAPACIDAD = { Taina:500, Beliani:1000, Yessica:1000 };
+// ─── CC Constants (se cargan desde tabla equipo) ───
+var ccCOLORS = { "Sin asignar":"#a3aab8" }; // fallback, se completa desde BD
+var ccCAPACIDAD = {}; // se carga desde BD
 const ccMESES_CON_CAPACIDAD = ["abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
+
+async function loadEquipoGerencia() {
+  var res = await sb.from('equipo').select('nombre, color, capacidad_tx, excluida_checklist, excluida_contadoras').eq('activo', true);
+  if (!res.data) return;
+  res.data.forEach(function(e) {
+    if (e.color) ccCOLORS[e.nombre] = e.color;
+    if (e.capacidad_tx) ccCAPACIDAD[e.nombre] = e.capacidad_tx;
+  });
+}
 
 // ─── CC State ───
 let ccDATA = {};
@@ -1494,9 +1514,6 @@ function ccDestroyCharts() { ccCharts.forEach(c=>c.destroy()); ccCharts=[]; }
 function ccNavigateMain(tab) {
   ccActiveMainTab = tab;
   ccActiveSubTab = null;
-  // Reset CRUD view toggles when switching tabs
-  ccServView = 'analytics';
-  ccSwView = 'analytics';
   ccImplSubPill = 'resumen';
   ccRenderAll();
 }
@@ -1669,7 +1686,7 @@ function ccRenderContent() {
   if (ccActiveMainTab === "software") return ccRenderSoftware(el);
   if (ccActiveMainTab === "implementacion") return ccRenderImplementacion(el);
   if (ccActiveMainTab === "contadoras-maestra") return bdRenderContadoras();
-  if (ccActiveMainTab === "asignaciones") return bdRenderAsignaciones();
+  if (ccActiveMainTab === "asignaciones") return ccRenderAsigDashboard();
   if (ccActiveMainTab === "link-dashboard") return bdRenderLinkDashboard();
   if (ccActiveMainTab === "facturacion") return ccRenderFacturacion(el);
   if (ccActiveSubTab === null) return ccRenderDashboard(el);
@@ -1685,8 +1702,7 @@ var ccServMes = MESES[new Date().getMonth()]; // mes actual para tab Servicios
 var ccSwMes = MESES[new Date().getMonth()]; // mes actual para tab Software
 var ccSwFiltro = null; // null = todos, 'inicio','nuevos','churn','cierre'
 var ccSwLicFiltro = null; // null = todos, o nombre de licencia
-var ccServView = 'analytics'; // 'analytics' o 'crud'
-var ccSwView = 'analytics'; // 'analytics' o 'crud'
+// ccServView y ccSwView eliminados — vista unificada
 var ccImplSubPill = 'resumen'; // 'resumen', 'fe', 'adm'
 var ccImplFEData = [];
 var ccImplAdmData = [];
@@ -1725,21 +1741,11 @@ function ccServGetActivosMes(mesKey) {
   });
 }
 
-function ccToggleServView() {
-  ccServView = ccServView === 'analytics' ? 'crud' : 'analytics';
-  ccRenderContent();
-}
-
 function ccRenderServicios(el) {
-  // If CRUD view is active, render the BD Clientes CRUD instead
-  if (ccServView === 'crud') {
-    bdRenderClientes();
-    return;
-  }
   var mesIdx = MESES.indexOf(ccServMes);
   var currentMonthIdx = new Date().getMonth();
 
-  // Month tabs + view toggle
+  // Month tabs
   var html = '<div class="nav-area" style="padding:12px 24px;background:var(--bg);border-bottom:1px solid var(--border);margin:-24px -24px 20px -24px;display:flex;align-items:center;justify-content:space-between">';
   html += '<div class="month-tabs">';
   MESES.forEach(function(m, i) {
@@ -1747,7 +1753,6 @@ function ccRenderServicios(el) {
     html += '<button class="month-tab' + (m === ccServMes ? ' active' : '') + '" onclick="ccServMes=\'' + m + '\';ccServMovFiltro=null;ccServFiltro=null;ccRenderContent()">' + MESES_LABEL[i] + '</button>';
   });
   html += '</div>';
-  html += '<button style="padding:6px 14px;border-radius:8px;font-size:0.78rem;font-weight:600;cursor:pointer;border:1px solid var(--border);background:white;color:var(--navy);white-space:nowrap" onclick="ccToggleServView()" title="Gestionar clientes">&#128221; Base de datos</button>';
   html += '</div>';
 
   // Filter clients active in selected month
@@ -1797,20 +1802,28 @@ function ccRenderServicios(el) {
   var servNuevos = ccAllClientes.filter(function(c) { return c.fecha_entrada && c.fecha_entrada.indexOf(servPrefix) === 0; });
   var servChurn = ccAllClientes.filter(function(c) { return c.fecha_salida && c.fecha_salida.indexOf(servPrefix) === 0; });
   var servInicio = total - servNuevos.length + servChurn.length;
+  var servLastDay = new Date(ANIO, mesIdx + 1, 0);
+  var servLastDayStr = ANIO + '-' + String(mesIdx + 1).padStart(2, '0') + '-' + String(servLastDay.getDate()).padStart(2, '0');
+  var servInactivos = ccAllClientes.filter(function(c) {
+    if (activos.indexOf(c) >= 0) return false;
+    var entered = !c.fecha_entrada || c.fecha_entrada <= servLastDayStr;
+    return entered;
+  });
 
   html += '<div class="stats" style="margin-top:8px">';
   html += '<div class="stat" style="cursor:pointer;border:2px solid ' + (ccServMovFiltro === 'total' ? 'var(--navy)' : 'transparent') + '" onclick="ccServMovFilter(\'total\')"><div class="stat-label">Total clientes</div><div class="stat-value">' + total + '</div><div class="stat-sub">' + MESES_FULL[mesIdx] + '</div></div>';
   html += '<div class="stat" style="cursor:pointer;border:2px solid ' + (ccServMovFiltro === 'inicio' ? 'var(--blue)' : 'transparent') + '" onclick="ccServMovFilter(\'inicio\')"><div class="stat-label">Inicio mes</div><div class="stat-value" style="color:var(--blue)">' + servInicio + '</div><div class="stat-sub">' + MESES_FULL[mesIdx] + '</div></div>';
   html += '<div class="stat" style="cursor:pointer;border:2px solid ' + (ccServMovFiltro === 'nuevos' ? 'var(--green)' : 'transparent') + '" onclick="ccServMovFilter(\'nuevos\')"><div class="stat-label">Nuevos</div><div class="stat-value stat-green">' + servNuevos.length + '</div><div class="stat-sub">' + MESES_FULL[mesIdx] + '</div></div>';
   html += '<div class="stat" style="cursor:pointer;border:2px solid ' + (ccServMovFiltro === 'churn' ? 'var(--red)' : 'transparent') + '" onclick="ccServMovFilter(\'churn\')"><div class="stat-label">Churn</div><div class="stat-value stat-red">' + servChurn.length + '</div><div class="stat-sub">' + MESES_FULL[mesIdx] + '</div></div>';
+  html += '<div class="stat" style="cursor:pointer;border:2px solid ' + (ccServMovFiltro === 'inactivos' ? 'var(--muted)' : 'transparent') + '" onclick="ccServMovFilter(\'inactivos\')"><div class="stat-label">Inactivos</div><div class="stat-value" style="color:var(--muted)">' + servInactivos.length + '</div><div class="stat-sub">' + MESES_FULL[mesIdx] + '</div></div>';
   html += '<div class="stat" style="cursor:pointer;border:2px solid ' + (ccServMovFiltro === 'cierre' ? 'var(--navy)' : 'transparent') + '" onclick="ccServMovFilter(\'cierre\')"><div class="stat-label">Cierre</div><div class="stat-value">' + total + '</div><div class="stat-sub">' + MESES_FULL[mesIdx] + '</div></div>';
   html += '</div>';
 
   // Movement filter indicator
   if (ccServMovFiltro) {
-    var mfLabels = {total:'Todos los clientes de ' + MESES_FULL[mesIdx], inicio:'Clientes al inicio de ' + MESES_FULL[mesIdx], nuevos:'Nuevos en ' + MESES_FULL[mesIdx], churn:'Churn en ' + MESES_FULL[mesIdx], cierre:'Clientes al cierre de ' + MESES_FULL[mesIdx]};
-    var mfColors = {total:'var(--navy)', inicio:'var(--blue)', nuevos:'var(--green)', churn:'var(--red)', cierre:'var(--navy)'};
-    var mfBgs = {total:'#f0f4ff', inicio:'#eff6ff', nuevos:'#ecfdf5', churn:'#fef2f2', cierre:'#f0f4ff'};
+    var mfLabels = {total:'Todos los clientes de ' + MESES_FULL[mesIdx], inicio:'Clientes al inicio de ' + MESES_FULL[mesIdx], nuevos:'Nuevos en ' + MESES_FULL[mesIdx], churn:'Churn en ' + MESES_FULL[mesIdx], inactivos:'Clientes inactivos de ' + MESES_FULL[mesIdx], cierre:'Clientes al cierre de ' + MESES_FULL[mesIdx]};
+    var mfColors = {total:'var(--navy)', inicio:'var(--blue)', nuevos:'var(--green)', churn:'var(--red)', inactivos:'var(--muted)', cierre:'var(--navy)'};
+    var mfBgs = {total:'#f0f4ff', inicio:'#eff6ff', nuevos:'#ecfdf5', churn:'#fef2f2', inactivos:'#f1f5f9', cierre:'#f0f4ff'};
     html += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;padding:8px 12px;background:' + mfBgs[ccServMovFiltro] + ';border-radius:8px;font-size:0.8rem;color:' + mfColors[ccServMovFiltro] + ';font-weight:500">';
     html += '<span>' + mfLabels[ccServMovFiltro] + '</span>';
     html += '<button style="margin-left:auto;padding:3px 10px;border-radius:5px;border:1px solid ' + mfColors[ccServMovFiltro] + ';background:white;font-size:0.72rem;cursor:pointer;color:' + mfColors[ccServMovFiltro] + '" onclick="ccServMovFilter(null)">Ver todos</button>';
@@ -1873,17 +1886,27 @@ function ccRenderServicios(el) {
   else if (ccServMovFiltro === 'nuevos') { lista = servNuevos; titulo = 'Nuevos en ' + MESES_FULL[mesIdx]; }
   else if (ccServMovFiltro === 'churn') { lista = servChurn; titulo = 'Churn en ' + MESES_FULL[mesIdx]; }
   else if (ccServMovFiltro === 'inicio') {
-    // Activos al inicio = activos al cierre - nuevos + churn
     var servNuevosNombres = servNuevos.map(function(c) { return c.nombre; });
-    var servChurnNombres = servChurn.map(function(c) { return c.nombre; });
     lista = activos.filter(function(c) { return servNuevosNombres.indexOf(c.nombre) === -1; }).concat(servChurn);
     titulo = 'Inicio de ' + MESES_FULL[mesIdx];
   }
+  else if (ccServMovFiltro === 'inactivos') { lista = servInactivos; titulo = 'Inactivos de ' + MESES_FULL[mesIdx]; }
   else if (ccServMovFiltro === 'cierre') { lista = activos; titulo = 'Cierre de ' + MESES_FULL[mesIdx]; }
   else if (ccServMovFiltro === 'total') { lista = activos; titulo = 'Total clientes ' + MESES_FULL[mesIdx]; }
   else { lista = activos; titulo = 'Todos los clientes'; }
 
-  // Sort: group by service type (imp → contab → sup → bk → sin tipo), then alphabetical
+  // Apply search filter
+  if (clSearch) {
+    var q = clSearch.toLowerCase();
+    lista = lista.filter(function(c) {
+      return (c.nombre || '').toLowerCase().indexOf(q) >= 0
+        || (c.rnc || '').toLowerCase().indexOf(q) >= 0
+        || (c.contadora_contabilidad || '').toLowerCase().indexOf(q) >= 0
+        || (c.contadora_impuestos || '').toLowerCase().indexOf(q) >= 0;
+    });
+  }
+
+  // Sort: group by service type, then alphabetical
   var tipoOrden = { 'Solo impuestos': 0, 'Contabilidad completa': 1, 'Solo supervisión': 2, 'Bookkeeping': 3 };
   lista.sort(function(a, b) {
     var aOrd = a.tipo_servicio ? (tipoOrden[a.tipo_servicio] != null ? tipoOrden[a.tipo_servicio] : 99) : 99;
@@ -1892,53 +1915,75 @@ function ccRenderServicios(el) {
     return (a.nombre || '').localeCompare(b.nombre || '', 'es');
   });
 
+  // ── CRUD Table (unified) ──
   html += '<div class="card">';
-  html += '<h3>' + titulo + ' (' + lista.length + ') — ' + MESES_FULL[mesIdx] + ' ' + ANIO + '</h3>';
-
-  if (sinTipo.length > 0 && ccServFiltro === null) {
-    html += '<div class="note">' + sinTipo.length + ' cliente(s) sin tipo de servicio. Asígnalo desde BD Clientes → Editar.</div>';
+  html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px">';
+  html += '<h3 style="margin:0">' + titulo + ' (' + lista.length + ')</h3>';
+  html += '<div style="display:flex;gap:8px;align-items:center">';
+  html += '<input class="cl-search" type="text" placeholder="Buscar..." value="' + esc(clSearch) + '" id="cl-search-input" oninput="clSearchInput(this.value)" style="padding:6px 12px;border:1px solid var(--border);border-radius:8px;font-size:0.8rem;width:180px">';
+  if (tengoPermiso('gerencia', 'basedatos', 'edicion', 'clientes')) {
+    html += '<button class="btn-add" onclick="clOpenModal()" style="padding:6px 14px;border-radius:8px;font-size:0.78rem;font-weight:600;cursor:pointer;border:1px solid var(--navy);background:var(--navy);color:white;white-space:nowrap">+ Nuevo cliente</button>';
   }
+  html += '</div></div>';
 
-  html += '<div class="table-wrap"><table>';
-  html += '<tr><th>#</th><th>Cliente</th><th>RNC</th><th>Servicio</th><th>Cont. contab</th><th>Cont. imp</th><th>Adm</th></tr>';
+  if (lista.length === 0) {
+    html += '<div style="text-align:center;padding:30px;color:var(--muted);font-size:0.85rem">No se encontraron clientes.</div>';
+  } else {
+    var canEditCl = tengoPermiso('gerencia', 'basedatos', 'edicion', 'clientes');
+    var colCount = canEditCl ? 9 : 8;
+    html += '<div class="table-wrap"><table class="cl-table">';
+    html += '<thead><tr><th style="width:36px">#</th><th>Cliente</th><th>RNC</th><th>Servicio</th><th>Cont. contab</th><th>Cont. imp</th><th>Adm</th><th>Estado</th>';
+    if (canEditCl) html += '<th></th>';
+    html += '</tr></thead><tbody>';
 
-  var lastTipo = null;
-  var counter = 0;
-  lista.forEach(function(c) {
-    var tipoKey = c.tipo_servicio || '__sin_tipo';
+    var lastTipo = null;
+    lista.forEach(function(c, idx) {
+      var tipoKey = c.tipo_servicio || '__sin_tipo';
+      if (ccServFiltro === null && !ccServMovFiltro && tipoKey !== lastTipo) {
+        var groupLabel = '';
+        if (tipoKey === 'Solo impuestos') groupLabel = 'Tax One';
+        else if (tipoKey === 'Contabilidad completa') groupLabel = 'Contabilidad completa';
+        else if (tipoKey === 'Solo supervisión') groupLabel = 'Supervisión';
+        else if (tipoKey === 'Bookkeeping') groupLabel = 'Bookkeeping';
+        else groupLabel = 'Sin servicio asignado';
+        html += '<tr style="background:#f1f5f9"><td colspan="' + colCount + '" style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--navy);padding:10px 12px">' + groupLabel + '</td></tr>';
+        lastTipo = tipoKey;
+      }
 
-    // Group header when showing all (no filter active)
-    if (ccServFiltro === null && tipoKey !== lastTipo) {
-      var groupLabel = '';
-      if (tipoKey === 'Solo impuestos') groupLabel = 'Tax One';
-      else if (tipoKey === 'Contabilidad completa') groupLabel = 'Contabilidad completa';
-      else if (tipoKey === 'Solo supervisión') groupLabel = 'Supervisión';
-      else if (tipoKey === 'Bookkeeping') groupLabel = 'Bookkeeping';
-      else groupLabel = 'Sin servicio asignado';
-      html += '<tr style="background:#f1f5f9"><td colspan="7" style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--navy);padding:10px 12px">' + groupLabel + '</td></tr>';
-      lastTipo = tipoKey;
-    }
+      var tipoLabel = '', tipoColor = 'var(--muted)';
+      if (c.tipo_servicio === 'Contabilidad completa') { tipoLabel = 'Contabilidad'; tipoColor = 'var(--green)'; }
+      else if (c.tipo_servicio === 'Solo impuestos') { tipoLabel = 'Tax One'; tipoColor = 'var(--blue)'; }
+      else if (c.tipo_servicio === 'Solo supervisión') { tipoLabel = 'Supervisión'; tipoColor = 'var(--amber)'; }
+      else if (c.tipo_servicio === 'Bookkeeping') { tipoLabel = 'Bookkeeping'; tipoColor = '#8b5cf6'; }
+      else { tipoLabel = 'Sin asignar'; tipoColor = '#94a3b8'; }
 
-    counter++;
-    var tipoLabel = '';
-    var tipoColor = 'var(--muted)';
-    if (c.tipo_servicio === 'Contabilidad completa') { tipoLabel = 'Contabilidad'; tipoColor = 'var(--green)'; }
-    else if (c.tipo_servicio === 'Solo impuestos') { tipoLabel = 'Tax One'; tipoColor = 'var(--blue)'; }
-    else if (c.tipo_servicio === 'Solo supervisión') { tipoLabel = 'Supervisión'; tipoColor = 'var(--amber)'; }
-    else if (c.tipo_servicio === 'Bookkeeping') { tipoLabel = 'Bookkeeping'; tipoColor = '#8b5cf6'; }
-    else { tipoLabel = 'Sin asignar'; tipoColor = '#94a3b8'; }
-
-    html += '<tr>';
-    html += '<td>' + counter + '</td>';
-    html += '<td><strong>' + esc(c.nombre || '') + '</strong></td>';
-    html += '<td>' + esc(c.rnc || '') + '</td>';
-    html += '<td><span style="font-size:11px;font-weight:600;color:' + tipoColor + '">' + tipoLabel + '</span></td>';
-    html += '<td>' + esc(c.contadora_contabilidad || '—') + '</td>';
-    html += '<td>' + esc(c.contadora_impuestos || '—') + '</td>';
-    html += '<td>' + (c.monto_adm || '—') + '</td>';
-    html += '</tr>';
-  });
-  html += '</table></div></div>';
+      var isActivo = activos.indexOf(c) >= 0;
+      var rowStyle = !isActivo ? ' style="opacity:0.55"' : '';
+      html += '<tr' + rowStyle + '>';
+      html += '<td style="color:var(--muted);font-size:0.75rem">' + (idx + 1) + '</td>';
+      html += '<td class="cl-name"><strong>' + esc(c.nombre || '') + '</strong></td>';
+      html += '<td style="font-size:0.8rem">' + (c.rnc ? esc(c.rnc) : '<span style="color:var(--light)">—</span>') + '</td>';
+      html += '<td><span style="font-size:11px;font-weight:600;color:' + tipoColor + '">' + tipoLabel + '</span></td>';
+      html += '<td>' + (c.responsabilidad_contabilidad === false ? '<span style="color:var(--light);font-size:0.75rem">N/A</span>' : (c.contadora_contabilidad ? esc(c.contadora_contabilidad) : '<span style="color:var(--light)">Sin asignar</span>')) + '</td>';
+      html += '<td>' + (c.responsabilidad_impuestos === false ? '<span style="color:var(--light);font-size:0.75rem">N/A</span>' : (c.contadora_impuestos ? esc(c.contadora_impuestos) : '<span style="color:var(--light)">Sin asignar</span>')) + '</td>';
+      html += '<td style="font-size:0.8rem">' + (c.monto_adm || '<span style="color:var(--light)">—</span>') + '</td>';
+      if (!isActivo) {
+        var salida = c.fecha_salida ? c.fecha_salida.split('-').reverse().join('/') : '';
+        html += '<td><span class="cl-badge-inactivo">Inactivo</span>' + (salida ? '<div style="font-size:0.7rem;color:var(--muted);margin-top:2px">' + salida + '</div>' : '') + '</td>';
+      } else {
+        html += '<td><span class="cl-badge-activo">Activo</span></td>';
+      }
+      if (canEditCl) {
+        html += '<td style="white-space:nowrap">';
+        html += '<button style="padding:4px 10px;border:1px solid var(--border);border-radius:6px;background:white;font-size:0.75rem;cursor:pointer;color:var(--muted)" onclick="clEditClient(\'' + c.id + '\')">Editar</button> ';
+        html += '<button style="padding:4px 8px;border:1px solid var(--border);border-radius:6px;background:white;font-size:0.75rem;cursor:pointer;color:var(--muted)" onclick="clShowHistory(\'' + c.id + '\',\'' + (c.nombre||'').replace(/'/g,"\\'") + '\')" title="Historial">&#128337;</button>';
+        html += '</td>';
+      }
+      html += '</tr>';
+    });
+    html += '</tbody></table></div>';
+  }
+  html += '</div>';
 
   el.innerHTML = html;
 }
@@ -2280,21 +2325,11 @@ function ccRenderImplementacion(el) {
   el.innerHTML += html;
 }
 
-function ccToggleSwView() {
-  ccSwView = ccSwView === 'analytics' ? 'crud' : 'analytics';
-  ccRenderContent();
-}
-
 function ccRenderSoftware(el) {
-  // If CRUD view is active, render the BD Software CRUD instead
-  if (ccSwView === 'crud') {
-    bdRenderSoftwareCrud();
-    return;
-  }
   var currentMonthIdx = new Date().getMonth();
   var swMesIdx = MESES.indexOf(ccSwMes);
 
-  // Month tabs + view toggle
+  // Month tabs
   var html = '<div class="nav-area" style="padding:12px 24px;background:var(--bg);border-bottom:1px solid var(--border);margin:-24px -24px 20px -24px;display:flex;align-items:center;justify-content:space-between">';
   html += '<div class="month-tabs">';
   MESES.forEach(function(m, i) {
@@ -2302,7 +2337,6 @@ function ccRenderSoftware(el) {
     html += '<button class="month-tab' + (m === ccSwMes ? ' active' : '') + '" onclick="ccSwMes=\'' + m + '\';ccRenderContent()">' + MESES_LABEL[i] + '</button>';
   });
   html += '</div>';
-  html += '<button style="padding:6px 14px;border-radius:8px;font-size:0.78rem;font-weight:600;cursor:pointer;border:1px solid var(--border);background:white;color:var(--navy);white-space:nowrap" onclick="ccToggleSwView()" title="Gestionar clientes">&#128221; Base de datos</button>';
   html += '</div>';
 
   // Clientes activos en el mes seleccionado
@@ -2463,21 +2497,24 @@ function ccRenderSoftware(el) {
 // ─── Facturación tab ───
 var ccFactMes = MESES[new Date().getMonth()];
 
-// Tabla de precios outsourcing (USD) por tipo_servicio + monto_adm (transacciones)
-var PRECIOS_OUTSOURCING = {
-  'Solo impuestos': {50: 400, 100: 600, 150: 800},
-  'Contabilidad completa': {50: 600, 100: 750, 150: 1000}
-};
+// Precios — se cargan desde tabla precios en Supabase
+var PRECIOS_OUTSOURCING = {};
+var PRECIOS_SOFTWARE = {};
 
-// Tabla de precios licencias Adm (USD)
-var PRECIOS_SOFTWARE = {
-  'Start': 24, 'Start+FE': 36,
-  'Basic': 36, 'Basic+FE': 54, 'Basic+FE+POS': 94,
-  'Standard': 60, 'Standard+FE': 90,
-  'Premium': 84, 'Premium+FE': 126,
-  'Premium+Nómina': 144, 'Premium+Nómina+FE': 216,
-  'Manufactura': 144, 'Manufactura+FE': 216
-};
+async function loadPrecios() {
+  var res = await sb.from('precios').select('tipo, nombre_plan, transacciones, precio').eq('activo', true);
+  if (!res.data) return;
+  PRECIOS_OUTSOURCING = {};
+  PRECIOS_SOFTWARE = {};
+  res.data.forEach(function(p) {
+    if (p.tipo === 'outsourcing') {
+      if (!PRECIOS_OUTSOURCING[p.nombre_plan]) PRECIOS_OUTSOURCING[p.nombre_plan] = {};
+      PRECIOS_OUTSOURCING[p.nombre_plan][p.transacciones] = p.precio;
+    } else if (p.tipo === 'software') {
+      PRECIOS_SOFTWARE[p.nombre_plan] = p.precio;
+    }
+  });
+}
 
 function ccGetPrecioOutsourcing(c) {
   var tipo = c.tipo_servicio || '';
@@ -3021,7 +3058,7 @@ function cobGroupByCustomer(facturas) {
     }
     var dias = parseInt(f.dias_atraso) || 0;
 
-    var balDop = parseFloat(f.balance_dop || 0) || balance; // fallback si no hay balance_dop
+    var balDop = (f.balance_dop != null) ? parseFloat(f.balance_dop) : balance;
     groups[name].facturas.push({
       no: f.doc_id || '', total: total, balance: balance, balanceDop: balDop,
       dueDate: f.fecha_vencimiento, date: f.fecha_factura,
@@ -3141,7 +3178,7 @@ function cobBuildClientList() {
         c.totalPendiente += f.balance;
         // Usar la tasa implícita del balance_dop original para convertir el balance actualizado
         var originalBal = parseFloat(f.total) || f.balance || 1;
-        var tasa = f.balanceDop ? (f.balanceDop / originalBal) : 1;
+        var tasa = (f.balanceDop != null && f.balanceDop !== 0) ? (f.balanceDop / originalBal) : 1;
         c.totalDop += f.balance * tasa;
       });
       c.totalPagos = pagosCliente.length;
@@ -3150,7 +3187,7 @@ function cobBuildClientList() {
     // No ocultar clientes con balance 0 — se mantienen para ver historial
     // Los que quedaron en 0 se marcan para mostrar diferente
     clientes.forEach(function(c) {
-      if (c.totalPendiente <= 0.01 && c.facturas.length > 0) c.saldado = true;
+      if (c.totalPendiente >= -0.01 && c.totalPendiente <= 0.01 && c.facturas.length > 0) c.saldado = true;
     });
   }
 
@@ -3345,7 +3382,7 @@ function cobRenderTableOnly() {
     html += '<td>' + (idx + 1) + '</td>';
     html += '<td style="font-weight:600;cursor:pointer" onclick="cobOpenDetalle(\'' + cobEsc(c.nombre) + '\')">' + c.nombre + '</td>';
     html += '<td style="text-align:center;font-size:0.72rem;color:var(--muted)">' + (c.totalPendiente > 0 ? currency : '-') + '</td>';
-    html += '<td style="text-align:right;font-weight:600;font-variant-numeric:tabular-nums">' + (c.totalPendiente > 0 ? cobFmtAmount(c.totalPendiente) : '-') + '</td>';
+    html += '<td style="text-align:right;font-weight:600;font-variant-numeric:tabular-nums;' + (c.totalPendiente < 0 ? 'color:var(--green)' : '') + '">' + (c.totalPendiente !== 0 ? (c.totalPendiente < 0 ? '-' : '') + cobFmtAmount(Math.abs(c.totalPendiente)) : '-') + '</td>';
     html += '<td style="text-align:center">' + (c.facturas.length || '-') + '</td>';
     html += '<td style="text-align:center"><span class="cob-aging ' + aging.css + '">' + (c.maxDias > 0 ? c.maxDias + 'd' : '-') + '</span></td>';
     html += '<td style="text-align:center"><span class="cob-score ' + score + '">' + COB_SCORE_LABELS[score] + '</span></td>';
@@ -3460,7 +3497,11 @@ async function cobRenderApp() {
     });
   }
 
-  // Totals from filtered list
+  // Total general (de TODOS los clientes, no filtrado) para el greeting
+  var totalDOPGlobal = 0;
+  allClientes.forEach(function(c) { totalDOPGlobal += (c.montoDOP || 0); });
+
+  // Total filtrado (para los charts)
   var totalDOP = 0;
   clientes.forEach(function(c) { totalDOP += c.montoDOP; });
 
@@ -3502,8 +3543,8 @@ async function cobRenderApp() {
   // ── Greeting ──
   html += '<div class="cob-greeting">';
   html += '<h2>' + cobGetGreeting() + ', ' + cobGetFirstName() + '</h2>';
-  if (totalDOP > 0) {
-    html += '<p>Tienes ' + allClientes.length + ' clientes en seguimiento de cobro por ' + cobFormatMoney(totalDOP) + ' en total.</p>';
+  if (totalDOPGlobal !== 0) {
+    html += '<p>Tienes ' + allClientes.length + ' clientes en seguimiento de cobro por ' + cobFormatMoney(Math.abs(totalDOPGlobal)) + ' en total.</p>';
   } else {
     html += '<p>Tienes ' + allClientes.length + ' clientes clasificados por score de pago.</p>';
   }
@@ -4325,7 +4366,7 @@ async function cobUploadExcel(input) {
         var bal = parseFloat(r[colMap.balance]) || 0;
         if (bal === 0) return; // solo saltar si es exactamente 0
         // Balance en DOP: si hay columna local, usarla. Si no, asumir que balance ya es DOP.
-        var balDop = useLocalBalance ? (parseFloat(r[colMap.balanceLocal]) || bal) : bal;
+        var balDop = useLocalBalance ? (parseFloat(r[colMap.balanceLocal]) || 0) : bal;
 
         var fechaVal = null;
         if (colMap.fecha && r[colMap.fecha]) {
@@ -4533,589 +4574,6 @@ async function cobBorrarTarea(id) {
     cobRenderApp();
   }
 }
-
-// ══════════════════════════════════════════════════════════════
-// ██  CONTROL DE CONTADORAS (CTD) MODULE
-// ══════════════════════════════════════════════════════════════
-
-// ─── CTD Constants ───
-var ctdEXCLUIDAS = ['Karina', 'Milka'];
-function ctdIsExcluida(name) {
-  for (var i = 0; i < ctdEXCLUIDAS.length; i++) {
-    if (name.indexOf(ctdEXCLUIDAS[i]) === 0) return true;
-  }
-  return false;
-}
-
-var ctdCONTADORA_LAST = ['Sin asignar'];
-
-var ctdITEMS = [
-  { id:'presupuesto', label:'Presupuesto', short:'Pres.' },
-  { id:'proyeccion', label:'Proyección de impuestos', short:'Proy.' },
-  { id:'resumen', label:'Resumen de declaración', short:'Resumen' },
-  { id:'video', label:'Video mensual', short:'Video' }
-];
-
-var ctdKPI_GROUPS = [
-  { id:'facturas', label:'Facturas', calc: function(row) { return (row.facturas_mes && row.facturas_mes > 0) ? 1 : 0; } },
-  { id:'reportes', label:'Reportes', calc: function(row) {
-      var n = 0;
-      if (row.presupuesto_fecha) n++;
-      if (row.proyeccion_fecha) n++;
-      if (row.resumen_fecha) n++;
-      return n / 3;
-    }
-  },
-  { id:'video', label:'Video / Reunion', calc: function(row) { return row.video_fecha ? 1 : 0; } }
-];
-
-// ─── CTD 24-Task Items (same as contabilidad.html) ───
-var ctdCHECKLIST_ITEMS = [
-  { id:'solicitud_nomina',        n:1,  label:'Solicitud de Nomina',                       impuesto:'TSS / IR-3',    dia:3,  mesRel:1 },
-  { id:'recepcion_nomina',        n:2,  label:'Recepción de Nomina',                        impuesto:'TSS / IR-3',    dia:3,  mesRel:1 },
-  { id:'registro_nomina',         n:3,  label:'Registro de Nomina',                         impuesto:'TSS / IR-3',    dia:3,  mesRel:1 },
-  { id:'informar_impuestos',      n:4,  label:'Informar a Impuestos (via Trello)',           impuesto:'TSS / IR-3',    dia:3,  mesRel:1 },
-  { id:'autorizacion_tss_nomina', n:5,  label:'Subir autorizacion de TSS al cliente',       impuesto:'TSS / IR-3',    dia:3,  mesRel:1 },
-  { id:'autorizacion_tss',        n:6,  label:'Subir autorizacion al cliente (TSS)',         impuesto:'TSS / IR-3',    dia:3,  mesRel:1 },
-  { id:'autorizacion_ir3',        n:7,  label:'Subir Autorización de IR-3 al cliente',      impuesto:'TSS / IR-3',    dia:3,  mesRel:1 },
-  { id:'solicitar_proveedores',   n:8,  label:'Solicitar Proveedores Informales',           impuesto:'Proveedores',   dia:10, mesRel:1 },
-  { id:'recepcion_proveedores',   n:9,  label:'Recepción de Proveedores Informales',        impuesto:'Proveedores',   dia:10, mesRel:1 },
-  { id:'registrar_proveedores',   n:10, label:'Registrar gastos de Proveedores Informales', impuesto:'Proveedores',   dia:10, mesRel:1 },
-  { id:'borrador_ir17',           n:11, label:'Realizar Borrador de IR-17',                 impuesto:'Proveedores',   dia:10, mesRel:1 },
-  { id:'enviar_ir17',             n:12, label:'Enviar borrador de IR-17 al cliente',        impuesto:'Proveedores',   dia:10, mesRel:1 },
-  { id:'notificacion_ir17',       n:13, label:'Subir Notificacion de pago IR-17',           impuesto:'Proveedores',   dia:10, mesRel:1 },
-  { id:'autorizacion_anticipo',   n:14, label:'Subir autorizacion de Anticipo al cliente',  impuesto:'Anticipo',      dia:15, mesRel:1 },
-  { id:'verificar_facturas',      n:15, label:'Verificar facturas de gastos pendientes',    impuesto:'ITBIS',         dia:20, mesRel:1 },
-  { id:'solicitar_facturas',      n:16, label:'Solicitar o confirmar facturas de gastos',   impuesto:'ITBIS',         dia:20, mesRel:1 },
-  { id:'facturas_registradas',    n:17, label:'Facturas de Gastos registradas',             impuesto:'ITBIS',         dia:20, mesRel:1 },
-  { id:'borrador_itbis',          n:18, label:'Realizar Borrador ITBIS',                    impuesto:'ITBIS',         dia:20, mesRel:1 },
-  { id:'enviar_itbis',            n:19, label:'Enviar autorizacion de pago ITBIS',          impuesto:'ITBIS',         dia:20, mesRel:1 },
-  { id:'registros_realizados',    n:20, label:'Registrar gastos',                           impuesto:'Presentación',  dia:5,  mesRel:1, firmaOffset:4 },
-  { id:'presupuesto',             n:21, label:'Realizar Presupuesto y ejecucion',           impuesto:'Presentación',  dia:30, mesRel:1 },
-  { id:'proyeccion_impuestos',    n:22, label:'Realizar Proyección de impuestos',           impuesto:'Presentación',  dia:30, mesRel:1 },
-  { id:'resumen_declaracion',     n:23, label:'Realizar resumen de declaracion del mes',    impuesto:'Presentación',  dia:30, mesRel:1 },
-  { id:'video_reunion',           n:24, label:'Grabar video o reunión con cliente',         impuesto:'Presentación',  dia:30, mesRel:1 }
-];
-
-// ─── CTD State ───
-var ctdContadorasMap = {};
-var ctdSelectedMes = '';
-var ctdSelectedContadora = 'Todas';
-var ctdReporteData = [];
-var ctdChecklistData = {};
-var ctdOpenSections = {};
-var ctdOpenCards = {};
-var ctdDetailCliente = null;
-var ctdDetailContadora = null;
-
-// ─── CTD Utils ───
-function ctdGetCurrentReportMonth() {
-  var now = new Date();
-  var m = now.getMonth();
-  var prev = m === 0 ? 11 : m - 1;
-  return MESES[prev];
-}
-
-function ctdSortContadoras(names) {
-  var regular = [];
-  var last = [];
-  names.forEach(function(n) {
-    if (ctdCONTADORA_LAST.indexOf(n) >= 0) last.push(n);
-    else regular.push(n);
-  });
-  regular.sort();
-  return regular.concat(last);
-}
-
-function ctdKpiColor(pct) {
-  if (pct >= 80) return 'var(--green)';
-  if (pct >= 50) return 'var(--amber)';
-  return 'var(--red)';
-}
-
-function ctdGetSemaforo(fechaStr) {
-  if (!fechaStr) return { color:'gray', label:'—' };
-  var fecha = new Date(fechaStr + 'T12:00:00');
-  var dia = fecha.getDate();
-  if (dia <= 24) return { color:'green', label:dia + '/' + (fecha.getMonth()+1) };
-  if (dia <= 30) return { color:'yellow', label:dia + '/' + (fecha.getMonth()+1) };
-  return { color:'red', label:dia + '/' + (fecha.getMonth()+1) };
-}
-
-function ctdSemaforoHTML(fechaStr, link) {
-  var s = ctdGetSemaforo(fechaStr);
-  var html = '<span class="semaforo sem-' + s.color + '">' + (s.color === 'gray' ? '—' : '✓') + '</span>';
-  if (s.color !== 'gray') html += '<span class="sem-date">' + s.label + '</span>';
-  if (link) html += '<a class="sem-link" href="' + link + '" target="_blank">Ver</a>';
-  return html;
-}
-
-function ctdCompletionCount(row) {
-  var done = 0;
-  ctdITEMS.forEach(function(item) { if (row[item.id + '_fecha']) done++; });
-  return done;
-}
-
-function ctdEsc(s) {
-  if (!s) return '';
-  return String(s).replace(/'/g, "\\'").replace(/"/g, '&quot;');
-}
-
-// ─── CTD KPI Calc ───
-function ctdCalcKPI(clients, lookup, contadora) {
-  var results = [];
-  ctdKPI_GROUPS.forEach(function(kpi) {
-    if (clients.length === 0) { results.push({ id:kpi.id, label:kpi.label, pct:0, done:0, total:0 }); return; }
-    var total = 0;
-    var sum = 0;
-    clients.forEach(function(c) {
-      var key = contadora ? (contadora + '_' + c) : c;
-      var row = lookup[key] || {};
-      total++;
-      sum += kpi.calc(row);
-    });
-    var pct = total > 0 ? Math.round((sum / total) * 100) : 0;
-    results.push({ id:kpi.id, label:kpi.label, pct:pct, done:Math.round(sum * 10)/10, total:total });
-  });
-  return results;
-}
-
-// ─── CTD Supabase ───
-async function ctdLoadContadoras() {
-  var result = await sb.from('asignaciones')
-    .select('contadora, cliente, mes')
-    .eq('anio', ANIO)
-    .order('contadora');
-
-  var data = result.data || [];
-  var map = {};
-
-  var maxIdx = -1; var maxMes = '';
-  for (var i = 0; i < data.length; i++) {
-    var idx = MESES.indexOf(data[i].mes);
-    if (idx > maxIdx) { maxIdx = idx; maxMes = data[i].mes; }
-  }
-  if (!maxMes) maxMes = ctdGetCurrentReportMonth();
-
-  for (var i = 0; i < data.length; i++) {
-    var row = data[i];
-    if (row.mes !== maxMes) continue;
-    if (!map[row.contadora]) map[row.contadora] = [];
-    if (map[row.contadora].indexOf(row.cliente) === -1) {
-      map[row.contadora].push(row.cliente);
-    }
-  }
-  ctdContadorasMap = map;
-}
-
-async function ctdLoadReporteData(mes) {
-  var result = await sb.from('reporte_mensual')
-    .select('*').eq('mes', mes).eq('anio', ANIO).order('contadora');
-  return result.data || [];
-}
-
-async function ctdLoadChecklistData() {
-  var result = await sb.from('checklist_contadores').select('*').eq('anio', ANIO);
-  if (result.error) { console.error('Error cargando checklist:', result.error); return; }
-  ctdChecklistData = {};
-  (result.data || []).forEach(function(r) {
-    var key = r.contadora + '_' + r.cliente + '_' + r.mes;
-    ctdChecklistData[key] = { _id: r.id, datos: r.datos || {} };
-  });
-}
-
-function ctdGetCheckEntry(contadora, cliente, mes) {
-  var key = contadora + '_' + cliente + '_' + mes;
-  if (!ctdChecklistData[key]) {
-    ctdChecklistData[key] = { _id: null, datos: {} };
-  }
-  var d = ctdChecklistData[key].datos;
-  ctdCHECKLIST_ITEMS.forEach(function(item) {
-    if (!d[item.id]) d[item.id] = { done: false, fecha: '' };
-  });
-  return ctdChecklistData[key];
-}
-
-function ctdGetProgress(contadora, cliente, mes) {
-  var entry = ctdGetCheckEntry(contadora, cliente, mes);
-  var done = 0;
-  ctdCHECKLIST_ITEMS.forEach(function(item) {
-    if (entry.datos[item.id] && entry.datos[item.id].done) done++;
-  });
-  return { done: done, total: ctdCHECKLIST_ITEMS.length, pct: Math.round(done / ctdCHECKLIST_ITEMS.length * 100) };
-}
-
-async function ctdSaveReporte(contadora, cliente, mes, fields) {
-  var record = { contadora: contadora, cliente: cliente, mes: mes, anio: ANIO };
-  for (var key in fields) record[key] = fields[key];
-  var result = await sb.from('reporte_mensual').upsert(record, { onConflict: 'contadora,cliente,mes,anio' });
-  if (result.error) { console.error('Error guardando:', result.error); alert('Error guardando. Verifica tus permisos.'); return false; }
-  return true;
-}
-
-// ─── CTD Render ───
-async function ctdRenderApp() {
-  if (tengoPermiso('gerencia', 'contadoras', 'edicion')) {
-    await ctdRenderGerencial();
-  } else {
-    await ctdRenderContadoraView();
-  }
-}
-
-async function ctdRenderGerencial() {
-  var el = document.getElementById('ctd-content');
-  el.innerHTML = '<div class="empty">Cargando...</div>';
-
-  // Load checklist data alongside report data
-  await Promise.all([
-    ctdLoadReporteData(ctdSelectedMes).then(function(d) { ctdReporteData = d; }),
-    ctdLoadChecklistData()
-  ]);
-
-  // If detail view is active, render that instead
-  if (ctdDetailCliente) {
-    ctdRenderDetail(el);
-    return;
-  }
-
-  var lookup = {};
-  ctdReporteData.forEach(function(r) { lookup[r.contadora + '_' + r.cliente] = r; });
-
-  var allNames = Object.keys(ctdContadorasMap).filter(function(n) {
-    return !ctdIsExcluida(n);
-  });
-  var contadoraNames = ctdSortContadoras(allNames);
-
-  var html = '';
-
-  // Month tabs
-  html += '<div class="month-tabs">';
-  MESES.forEach(function(m, i) {
-    html += '<button class="month-tab' + (m === ctdSelectedMes ? ' active' : '') + '" onclick="ctdSelectedMes=\'' + m + '\';ctdRenderApp()">' + MESES_LABEL[i] + '</button>';
-  });
-  html += '</div>';
-
-  // Contadora filter pills
-  html += '<div class="ctd-contadora-pills">';
-  html += '<button class="contadora-pill' + (ctdSelectedContadora === 'Todas' ? ' active' : '') + '" onclick="ctdSelectedContadora=\'Todas\';ctdRenderApp()">Todas</button>';
-  contadoraNames.forEach(function(name) {
-    html += '<button class="contadora-pill' + (ctdSelectedContadora === name ? ' active' : '') + '" onclick="ctdSelectedContadora=\'' + ctdEsc(name) + '\';ctdRenderApp()">' + name + '</button>';
-  });
-  html += '</div>';
-
-  var visibleContadoras = ctdSelectedContadora === 'Todas' ? contadoraNames : [ctdSelectedContadora];
-
-  var allVisibleClients = [];
-  visibleContadoras.forEach(function(contadora) {
-    var clients = ctdContadorasMap[contadora] || [];
-    clients.forEach(function(c) {
-      allVisibleClients.push({ contadora: contadora, cliente: c });
-    });
-  });
-
-  // KPI Dashboard
-  var kpiResults = [];
-  ctdKPI_GROUPS.forEach(function(kpi) {
-    var total = allVisibleClients.length;
-    var sum = 0;
-    allVisibleClients.forEach(function(item) {
-      var row = lookup[item.contadora + '_' + item.cliente] || {};
-      sum += kpi.calc(row);
-    });
-    var pct = total > 0 ? Math.round((sum / total) * 100) : 0;
-    kpiResults.push({ id:kpi.id, label:kpi.label, pct:pct, done:Math.round(sum * 10)/10, total:total });
-  });
-
-  html += '<div class="kpi-dashboard">';
-  kpiResults.forEach(function(kpi) {
-    var color = ctdKpiColor(kpi.pct);
-    html += '<div class="kpi-card">';
-    html += '<div class="kpi-card-title">' + kpi.label + '</div>';
-    html += '<div class="kpi-card-value" style="color:' + color + '">' + kpi.pct + '%</div>';
-    html += '<div class="kpi-card-sub">' + kpi.done + ' de ' + kpi.total + ' clientes</div>';
-    html += '<div class="kpi-bar-bg"><div class="kpi-bar-fill" style="width:' + kpi.pct + '%;background:' + color + '"></div></div>';
-    html += '</div>';
-  });
-  html += '</div>';
-
-  // Client table (flat, all clients)
-  if (allVisibleClients.length === 0) {
-    html += '<div class="empty">No hay datos para mostrar.</div>';
-  } else {
-    html += '<table class="ctd-client-table">';
-    html += '<thead><tr><th style="width:36px">#</th><th>Cliente</th><th>Contadora</th><th>Checklist</th><th>Reportes</th><th>Estado</th></tr></thead>';
-    html += '<tbody>';
-
-    allVisibleClients.sort(function(a, b) { return a.cliente.localeCompare(b.cliente, 'es'); });
-
-    allVisibleClients.forEach(function(item, idx) {
-      var prog = ctdGetProgress(item.contadora, item.cliente, ctdSelectedMes);
-      var reportRow = lookup[item.contadora + '_' + item.cliente] || {};
-
-      // Report completion (facturas + 4 items)
-      var repDone = 0;
-      var repTotal = 5;
-      if (reportRow.facturas_mes && reportRow.facturas_mes > 0) repDone++;
-      ctdITEMS.forEach(function(itm) { if (reportRow[itm.id + '_fecha']) repDone++; });
-      var repPct = Math.round(repDone / repTotal * 100);
-
-      var barColor = prog.pct >= 90 ? 'var(--green)' : prog.pct >= 70 ? 'var(--amber)' : 'var(--red)';
-      var statusClass = prog.pct === 100 ? 'ctd-status-completo' : prog.pct > 0 ? 'ctd-status-progreso' : 'ctd-status-pendiente';
-      var statusText = prog.pct === 100 ? 'Completo' : prog.pct > 0 ? 'En progreso' : 'Pendiente';
-
-      html += '<tr onclick="ctdOpenDetail(\'' + ctdEsc(item.cliente) + '\',\'' + ctdEsc(item.contadora) + '\')">';
-      html += '<td style="color:var(--muted);font-size:0.75rem">' + (idx + 1) + '</td>';
-      html += '<td class="ctd-client-name">' + item.cliente + '</td>';
-      html += '<td style="font-size:0.8rem;color:var(--muted)">' + item.contadora + '</td>';
-      html += '<td><div style="display:flex;align-items:center;gap:8px">';
-      html += '<div class="ctd-progress-bar"><div class="ctd-progress-fill" style="width:' + prog.pct + '%;background:' + barColor + '"></div></div>';
-      html += '<span class="ctd-progress-text">' + prog.done + '/' + prog.total + '</span>';
-      html += '</div></td>';
-      html += '<td><span class="ctd-progress-text">' + repDone + '/' + repTotal + '</span></td>';
-      html += '<td><span class="ctd-status-badge ' + statusClass + '">' + statusText + '</span></td>';
-      html += '</tr>';
-    });
-
-    html += '</tbody></table>';
-  }
-
-  el.innerHTML = html;
-}
-
-function ctdOpenDetail(cliente, contadora) {
-  ctdDetailCliente = cliente;
-  ctdDetailContadora = contadora;
-  ctdRenderApp();
-}
-
-function ctdCloseDetail() {
-  ctdDetailCliente = null;
-  ctdRenderApp();
-}
-
-function ctdRenderDetail(el) {
-  var entry = ctdGetCheckEntry(ctdDetailContadora, ctdDetailCliente, ctdSelectedMes);
-  var prog = ctdGetProgress(ctdDetailContadora, ctdDetailCliente, ctdSelectedMes);
-
-  var barColor = prog.pct >= 90 ? 'var(--green)' : prog.pct >= 70 ? 'var(--amber)' : 'var(--red)';
-  var mesIdx = MESES.indexOf(ctdSelectedMes);
-  var mesFull = MESES_FULL ? MESES_FULL[mesIdx] : ctdSelectedMes;
-
-  var html = '';
-
-  // Month tabs
-  html += '<div class="month-tabs">';
-  MESES.forEach(function(m, i) {
-    html += '<button class="month-tab' + (m === ctdSelectedMes ? ' active' : '') + '" onclick="ctdSelectedMes=\'' + m + '\';ctdRenderApp()">' + MESES_LABEL[i] + '</button>';
-  });
-  html += '</div>';
-
-  html += '<button class="ctd-detail-back" onclick="ctdCloseDetail()">← Volver al control</button>';
-
-  // Header card
-  html += '<div class="ctd-detail-header">';
-  html += '<div class="ctd-detail-name">' + ctdDetailCliente + '</div>';
-  html += '<div class="ctd-detail-sub">Contadora: ' + ctdDetailContadora + ' · ' + mesFull + ' ' + ANIO + '</div>';
-  html += '<div class="ctd-detail-stats">';
-  html += '<div class="ctd-detail-pending"><strong>' + (prog.total - prog.done) + '</strong> tareas pendientes de ' + prog.total + '</div>';
-  html += '<div class="ctd-detail-progress-bar"><div class="ctd-detail-progress-fill" style="width:' + prog.pct + '%;background:' + barColor + '"></div></div>';
-  html += '<div class="ctd-detail-pct">' + prog.pct + '%</div>';
-  html += '</div></div>';
-
-  // Checklist table
-  html += '<table class="ctd-checklist-table">';
-  html += '<thead><tr><th style="width:30px">#</th><th>Tarea</th><th style="width:80px">Deadline</th><th style="width:130px">Estado</th><th style="width:100px">Completado</th></tr></thead>';
-  html += '<tbody>';
-
-  var lastGroup = '';
-
-  ctdCHECKLIST_ITEMS.forEach(function(item) {
-    // Group header
-    if (item.impuesto !== lastGroup) {
-      lastGroup = item.impuesto;
-      html += '<tr class="ctd-group-row"><td colspan="5">' + item.impuesto + ' — Día ' + item.dia + '</td></tr>';
-    }
-
-    var d = entry.datos[item.id] || { done: false, fecha: '' };
-    var isDone = d.done;
-
-    // Deadline calculation
-    var dlDay = item.dia;
-    var dlMonth = mesIdx + (item.mesRel || 1);
-    var dlYear = ANIO;
-    if (dlMonth > 11) { dlMonth -= 12; dlYear++; }
-    var dlDate = new Date(dlYear, dlMonth, dlDay);
-    var dlStr = dlDay + ' ' + ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'][dlMonth];
-
-    html += '<tr>';
-    html += '<td style="color:var(--muted);font-size:0.78rem">' + item.n + '</td>';
-    html += '<td>';
-    html += '<label style="cursor:pointer;display:flex;align-items:center;gap:8px">';
-    html += '<input type="checkbox"' + (isDone ? ' checked' : '') + ' onchange="ctdToggleTask(\'' + ctdEsc(ctdDetailContadora) + '\',\'' + ctdEsc(ctdDetailCliente) + '\',\'' + ctdSelectedMes + '\',\'' + item.id + '\',this.checked)" style="cursor:pointer;width:16px;height:16px;accent-color:var(--green)">';
-    html += '<span' + (isDone ? ' style="text-decoration:line-through;color:var(--muted)"' : '') + '>' + item.label + '</span>';
-    html += '</label></td>';
-    html += '<td style="font-size:0.78rem;font-weight:600">' + dlStr + '</td>';
-    html += '<td><span class="ctd-status-badge ' + (isDone ? 'ctd-status-completo' : 'ctd-status-pendiente') + '">' + (isDone ? 'Completado' : 'Pendiente') + '</span></td>';
-    html += '<td style="font-size:0.78rem;color:var(--muted)">' + (d.fecha || '—') + '</td>';
-    html += '</tr>';
-  });
-
-  html += '</tbody></table>';
-
-  el.innerHTML = html;
-}
-
-async function ctdToggleTask(contadora, cliente, mes, itemId, checked) {
-  var key = contadora + '_' + cliente + '_' + mes;
-  var entry = ctdGetCheckEntry(contadora, cliente, mes);
-  entry.datos[itemId].done = checked;
-  entry.datos[itemId].fecha = checked ? new Date().toISOString().slice(0,10) : '';
-
-  // Save immediately
-  try {
-    if (entry._id) {
-      await sb.from('checklist_contadores')
-        .update({ datos: entry.datos, updated_at: new Date().toISOString() })
-        .eq('id', entry._id);
-    } else {
-      var result = await sb.from('checklist_contadores')
-        .insert({ contadora: contadora, cliente: cliente, mes: mes, anio: ANIO, datos: entry.datos })
-        .select();
-      if (result.data && result.data[0]) entry._id = result.data[0].id;
-    }
-  } catch(e) {
-    console.error('Error guardando checklist:', e);
-  }
-
-  ctdRenderApp();
-}
-
-async function ctdRenderContadoraView() {
-  var el = document.getElementById('ctd-content');
-  el.innerHTML = '<div class="empty">Cargando...</div>';
-
-  var myName = '';
-  var firstName = userName.split(' ')[0];
-  for (var key in ctdContadorasMap) {
-    if (key === firstName || key === userName) { myName = key; break; }
-  }
-
-  var clients = [];
-  if (myName && ctdContadorasMap[myName] && ctdContadorasMap[myName].length > 0) {
-    clients = ctdContadorasMap[myName].slice().sort();
-  } else {
-    var nameVariants = [userName, firstName];
-    for (var v = 0; v < nameVariants.length; v++) {
-      var tryName = nameVariants[v];
-      if (!tryName) continue;
-      var asigResult = await sb.from('asignaciones')
-        .select('cliente, contadora').eq('contadora', tryName).eq('anio', ANIO);
-      if (asigResult.data && asigResult.data.length > 0) {
-        myName = tryName;
-        var seen = {};
-        asigResult.data.forEach(function(r) {
-          if (!seen[r.cliente]) { clients.push(r.cliente); seen[r.cliente] = true; }
-        });
-        clients.sort();
-        break;
-      }
-    }
-  }
-
-  if (!myName || clients.length === 0) {
-    el.innerHTML = '<div class="empty">No tienes clientes asignados.</div>';
-    return;
-  }
-
-  ctdReporteData = await ctdLoadReporteData(ctdSelectedMes);
-  var lookup = {};
-  ctdReporteData.forEach(function(r) { if (r.contadora === myName) lookup[r.cliente] = r; });
-
-  var html = '';
-
-  // Month tabs
-  html += '<div class="month-tabs">';
-  MESES.forEach(function(m, i) {
-    html += '<button class="month-tab' + (m === ctdSelectedMes ? ' active' : '') + '" onclick="ctdSelectedMes=\'' + m + '\';ctdRenderApp()">' + MESES_LABEL[i] + '</button>';
-  });
-  html += '</div>';
-
-  html += '<span id="ctd-save-msg" class="saving-indicator"></span>';
-
-  clients.forEach(function(cliente) {
-    var row = lookup[cliente] || {};
-    var done = ctdCompletionCount(row);
-    var total = ctdITEMS.length;
-    var isOpen = ctdOpenCards[cliente] || false;
-
-    var statusColor = done === total ? 'background:#ecfdf5;color:#059669;' : done > 0 ? 'background:#fffbeb;color:#d97706;' : 'background:#f5f7fa;color:var(--light);';
-    var statusLabel = done === total ? 'Completo' : done + '/' + total;
-
-    html += '<div class="edit-card">';
-    html += '<div class="edit-header' + (isOpen ? ' expanded' : '') + '" onclick="ctdToggleCard(\'' + ctdEsc(cliente) + '\')">';
-    html += '<span class="edit-client-name">' + cliente + '</span>';
-    html += '<span class="edit-status" style="' + statusColor + '">' + statusLabel + '</span>';
-    html += '<span class="edit-arrow' + (isOpen ? ' open' : '') + '">▼</span>';
-    html += '</div>';
-
-    html += '<div class="edit-body' + (isOpen ? ' open' : '') + '">';
-    if (isOpen) {
-      html += '<div class="edit-field" style="margin-bottom:16px">';
-      html += '<div class="edit-field-label">Cantidad de facturas del mes</div>';
-      html += '<input type="number" id="ctdf_' + ctdEsc(cliente) + '_facturas" value="' + (row.facturas_mes || '') + '" placeholder="0">';
-      html += '</div>';
-
-      html += '<div class="edit-grid">';
-      ctdITEMS.forEach(function(item) {
-        var fechaVal = row[item.id + '_fecha'] || '';
-        var linkVal = row[item.id + '_link'] || '';
-        html += '<div class="edit-field">';
-        html += '<div class="edit-field-label">' + item.label + '</div>';
-        html += '<div class="edit-field-row"><input type="date" id="ctdf_' + ctdEsc(cliente) + '_' + item.id + '_fecha" value="' + fechaVal + '"></div>';
-        html += '<input type="url" id="ctdf_' + ctdEsc(cliente) + '_' + item.id + '_link" value="' + linkVal + '" placeholder="Link (opcional)" style="margin-top:6px">';
-        html += '<div class="edit-field-hint">Fecha de entrega + link al documento</div>';
-        html += '</div>';
-      });
-      html += '</div>';
-
-      html += '<div class="edit-save">';
-      html += '<button class="btn btn-primary" onclick="ctdHandleSave(\'' + ctdEsc(myName) + '\',\'' + ctdEsc(cliente) + '\')">Guardar</button>';
-      html += '<button class="btn btn-ghost" onclick="ctdToggleCard(\'' + ctdEsc(cliente) + '\')">Cerrar</button>';
-      html += '</div>';
-    }
-    html += '</div></div>';
-  });
-
-  if (clients.length === 0) {
-    html += '<div class="empty">No tienes clientes asignados para este periodo.</div>';
-  }
-  el.innerHTML = html;
-}
-
-function ctdToggleCard(cliente) {
-  ctdOpenCards[cliente] = !ctdOpenCards[cliente];
-  ctdRenderApp();
-}
-
-async function ctdHandleSave(contadora, cliente) {
-  var prefix = 'ctdf_' + cliente.replace(/'/g, "\\'") + '_';
-  var fields = { facturas_mes: parseInt(document.getElementById(prefix + 'facturas').value) || 0 };
-  ctdITEMS.forEach(function(item) {
-    fields[item.id + '_fecha'] = document.getElementById(prefix + item.id + '_fecha').value || null;
-    fields[item.id + '_link'] = document.getElementById(prefix + item.id + '_link').value || '';
-  });
-
-  var msg = document.getElementById('ctd-save-msg');
-  msg.textContent = 'Guardando...';
-  var ok = await ctdSaveReporte(contadora, cliente, ctdSelectedMes, fields);
-  if (ok) {
-    msg.textContent = 'Guardado';
-    setTimeout(function() { msg.textContent = ''; }, 2000);
-    ctdReporteData = await ctdLoadReporteData(ctdSelectedMes);
-    ctdRenderApp();
-  } else { msg.textContent = 'Error'; }
-}
-
 
 // ══════════════════════════════════════════════════════════════
 // ██  SHARED AUTH & INIT
@@ -5398,6 +4856,7 @@ function bdRenderClientes() {
   h += '<div class="bd-summary-item' + (clFilter === 'inicio' ? ' bd-summary-active' : '') + '" style="cursor:pointer;border:2px solid ' + (clFilter === 'inicio' ? 'var(--navy)' : 'transparent') + ';border-radius:10px" onclick="clSetFilter(\'inicio\')"><div class="bd-summary-count">' + clInicioMes + '</div><div class="bd-summary-label">Inicio</div></div>';
   h += '<div class="bd-summary-item' + (clFilter === 'nuevos' ? ' bd-summary-active' : '') + '" style="cursor:pointer;border:2px solid ' + (clFilter === 'nuevos' ? 'var(--green)' : 'transparent') + ';border-radius:10px" onclick="clSetFilter(\'nuevos\')"><div class="bd-summary-count" style="color:var(--green)">' + clNuevosMes.length + '</div><div class="bd-summary-label">Nuevos</div></div>';
   h += '<div class="bd-summary-item' + (clFilter === 'churn' ? ' bd-summary-active' : '') + '" style="cursor:pointer;border:2px solid ' + (clFilter === 'churn' ? 'var(--red)' : 'transparent') + ';border-radius:10px" onclick="clSetFilter(\'churn\')"><div class="bd-summary-count" style="color:var(--red)">' + clChurnMes.length + '</div><div class="bd-summary-label">Churn</div></div>';
+  h += '<div class="bd-summary-item' + (clFilter === 'inactivos' ? ' bd-summary-active' : '') + '" style="cursor:pointer;border:2px solid ' + (clFilter === 'inactivos' ? 'var(--muted)' : 'transparent') + ';border-radius:10px" onclick="clSetFilter(\'inactivos\')"><div class="bd-summary-count" style="color:var(--muted)">' + clInactivosMes.length + '</div><div class="bd-summary-label">Inactivos</div></div>';
   h += '<div class="bd-summary-item' + (clFilter === 'cierre' ? ' bd-summary-active' : '') + '" style="cursor:pointer;border:2px solid ' + (clFilter === 'cierre' ? 'var(--navy)' : 'transparent') + ';border-radius:10px" onclick="clSetFilter(\'cierre\')"><div class="bd-summary-count" style="font-weight:700">' + clActivosMes.length + '</div><div class="bd-summary-label">Cierre</div></div>';
   h += '</div>';
   // Filter indicator
@@ -5406,6 +4865,7 @@ function bdRenderClientes() {
     if (clFilter === 'nuevos') { clFilterLabel = 'Mostrando solo nuevos de ' + bdClMes; clFilterColor = 'var(--green)'; clFilterBg = '#ecfdf5'; }
     else if (clFilter === 'churn') { clFilterLabel = 'Mostrando churn de ' + bdClMes; clFilterColor = 'var(--red)'; clFilterBg = '#fef2f2'; }
     else if (clFilter === 'inicio') { clFilterLabel = 'Clientes al inicio de ' + bdClMes; clFilterColor = 'var(--navy)'; clFilterBg = '#f0f2f5'; }
+    else if (clFilter === 'inactivos') { clFilterLabel = 'Clientes inactivos al cierre de ' + bdClMes; clFilterColor = 'var(--muted)'; clFilterBg = '#f1f5f9'; }
     else { clFilterLabel = 'Clientes al cierre de ' + bdClMes; clFilterColor = 'var(--navy)'; clFilterBg = '#f0f2f5'; }
     h += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;padding:8px 12px;background:' + clFilterBg + ';border-radius:8px;font-size:0.8rem;color:' + clFilterColor + ';font-weight:500">';
     h += '<span>' + clFilterLabel + '</span>';
@@ -5426,6 +4886,8 @@ function bdRenderClientes() {
     filtered = clNuevosMes;
   } else if (clFilter === 'churn') {
     filtered = clChurnMes;
+  } else if (clFilter === 'inactivos') {
+    filtered = clInactivosMes;
   } else if (clFilter === 'inicio') {
     if (clMesIdx > 0) {
       filtered = bdGetClientesForMes(BD_MESES[clMesIdx - 1]);
@@ -6788,13 +6250,14 @@ async function bdAsigDeleteRow(id) {
 
 var bdContadoras = [];
 var bdAsignaciones = [];
-var bdContMes = 'abril';
-var bdContEditingId = null;
-var bdAsigMes = 'abril';
-var bdAsigDirty = false;
-var bdAsigEdits = {};
 var BD_MESES = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
 var BD_MESES_SHORT = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+var bdContMes = BD_MESES[new Date().getMonth()];
+var bdContEditingId = null;
+var bdAsigMes = BD_MESES[new Date().getMonth()];
+var bdAsigDirty = false;
+var bdAsigEdits = {};
+var datosAsigOpen = {}; // grupos abiertos en la tabla agrupada
 
 // ─── Data Loading ───
 
@@ -7000,10 +6463,107 @@ function bdSwitchAsigMes(mes) {
   bdAsigMes = mes;
   bdAsigDirty = false;
   bdAsigEdits = {};
-  bdRenderAsignaciones();
+  bdRefreshAsigView();
 }
 
+// ─── BD Sub-tab: Asignaciones (tabla editable) ───
 function bdRenderAsignaciones() {
+  var el = document.getElementById('bd-content');
+  var h = '';
+  var canEdit = tengoPermiso('gerencia', 'basedatos', 'edicion', 'asignaciones');
+  var contadoraNames = bdGetContadorasForAsig();
+
+  // Month pills
+  h += '<div class="bd-month-pills">';
+  BD_MESES.forEach(function(m, i) {
+    h += '<button class="bd-month-pill ' + (bdAsigMes === m ? 'active' : '') + '" onclick="bdSwitchAsigMes(\'' + m + '\')">' + BD_MESES_SHORT[i] + '</button>';
+  });
+  h += '</div>';
+
+  var rows = bdGetAsigForMes(bdAsigMes);
+
+  // Toolbar
+  if (canEdit) {
+    h += '<div class="bd-asig-toolbar">';
+    h += '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">';
+    h += '<button class="bd-asig-add" onclick="bdAsigAddRow()">+ Agregar asignacion</button>';
+    h += '<button class="asig-copy-btn" onclick="bdAsigCopyPrevMonth()">Copiar del mes anterior</button>';
+    h += '</div>';
+    h += '<div>';
+    if (bdAsigDirty) h += '<span class="bd-dirty-indicator" title="Cambios sin guardar"></span> ';
+    h += '<button class="bd-asig-save" id="bdAsigSaveBtn" onclick="bdAsigSaveAll()" ' + (bdAsigDirty ? '' : 'disabled') + '>Guardar cambios</button>';
+    h += '</div>';
+    h += '</div>';
+  }
+
+  if (rows.length === 0) {
+    h += '<div class="cl-empty" style="text-align:center;padding:40px">';
+    h += '<p style="font-size:1rem;color:var(--muted)">No hay asignaciones para ' + bdAsigMes.charAt(0).toUpperCase() + bdAsigMes.slice(1) + ' ' + ANIO + '.</p>';
+    if (canEdit) {
+      h += '<p style="font-size:0.85rem;color:var(--light);margin-top:8px">Usa "Copiar del mes anterior" para replicar las asignaciones.</p>';
+    }
+    h += '</div>';
+    el.innerHTML = h;
+    return;
+  }
+
+  // Tabla editable
+  h += '<div class="table-wrap"><table class="bd-asig-table" style="width:100%;border-collapse:collapse;font-size:0.82rem">';
+  h += '<thead><tr>';
+  h += '<th style="text-align:left;font-size:0.68rem;text-transform:uppercase;letter-spacing:0.5px;color:var(--muted);padding:8px 10px;border-bottom:2px solid #e5e7eb;font-weight:600">Cliente</th>';
+  h += '<th style="text-align:left;font-size:0.68rem;text-transform:uppercase;letter-spacing:0.5px;color:var(--muted);padding:8px 10px;border-bottom:2px solid #e5e7eb;font-weight:600">Contadora</th>';
+  h += '<th style="text-align:right;font-size:0.68rem;text-transform:uppercase;letter-spacing:0.5px;color:var(--muted);padding:8px 10px;border-bottom:2px solid #e5e7eb;font-weight:600">Tx Adm</th>';
+  if (canEdit) h += '<th style="padding:8px 10px;border-bottom:2px solid #e5e7eb;width:40px"></th>';
+  h += '</tr></thead><tbody>';
+
+  rows.forEach(function(r, idx) {
+    var edited = bdAsigEdits[idx];
+    var contVal = edited ? edited.contadora : r.contadora;
+    var admVal = edited ? edited.adm : r.adm;
+    var isEdited = !!edited;
+
+    h += '<tr style="border-bottom:1px solid #f1f5f9' + (isEdited ? ';background:#fffbeb' : '') + '">';
+    h += '<td style="padding:10px;font-weight:600;color:var(--navy)">' + esc(r.cliente) + '</td>';
+
+    if (canEdit) {
+      h += '<td style="padding:10px"><select style="padding:4px 8px;border:1px solid var(--border);border-radius:6px;font-size:0.8rem;font-family:inherit" onchange="bdAsigEdit(' + idx + ',\'contadora\',this.value)">';
+      h += '<option value="Sin asignar"' + (contVal === 'Sin asignar' ? ' selected' : '') + '>Sin asignar</option>';
+      contadoraNames.forEach(function(cn) {
+        h += '<option value="' + esc(cn) + '"' + (contVal === cn ? ' selected' : '') + '>' + esc(cn) + '</option>';
+      });
+      h += '</select></td>';
+      h += '<td style="padding:10px;text-align:right"><input type="number" value="' + (admVal || 0) + '" style="width:70px;padding:4px 6px;border:1px solid var(--border);border-radius:6px;font-size:0.8rem;text-align:right;font-family:inherit" onchange="bdAsigEdit(' + idx + ',\'adm\',this.value)"></td>';
+      h += '<td style="padding:10px;text-align:center"><button style="padding:3px 8px;border:1px solid #fecaca;border-radius:6px;background:white;font-size:0.72rem;cursor:pointer;color:var(--red)" onclick="bdAsigDeleteRow(' + r.id + ')">✕</button></td>';
+    } else {
+      h += '<td style="padding:10px">' + esc(contVal || 'Sin asignar') + '</td>';
+      h += '<td style="padding:10px;text-align:right">' + (admVal || 0) + '</td>';
+    }
+
+    h += '</tr>';
+  });
+
+  h += '</tbody></table></div>';
+
+  // Resumen
+  var totalRows = rows.length;
+  var sinAsignar = rows.filter(function(r) { return !r.contadora || r.contadora === 'Sin asignar'; }).length;
+  h += '<div style="margin-top:12px;font-size:0.78rem;color:var(--muted)">';
+  h += totalRows + ' asignaciones · ' + sinAsignar + ' sin contadora';
+  h += '</div>';
+
+  el.innerHTML = h;
+}
+
+// Renderiza la vista correcta según dónde estemos (CC dashboard o Datos tabla)
+function bdRefreshAsigView() {
+  if (gerMainTab === 'datos' && datosActiveTab === 'asignaciones') {
+    datosRenderApp();
+  } else {
+    ccRenderAsigDashboard();
+  }
+}
+
+function ccRenderAsigDashboard() {
   var el = document.getElementById('cc-content');
   var h = '';
 
@@ -7016,42 +6576,64 @@ function bdRenderAsignaciones() {
 
   var rows = bdGetAsigForMes(bdAsigMes);
   var contadoraNames = bdGetContadorasForAsig();
+  var canEditAsig = tengoPermiso('gerencia', 'basedatos', 'edicion', 'asignaciones');
 
-  // Summary — use ccAllClientes instead of bdClientes
-  var totalActivos = ccAllClientes.filter(function(c) { return c.activo !== false; }).length;
-  var contadoraCounts = {};
-  rows.forEach(function(r) {
-    var c = r.contadora || 'Sin asignar';
-    contadoraCounts[c] = (contadoraCounts[c] || 0) + 1;
+  // Build lookups (trim para evitar mismatches por espacios)
+  var clienteLookup = {};
+  ccAllClientes.forEach(function(c) {
+    var key = (c.nombre || '').trim();
+    clienteLookup[key] = c;
   });
-  var sinAsignarRows = contadoraCounts['Sin asignar'] || 0;
-  var asignadosEnTabla = rows.length - sinAsignarRows;
-  var sinAsignarTotal = totalActivos - asignadosEnTabla;
-  var contadorasActivas = Object.keys(contadoraCounts).filter(function(k) { return k !== 'Sin asignar'; }).length;
 
-  // Impuestos summary
-  var impAsignados = ccAllClientes.filter(function(c) { return c.activo !== false && c.responsabilidad_impuestos !== false && c.contadora_impuestos; }).length;
-  var impSinAsignar = ccAllClientes.filter(function(c) { return c.activo !== false && c.responsabilidad_impuestos !== false && !c.contadora_impuestos; }).length;
+  // Agrupar asignaciones por contadora
+  var porContadora = {};
+  var sinAsignar = [];
+  rows.forEach(function(r, idx) {
+    var edited = bdAsigEdits[idx];
+    var contVal = edited ? edited.contadora : r.contadora;
+    if (!contVal || contVal === 'Sin asignar') {
+      sinAsignar.push({ row: r, idx: idx });
+    } else {
+      if (!porContadora[contVal]) porContadora[contVal] = [];
+      porContadora[contVal].push({ row: r, idx: idx });
+    }
+  });
 
+  // Calcular totales por contadora para ordenar
+  // Usa asignaciones.adm (tx asignadas ese mes), no clientes.monto_adm (contrato general)
+  var contadoraStats = Object.keys(porContadora).map(function(nombre) {
+    var items = porContadora[nombre];
+    var cap = ccCAPACIDAD[nombre] || 0;
+    var totalTx = 0;
+    items.forEach(function(item) {
+      totalTx += parseFloat(item.row.adm) || 0;
+    });
+    var pctCap = cap > 0 ? Math.round(totalTx / cap * 100) : 0;
+    return { nombre: nombre, items: items, cap: cap, totalTx: totalTx, pctCap: pctCap };
+  });
+
+  // Ordenar por transacciones asignadas descendente (la más cargada primero)
+  contadoraStats.sort(function(a, b) { return b.totalTx - a.totalTx; });
+
+  // Totales generales
+  var totalActivos = ccAllClientes.filter(function(c) { return c.activo !== false; }).length;
+  var totalAsignados = rows.length - sinAsignar.length;
+
+  // Summary stats
   h += '<div class="bd-summary">';
   h += '<div class="bd-summary-item"><div class="bd-summary-count">' + totalActivos + '</div><div class="bd-summary-label">Total clientes</div></div>';
-  h += '<div class="bd-summary-item"><div class="bd-summary-count">' + asignadosEnTabla + '</div><div class="bd-summary-label">Contab. asignados</div></div>';
-  h += '<div class="bd-summary-item"><div class="bd-summary-count" style="color:' + (sinAsignarTotal > 0 ? 'var(--red)' : 'var(--green)') + '">' + sinAsignarTotal + '</div><div class="bd-summary-label">Contab. sin asignar</div></div>';
-  h += '<div class="bd-summary-item"><div class="bd-summary-count">' + impAsignados + '</div><div class="bd-summary-label">Imp. asignados</div></div>';
-  h += '<div class="bd-summary-item"><div class="bd-summary-count" style="color:' + (impSinAsignar > 0 ? 'var(--red)' : 'var(--green)') + '">' + impSinAsignar + '</div><div class="bd-summary-label">Imp. sin asignar</div></div>';
+  h += '<div class="bd-summary-item"><div class="bd-summary-count">' + totalAsignados + '</div><div class="bd-summary-label">Asignados</div></div>';
+  h += '<div class="bd-summary-item"><div class="bd-summary-count" style="color:' + (sinAsignar.length > 0 ? 'var(--red)' : 'var(--green)') + '">' + sinAsignar.length + '</div><div class="bd-summary-label">Sin asignar</div></div>';
+  h += '<div class="bd-summary-item"><div class="bd-summary-count">' + contadoraStats.length + '</div><div class="bd-summary-label">Contadoras activas</div></div>';
   h += '</div>';
 
-  if (rows.length === 0) {
-    h += '<div class="cl-empty"><p>No hay asignaciones para ' + bdAsigMes.charAt(0).toUpperCase() + bdAsigMes.slice(1) + ' ' + ANIO + '.</p></div>';
-    el.innerHTML = h;
-    return;
-  }
-
   // Toolbar
-  var canEditAsig = tengoPermiso('gerencia', 'basedatos', 'edicion', 'asignaciones');
   if (canEditAsig) {
     h += '<div class="bd-asig-toolbar">';
+    h += '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">';
     h += '<button class="bd-asig-add" onclick="bdAsigAddRow()">+ Agregar asignacion</button>';
+    h += '<button class="asig-copy-btn" onclick="bdAsigCopyPrevMonth()">Copiar del mes anterior</button>';
+    h += '</div>';
     h += '<div>';
     if (bdAsigDirty) h += '<span class="bd-dirty-indicator" title="Cambios sin guardar"></span> ';
     h += '<button class="bd-asig-save" id="bdAsigSaveBtn" onclick="bdAsigSaveAll()" ' + (bdAsigDirty ? '' : 'disabled') + '>Guardar cambios</button>';
@@ -7059,82 +6641,98 @@ function bdRenderAsignaciones() {
     h += '</div>';
   }
 
-  // Build lookup: cliente name → contadora_impuestos from master table
-  var impLookup = {};
-  var impRespLookup = {};
-  ccAllClientes.forEach(function(c) {
-    impLookup[c.nombre] = c.contadora_impuestos || '';
-    impRespLookup[c.nombre] = c.responsabilidad_impuestos;
-  });
+  // Mes sin asignaciones
+  if (rows.length === 0) {
+    h += '<div class="cl-empty" style="text-align:center;padding:40px">';
+    h += '<p style="font-size:1rem;color:var(--muted)">No hay asignaciones para ' + bdAsigMes.charAt(0).toUpperCase() + bdAsigMes.slice(1) + ' ' + ANIO + '.</p>';
+    if (canEditAsig) {
+      h += '<p style="font-size:0.85rem;color:var(--light);margin-top:8px">Usa "Copiar del mes anterior" para replicar las asignaciones.</p>';
+    }
+    h += '</div>';
+    el.innerHTML = h;
+    return;
+  }
 
-  // Analistas de impuestos: solo personal con rol 'analista' en tabla contadoras
-  var analistaNames = bdContadoras
-    .filter(function(c) { return c.activa && c.rol === 'analista'; })
-    .map(function(c) { return c.nombre; })
-    .sort(function(a, b) { return a.localeCompare(b, 'es'); });
+  // Cards por contadora — ordenadas por transacciones descendente
+  h += '<div class="asig-cards">';
+  contadoraStats.forEach(function(cs) {
+    var isOverloaded = cs.cap > 0 && cs.totalTx > cs.cap;
+    var barColor = isOverloaded ? 'var(--red)' : (cs.pctCap >= 80 ? 'var(--amber)' : 'var(--green)');
+    var barWidth = cs.cap > 0 ? Math.min(cs.pctCap, 100) : 0;
+    var displayName = cs.nombre.split(' ')[0]; // Solo primer nombre
 
-  // Table
-  h += '<div class="table-wrap"><table class="bd-asig-table">';
-  h += '<thead><tr><th>#</th><th>Cliente</th><th>Contadora</th><th>Analista Imp.</th><th style="text-align:right">Serv</th><th style="text-align:right">Adm</th>';
-  if (canEditAsig) h += '<th></th>';
-  h += '</tr></thead><tbody>';
+    h += '<div class="asig-card' + (isOverloaded ? ' overloaded' : '') + '">';
 
-  var asigLastGroup = null;
-  var asigColCount = canEditAsig ? 7 : 6;
-  rows.forEach(function(r, idx) {
-    var edited = bdAsigEdits[idx];
-    var contVal = edited ? edited.contadora : r.contadora;
-    var servVal = edited ? edited.serv : r.serv;
-    var admVal = edited ? edited.adm : r.adm;
-    var impVal = impLookup[r.cliente] || '';
-    var impResp = impRespLookup[r.cliente];
-    var isSinAsignar = !contVal || contVal === 'Sin asignar';
-    var groupKey = isSinAsignar ? '__sin' : '__asig';
-    if (groupKey !== asigLastGroup) {
-      var groupLabel = isSinAsignar ? 'Sin asignar' : 'Asignados';
-      h += '<tr style="background:#f1f5f9"><td colspan="' + asigColCount + '" style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--navy);padding:10px 12px">' + groupLabel + '</td></tr>';
-      asigLastGroup = groupKey;
+    // Header con nombre y barra de capacidad
+    h += '<div class="asig-card-header">';
+    h += '<div class="asig-card-name">' + esc(displayName) + '</div>';
+    h += '<span style="font-size:0.78rem;color:var(--muted)">' + cs.items.length + ' clientes · ' + cs.totalTx.toLocaleString() + '/' + (cs.cap > 0 ? cs.cap.toLocaleString() : '?') + ' tx</span>';
+    h += '</div>';
+
+    if (cs.cap > 0) {
+      h += '<div class="asig-cap-bar"><div class="asig-cap-fill" style="width:' + barWidth + '%;background:' + barColor + '"></div></div>';
     }
 
-    h += '<tr>';
-    h += '<td style="color:var(--light);font-size:0.75rem">' + (idx + 1) + '</td>';
-    h += '<td style="font-weight:600;color:var(--navy)">' + esc(r.cliente) + '</td>';
+    // Tabla de clientes (limpia, sin colores confusos)
+    h += '<table style="width:100%;border-collapse:collapse;margin-top:8px">';
+    cs.items.sort(function(a, b) { return (a.row.cliente || '').localeCompare(b.row.cliente || '', 'es'); });
+    cs.items.forEach(function(item) {
+      var txAdm = parseFloat(item.row.adm) || 0;
+      h += '<tr style="border-bottom:1px solid #f3f4f6">';
+      h += '<td style="padding:4px 0;font-size:0.8rem;color:var(--navy)">' + esc(item.row.cliente) + '</td>';
+      h += '<td style="padding:4px 0;font-size:0.75rem;color:var(--muted);text-align:right">' + txAdm + ' tx</td>';
+      h += '</tr>';
+    });
+    h += '</table>';
 
-    if (canEditAsig) {
-      // Contadora contabilidad dropdown
-      h += '<td><select onchange="bdAsigEdit(' + idx + ',\'contadora\',this.value)">';
-      h += '<option value="Sin asignar"' + (contVal === 'Sin asignar' ? ' selected' : '') + '>Sin asignar</option>';
-      contadoraNames.forEach(function(cn) {
-        h += '<option value="' + esc(cn) + '"' + (contVal === cn ? ' selected' : '') + '>' + esc(cn) + '</option>';
-      });
-      h += '</select></td>';
+    h += '</div>';
+  });
+  h += '</div>';
 
-      // Analista impuestos dropdown (solo tipo 'impuestos')
-      if (impResp === false) {
-        h += '<td><span style="color:var(--light);font-size:0.75rem">N/A</span></td>';
-      } else {
-        h += '<td><select onchange="bdAsigImpChange(\'' + esc(r.cliente).replace(/'/g, "\\'") + '\',this.value)">';
-        h += '<option value=""' + (!impVal ? ' selected' : '') + '>Sin asignar</option>';
-        analistaNames.forEach(function(cn) {
-          h += '<option value="' + esc(cn) + '"' + (impVal === cn ? ' selected' : '') + '>' + esc(cn) + '</option>';
+  // Clientes sin asignar
+  if (sinAsignar.length > 0) {
+    h += '<div class="asig-unassigned">';
+    h += '<div class="asig-unassigned-title">Sin asignar (' + sinAsignar.length + ')</div>';
+    h += '<div class="table-wrap"><table class="bd-asig-table">';
+    h += '<thead><tr><th>Cliente</th><th style="text-align:right">Tx contratadas</th>';
+    if (canEditAsig) h += '<th>Asignar a</th><th></th>';
+    h += '</tr></thead><tbody>';
+
+    sinAsignar.forEach(function(item) {
+      var txAdm = parseFloat(item.row.adm) || 0;
+      h += '<tr>';
+      h += '<td style="font-weight:600;color:var(--navy)">' + esc(item.row.cliente) + '</td>';
+      h += '<td style="text-align:right">' + txAdm + '</td>';
+      if (canEditAsig) {
+        h += '<td><select onchange="bdAsigEdit(' + item.idx + ',\'contadora\',this.value)">';
+        h += '<option value="Sin asignar" selected>Seleccionar...</option>';
+        contadoraNames.forEach(function(cn) {
+          h += '<option value="' + esc(cn) + '">' + esc(cn) + '</option>';
         });
         h += '</select></td>';
+        h += '<td><button style="padding:3px 8px;border:1px solid #fecaca;border-radius:6px;background:white;font-size:0.72rem;cursor:pointer;color:var(--red)" onclick="bdAsigDeleteRow(' + item.row.id + ')">✕</button></td>';
       }
+      h += '</tr>';
+    });
 
-      h += '<td><input type="number" value="' + (servVal || 0) + '" onchange="bdAsigEdit(' + idx + ',\'serv\',this.value)" style="text-align:right"></td>';
-      h += '<td><input type="number" value="' + (admVal || 0) + '" onchange="bdAsigEdit(' + idx + ',\'adm\',this.value)" style="text-align:right"></td>';
-      h += '<td><button style="padding:3px 8px;border:1px solid #fecaca;border-radius:6px;background:white;font-size:0.72rem;cursor:pointer;color:var(--red)" onclick="bdAsigDeleteRow(' + r.id + ')">x</button></td>';
-    } else {
-      h += '<td>' + esc(contVal || 'Sin asignar') + '</td>';
-      h += '<td>' + (impResp === false ? '<span style="color:var(--light);font-size:0.75rem">N/A</span>' : esc(impVal || 'Sin asignar')) + '</td>';
-      h += '<td style="text-align:right">' + (servVal || 0) + '</td>';
-      h += '<td style="text-align:right">' + (admVal || 0) + '</td>';
-    }
+    h += '</tbody></table></div>';
+    h += '</div>';
+  }
 
-    h += '</tr>';
+  // Clientes activos que no tienen asignación este mes
+  var assigned = {};
+  rows.forEach(function(r) { assigned[r.cliente] = true; });
+  var noAsig = ccAllClientes.filter(function(c) {
+    return c.activo !== false && !assigned[c.nombre];
   });
 
-  h += '</tbody></table></div>';
+  if (noAsig.length > 0 && canEditAsig) {
+    h += '<div style="margin-top:16px;padding:12px 16px;background:#fffbeb;border:1px solid #fde68a;border-radius:8px;font-size:0.82rem;color:#92400e">';
+    h += '<strong>' + noAsig.length + ' cliente' + (noAsig.length !== 1 ? 's' : '') + ' activo' + (noAsig.length !== 1 ? 's' : '') + ' sin asignacion este mes:</strong> ';
+    h += noAsig.map(function(c) { return esc(c.nombre); }).join(', ');
+    h += '</div>';
+  }
+
   el.innerHTML = h;
 }
 
@@ -7151,6 +6749,53 @@ async function bdAsigImpChange(clienteNombre, value) {
   var c = ccAllClientes.find(function(x) { return x.nombre === clienteNombre; });
   if (c) c.contadora_impuestos = value || null;
   gerShowToast('Analista de impuestos actualizado: ' + clienteNombre);
+}
+
+// Copiar asignaciones del mes anterior al mes actual
+async function bdAsigCopyPrevMonth() {
+  var mesIdx = BD_MESES.indexOf(bdAsigMes);
+  if (mesIdx <= 0) {
+    gerShowToast('No hay mes anterior para copiar (enero es el primer mes)', 'error');
+    return;
+  }
+
+  var prevMes = BD_MESES[mesIdx - 1];
+  var currentRows = bdGetAsigForMes(bdAsigMes);
+
+  if (currentRows.length > 0) {
+    if (!confirm('Ya hay ' + currentRows.length + ' asignaciones en ' + bdAsigMes.charAt(0).toUpperCase() + bdAsigMes.slice(1) + '. ¿Agregar las de ' + prevMes.charAt(0).toUpperCase() + prevMes.slice(1) + ' que falten?')) return;
+  }
+
+  var prevRows = bdGetAsigForMes(prevMes);
+  if (prevRows.length === 0) {
+    gerShowToast('No hay asignaciones en ' + prevMes.charAt(0).toUpperCase() + prevMes.slice(1) + ' para copiar', 'error');
+    return;
+  }
+
+  // Solo copiar clientes que no existen ya en el mes actual
+  var existingClientes = {};
+  currentRows.forEach(function(r) { existingClientes[r.cliente] = true; });
+
+  var toCopy = prevRows.filter(function(r) { return !existingClientes[r.cliente]; });
+
+  if (toCopy.length === 0) {
+    gerShowToast('Todos los clientes de ' + prevMes.charAt(0).toUpperCase() + prevMes.slice(1) + ' ya estan en ' + bdAsigMes.charAt(0).toUpperCase() + bdAsigMes.slice(1), 'error');
+    return;
+  }
+
+  var inserts = toCopy.map(function(r) {
+    return { mes: bdAsigMes, anio: ANIO, contadora: r.contadora, cliente: r.cliente, serv: r.serv, adm: r.adm };
+  });
+
+  var { error } = await sb.from('asignaciones').insert(inserts);
+  if (error) {
+    gerShowToast('Error copiando asignaciones: ' + error.message, 'error');
+    return;
+  }
+
+  await bdLoadAsignaciones();
+  bdRefreshAsigView();
+  gerShowToast(toCopy.length + ' asignacion' + (toCopy.length !== 1 ? 'es' : '') + ' copiada' + (toCopy.length !== 1 ? 's' : '') + ' de ' + prevMes.charAt(0).toUpperCase() + prevMes.slice(1));
 }
 
 function bdAsigEdit(idx, field, value) {
@@ -7191,7 +6836,7 @@ async function bdAsigSaveAll() {
     bdAsigDirty = false;
     bdAsigEdits = {};
     await bdLoadAsignaciones();
-    bdRenderAsignaciones();
+    bdRefreshAsigView();
     gerShowToast('Asignaciones actualizadas');
   }
 }
@@ -7221,7 +6866,7 @@ async function bdAsigAddRow() {
   }
 
   var { error } = await sb.from('asignaciones').insert({
-    mes: bdAsigMes, anio: ANIO, contadora: 'Sin asignar', cliente: match.nombre, serv: 0, adm: 0
+    mes: bdAsigMes, anio: ANIO, contadora: 'Sin asignar', cliente: match.nombre, serv: 0, adm: match.monto_adm || 0
   });
 
   if (error) {
@@ -7230,7 +6875,7 @@ async function bdAsigAddRow() {
   }
 
   await bdLoadAsignaciones();
-  bdRenderAsignaciones();
+  bdRefreshAsigView();
   gerShowToast('Asignacion agregada: ' + match.nombre);
 }
 
@@ -7242,7 +6887,7 @@ async function bdAsigDeleteRow(id) {
     return;
   }
   await bdLoadAsignaciones();
-  bdRenderAsignaciones();
+  bdRefreshAsigView();
   gerShowToast('Asignacion eliminada');
 }
 
@@ -7314,7 +6959,7 @@ var swFilter = 'todos';
 
 function clSearchInput(val) {
   clSearch = val;
-  bdRenderClientes();
+  ccRenderContent();
   var si = document.getElementById('cl-search-input');
   if (si) { si.focus(); si.setSelectionRange(clSearch.length, clSearch.length); }
 }
@@ -7411,15 +7056,20 @@ function bdGetClientesForMes(mesName) {
 function bdSwitchClMes(mes) {
   bdClMes = mes;
   clFilter = 'todos';
-  bdRenderClientes();
+  ccRenderContent();
 }
 
 function clSetFilter(f) {
   clFilter = (clFilter === f) ? 'todos' : f;
-  bdRenderClientes();
+  ccRenderContent();
 }
 
+// bdRenderClientes legacy — now unified inside ccRenderServicios
 function bdRenderClientes() {
+  ccRenderContent();
+}
+
+function _bdRenderClientes_DISABLED() {
   var el = document.getElementById('cc-content');
   var h = '';
 
@@ -8453,6 +8103,9 @@ async function showApp() {
   document.getElementById('app-wrapper').classList.remove('hidden');
   document.getElementById('user-display-name').textContent = userName;
 
+  // Load equipo + precios from DB first (needed by other modules)
+  await Promise.all([loadEquipoGerencia(), loadPrecios()]);
+
   // Load all modules' data in parallel
   await Promise.all([
     ccLoadData(),
@@ -8460,7 +8113,6 @@ async function showApp() {
     ccLoadImplAdm(),
     ccLoadSoftwareClientes(),
     ccLoadKpiFromDB(),
-    ctdLoadContadoras(),
     bdLoadContadoras(),
     bdLoadAsignaciones(),
     bdLoadPendientes()
@@ -8474,9 +8126,6 @@ async function showApp() {
   ccActiveMainTab = 'dashboard';
   ccActiveSubTab = null;
 
-  // Init CTD state
-  ctdSelectedMes = ctdGetCurrentReportMonth();
-
   // Render
   renderGerMainTabs();
   switchGerTab(gerMainTab);
@@ -8484,23 +8133,9 @@ async function showApp() {
 }
 
 function updateModHeader() {
+  // Subtítulo estático (antes jalaba conteos en vivo, lento y poco fiable).
   var el = document.getElementById('modHeaderSub');
-  if (!el) return;
-  var months = ccGetAllMonths();
-  if (months.length === 0) return;
-  var lastMes = months[months.length - 1];
-  var d = ccDATA[lastMes];
-  if (!d) return;
-
-  var total = d.total;
-  var contadoras = Object.keys(d.asignaciones).length;
-  var software = ccSOFTWARE_CLIENTES ? ccSOFTWARE_CLIENTES.length : 0;
-
-  var now = new Date();
-  var lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
-  var diasRestantes = lastDay - now.getDate();
-
-  el.innerHTML = total + ' clientes outsource · ' + software + ' clientes software · ' + contadoras + ' contadoras · 2 analistas · cierre en <strong>' + diasRestantes + ' días</strong>';
+  if (el) el.textContent = 'Cartera de clientes, outsourcing, software y base de datos';
 }
 
 // Enter key handlers
@@ -8512,6 +8147,518 @@ if (loginEmailEl) loginEmailEl.addEventListener('keydown', function(e) { if (e.k
 // Embed mode
 var isEmbed = new URLSearchParams(window.location.search).get('embed') === '1';
 if (isEmbed) document.body.classList.add('embed');
+
+// ══════════════════════════════════════════════════════════════
+// ██  DATOS MODULE — Admin de tablas maestras
+// ══════════════════════════════════════════════════════════════
+
+var datosActiveTab = 'equipo';
+var datosEquipo = [];
+var datosPrecios = [];
+var datosEditingId = null;
+
+async function datosLoadAll() {
+  var res1 = await sb.from('equipo').select('*').order('departamento').order('nombre');
+  datosEquipo = res1.data || [];
+  var res2 = await sb.from('precios').select('*').order('tipo').order('nombre_plan');
+  datosPrecios = res2.data || [];
+}
+
+function datosRenderApp() {
+  var el = document.getElementById('datos-content');
+  var h = '';
+
+  // Sub-tabs
+  h += '<div style="display:flex;gap:6px;margin-bottom:20px;flex-wrap:wrap">';
+  var tabs = [
+    {id:'equipo', label:'Equipo'},
+    {id:'precios', label:'Precios'},
+    {id:'asignaciones', label:'Asignaciones'},
+    {id:'kpi_scores', label:'KPI Scores (lectura)'},
+    {id:'kpi_detalle', label:'KPI Detalle (lectura)'}
+  ];
+  tabs.forEach(function(t) {
+    h += '<button class="sub-tab ' + (datosActiveTab === t.id ? 'active' : '') + '" onclick="datosSwitchTab(\'' + t.id + '\')">' + t.label + '</button>';
+  });
+  h += '</div>';
+
+  if (datosActiveTab === 'equipo') h += datosRenderEquipo();
+  else if (datosActiveTab === 'precios') h += datosRenderPrecios();
+  else if (datosActiveTab === 'asignaciones') h += datosRenderAsignaciones();
+  else if (datosActiveTab === 'kpi_scores') h += datosRenderKpiScores();
+  else if (datosActiveTab === 'kpi_detalle') h += datosRenderKpiDetalle();
+
+  el.innerHTML = h;
+}
+
+function datosSwitchTab(tab) {
+  datosActiveTab = tab;
+  datosRenderApp();
+}
+
+function datosRenderEquipo() {
+  var h = '<div class="card">';
+  h += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">';
+  h += '<h3 style="margin:0">Equipo (' + datosEquipo.length + ')</h3>';
+  h += '<button onclick="datosOpenEquipoModal()" style="padding:6px 14px;border-radius:8px;font-size:0.78rem;font-weight:600;cursor:pointer;border:1px solid var(--navy);background:var(--navy);color:white">+ Nuevo miembro</button>';
+  h += '</div>';
+
+  h += '<div class="table-wrap"><table class="cl-table"><thead><tr>';
+  h += '<th>Nombre</th><th>Cargo</th><th>Depto</th><th>Rol</th><th>Dedicación</th><th>Obj. KPI</th><th>Cap. Tx</th><th>Activo</th><th></th>';
+  h += '</tr></thead><tbody>';
+
+  // Orden: activos primero; TODOS los fijos, luego TODOS los freelance; dentro, por departamento y alfabético. Inactivos al final.
+  var dedRank = function(d){ return d === 'freelance' ? 1 : 0; };
+  var equipoOrdenado = datosEquipo.slice().sort(function(a, b){
+    if ((a.activo?0:1) !== (b.activo?0:1)) return (a.activo?0:1) - (b.activo?0:1);
+    if (dedRank(a.dedicacion) !== dedRank(b.dedicacion)) return dedRank(a.dedicacion) - dedRank(b.dedicacion);
+    if ((a.departamento||'') !== (b.departamento||'')) return (a.departamento||'').localeCompare(b.departamento||'');
+    return (a.nombre||'').localeCompare(b.nombre||'');
+  });
+  var esAdminEquipo = (typeof userRole !== 'undefined' && userRole === 'admin');
+
+  equipoOrdenado.forEach(function(e) {
+    var rowStyle = !e.activo ? ' style="opacity:0.5"' : '';
+    h += '<tr' + rowStyle + '>';
+    h += '<td><strong>' + esc(e.nombre + ' ' + e.apellido) + '</strong></td>';
+    h += '<td style="font-size:0.8rem">' + esc(e.cargo || '') + '</td>';
+    h += '<td style="font-size:0.8rem">' + esc(e.departamento) + '</td>';
+    h += '<td><span style="font-size:10px;padding:2px 8px;border-radius:10px;background:#eff6ff;color:#1d4ed8;font-weight:600">' + esc(e.rol_portal) + '</span></td>';
+    h += '<td style="font-size:0.8rem">' + (e.dedicacion === 'freelance' ? '<span style="color:var(--amber)">Freelance</span>' : 'TC') + '</td>';
+    h += '<td style="font-size:0.8rem">' + (e.objetivo_kpi || '—') + '</td>';
+    h += '<td style="font-size:0.8rem">' + (e.capacidad_tx || '—') + '</td>';
+    h += '<td>' + (e.activo ? '<span style="color:var(--green)">Si</span>' : '<span style="color:var(--red)">No</span>') + '</td>';
+    h += '<td style="white-space:nowrap">';
+    h += '<button style="padding:4px 10px;border:1px solid var(--border);border-radius:6px;background:white;font-size:0.75rem;cursor:pointer;color:var(--muted)" onclick="datosEditEquipo(\'' + e.id + '\')">Editar</button> ';
+    h += '<button style="padding:4px 10px;border:1px solid var(--border);border-radius:6px;background:white;font-size:0.75rem;cursor:pointer;color:var(--amber)" onclick="datosToggleActivoEquipo(\'' + e.id + '\',' + (e.activo ? 'false' : 'true') + ')">' + (e.activo ? 'Inactivar' : 'Activar') + '</button>';
+    if (esAdminEquipo) h += ' <button title="Eliminar permanente" style="padding:4px 9px;border:1px solid #fecaca;border-radius:6px;background:white;font-size:0.75rem;cursor:pointer;color:var(--red)" onclick="datosDeleteEquipo(\'' + e.id + '\',\'' + esc((e.nombre + ' ' + e.apellido).replace(/'/g,'')) + '\')">✕</button>';
+    h += '</td>';
+    h += '</tr>';
+  });
+
+  h += '</tbody></table></div></div>';
+  return h;
+}
+
+function datosRenderPrecios() {
+  var h = '<div class="card">';
+  h += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">';
+  h += '<h3 style="margin:0">Precios (' + datosPrecios.length + ')</h3>';
+  h += '<button onclick="datosOpenPrecioModal()" style="padding:6px 14px;border-radius:8px;font-size:0.78rem;font-weight:600;cursor:pointer;border:1px solid var(--navy);background:var(--navy);color:white">+ Nuevo precio</button>';
+  h += '</div>';
+
+  // Outsourcing
+  var outsourcing = datosPrecios.filter(function(p) { return p.tipo === 'outsourcing'; });
+  var software = datosPrecios.filter(function(p) { return p.tipo === 'software'; });
+
+  h += '<h4 style="margin:16px 0 8px;color:var(--navy)">Outsourcing (DOP)</h4>';
+  h += '<div class="table-wrap"><table class="cl-table"><thead><tr>';
+  h += '<th>Plan</th><th>Transacciones</th><th>Precio</th><th>Activo</th><th></th>';
+  h += '</tr></thead><tbody>';
+  outsourcing.forEach(function(p) {
+    h += '<tr>';
+    h += '<td>' + esc(p.nombre_plan) + '</td>';
+    h += '<td>' + (p.transacciones || '—') + '</td>';
+    h += '<td>RD$' + Number(p.precio).toLocaleString() + '</td>';
+    h += '<td>' + (p.activo ? 'Si' : 'No') + '</td>';
+    h += '<td><button style="padding:4px 10px;border:1px solid var(--border);border-radius:6px;background:white;font-size:0.75rem;cursor:pointer;color:var(--muted)" onclick="datosEditPrecio(\'' + p.id + '\')">Editar</button></td>';
+    h += '</tr>';
+  });
+  h += '</tbody></table></div>';
+
+  h += '<h4 style="margin:16px 0 8px;color:var(--navy)">Software (USD)</h4>';
+  h += '<div class="table-wrap"><table class="cl-table"><thead><tr>';
+  h += '<th>Licencia</th><th>Precio</th><th>Activo</th><th></th>';
+  h += '</tr></thead><tbody>';
+  software.forEach(function(p) {
+    h += '<tr>';
+    h += '<td>' + esc(p.nombre_plan) + '</td>';
+    h += '<td>$' + Number(p.precio).toLocaleString() + '</td>';
+    h += '<td>' + (p.activo ? 'Si' : 'No') + '</td>';
+    h += '<td><button style="padding:4px 10px;border:1px solid var(--border);border-radius:6px;background:white;font-size:0.75rem;cursor:pointer;color:var(--muted)" onclick="datosEditPrecio(\'' + p.id + '\')">Editar</button></td>';
+    h += '</tr>';
+  });
+  h += '</tbody></table></div>';
+  h += '</div>';
+  return h;
+}
+
+function datosRenderKpiScores() {
+  var h = '<div class="card"><h3>KPI Scores (solo lectura)</h3>';
+  h += '<p style="color:var(--muted);font-size:0.85rem">Cargando datos...</p>';
+  h += '<div id="datos-kpi-scores-table"></div></div>';
+  // Load async
+  sb.from('kpi_scores').select('*').eq('anio', ANIO).order('contadora').order('mes').then(function(res) {
+    var el = document.getElementById('datos-kpi-scores-table');
+    if (!el) return;
+    if (!res.data || res.data.length === 0) { el.innerHTML = '<p style="color:var(--muted)">Sin datos para ' + ANIO + '.</p>'; return; }
+    var th = '<div class="table-wrap"><table class="cl-table"><thead><tr><th>Contadora</th><th>Mes</th><th>Digitación</th><th>Resúmenes</th><th>Video</th><th>Total</th></tr></thead><tbody>';
+    res.data.forEach(function(r) {
+      th += '<tr><td>' + esc(r.contadora) + '</td><td>' + esc(r.mes) + '</td>';
+      th += '<td>' + (r.digitacion != null ? r.digitacion.toFixed(1) : '—') + '</td>';
+      th += '<td>' + (r.resumenes != null ? r.resumenes.toFixed(1) : '—') + '</td>';
+      th += '<td>' + (r.video_reunion != null ? r.video_reunion.toFixed(1) : '—') + '</td>';
+      th += '<td><strong>' + (r.total != null ? r.total : '—') + '</strong></td></tr>';
+    });
+    th += '</tbody></table></div>';
+    el.innerHTML = th;
+  });
+  return h;
+}
+
+function datosRenderKpiDetalle() {
+  var h = '<div class="card"><h3>KPI Detalle (solo lectura)</h3>';
+  h += '<p style="color:var(--muted);font-size:0.85rem">Datos crudos de digitación por contadora/mes.</p>';
+  h += '<div id="datos-kpi-detalle-table"></div></div>';
+  sb.from('kpi_detalle').select('id, contadora, mes, anio, updated_at').eq('anio', ANIO).order('contadora').order('mes').then(function(res) {
+    var el = document.getElementById('datos-kpi-detalle-table');
+    if (!el) return;
+    if (!res.data || res.data.length === 0) { el.innerHTML = '<p style="color:var(--muted)">Sin datos para ' + ANIO + '.</p>'; return; }
+    var th = '<div class="table-wrap"><table class="cl-table"><thead><tr><th>Contadora</th><th>Mes</th><th>Año</th><th>Última actualización</th></tr></thead><tbody>';
+    res.data.forEach(function(r) {
+      var upd = r.updated_at ? new Date(r.updated_at).toLocaleDateString('es-DO') : '—';
+      th += '<tr><td>' + esc(r.contadora) + '</td><td>' + esc(r.mes) + '</td><td>' + r.anio + '</td><td>' + upd + '</td></tr>';
+    });
+    th += '</tbody></table></div>';
+    el.innerHTML = th;
+  });
+  return h;
+}
+
+// ─── Datos: Asignaciones ───
+
+function datosRenderAsignaciones() {
+  var h = '<div class="card">';
+  var canEdit = tengoPermiso('gerencia', 'basedatos', 'edicion', 'asignaciones');
+  var contadoraNames = bdGetContadorasForAsig();
+
+  // Month pills
+  h += '<div style="display:flex;gap:4px;margin-bottom:16px;flex-wrap:wrap">';
+  BD_MESES.forEach(function(m, i) {
+    h += '<button class="bd-month-pill ' + (bdAsigMes === m ? 'active' : '') + '" onclick="datosAsigSwitchMes(\'' + m + '\')">' + BD_MESES_SHORT[i] + '</button>';
+  });
+  h += '</div>';
+
+  var rows = bdGetAsigForMes(bdAsigMes);
+
+  // Toolbar
+  if (canEdit) {
+    h += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px">';
+    h += '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">';
+    h += '<button style="padding:6px 14px;border-radius:8px;font-size:0.78rem;font-weight:600;cursor:pointer;border:1px solid var(--navy);background:var(--navy);color:white" onclick="bdAsigAddRow()">+ Agregar</button>';
+    h += '<button class="asig-copy-btn" onclick="bdAsigCopyPrevMonth()">Copiar del mes anterior</button>';
+    h += '</div>';
+    h += '<div>';
+    if (bdAsigDirty) h += '<span class="bd-dirty-indicator" title="Cambios sin guardar"></span> ';
+    h += '<button class="bd-asig-save" id="bdAsigSaveBtn" onclick="bdAsigSaveAll()" ' + (bdAsigDirty ? '' : 'disabled') + '>Guardar cambios</button>';
+    h += '</div>';
+    h += '</div>';
+  }
+
+  if (rows.length === 0) {
+    h += '<div style="text-align:center;padding:40px;color:var(--muted)">';
+    h += '<p>No hay asignaciones para ' + bdAsigMes.charAt(0).toUpperCase() + bdAsigMes.slice(1) + ' ' + ANIO + '.</p>';
+    if (canEdit) h += '<p style="font-size:0.85rem;margin-top:8px">Usa "Copiar del mes anterior" para replicar.</p>';
+    h += '</div>';
+    h += '</div>';
+    return h;
+  }
+
+  // Agrupar por contadora, manteniendo el idx original del array rows
+  var groups = {};
+  var groupOrder = [];
+  rows.forEach(function(r, idx) {
+    var edited = bdAsigEdits[idx];
+    var contVal = edited ? edited.contadora : r.contadora;
+    var key = (!contVal || contVal === 'Sin asignar') ? '__sinasignar__' : contVal;
+    if (!groups[key]) {
+      groups[key] = [];
+      groupOrder.push(key);
+    }
+    groups[key].push({ row: r, idx: idx });
+  });
+
+  // Ordenar: contadoras con más tx primero, "Sin asignar" al final
+  groupOrder.sort(function(a, b) {
+    if (a === '__sinasignar__') return 1;
+    if (b === '__sinasignar__') return -1;
+    var txA = 0, txB = 0;
+    groups[a].forEach(function(item) {
+      var ed = bdAsigEdits[item.idx];
+      txA += parseInt(ed ? ed.adm : item.row.adm) || 0;
+    });
+    groups[b].forEach(function(item) {
+      var ed = bdAsigEdits[item.idx];
+      txB += parseInt(ed ? ed.adm : item.row.adm) || 0;
+    });
+    return txB - txA;
+  });
+
+  // Calcular capacidad máxima para referencia de barras
+  var maxCap = 0;
+  Object.keys(ccCAPACIDAD).forEach(function(k) { if (ccCAPACIDAD[k] > maxCap) maxCap = ccCAPACIDAD[k]; });
+  if (maxCap === 0) maxCap = 1000; // fallback
+
+  // Renderizar grupos colapsables
+  groupOrder.forEach(function(key) {
+    var items = groups[key];
+    var nombre = key === '__sinasignar__' ? 'Sin asignar' : key;
+    var displayName = key === '__sinasignar__' ? 'Sin asignar' : nombre.split(' ')[0];
+    var isOpen = !!datosAsigOpen[key];
+    var safeKey = key.replace(/'/g, "\\'");
+
+    // Totales del grupo
+    var totalTx = 0;
+    items.forEach(function(item) {
+      var ed = bdAsigEdits[item.idx];
+      totalTx += parseInt(ed ? ed.adm : item.row.adm) || 0;
+    });
+
+    var cap = key !== '__sinasignar__' ? (ccCAPACIDAD[nombre] || 0) : 0;
+    var refCap = cap > 0 ? cap : maxCap;
+    var pct = Math.round((totalTx / refCap) * 100);
+    var barColor = pct > 100 ? 'var(--red)' : pct > 80 ? '#f59e0b' : 'var(--teal)';
+
+    // Header de contadora (clickeable para abrir/cerrar)
+    h += '<div style="margin-bottom:8px;border:1px solid var(--border);border-radius:10px;overflow:hidden">';
+    h += '<div onclick="datosAsigToggle(\'' + safeKey + '\')" style="padding:12px 16px;background:var(--bg);display:flex;justify-content:space-between;align-items:center;cursor:pointer;user-select:none;flex-wrap:wrap;gap:8px">';
+    h += '<div style="display:flex;align-items:center;gap:10px">';
+    h += '<span style="font-size:0.75rem;transition:transform 0.2s;display:inline-block;transform:rotate(' + (isOpen ? '90' : '0') + 'deg)">▶</span>';
+    h += '<strong style="font-size:0.9rem">' + esc(displayName) + '</strong>';
+    h += '<span style="font-size:0.78rem;color:var(--muted)">' + items.length + ' cliente' + (items.length !== 1 ? 's' : '') + '</span>';
+    h += '</div>';
+    h += '<div style="display:flex;align-items:center;gap:10px">';
+    h += '<span style="font-size:0.82rem;font-weight:600">' + totalTx + ' tx</span>';
+    h += '<div style="width:80px;height:6px;background:#e5e7eb;border-radius:3px;overflow:hidden">';
+    h += '<div style="width:' + Math.min(pct, 100) + '%;height:100%;background:' + barColor + ';border-radius:3px"></div>';
+    h += '</div>';
+    h += '<span style="font-size:0.72rem;color:var(--muted)">' + pct + '% de ' + refCap + '</span>';
+    h += '</div>';
+    h += '</div>';
+
+    // Tabla de clientes (visible solo si abierto)
+    if (isOpen) {
+      h += '<table class="cl-table" style="margin:0;border-radius:0;table-layout:fixed;width:100%"><colgroup>';
+      h += '<col style="width:40%">';
+      if (canEdit) h += '<col style="width:28%">';
+      h += '<col style="width:' + (canEdit ? '12%' : '30%') + '">';
+      h += '<col style="width:' + (canEdit ? '12%' : '30%') + '">';
+      if (canEdit) h += '<col style="width:8%">';
+      h += '</colgroup><thead><tr>';
+      h += '<th>Cliente</th>';
+      if (canEdit) h += '<th>Contadora</th>';
+      h += '<th style="text-align:right">Contratadas</th>';
+      h += '<th style="text-align:right">Tx Mes</th>';
+      if (canEdit) h += '<th></th>';
+      h += '</tr></thead><tbody>';
+
+      items.forEach(function(item) {
+        var r = item.row;
+        var idx = item.idx;
+        var edited = bdAsigEdits[idx];
+        var contVal = edited ? edited.contadora : r.contadora;
+        var admVal = edited ? edited.adm : r.adm;
+        var isEdited = !!edited;
+
+        // Buscar tx contratadas de la tabla clientes (bdClientes se carga en bdLoadClientes)
+        // Match flexible: los nombres en asignaciones pueden ser abreviados (ej: "Impact" vs "Impact Logistics")
+        var _cn = (r.cliente || '').trim().toLowerCase();
+        var cl = bdClientes.find(function(c) {
+          var n = (c.nombre || '').trim().toLowerCase();
+          return n === _cn || n.indexOf(_cn) === 0 || _cn.indexOf(n) === 0;
+        });
+        var txContratadas = cl ? (cl.monto_adm || 0) : 0;
+
+        h += '<tr' + (isEdited ? ' style="background:#fffbeb"' : '') + '>';
+        h += '<td style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap"><strong>' + esc(r.cliente) + '</strong></td>';
+
+        if (canEdit) {
+          h += '<td><select style="padding:4px 8px;border:1px solid var(--border);border-radius:6px;font-size:0.8rem;font-family:inherit;width:100%;box-sizing:border-box" onchange="bdAsigEdit(' + idx + ',\'contadora\',this.value)">';
+          h += '<option value="Sin asignar"' + (contVal === 'Sin asignar' || !contVal ? ' selected' : '') + '>Sin asignar</option>';
+          contadoraNames.forEach(function(cn) {
+            h += '<option value="' + esc(cn) + '"' + (contVal === cn ? ' selected' : '') + '>' + esc(cn) + '</option>';
+          });
+          h += '</select></td>';
+        }
+
+        h += '<td style="text-align:right;color:var(--muted);font-size:0.8rem">' + txContratadas + '</td>';
+
+        if (canEdit) {
+          h += '<td style="text-align:right"><input type="number" value="' + (admVal || 0) + '" style="width:100%;padding:4px 6px;border:1px solid var(--border);border-radius:6px;font-size:0.8rem;text-align:right;font-family:inherit;box-sizing:border-box" onchange="bdAsigEdit(' + idx + ',\'adm\',this.value)"></td>';
+          h += '<td style="text-align:center"><button style="padding:3px 8px;border:1px solid #fecaca;border-radius:6px;background:white;font-size:0.72rem;cursor:pointer;color:var(--red)" onclick="bdAsigDeleteRow(' + r.id + ')">✕</button></td>';
+        } else {
+          h += '<td style="text-align:right">' + (admVal || 0) + '</td>';
+        }
+
+        h += '</tr>';
+      });
+
+      h += '</tbody></table>';
+    }
+
+    h += '</div>';
+  });
+
+  // Resumen
+  var sinAsig = rows.filter(function(r) { return !r.contadora || r.contadora === 'Sin asignar'; }).length;
+  h += '<div style="margin-top:12px;font-size:0.78rem;color:var(--muted)">' + rows.length + ' asignaciones · ' + sinAsig + ' sin contadora</div>';
+
+  h += '</div>';
+  return h;
+}
+
+function datosAsigSwitchMes(mes) {
+  if (bdAsigDirty) {
+    if (!confirm('Tienes cambios sin guardar. ¿Cambiar de mes sin guardar?')) return;
+    bdAsigDirty = false;
+    bdAsigEdits = {};
+  }
+  bdAsigMes = mes;
+  datosRenderApp();
+}
+
+function datosAsigToggle(key) {
+  datosAsigOpen[key] = !datosAsigOpen[key];
+  datosRenderApp();
+}
+
+// ─── Datos: Equipo CRUD ───
+function datosOpenEquipoModal(id) {
+  datosEditingId = id || null;
+  var e = id ? datosEquipo.find(function(x) { return x.id === id; }) : null;
+  var title = e ? 'Editar miembro' : 'Nuevo miembro';
+  var html = '<div style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.4);z-index:9999;display:flex;align-items:center;justify-content:center" id="datos-modal" onclick="if(event.target===this)this.remove()">';
+  html += '<div style="background:white;border-radius:12px;padding:24px;width:500px;max-width:90vw;max-height:80vh;overflow-y:auto">';
+  html += '<h3 style="margin:0 0 16px">' + title + '</h3>';
+  html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">';
+  html += '<div><label style="font-size:0.75rem;font-weight:600;color:var(--muted)">Nombre</label><input id="de-nombre" value="' + esc(e ? e.nombre : '') + '" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:6px;font-size:0.85rem"></div>';
+  html += '<div><label style="font-size:0.75rem;font-weight:600;color:var(--muted)">Apellido</label><input id="de-apellido" value="' + esc(e ? e.apellido : '') + '" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:6px;font-size:0.85rem"></div>';
+  html += '<div><label style="font-size:0.75rem;font-weight:600;color:var(--muted)">Email</label><input id="de-email" value="' + esc(e ? e.email||'' : '') + '" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:6px;font-size:0.85rem"></div>';
+  html += '<div><label style="font-size:0.75rem;font-weight:600;color:var(--muted)">Cargo</label><input id="de-cargo" value="' + esc(e ? e.cargo||'' : '') + '" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:6px;font-size:0.85rem"></div>';
+  html += '<div><label style="font-size:0.75rem;font-weight:600;color:var(--muted)">Departamento</label><select id="de-depto" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:6px;font-size:0.85rem">';
+  ['Dirección','Comercial','Implementación','Impuestos','Contabilidad'].forEach(function(d) {
+    html += '<option' + (e && e.departamento === d ? ' selected' : '') + '>' + d + '</option>';
+  });
+  html += '</select></div>';
+  html += '<div><label style="font-size:0.75rem;font-weight:600;color:var(--muted)">Rol portal</label><select id="de-rol" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:6px;font-size:0.85rem">';
+  ['admin','comercial','contadora','analista','implementadora','cobros','marketing'].forEach(function(r) {
+    html += '<option' + (e && e.rol_portal === r ? ' selected' : '') + '>' + r + '</option>';
+  });
+  html += '</select></div>';
+  html += '<div><label style="font-size:0.75rem;font-weight:600;color:var(--muted)">Dedicación</label><select id="de-dedicacion" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:6px;font-size:0.85rem">';
+  html += '<option value="tiempo_completo"' + (e && e.dedicacion === 'tiempo_completo' ? ' selected' : '') + '>Tiempo completo</option>';
+  html += '<option value="freelance"' + (e && e.dedicacion === 'freelance' ? ' selected' : '') + '>Freelance</option>';
+  html += '</select></div>';
+  html += '<div><label style="font-size:0.75rem;font-weight:600;color:var(--muted)">Objetivo KPI</label><input id="de-obj" type="number" value="' + (e && e.objetivo_kpi ? e.objetivo_kpi : '') + '" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:6px;font-size:0.85rem"></div>';
+  html += '<div><label style="font-size:0.75rem;font-weight:600;color:var(--muted)">Capacidad Tx</label><input id="de-cap" type="number" value="' + (e && e.capacidad_tx ? e.capacidad_tx : '') + '" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:6px;font-size:0.85rem"></div>';
+  html += '<div><label style="font-size:0.75rem;font-weight:600;color:var(--muted)">Activo</label><select id="de-activo" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:6px;font-size:0.85rem"><option value="true"' + (!e || e.activo ? ' selected' : '') + '>Si</option><option value="false"' + (e && !e.activo ? ' selected' : '') + '>No</option></select></div>';
+  html += '<div><label style="font-size:0.75rem;font-weight:600;color:var(--muted)">Color (gráficos)</label><input id="de-color" value="' + esc(e ? e.color||'' : '') + '" placeholder="#hex" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:6px;font-size:0.85rem"></div>';
+  html += '</div>';
+  html += '<div style="display:flex;gap:8px;margin-top:16px;justify-content:flex-end">';
+  html += '<button onclick="document.getElementById(\'datos-modal\').remove()" style="padding:8px 16px;border-radius:8px;border:1px solid var(--border);background:white;cursor:pointer;font-size:0.85rem">Cancelar</button>';
+  html += '<button onclick="datosSaveEquipo()" style="padding:8px 16px;border-radius:8px;border:none;background:var(--navy);color:white;cursor:pointer;font-size:0.85rem;font-weight:600">Guardar</button>';
+  html += '</div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+function datosEditEquipo(id) { datosOpenEquipoModal(id); }
+
+async function datosSaveEquipo() {
+  var obj = {
+    nombre: document.getElementById('de-nombre').value.trim(),
+    apellido: document.getElementById('de-apellido').value.trim(),
+    email: document.getElementById('de-email').value.trim() || null,
+    cargo: document.getElementById('de-cargo').value.trim() || null,
+    departamento: document.getElementById('de-depto').value,
+    rol_portal: document.getElementById('de-rol').value,
+    dedicacion: document.getElementById('de-dedicacion').value,
+    objetivo_kpi: parseInt(document.getElementById('de-obj').value) || null,
+    capacidad_tx: parseInt(document.getElementById('de-cap').value) || null,
+    activo: document.getElementById('de-activo').value === 'true',
+    color: document.getElementById('de-color').value.trim() || null
+  };
+  if (!obj.nombre) { alert('Nombre es requerido'); return; }
+
+  var res;
+  if (datosEditingId) {
+    res = await sb.from('equipo').update(obj).eq('id', datosEditingId);
+  } else {
+    res = await sb.from('equipo').insert(obj);
+  }
+  if (res.error) { alert('Error: ' + res.error.message); return; }
+  document.getElementById('datos-modal').remove();
+  await datosLoadAll();
+  datosRenderApp();
+  gerShowToast(datosEditingId ? 'Miembro actualizado' : 'Miembro creado');
+}
+
+// Inactivar/activar (soft — conserva historial)
+async function datosToggleActivoEquipo(id, nuevoActivo) {
+  var res = await sb.from('equipo').update({ activo: nuevoActivo }).eq('id', id);
+  if (res.error) { alert('Error: ' + res.error.message); return; }
+  await datosLoadAll();
+  datosRenderApp();
+  gerShowToast(nuevoActivo ? 'Miembro activado' : 'Miembro inactivado');
+}
+
+// Eliminar permanente (solo admin — pierde historial)
+async function datosDeleteEquipo(id, nombre) {
+  if (!confirm('¿Eliminar PERMANENTEMENTE a ' + nombre + '?\n\nEsto no se puede deshacer y pierde su historial. Si la persona salió, usa "Inactivar" en su lugar.')) return;
+  var res = await sb.from('equipo').delete().eq('id', id);
+  if (res.error) { alert('Error: ' + res.error.message); return; }
+  await datosLoadAll();
+  datosRenderApp();
+  gerShowToast('Miembro eliminado');
+}
+
+// ─── Datos: Precios CRUD ───
+function datosOpenPrecioModal(id) {
+  datosEditingId = id || null;
+  var p = id ? datosPrecios.find(function(x) { return x.id === id; }) : null;
+  var title = p ? 'Editar precio' : 'Nuevo precio';
+  var html = '<div style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.4);z-index:9999;display:flex;align-items:center;justify-content:center" id="datos-modal" onclick="if(event.target===this)this.remove()">';
+  html += '<div style="background:white;border-radius:12px;padding:24px;width:400px;max-width:90vw">';
+  html += '<h3 style="margin:0 0 16px">' + title + '</h3>';
+  html += '<div style="display:grid;gap:10px">';
+  html += '<div><label style="font-size:0.75rem;font-weight:600;color:var(--muted)">Tipo</label><select id="dp-tipo" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:6px;font-size:0.85rem"><option value="outsourcing"' + (p && p.tipo === 'outsourcing' ? ' selected' : '') + '>Outsourcing</option><option value="software"' + (p && p.tipo === 'software' ? ' selected' : '') + '>Software</option></select></div>';
+  html += '<div><label style="font-size:0.75rem;font-weight:600;color:var(--muted)">Nombre plan</label><input id="dp-plan" value="' + esc(p ? p.nombre_plan : '') + '" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:6px;font-size:0.85rem"></div>';
+  html += '<div><label style="font-size:0.75rem;font-weight:600;color:var(--muted)">Transacciones (outsourcing)</label><input id="dp-tx" type="number" value="' + (p && p.transacciones ? p.transacciones : '') + '" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:6px;font-size:0.85rem"></div>';
+  html += '<div><label style="font-size:0.75rem;font-weight:600;color:var(--muted)">Precio</label><input id="dp-precio" type="number" step="0.01" value="' + (p ? p.precio : '') + '" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:6px;font-size:0.85rem"></div>';
+  html += '<div><label style="font-size:0.75rem;font-weight:600;color:var(--muted)">Moneda</label><select id="dp-moneda" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:6px;font-size:0.85rem"><option value="DOP"' + (p && p.moneda === 'DOP' ? ' selected' : '') + '>DOP</option><option value="USD"' + (p && p.moneda === 'USD' ? ' selected' : '') + '>USD</option></select></div>';
+  html += '<div><label style="font-size:0.75rem;font-weight:600;color:var(--muted)">Activo</label><select id="dp-activo" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:6px;font-size:0.85rem"><option value="true"' + (!p || p.activo ? ' selected' : '') + '>Si</option><option value="false"' + (p && !p.activo ? ' selected' : '') + '>No</option></select></div>';
+  html += '</div>';
+  html += '<div style="display:flex;gap:8px;margin-top:16px;justify-content:flex-end">';
+  html += '<button onclick="document.getElementById(\'datos-modal\').remove()" style="padding:8px 16px;border-radius:8px;border:1px solid var(--border);background:white;cursor:pointer;font-size:0.85rem">Cancelar</button>';
+  html += '<button onclick="datosSavePrecio()" style="padding:8px 16px;border-radius:8px;border:none;background:var(--navy);color:white;cursor:pointer;font-size:0.85rem;font-weight:600">Guardar</button>';
+  html += '</div></div></div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+function datosEditPrecio(id) { datosOpenPrecioModal(id); }
+
+async function datosSavePrecio() {
+  var obj = {
+    tipo: document.getElementById('dp-tipo').value,
+    nombre_plan: document.getElementById('dp-plan').value.trim(),
+    transacciones: parseInt(document.getElementById('dp-tx').value) || null,
+    precio: parseFloat(document.getElementById('dp-precio').value),
+    moneda: document.getElementById('dp-moneda').value,
+    activo: document.getElementById('dp-activo').value === 'true'
+  };
+  if (!obj.nombre_plan || !obj.precio) { alert('Plan y precio son requeridos'); return; }
+
+  var res;
+  if (datosEditingId) {
+    res = await sb.from('precios').update(obj).eq('id', datosEditingId);
+  } else {
+    res = await sb.from('precios').insert(obj);
+  }
+  if (res.error) { alert('Error: ' + res.error.message); return; }
+  document.getElementById('datos-modal').remove();
+  await datosLoadAll();
+  datosRenderApp();
+  gerShowToast(datosEditingId ? 'Precio actualizado' : 'Precio creado');
+}
 
 // Init
 async function init() {

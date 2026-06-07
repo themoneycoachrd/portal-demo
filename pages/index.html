@@ -236,6 +236,7 @@ body {
 .sidebar.collapsed .brand-text,
 .sidebar.collapsed .brand-icon,
 .sidebar.collapsed .nav-label,
+.sidebar.collapsed .nav-text,
 .sidebar.collapsed .nav-badge,
 .sidebar.collapsed .sidebar-user .user-meta,
 .sidebar.collapsed .sidebar-user .btn-logout-small,
@@ -478,6 +479,10 @@ body {
 
 .hidden { display: none; }
 </style>
+
+<!-- Account One B Claro theme layer (override) -->
+<link rel="stylesheet" href="assets/theme.css">
+<script src="assets/theme.js" defer></script>
 </head>
 <body>
 
@@ -551,7 +556,7 @@ body {
     </div>
 
     <div class="sidebar-version">
-      <span class="sidebar-version-num">v1.00</span>
+      <span class="sidebar-version-num">v1.01</span>
       <span class="sidebar-version-label">— Portal Account One</span>
       <div class="sidebar-version-tooltip">
         <strong>v1.00</strong> — 27 abr 2026<br>
@@ -562,6 +567,18 @@ body {
 
   <!-- MAIN -->
   <div class="main-content">
+    <!-- TOPBAR -->
+    <div class="portal-topbar" id="portal-topbar">
+      <div class="topbar-left">
+        <div class="topbar-trail" id="topbar-trail"><span class="topbar-current">Inicio</span></div>
+      </div>
+      <div class="topbar-right">
+        <span class="topbar-date" id="topbar-date"></span>
+        <button class="topbar-bell" title="Últimos cambios del portal" onclick="toggleChangelog(event)"><svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg><span class="topbar-dot"></span></button>
+        <div class="topbar-avatar" id="topbar-avatar"></div>
+      </div>
+    </div>
+
     <!-- Home / Welcome -->
     <div class="home-view" id="home-view">
       <div class="welcome-banner" id="welcome-banner"></div>
@@ -590,6 +607,7 @@ body {
 const SUPABASE_URL = 'https://ouetusstqvpyjeycfdio.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im91ZXR1c3N0cXZweWpleWNmZGlvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY2NDcwNzksImV4cCI6MjA5MjIyMzA3OX0.Bsys947JLGEuf3zdBF2GPFdbJVJtaZdC4YEmyBU5Bow';
 const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+var ANIO = new Date().getFullYear();
 
 let userRole = null;
 let userName = '';
@@ -606,21 +624,60 @@ const ROLE_LABELS = {
 
 let realRole = null; // el rol verdadero del usuario (no cambia)
 
+// Campana = últimos cambios del portal. Agregar arriba las entradas más recientes.
+const CHANGELOG = [
+  { fecha: '7 jun 2026', items: [
+    'Wow Points: sección "Listos para pago" con fecha automática + historial editable',
+    'Casos de Retroalimentación: editor con formato (negritas/viñetas) y "Leer caso"',
+    'Personal: sueldos ocultos, botón inactivar/eliminar, orden por dedicación',
+    'Header más limpio (sin Exportar/Filtros)'
+  ] },
+  { fecha: '6 jun 2026', items: [
+    'Dashboard de carga por contadora en Clientes',
+    'Pestaña Retroalimentación en Personal',
+    'Correcciones de auditoría'
+  ] }
+];
+function toggleChangelog(ev) {
+  if (ev) ev.stopPropagation();
+  var existing = document.getElementById('changelog-panel');
+  if (existing) { existing.remove(); return; }
+  var html = '<div id="changelog-panel" style="position:absolute;top:54px;right:56px;width:330px;max-height:62vh;overflow-y:auto;background:#fff;border:1px solid var(--border);border-radius:12px;box-shadow:0 12px 40px rgba(0,0,0,0.18);z-index:3000">';
+  html += '<div style="padding:14px 16px;border-bottom:1px solid var(--border);font-weight:700;color:var(--navy)">Últimos cambios del portal</div>';
+  CHANGELOG.forEach(function(g) {
+    html += '<div style="padding:12px 16px;border-bottom:1px solid #f1f5f9">';
+    html += '<div style="font-size:0.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px">' + g.fecha + '</div>';
+    html += '<ul style="margin:0;padding-left:18px;font-size:0.82rem;line-height:1.5">';
+    g.items.forEach(function(it) { html += '<li>' + it + '</li>'; });
+    html += '</ul></div>';
+  });
+  html += '</div>';
+  document.body.insertAdjacentHTML('beforeend', html);
+  setTimeout(function() {
+    document.addEventListener('click', function closer(e) {
+      var p = document.getElementById('changelog-panel');
+      if (p && !p.contains(e.target)) { p.remove(); document.removeEventListener('click', closer); }
+    });
+  }, 0);
+}
+
 // Estructura del menu: secciones con hijos (expandibles) o modulos directos
 const MENU = [
   {
     id: 'gerencia',
     title: 'Clientes',
+    navDesc: 'Cartera, outsourcing, software y base de datos',
     icon: '\ud83c\udfe2',
     iconBg: '#ecfdf5',
     roles: ['admin', 'comercial'],
     href: 'gerencia.html',
     active: true,
-    desc: 'Control de clientes, carga de trabajo, reportes mensuales y contadoras.'
+    desc: 'Cartera de clientes, outsourcing, software y base de datos.'
   },
   {
     id: 'comercial',
     title: 'Comercial',
+    navDesc: 'Pipeline de ventas y cierres',
     icon: '\ud83d\udcc8',
     iconBg: '#eef2ff',
     roles: ['admin', 'comercial'],
@@ -631,6 +688,7 @@ const MENU = [
   {
     id: 'contabilidad',
     title: 'Contabilidad',
+    navDesc: 'Cierres y estados financieros',
     icon: '\ud83c\udfaf',
     iconBg: '#f5f3ff',
     roles: ['admin', 'contadores'],
@@ -641,6 +699,7 @@ const MENU = [
   {
     id: 'impuestos',
     title: 'Impuestos',
+    navDesc: 'Declaraciones DGII',
     icon: '\ud83d\udccb',
     iconBg: '#fffbeb',
     roles: ['admin', 'impuestos', 'contadores'],
@@ -651,6 +710,7 @@ const MENU = [
   {
     id: 'implementaciones',
     title: 'Implementaciones',
+    navDesc: 'Onboarding de nuevos clientes',
     icon: '\ud83d\ude80',
     iconBg: '#fff7ed',
     roles: ['admin', 'implementaciones', 'contadores'],
@@ -659,28 +719,22 @@ const MENU = [
     desc: 'Control de implementaciones completas y facturación electrónica.'
   },
   {
-    id: 'portal-admin',
-    title: 'Portal Clientes (A)',
+    id: 'portal',
+    title: 'Portal de clientes',
     icon: '\ud83c\udf10',
     iconBg: '#fef2f2',
-    roles: ['admin', 'contadores', 'impuestos'],
-    href: 'portal-admin.html',
-    active: true,
-    desc: 'Administrar datos del portal de clientes: checklist, presupuesto, impuestos.'
-  },
-  {
-    id: 'portal-clientes',
-    title: 'Portal Clientes (C)',
-    icon: '\ud83c\udf10',
-    iconBg: '#fef2f2',
-    roles: ['admin', 'contadores', 'comercial'],
-    href: 'portal-clientes.html',
-    active: true,
-    desc: 'Vista del cliente: lo que ve cuando entra con su token.'
+    roles: ['admin', 'contadores', 'impuestos', 'comercial'],
+    children: [
+      { id: 'portal-admin', title: 'Administrativo', href: 'portal-admin.html', active: true,
+        desc: 'Gestionar checklist, presupuesto y datos fiscales de cada cliente.' },
+      { id: 'portal-clientes', title: 'Links de clientes', href: 'portal-clientes.html', active: true,
+        desc: 'Ver los links del portal y la vista que tiene cada cliente.' }
+    ]
   },
   {
     id: 'personal',
     title: 'Personal',
+    navDesc: 'Equipo y reconocimiento',
     icon: '\u2b50',
     iconBg: '#fef3c7',
     roles: ['admin', 'comercial', 'contadores', 'impuestos', 'implementaciones'],
@@ -694,6 +748,7 @@ const MENU = [
     icon: '\u2699\ufe0f',
     iconBg: '#f1f5f9',
     roles: ['admin'],
+    navDesc: 'Roles y acceso al portal',
     children: [
       { id: 'usuarios', title: 'Usuarios y Permisos', href: 'usuarios.html', active: true,
         desc: 'Gestiona accesos, habilidades y pantallas por usuario.' }
@@ -752,7 +807,7 @@ function getGreeting() {
 
 function formatToday() {
   const d = new Date();
-  const dias = ['Domingo','Lunes','Martes','Miercoles','Jueves','Viernes','Sabado'];
+  const dias = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
   const meses = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
   return dias[d.getDay()] + ' ' + d.getDate() + ' de ' + meses[d.getMonth()] + ', ' + d.getFullYear();
 }
@@ -769,8 +824,8 @@ async function loadDashboardData() {
 
   // Helper: último día del mes como string YYYY-MM-DD
   function lastDayStr(mi) {
-    var ld = new Date(2026, mi + 1, 0);
-    return '2026-' + String(mi + 1).padStart(2, '0') + '-' + String(ld.getDate()).padStart(2, '0');
+    var ld = new Date(ANIO, mi + 1, 0);
+    return ANIO + '-' + String(mi + 1).padStart(2, '0') + '-' + String(ld.getDate()).padStart(2, '0');
   }
   function parseMonthIdx(dateStr) {
     if (!dateStr) return -1;
@@ -811,16 +866,16 @@ async function loadDashboardData() {
 
     // Nuevos y churn del mes actual
     clientes.forEach(function(c) {
-      if (c.fecha_entrada && parseYear(c.fecha_entrada) === 2026 && parseMonthIdx(c.fecha_entrada) === mesIdx) {
+      if (c.fecha_entrada && parseYear(c.fecha_entrada) === ANIO && parseMonthIdx(c.fecha_entrada) === mesIdx) {
         contaNuevos.push(c.nombre);
       }
-      if (c.fecha_salida && parseYear(c.fecha_salida) === 2026 && parseMonthIdx(c.fecha_salida) === mesIdx) {
+      if (c.fecha_salida && parseYear(c.fecha_salida) === ANIO && parseMonthIdx(c.fecha_salida) === mesIdx) {
         contaChurn.push(c.nombre);
       }
     });
 
     // Adm real de asignaciones
-    var resAsig = await sb.from('asignaciones').select('adm').eq('anio', 2026).eq('mes', currentMes);
+    var resAsig = await sb.from('asignaciones').select('adm').eq('anio', ANIO).eq('mes', currentMes);
     (resAsig.data || []).forEach(function(a) { contaTxAdm += (parseFloat(a.adm) || 0); });
   } catch(e) { console.error('Dashboard clientes:', e); }
 
@@ -830,18 +885,18 @@ async function loadDashboardData() {
     var res2 = await sb.from('clientes_software').select('*');
     var softData = res2.data || [];
     var MESES_MAP_DASH = {enero:'01',febrero:'02',marzo:'03',abril:'04',mayo:'05',junio:'06',julio:'07',agosto:'08',septiembre:'09',octubre:'10',noviembre:'11',diciembre:'12'};
-    var curPrefix = '2026-' + MESES_MAP_DASH[currentMes];
-    var curLastDay = new Date(2026, mesIdx + 1, 0);
-    var curLastStr = '2026-' + String(mesIdx + 1).padStart(2, '0') + '-' + String(curLastDay.getDate()).padStart(2, '0');
-    var prevLastDay = mesIdx > 0 ? new Date(2026, mesIdx, 0) : new Date(2025, 12, 0);
+    var curPrefix = ANIO + '-' + MESES_MAP_DASH[currentMes];
+    var curLastDay = new Date(ANIO, mesIdx + 1, 0);
+    var curLastStr = ANIO + '-' + String(mesIdx + 1).padStart(2, '0') + '-' + String(curLastDay.getDate()).padStart(2, '0');
+    var prevLastDay = mesIdx > 0 ? new Date(ANIO, mesIdx, 0) : new Date(ANIO - 1, 12, 0);
     var prevLastStr = mesIdx > 0
-      ? '2026-' + String(mesIdx).padStart(2, '0') + '-' + String(prevLastDay.getDate()).padStart(2, '0')
-      : '2025-12-31';
+      ? ANIO + '-' + String(mesIdx).padStart(2, '0') + '-' + String(prevLastDay.getDate()).padStart(2, '0')
+      : (ANIO - 1) + '-12-31';
     softData.forEach(function(c) {
       var fe = c.fecha_entrada || '';
       var fs = c.fecha_salida || '';
-      // Base = entrada antes de 2026
-      if (fe && fe < '2026-01-01') softBase++;
+      // Base = entrada antes del año actual
+      if (fe && fe < ANIO + '-01-01') softBase++;
       // Nuevos del mes actual
       if (fe && fe.indexOf(curPrefix) === 0) softNuevosMes.push(c.nombre);
       // Total actual: entró antes o durante este mes Y no salió antes del fin del mes
@@ -859,7 +914,7 @@ async function loadDashboardData() {
   var totalLeads = 0, cierres = 0, vendido = 0, cotizado = 0, ejecutado = 0;
   var nombresRec = [], nombresImpl = [], nombresFE = [], nombresSinCat = [], nombresSoft = [];
   try {
-    var res3 = await sb.from('leads').select('*').eq('anio', 2026).eq('mes', currentMes);
+    var res3 = await sb.from('leads').select('*').eq('anio', ANIO).eq('mes', currentMes);
     var leads = res3.data || [];
     var includeSoft = mesIdx >= 2;
     totalLeads = leads.length;
@@ -889,7 +944,7 @@ async function loadDashboardData() {
   } catch(e) { console.error('Dashboard leads:', e); }
 
   try {
-    var res4 = await sb.from('roas_mensual').select('*').eq('anio', 2026).eq('mes', currentMes);
+    var res4 = await sb.from('roas_mensual').select('*').eq('anio', ANIO).eq('mes', currentMes);
     if (res4.data && res4.data.length > 0) {
       ejecutado = parseFloat(res4.data[0].ejecutado) || 0;
     }
@@ -953,8 +1008,8 @@ function renderDashboard(d) {
   html += '<h3 class="dash-section-title">Clientes Software</h3>';
   html += '<div class="dash-stats">';
   html += '<div class="dash-stat"><div class="dash-stat-label">Software actual</div><div class="dash-stat-value">' + d.software.total + '</div>';
-  html += '<div class="dash-stat-sub">Base 2026: ' + d.software.base + '</div></div>';
-  html += '<div class="dash-stat"><div class="dash-stat-label">Crecimiento ultimo mes</div><div class="dash-stat-value ' + softColor + '">' + softSign + softDelta + '</div>';
+  html += '<div class="dash-stat-sub">Base ' + ANIO + ': ' + d.software.base + '</div></div>';
+  html += '<div class="dash-stat"><div class="dash-stat-label">Crecimiento último mes</div><div class="dash-stat-value ' + softColor + '">' + softSign + softDelta + '</div>';
   html += '<div class="dash-stat-sub">' + (softDelta >= 0 ? '+' : '') + softPct + '% vs mes anterior</div></div>';
   html += '<div class="dash-stat" style="min-width:180px"><div class="dash-stat-label" style="color:#10b981">Nuevos en ' + d.mesLabel + '</div>';
   html += '<div style="margin-top:6px;display:flex;flex-wrap:wrap;gap:4px">' + pills(d.software.nuevosMes, 'green') + '</div></div>';
@@ -1141,8 +1196,8 @@ function renderSidebar() {
   // Home
   const isHome = activeModule === null && activeSection === null;
   html += '<button class="nav-item' + (isHome ? ' active' : '') + '" onclick="goHome()">';
-  html += '<div class="nav-icon" style="background:' + (isHome ? 'rgba(255,255,255,0.15)' : '#f5f7fa') + '">';
-  html += '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="' + (isHome ? 'white' : '#7c8495') + '" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>';
+  html += '<div class="nav-icon">';
+  html += '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>';
   html += '</div>';
   html += '<span class="nav-label">Inicio</span>';
   html += '</button>';
@@ -1156,7 +1211,7 @@ function renderSidebar() {
       const allDisabled = section.children.every(c => !c.active);
 
       html += '<button class="nav-item' + (isActive ? ' active' : '') + (allDisabled ? ' disabled' : '') + '" onclick="openSection(\'' + section.id + '\')">';
-      html += '<div class="nav-icon" style="background:' + (isActive ? 'rgba(255,255,255,0.15)' : section.iconBg) + '">' + section.icon + '</div>';
+      html += '<div class="nav-icon" style="background:' + section.iconBg + '">' + section.icon + '</div>';
       html += '<span class="nav-label">' + section.title + '</span>';
       html += '</button>';
 
@@ -1166,13 +1221,44 @@ function renderSidebar() {
       const disabledClass = section.active ? '' : ' disabled';
 
       html += '<button class="nav-item' + (isActive ? ' active' : '') + disabledClass + '" onclick="openModule(\'' + section.id + '\')">';
-      html += '<div class="nav-icon" style="background:' + (isActive ? 'rgba(255,255,255,0.15)' : section.iconBg) + '">' + section.icon + '</div>';
+      html += '<div class="nav-icon" style="background:' + section.iconBg + '">' + section.icon + '</div>';
       html += '<span class="nav-label">' + section.title + '</span>';
       html += '</button>';
     }
   });
 
   nav.innerHTML = html;
+  updateTopbar();
+}
+
+function updateTopbar() {
+  var trail = document.getElementById('topbar-trail');
+  var dateEl = document.getElementById('topbar-date');
+  var avatarEl = document.getElementById('topbar-avatar');
+  if (!trail) return;
+
+  var crumbs = '';
+  if (activeModule === null && activeSection === null) {
+    crumbs = '<span class="topbar-current">Inicio</span>';
+  } else {
+    crumbs = '<span class="topbar-crumb" onclick="goHome()">Inicio</span>';
+    if (activeModule && !activeSection) {
+      var m = findModule(activeModule);
+      if (!m) { var s2 = MENU.find(function(x){return x.id===activeModule;}); if(s2) m = s2; }
+      if (m) crumbs += '<span class="topbar-sep">/</span><span class="topbar-current">' + m.title + '</span>';
+    } else if (activeSection && !activeModule) {
+      var sec = MENU.find(function(s) { return s.id === activeSection; });
+      if (sec) crumbs += '<span class="topbar-sep">/</span><span class="topbar-current">' + sec.title + '</span>';
+    } else if (activeSection && activeModule) {
+      var sec = MENU.find(function(s) { return s.id === activeSection; });
+      var m = findModule(activeModule);
+      if (sec) crumbs += '<span class="topbar-sep">/</span><span class="topbar-crumb">' + sec.title + '</span>';
+      if (m) crumbs += '<span class="topbar-sep">/</span><span class="topbar-current">' + m.title + '</span>';
+    }
+  }
+  trail.innerHTML = crumbs;
+  if (dateEl) dateEl.textContent = formatToday();
+  if (avatarEl && userName) avatarEl.textContent = getInitials(userName);
 }
 
 function renderModules() {
@@ -1204,12 +1290,11 @@ function renderModules() {
 
 function renderWelcome() {
   const el = document.getElementById('welcome-banner');
-  const firstName = userName.split(' ')[0];
+  const firstName = (userName || '').split(' ')[0] || 'Felix';
 
   el.innerHTML =
     '<h2>' + getGreeting() + ', ' + firstName + '</h2>' +
-    '<p>Resumen de la firma al dia de hoy.</p>' +
-    '<div class="welcome-date">' + formatToday() + '</div>';
+    '<p>' + formatToday() + '</p>';
 }
 
 function renderUserInfo() {
@@ -1335,6 +1420,11 @@ function hasPermiso(modId, scrId, habId, subtabId) {
 // Helper: el usuario tiene al menos un permiso de consulta en algun screen del modulo
 function tieneAccesoModulo(modId) {
   if (userRole === 'admin' || realRole === 'admin') return true;
+  // Si es sección con hijos, verificar acceso a cualquier hijo
+  var section = MENU.find(function(s) { return s.id === modId && s.children; });
+  if (section) {
+    return section.children.some(function(child) { return tieneAccesoModulo(child.id); });
+  }
   var mod = userPermisos[modId];
   if (!mod) return false;
   var keys = Object.keys(mod);
