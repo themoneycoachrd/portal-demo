@@ -1,0 +1,1488 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Implementaciones — Account One</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root {
+  --navy: #1a2332;
+  --navy-mid: #2a3a4e;
+  --blue: #4361ee;
+  --green: #10b981;
+  --red: #ef4444;
+  --amber: #f59e0b;
+  --purple: #8b5cf6;
+  --pink: #ec4899;
+  --bg: #f4f6f9;
+  --card: #ffffff;
+  --border: #e8ecf1;
+  --text: #1a2332;
+  --muted: #7c8495;
+  --light: #a3aab8;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif; background:var(--bg); color:var(--text); line-height:1.5; }
+
+/* ─── Login ─── */
+.login-overlay { position:fixed; top:0; left:0; right:0; bottom:0; background:var(--bg); display:flex; align-items:center; justify-content:center; z-index:1000; }
+.login-box { background:white; border-radius:16px; padding:40px; width:100%; max-width:400px; box-shadow:0 4px 24px rgba(0,0,0,0.08); border:1px solid var(--border); }
+.login-box h2 { font-size:1.4rem; color:var(--navy); margin-bottom:4px; }
+.login-box .subtitle { font-size:0.85rem; color:var(--muted); margin-bottom:24px; }
+.login-box .field { margin-bottom:16px; }
+.login-box .field label { display:block; font-size:0.78rem; font-weight:600; color:var(--muted); margin-bottom:6px; }
+.login-box .field input { width:100%; padding:10px 14px; border:1px solid var(--border); border-radius:10px; font-size:0.9rem; font-family:inherit; background:#fafbfc; }
+.login-box .field input:focus { outline:none; border-color:var(--blue); box-shadow:0 0 0 3px rgba(67,97,238,0.1); background:white; }
+.login-btn { width:100%; padding:11px; background:var(--navy); color:white; border:none; border-radius:10px; font-size:0.9rem; font-weight:600; cursor:pointer; margin-top:8px; }
+.login-btn:hover { background:var(--navy-mid); }
+.login-btn:disabled { opacity:0.6; cursor:not-allowed; }
+.login-error { color:var(--red); font-size:0.8rem; margin-top:12px; display:none; }
+
+/* ─── Header ─── */
+.header { background:var(--navy); color:white; padding:20px 24px; }
+.header-inner { display:flex; justify-content:space-between; align-items:center; }
+.header h1 { font-size:1.3rem; font-weight:700; }
+.header p { font-size:0.85rem; opacity:0.6; margin-top:2px; }
+.user-bar { display:flex; align-items:center; gap:12px; }
+.user-bar .user-name { font-size:0.8rem; opacity:0.9; background:rgba(255,255,255,0.15); padding:4px 12px; border-radius:20px; }
+.btn-logout { font-size:0.75rem; padding:4px 12px; background:rgba(255,255,255,0.15); color:white; border:1px solid rgba(255,255,255,0.3); border-radius:6px; cursor:pointer; }
+.btn-logout:hover { background:rgba(255,255,255,0.25); }
+
+/* ─── Breadcrumb ─── */
+.breadcrumb-bar { display:flex; align-items:center; gap:6px; padding:10px 24px; background:white; border-bottom:1px solid var(--border); font-size:13px; }
+.breadcrumb-bar a { color:var(--muted); text-decoration:none; font-weight:500; cursor:pointer; }
+.breadcrumb-bar a:hover { color:var(--navy); text-decoration:underline; }
+.breadcrumb-bar .sep { color:var(--light); font-size:11px; }
+.breadcrumb-bar .current { color:var(--text); font-weight:600; }
+
+/* ─── Main tabs ─── */
+.main-tabs { display:flex; background:var(--card); border-bottom:2px solid var(--border); }
+.main-tab { padding:12px 24px; cursor:pointer; font-weight:600; font-size:0.9rem; color:var(--muted); border-bottom:3px solid transparent; transition:all 0.15s; background:none; border-top:none; border-left:none; border-right:none; font-family:inherit; }
+.main-tab:hover { color:var(--text); }
+.main-tab.active { color:var(--navy); border-bottom-color:var(--navy); }
+
+/* ─── Nav area (implementadora pills) ─── */
+.nav-area { padding:12px 24px; background:var(--bg); border-bottom:1px solid var(--border); }
+.contadora-pills { display:flex; gap:4px; flex-wrap:wrap; }
+.contadora-pill { padding:5px 14px; border-radius:20px; font-size:0.78rem; font-weight:600; cursor:pointer; border:1px solid var(--border); background:white; color:var(--muted); transition:all 0.12s; font-family:inherit; }
+.contadora-pill:hover { background:#eef0f4; }
+.contadora-pill.active { background:var(--navy); color:white; border-color:var(--navy); }
+
+/* ─── Content ─── */
+.content { padding:24px; max-width:1100px; margin:0 auto; }
+
+/* ─── Summary stats ─── */
+.summary-stats { display:grid; grid-template-columns:repeat(auto-fit, minmax(130px,1fr)); gap:12px; margin-bottom:20px; }
+.summary-stat { background:white; border-radius:12px; padding:16px; border:1px solid var(--border); text-align:center; }
+.summary-stat-label { font-size:0.65rem; text-transform:uppercase; letter-spacing:0.5px; color:var(--light); font-weight:600; }
+.summary-stat-value { font-size:1.6rem; font-weight:800; margin-top:4px; }
+
+/* ─── View toggle ─── */
+.view-toggle-row { display:flex; justify-content:flex-start; margin-bottom:12px; }
+.view-toggle { display:inline-flex; border:1px solid var(--border); border-radius:8px; overflow:hidden; background:white; }
+.view-toggle-btn { padding:5px 12px; font-size:0.75rem; font-weight:600; cursor:pointer; border:none; background:white; color:var(--muted); font-family:inherit; transition:all 0.12s; display:flex; align-items:center; gap:5px; }
+.view-toggle-btn:not(:last-child) { border-right:1px solid var(--border); }
+.view-toggle-btn:hover { background:#f3f4f6; color:var(--text); }
+.view-toggle-btn.active { background:var(--navy); color:white; }
+.view-toggle-btn svg { width:14px; height:14px; }
+
+/* ─── Client table ─── */
+.ck-client-table { width:100%; border-collapse:collapse; background:var(--card); border-radius:12px; overflow:hidden; border:1px solid var(--border); }
+.ck-client-table th { background:#f8f9fb; padding:10px 14px; text-align:left; font-size:0.68rem; text-transform:uppercase; letter-spacing:0.05em; color:var(--muted); font-weight:700; border-bottom:1px solid var(--border); }
+.ck-client-table td { padding:10px 14px; font-size:0.82rem; border-bottom:1px solid #f0f2f5; }
+.ck-client-table tr:hover td { background:#fafbfc; cursor:pointer; }
+.ck-client-table tr:last-child td { border-bottom:none; }
+.ck-table-name { font-weight:700; color:var(--navy); }
+.ck-table-contadora { font-size:0.75rem; color:var(--light); }
+.ck-progress-bar { width:100px; height:8px; background:#eef0f4; border-radius:4px; overflow:hidden; display:inline-block; vertical-align:middle; margin-right:6px; }
+.ck-progress-fill { height:100%; border-radius:4px; display:block; transition:width 0.4s ease; }
+.ck-progress-text { font-size:0.75rem; color:var(--muted); }
+.ck-status-badge { display:inline-block; padding:3px 10px; border-radius:12px; font-size:0.72rem; font-weight:600; }
+.ck-status-completo { background:#d1fae5; color:#065f46; }
+.ck-status-progreso { background:#dbeafe; color:#1e40af; }
+.ck-status-pendiente { background:#f3f4f6; color:#6b7280; }
+
+/* ─── Client cards ─── */
+.client-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(280px,1fr)); gap:12px; }
+.client-card { background:white; border:2px solid var(--border); border-radius:12px; padding:18px; cursor:pointer; transition:all 0.2s; }
+.client-card:hover { border-color:var(--blue); transform:translateY(-2px); box-shadow:0 4px 12px rgba(0,0,0,0.08); }
+.client-card-name { font-size:15px; font-weight:700; margin-bottom:4px; }
+.client-card-impl { font-size:11px; color:var(--light); margin-bottom:10px; }
+.client-card-progress { display:flex; align-items:center; gap:8px; }
+.client-card-bar { flex:1; height:8px; background:#f1f5f9; border-radius:4px; overflow:hidden; }
+.client-card-fill { height:100%; border-radius:4px; transition:width 0.3s; }
+.client-card-pct { font-size:12px; font-weight:700; min-width:36px; text-align:right; }
+.client-card-count { font-size:11px; color:var(--muted); margin-top:4px; }
+
+/* ─── Nota icon ─── */
+.nota-btn { background:none; border:none; cursor:pointer; padding:2px 4px; font-size:14px; color:var(--light); transition:color 0.2s; }
+.nota-btn:hover { color:var(--blue); }
+.nota-btn.has-nota { color:var(--blue); }
+
+/* ─── Modal nota ─── */
+.nota-overlay { position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.4); z-index:9000; display:flex; align-items:center; justify-content:center; }
+.nota-modal { background:white; border-radius:12px; padding:24px; width:90%; max-width:420px; box-shadow:0 8px 32px rgba(0,0,0,0.18); }
+.nota-modal h3 { font-size:14px; font-weight:700; margin-bottom:4px; }
+.nota-modal .nota-sub { font-size:12px; color:var(--muted); margin-bottom:12px; }
+.nota-modal textarea { width:100%; height:100px; border:1px solid var(--border); border-radius:8px; padding:10px; font-size:13px; font-family:inherit; resize:vertical; }
+.nota-modal textarea:focus { outline:none; border-color:var(--blue); }
+.nota-modal-btns { display:flex; gap:8px; justify-content:flex-end; margin-top:12px; }
+.nota-modal-btns button { padding:8px 16px; border-radius:8px; font-size:12px; font-weight:600; cursor:pointer; font-family:inherit; border:1px solid var(--border); }
+.nota-modal-btns .btn-cancel { background:white; color:var(--muted); }
+.nota-modal-btns .btn-save { background:var(--blue); color:white; border-color:var(--blue); }
+
+/* ─── Detail view ─── */
+.detail-header { display:flex; align-items:center; gap:12px; margin-bottom:16px; }
+.detail-back { padding:6px 14px; border-radius:8px; font-size:12px; font-weight:600; cursor:pointer; border:1px solid var(--border); background:white; color:var(--muted); font-family:inherit; }
+.detail-back:hover { background:#eef0f4; }
+.detail-title { font-size:18px; font-weight:800; }
+.detail-sub { font-size:12px; color:var(--muted); }
+
+.progress-row { display:flex; align-items:center; gap:12px; margin-bottom:16px; background:white; border-radius:10px; padding:14px 18px; border:1px solid var(--border); }
+.progress-row .pr-count { font-size:14px; font-weight:700; min-width:90px; }
+.progress-row .pr-bar { flex:1; height:10px; background:#f1f5f9; border-radius:5px; overflow:hidden; }
+.progress-row .pr-fill { height:100%; border-radius:5px; transition:width 0.3s; }
+.progress-row .pr-pct { font-size:13px; font-weight:700; min-width:40px; text-align:right; }
+
+/* ─── Checklist table ─── */
+.check-table { width:100%; border-collapse:collapse; font-size:0.82rem; background:white; border-radius:12px; overflow:hidden; border:1px solid var(--border); }
+.check-table th { text-align:left; padding:10px 12px; font-size:0.65rem; text-transform:uppercase; letter-spacing:0.3px; color:var(--muted); border-bottom:2px solid var(--border); background:#f8fafc; }
+.check-table th.center { text-align:center; }
+.check-table td { padding:8px 12px; border-bottom:1px solid #f1f5f9; vertical-align:middle; }
+.check-table td.center { text-align:center; }
+.check-table tr:hover td { background:#fafbfc; }
+.check-table tr.row-done td { background:#f0fdf4; }
+.check-table tr.group-row td { background:#f0f2f5; font-weight:700; font-size:0.72rem; color:var(--navy); text-transform:uppercase; letter-spacing:0.4px; border-bottom:2px solid var(--border); padding:6px 12px; }
+
+/* ─── Toggle group ─── */
+.toggle-group { display:flex; gap:0; }
+.toggle-opt { padding:5px 14px; font-size:11px; font-weight:600; cursor:pointer; border:1px solid var(--border); background:white; color:var(--muted); transition:all 0.15s; font-family:inherit; }
+.toggle-opt:first-child { border-radius:6px 0 0 6px; }
+.toggle-opt:last-child { border-radius:0 6px 6px 0; border-left:none; }
+.toggle-opt:not(:first-child) { border-left:none; }
+.toggle-opt.active-yes { background:#ecfdf5; color:#065f46; border-color:#a7f3d0; }
+.toggle-opt.active-no { background:#fef2f2; color:#991b1b; border-color:#fecaca; }
+.toggle-opt.active-na { background:#f5f3ff; color:#5b21b6; border-color:#c4b5fd; }
+
+/* ─── Status text (read-only) ─── */
+.status-label { font-size:0.78rem; font-weight:600; }
+.status-label.st-yes { color:#065f46; }
+.status-label.st-no { color:#991b1b; }
+.status-label.st-na { color:#5b21b6; }
+
+/* ─── Buttons ─── */
+.btn { padding:8px 18px; border-radius:8px; font-size:0.82rem; font-weight:600; cursor:pointer; border:none; font-family:inherit; transition:all 0.12s; }
+.btn-primary { background:var(--navy); color:white; }
+.btn-primary:hover { background:var(--navy-mid); }
+.btn-primary:disabled { opacity:0.6; cursor:not-allowed; }
+.btn-outline { background:white; color:var(--navy); border:1px solid var(--border); }
+.btn-outline:hover { background:#f0f2f5; border-color:var(--navy); }
+.save-bar { display:flex; gap:8px; margin-top:16px; padding-top:16px; border-top:1px solid var(--border); }
+
+/* ─── Add button ─── */
+.add-bar { display:flex; justify-content:flex-end; margin-bottom:12px; }
+.btn-add { display:inline-flex; align-items:center; gap:6px; padding:8px 16px; border-radius:8px; font-size:0.82rem; font-weight:600; cursor:pointer; border:1px solid var(--border); background:white; color:var(--navy); font-family:inherit; transition:all 0.12s; }
+.btn-add:hover { background:#f0f2f5; border-color:var(--navy); }
+
+/* ─── Modal ─── */
+.modal-overlay { position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.4); z-index:9000; display:flex; align-items:center; justify-content:center; }
+.modal-box { background:white; border-radius:12px; padding:24px; width:90%; max-width:420px; box-shadow:0 8px 32px rgba(0,0,0,0.18); }
+.modal-box h3 { font-size:14px; font-weight:700; margin-bottom:16px; }
+.modal-box .field { margin-bottom:14px; }
+.modal-box .field label { display:block; font-size:0.78rem; font-weight:600; color:var(--muted); margin-bottom:6px; }
+.modal-box .field input,
+.modal-box .field select { width:100%; padding:10px 14px; border:1px solid var(--border); border-radius:10px; font-size:0.9rem; font-family:inherit; background:#fafbfc; }
+.modal-box .field input:focus,
+.modal-box .field select:focus { outline:none; border-color:var(--blue); box-shadow:0 0 0 3px rgba(67,97,238,0.1); background:white; }
+.modal-btns { display:flex; gap:8px; justify-content:flex-end; margin-top:16px; }
+.modal-btns button { padding:8px 16px; border-radius:8px; font-size:12px; font-weight:600; cursor:pointer; font-family:inherit; border:1px solid var(--border); }
+.modal-btns .btn-cancel { background:white; color:var(--muted); }
+.modal-btns .btn-save { background:var(--blue); color:white; border-color:var(--blue); }
+
+/* ─── Toast ─── */
+.toast { position:fixed; bottom:24px; right:24px; padding:12px 20px; border-radius:10px; font-size:0.82rem; font-weight:600; color:white; z-index:600; opacity:0; transform:translateY(10px); transition:all 0.3s; pointer-events:none; }
+.toast.show { opacity:1; transform:translateY(0); }
+.toast.success { background:var(--green); }
+.toast.error { background:var(--red); }
+
+/* ─── Proximamente ─── */
+.coming-soon { text-align:center; padding:60px 20px; }
+.coming-soon h2 { font-size:1.2rem; color:var(--muted); margin-bottom:8px; }
+.coming-soon p { font-size:0.85rem; color:var(--light); }
+
+.hidden { display:none; }
+.empty { text-align:center; padding:40px; color:var(--light); font-size:0.88rem; }
+.footer { text-align:center; font-size:0.75rem; color:var(--light); padding:20px; }
+
+body.embed .login-overlay { display:none !important; }
+body.embed .header { display:none !important; }
+body.embed .breadcrumb-bar { display:none !important; }
+body.embed #app-wrapper { display:block !important; }
+body.embed .footer { display:none !important; }
+
+/* ─── Mobile responsive ─── */
+@media (max-width:640px) {
+  .header { padding:14px 16px; }
+  .header h1 { font-size:1.1rem; }
+  .header p { font-size:0.75rem; }
+  .header-inner { flex-wrap:wrap; gap:8px; }
+  .user-bar { width:100%; justify-content:flex-end; }
+  .breadcrumb-bar { padding:8px 16px; font-size:11px; }
+  .main-tabs { overflow-x:auto; -webkit-overflow-scrolling:touch; }
+  .main-tab { padding:10px 16px; font-size:0.82rem; white-space:nowrap; }
+  .nav-area { padding:10px 16px; }
+  .contadora-pills { gap:3px; }
+  .contadora-pill { padding:4px 10px; font-size:0.72rem; }
+  .content { padding:16px; }
+  .summary-stats { grid-template-columns:repeat(2, 1fr); gap:8px; }
+  .summary-stat { padding:10px 8px; }
+  .summary-stat-label { font-size:0.58rem; }
+  .summary-stat-value { font-size:1.2rem; }
+  .ck-client-table { font-size:0.75rem; }
+  .ck-client-table th { padding:8px 8px; font-size:0.6rem; }
+  .ck-client-table td { padding:8px 8px; }
+  .ck-progress-bar { width:60px; }
+  .client-grid { grid-template-columns:1fr; gap:10px; }
+  .client-card { padding:14px; }
+  .view-toggle-btn { padding:4px 10px; font-size:0.7rem; }
+  .detail-header { flex-wrap:wrap; gap:8px; }
+  .detail-title { font-size:15px; }
+  .progress-row { flex-wrap:wrap; padding:12px 14px; gap:8px; }
+  .progress-row .pr-count { min-width:auto; font-size:13px; }
+  .check-table { display:block; overflow-x:auto; -webkit-overflow-scrolling:touch; }
+  .check-table th, .check-table td { white-space:nowrap; padding:6px 8px; font-size:0.75rem; }
+  .check-table th { font-size:0.58rem; }
+  .toggle-opt { padding:4px 10px; font-size:10px; }
+  .save-bar { flex-wrap:wrap; }
+}
+
+@media (max-width:380px) {
+  .summary-stats { grid-template-columns:repeat(2, 1fr); }
+  .header h1 { font-size:1rem; }
+}
+
+/* ===== RESUMEN ===== */
+.res-greeting { background:var(--navy); border-radius:12px; padding:20px 24px; margin-bottom:16px; }
+.res-greeting h2 { font-size:1.1rem; font-weight:700; color:#fff; margin:0 0 4px; }
+.res-greeting p { font-size:0.78rem; color:rgba(255,255,255,0.55); margin:0; }
+.res-urgency { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; margin-bottom:12px; }
+.res-urg-card { border-radius:12px; padding:14px 16px; border-left:4px solid; }
+.res-urg-card .urg-label { font-size:0.65rem; text-transform:uppercase; letter-spacing:0.5px; margin:0 0 4px; }
+.res-urg-card .urg-num { font-size:1.6rem; font-weight:700; margin:0; }
+.res-urg-card .urg-sub { font-size:0.72rem; margin:2px 0 0; }
+.res-urg-urgent { background:#fef2f2; border-color:var(--red); }
+.res-urg-urgent .urg-label,.res-urg-urgent .urg-sub { color:#991b1b; }
+.res-urg-urgent .urg-num { color:#7f1d1d; }
+.res-urg-warn { background:#fffbeb; border-color:var(--amber); }
+.res-urg-warn .urg-label,.res-urg-warn .urg-sub { color:#92400e; }
+.res-urg-warn .urg-num { color:#78350f; }
+.res-urg-soon { background:#eff6ff; border-color:var(--blue); }
+.res-urg-soon .urg-label,.res-urg-soon .urg-sub { color:#1e40af; }
+.res-urg-soon .urg-num { color:#1e3a5f; }
+.res-charts { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:16px; }
+.res-chart-card { background:var(--card); border-radius:12px; padding:16px; border:1px solid var(--border); }
+.res-chart-card h4 { font-size:0.78rem; font-weight:600; color:var(--navy); margin:0 0 10px; }
+.res-chart-card.full-width { grid-column:1/-1; }
+.res-section { background:var(--card); border-radius:12px; padding:20px; border:1px solid var(--border); margin-bottom:16px; }
+.res-section-hdr { display:flex; align-items:center; gap:8px; margin-bottom:14px; }
+.res-section-hdr h3 { font-size:0.82rem; font-weight:700; margin:0; }
+.res-section-hdr .res-icon { width:22px; height:22px; border-radius:6px; display:flex; align-items:center; justify-content:center; font-size:0.72rem; color:#fff; }
+.res-ok { text-align:center; padding:30px; color:var(--green); font-weight:600; font-size:0.9rem; }
+.res-client-group { margin-bottom:14px; border:1px solid var(--border); border-radius:10px; overflow:hidden; }
+.res-client-hdr { display:flex; justify-content:space-between; align-items:center; padding:10px 14px; background:#f8f9fb; border-bottom:1px solid var(--border); cursor:pointer; }
+.res-client-hdr:hover { background:#f0f2f5; }
+.res-client-name { font-size:0.82rem; font-weight:600; color:var(--navy); }
+.res-client-count { font-size:0.72rem; font-weight:600; padding:2px 10px; border-radius:10px; }
+.res-client-count.urgent { background:#fef2f2; color:#dc2626; }
+.res-client-count.warn { background:#fffbeb; color:#d97706; }
+.res-client-count.soon { background:#eff6ff; color:#1d4ed8; }
+.res-client-items { padding:0; }
+.res-items-table { width:100%; border-collapse:collapse; font-size:0.78rem; }
+.res-items-table thead th { font-size:0.62rem; text-transform:uppercase; letter-spacing:0.4px; color:var(--muted); font-weight:600; padding:6px 8px; border-bottom:1px solid var(--border); text-align:left; }
+.res-items-table thead th:not(:first-child) { text-align:center; }
+.res-items-table tbody td { padding:7px 8px; border-bottom:1px solid #f1f3f7; }
+.res-items-table tbody tr:last-child td { border-bottom:none; }
+.res-items-table tbody tr:hover td { background:#fafbfc; }
+.res-funnel-bar { display:flex; align-items:center; gap:10px; margin-bottom:8px; }
+.res-funnel-label { font-size:0.72rem; font-weight:600; color:var(--navy); min-width:120px; text-align:right; white-space:nowrap; }
+.res-funnel-track { flex:1; background:#f1f5f9; border-radius:8px; height:28px; position:relative; overflow:hidden; }
+.res-funnel-fill { height:100%; border-radius:8px; display:flex; align-items:center; padding:0 10px; transition:width 0.4s ease; }
+.res-funnel-num { font-size:0.72rem; font-weight:700; color:#fff; }
+.res-insights { background:#f8fafc; border:1px solid var(--border); border-radius:10px; padding:12px 16px; margin-bottom:16px; display:flex; flex-direction:column; gap:6px; }
+.res-insight-item { font-size:0.82rem; color:var(--navy); line-height:1.4; }
+.res-insight-icon { font-weight:700; margin-right:4px; }
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div class="login-overlay" id="login-screen">
+  <div class="login-box">
+    <h2>Account One</h2>
+    <p class="subtitle">Inicia sesion para continuar</p>
+    <div class="field">
+      <label>Email</label>
+      <input type="email" id="login-email" placeholder="tu@accountone.do">
+    </div>
+    <div class="field">
+      <label>Contrasena</label>
+      <input type="password" id="login-password" placeholder="••••••••">
+    </div>
+    <button class="login-btn" id="btn-login" onclick="handleLogin()">Entrar</button>
+    <div class="login-error" id="login-error"></div>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app-wrapper" class="hidden">
+
+<div class="header">
+  <div class="header-inner">
+    <div>
+      <h1>Implementaciones</h1>
+      <p>Account One — 2026</p>
+    </div>
+    <div class="user-bar">
+      <span class="user-name" id="user-display-name"></span>
+      <button class="btn-logout" onclick="handleLogout()">Salir</button>
+    </div>
+  </div>
+</div>
+
+<div class="breadcrumb-bar">
+  <a href="index.html">Account One</a>
+  <span class="sep">›</span>
+  <span class="current">Implementaciones</span>
+</div>
+
+<div class="main-tabs" id="mainTabs">
+  <button class="main-tab active" onclick="switchMainTab('resumen')">Resumen</button>
+  <button class="main-tab" onclick="switchMainTab('fe')">Checklist FE</button>
+  <button class="main-tab" onclick="switchMainTab('adm')">Checklist Adm</button>
+</div>
+
+<div id="navArea"></div>
+<div class="content" id="content"></div>
+<div class="footer">Conectado a Supabase — los datos se guardan en la nube.</div>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ==================== CONFIG ====================
+var SUPABASE_URL = 'https://ouetusstqvpyjeycfdio.supabase.co';
+var SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im91ZXR1c3N0cXZweWpleWNmZGlvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY2NDcwNzksImV4cCI6MjA5MjIyMzA3OX0.Bsys947JLGEuf3zdBF2GPFdbJVJtaZdC4YEmyBU5Bow';
+var sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+// ==================== DATA ====================
+var IMPLEMENTADORAS = ['Claudia Carrion', 'Lissette Peña'];
+
+var FE_ITEMS = [
+  // Esmeralda (Servicio)
+  { id: 'paso_1', n: 1, label: 'Confirmar pago', responsable: 'Esmeralda', grupo: 'Servicio' },
+  { id: 'paso_2', n: 2, label: 'Enviar acuerdo de servicios', responsable: 'Esmeralda', grupo: 'Servicio' },
+  { id: 'paso_3', n: 3, label: 'Confirmar firma de acuerdo de servicios', responsable: 'Esmeralda', grupo: 'Servicio' },
+  // Felix (Gerencia)
+  { id: 'paso_4', n: 4, label: 'Hacer cuenta Adm Cloud (Nombre debe match DGII)', responsable: 'Felix', grupo: 'Gerencia' },
+  { id: 'paso_5', n: 5, label: 'Crear certificacion en portal Polaris', responsable: 'Felix', grupo: 'Gerencia' },
+  // Implementadora
+  { id: 'paso_6', n: 6, label: 'Enviar correo con requerimientos iniciales (Ver Basecamp)', responsable: 'Implementadora', grupo: 'Implementacion' },
+  { id: 'paso_7', n: 7, label: 'Confirmar con cliente cuando pudiera comprar el p12', responsable: 'Implementadora', grupo: 'Implementacion' },
+  { id: 'paso_8', n: 8, label: 'Confirmar compra de Firma Electronica', responsable: 'Implementadora', grupo: 'Implementacion' },
+  { id: 'paso_9', n: 9, label: 'Recibir credenciales DGII, archivo .p12 y credenciales personales', responsable: 'Implementadora', grupo: 'Implementacion' },
+  { id: 'paso_10', n: 10, label: 'Crear portal de certificacion en DGII', responsable: 'Implementadora', grupo: 'Implementacion' },
+  { id: 'paso_11', n: 11, label: 'Pasos del 1 al 8 FE', responsable: 'Implementadora', grupo: 'Implementacion' },
+  { id: 'paso_12', n: 12, label: 'Espera 24 Horas', responsable: 'Implementadora', grupo: 'Implementacion' },
+  { id: 'paso_13', n: 13, label: 'Pasos del 9 al 15 FE', responsable: 'Implementadora', grupo: 'Implementacion' },
+  { id: 'paso_14', n: 14, label: 'Solicitar Delegacion Oficina Virtual Personal', responsable: 'Implementadora', grupo: 'Implementacion' },
+  { id: 'paso_15', n: 15, label: 'Configuracion Final en Adm', responsable: 'Implementadora', grupo: 'Implementacion' }
+];
+
+var FE_GROUPS = [
+  { label: 'SERVICIO', responsable: 'Esmeralda', from: 0, to: 2 },
+  { label: 'GERENCIA', responsable: 'Felix', from: 3, to: 4 },
+  { label: 'IMPLEMENTACION', responsable: null, from: 5, to: 14 }
+];
+
+var ADM_ITEMS = [
+  // Onboarding
+  { id: 'paso_1', n: 1, label: 'Correo de presentacion y link para agendar la primera sesion', responsable: 'Implementadora', grupo: 'Onboarding' },
+  { id: 'paso_2', n: 2, label: 'Primera sesion agendada', responsable: 'Implementadora', grupo: 'Onboarding' },
+  { id: 'paso_3', n: 3, label: 'Creacion de cuenta en base', responsable: 'Implementadora', grupo: 'Onboarding' },
+  // Gerencia
+  { id: 'paso_4', n: 4, label: 'Creacion de cuenta en Adm', responsable: 'Felix', grupo: 'Gerencia' },
+  // Implementacion
+  { id: 'paso_5', n: 5, label: 'Sesion 1 impartida', responsable: 'Implementadora', grupo: 'Implementacion' },
+  { id: 'paso_6', n: 6, label: 'Sesion 2 impartida', responsable: 'Implementadora', grupo: 'Implementacion' },
+  { id: 'paso_7', n: 7, label: 'Sesion 3 impartida', responsable: 'Implementadora', grupo: 'Implementacion' },
+  { id: 'paso_8', n: 8, label: 'Recepcion de Plantillas', responsable: 'Implementadora', grupo: 'Implementacion' },
+  { id: 'paso_9', n: 9, label: 'Revision de plantillas', responsable: 'Implementadora', grupo: 'Implementacion' },
+  { id: 'paso_10', n: 10, label: 'Carga de plantillas previo al go live', responsable: 'Implementadora', grupo: 'Implementacion' },
+  { id: 'paso_11', n: 11, label: 'Sesion 4 (Go Live)', responsable: 'Implementadora', grupo: 'Implementacion' },
+  { id: 'paso_12', n: 12, label: 'Firma de Actas 1-4', responsable: 'Implementadora', grupo: 'Implementacion' },
+  { id: 'paso_13', n: 13, label: 'Firma de Go Live y aceptacion final del proyecto', responsable: 'Implementadora', grupo: 'Implementacion' },
+  // Transicion
+  { id: 'paso_14', n: 14, label: 'Reunion de asignacion de contadora con gerencia', responsable: 'Implementadora', grupo: 'Transicion' },
+  { id: 'paso_15', n: 15, label: 'Correo de asignacion de contadora y firma de recepcion de cliente', responsable: 'Implementadora', grupo: 'Transicion' },
+  { id: 'paso_16', n: 16, label: 'Envio de correo al cliente con link para agendar reunion presentacion contadora', responsable: 'Implementadora', grupo: 'Transicion' },
+  { id: 'paso_17', n: 17, label: 'Sesion 5 de presentacion de contadora agendada', responsable: 'Implementadora', grupo: 'Transicion' },
+  { id: 'paso_18', n: 18, label: 'Correo de encuesta de satisfaccion de Implementacion', responsable: 'Implementadora', grupo: 'Transicion' }
+];
+
+var ADM_GROUPS = [
+  { label: 'ONBOARDING', responsable: null, from: 0, to: 2 },
+  { label: 'GERENCIA', responsable: 'Felix', from: 3, to: 3 },
+  { label: 'IMPLEMENTACION', responsable: null, from: 4, to: 12 },
+  { label: 'TRANSICION', responsable: null, from: 13, to: 17 }
+];
+
+// Helpers to get current tab config
+function getItems() { return mainTab === 'adm' ? ADM_ITEMS : FE_ITEMS; }
+function getGroups() { return mainTab === 'adm' ? ADM_GROUPS : FE_GROUPS; }
+function getTotalSteps() { return mainTab === 'adm' ? 18 : 15; }
+function getTableName() { return mainTab === 'adm' ? 'impl_checklist_adm' : 'impl_checklist_fe'; }
+function getRows() { return mainTab === 'adm' ? allRowsAdm : allRows; }
+function setRows(data) { if (mainTab === 'adm') allRowsAdm = data; else allRows = data; }
+
+// ==================== PERMISOS POR GRUPO ====================
+
+var misPermisos = {};
+
+async function loadMisPermisos() {
+  misPermisos = {};
+  var sessionData = await sb.auth.getUser();
+  var user = sessionData.data ? sessionData.data.user : null;
+  if (!user) return;
+  var res1 = await sb.from('usuario_grupos').select('grupo_id').eq('user_id', user.id);
+  if (!res1.data || res1.data.length === 0) return;
+  var grupoIds = res1.data.map(function(a) { return a.grupo_id; });
+  var res2 = await sb.from('grupos').select('permisos').in('id', grupoIds);
+  if (!res2.data) return;
+  function mergeInto(target, source) {
+    if (!source || typeof source !== 'object') return;
+    Object.keys(source).forEach(function(k) {
+      if (typeof source[k] === 'boolean') { if (source[k] === true) target[k] = true; else if (target[k] === undefined) target[k] = false; }
+      else if (typeof source[k] === 'object') { if (!target[k]) target[k] = {}; mergeInto(target[k], source[k]); }
+    });
+  }
+  res2.data.forEach(function(g) { mergeInto(misPermisos, g.permisos || {}); });
+}
+
+function tengoPermiso(modId, scrId, habId, subtabId) {
+  if (userRole === 'admin') return true;
+  var mod = misPermisos[modId];
+  if (!mod) return false;
+  var scr = mod[scrId];
+  if (!scr) return false;
+  if (subtabId) { var st = scr[subtabId]; return st && st[habId] === true; }
+  return scr[habId] === true;
+}
+
+// ==================== STATE ====================
+var userRole = null;
+var userName = '';
+var saving = false;
+var mainTab = 'resumen';
+var implDates = {};
+var selectedImpl = 'Todas';
+var viewMode = 'table'; // 'table' or 'cards'
+var currentCliente = null;
+var allRows = [];
+var allRowsAdm = [];
+var localEdits = {};
+var notaCtx = null;
+
+// ==================== HELPERS ====================
+function todayStr() {
+  var h = new Date();
+  return h.getFullYear() + '-' + String(h.getMonth()+1).padStart(2,'0') + '-' + String(h.getDate()).padStart(2,'0');
+}
+
+function formatDateShort(dateStr) {
+  if (!dateStr) return '';
+  var d = new Date(dateStr + 'T12:00:00');
+  var dia = d.getDate();
+  var ms = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+  return dia + ' ' + ms[d.getMonth()];
+}
+
+function getBarColor(pct) {
+  if (pct >= 100) return '#10b981';
+  if (pct <= 0) return '#cbd5e1';
+  if (pct < 30) return '#ef4444';
+  if (pct < 60) return '#f59e0b';
+  if (pct < 85) return '#3b82f6';
+  return '#10b981';
+}
+
+function esc(s) { return s ? s.replace(/'/g, "\\'") : ''; }
+
+function canEdit() {
+  var scrId = mainTab === 'adm' ? 'checklist-adm' : 'checklist-fe';
+  return tengoPermiso('implementaciones', scrId, 'edicion');
+}
+
+function showToast(msg, type) {
+  var t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast ' + (type || 'success') + ' show';
+  setTimeout(function() { t.className = 'toast'; }, 2500);
+}
+
+function countDone(datos) {
+  var items = getItems();
+  var count = 0;
+  for (var i = 0; i < items.length; i++) {
+    var val = datos[items[i].id];
+    if (val && (val.done === true || val.done === 'na')) count++;
+  }
+  return count;
+}
+
+function getStatusInfo(done, total) {
+  if (done >= total) return { label: 'Completado', css: 'ck-status-completo' };
+  if (done > 0) return { label: 'En progreso', css: 'ck-status-progreso' };
+  return { label: 'Sin iniciar', css: 'ck-status-pendiente' };
+}
+
+// ==================== AUTH ====================
+async function handleLogin() {
+  var email = document.getElementById('login-email').value.trim();
+  var pass = document.getElementById('login-password').value;
+  var errEl = document.getElementById('login-error');
+  var btn = document.getElementById('btn-login');
+  if (!email || !pass) { errEl.textContent = 'Completa ambos campos'; errEl.style.display = 'block'; return; }
+  btn.disabled = true;
+  var res = await sb.auth.signInWithPassword({ email: email, password: pass });
+  btn.disabled = false;
+  if (res.error) { errEl.textContent = res.error.message; errEl.style.display = 'block'; return; }
+  initApp(res.data.user);
+}
+
+async function handleLogout() {
+  await sb.auth.signOut();
+  location.reload();
+}
+
+async function checkSession() {
+  // Embed mode
+  if (window.location.search.indexOf('embed=1') !== -1) {
+    document.body.classList.add('embed');
+  }
+  var res = await sb.auth.getSession();
+  if (res.data.session) {
+    initApp(res.data.session.user);
+  }
+}
+
+async function initApp(user) {
+  document.getElementById('login-screen').style.display = 'none';
+  document.getElementById('app-wrapper').classList.remove('hidden');
+
+  // Get role
+  var prof = await sb.from('profiles').select('rol, nombre').eq('id', user.id).single();
+  userRole = (prof.data && prof.data.rol) ? prof.data.rol : 'viewer';
+  userName = (prof.data && prof.data.nombre) ? prof.data.nombre : user.email;
+  document.getElementById('user-display-name').textContent = userName;
+  await loadMisPermisos();
+
+  await loadData();
+  render();
+}
+
+// ==================== DATA LOADING ====================
+async function loadData() {
+  var p1 = sb.from('impl_checklist_fe').select('*');
+  var p2 = sb.from('impl_checklist_adm').select('*');
+  var p3 = sb.from('clientes').select('nombre, fecha_inicio_impl_fe, fecha_fin_impl_fe, fecha_inicio_impl_adm, fecha_fin_impl_adm');
+  var p4 = sb.from('clientes_software').select('nombre, fecha_inicio_impl_fe, fecha_fin_impl_fe, fecha_inicio_impl_adm, fecha_fin_impl_adm');
+  var results = await Promise.all([p1, p2, p3, p4]);
+
+  allRows = results[0].data || [];
+  if (results[0].error) console.error('Error cargando impl_checklist_fe:', results[0].error);
+
+  allRowsAdm = results[1].data || [];
+  if (results[1].error) console.error('Error cargando impl_checklist_adm:', results[1].error);
+
+  implDates = {};
+  // Outsourcing: fechas separadas FE/Adm
+  (results[2].data || []).forEach(function(r) {
+    var has = r.fecha_inicio_impl_fe || r.fecha_fin_impl_fe || r.fecha_inicio_impl_adm || r.fecha_fin_impl_adm;
+    if (has) {
+      implDates[r.nombre] = {
+        inicio_fe: r.fecha_inicio_impl_fe, fin_fe: r.fecha_fin_impl_fe,
+        inicio_adm: r.fecha_inicio_impl_adm, fin_adm: r.fecha_fin_impl_adm
+      };
+    }
+  });
+  // Software: fechas separadas FE/Adm
+  (results[3].data || []).forEach(function(r) {
+    var has = r.fecha_inicio_impl_fe || r.fecha_fin_impl_fe || r.fecha_inicio_impl_adm || r.fecha_fin_impl_adm;
+    if (has) {
+      implDates[r.nombre] = {
+        inicio_fe: r.fecha_inicio_impl_fe, fin_fe: r.fecha_fin_impl_fe,
+        inicio_adm: r.fecha_inicio_impl_adm, fin_adm: r.fecha_fin_impl_adm
+      };
+    }
+  });
+}
+
+// ==================== RESUMEN ====================
+function resumenCountDone(datos, items) {
+  var count = 0;
+  for (var i = 0; i < items.length; i++) {
+    var val = datos[items[i].id];
+    if (val && (val.done === true || val.done === 'na')) count++;
+  }
+  return count;
+}
+
+function resumenParseDate(dateStr) {
+  var parts = dateStr.split('-');
+  return new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+}
+
+function resumenIsEnRiesgo(cliente, pct, totalPasos, tipo) {
+  var dates = implDates[cliente];
+  if (!dates) return false;
+  var t = tipo || 'fe';
+  var ini = dates['inicio_' + t];
+  var fin = dates['fin_' + t];
+  if (!ini || !fin) return false;
+  var hoy = new Date(); hoy.setHours(0,0,0,0);
+  var inicio = resumenParseDate(ini);
+  var finD = resumenParseDate(fin);
+  var totalMs = finD - inicio;
+  if (totalMs <= 0) return false;
+  var avanceMs = hoy - inicio;
+  var tiempoPct = avanceMs / totalMs;
+  return tiempoPct > 0.5 && pct < 40;
+}
+
+// Formatea '2026-05-14' → '14/05/2026'
+function fmtDate(d) {
+  if (!d) return '-';
+  var p = d.split('-');
+  return p[2] + '/' + p[1] + '/' + p[0];
+}
+
+// Calcula días restantes desde hoy hasta fecha fin
+function diasRestantes(finStr) {
+  if (!finStr) return null;
+  var hoy = new Date(); hoy.setHours(0,0,0,0);
+  var fin = resumenParseDate(finStr);
+  return Math.ceil((fin - hoy) / (1000 * 60 * 60 * 24));
+}
+
+// Obtiene fechas de impl para un cliente según tipo (fe/adm)
+function getImplFechas(cliente, tipo) {
+  var dates = implDates[cliente];
+  if (!dates) return { inicio: null, fin: null };
+  var t = tipo || 'fe';
+  return { inicio: dates['inicio_' + t] || null, fin: dates['fin_' + t] || null };
+}
+
+function resGetGreeting() {
+  var h = new Date().getHours();
+  if (h < 12) return 'Buenos dias';
+  if (h < 18) return 'Buenas tardes';
+  return 'Buenas noches';
+}
+function resGetFirstName() {
+  return userName ? userName.split(' ')[0] : '';
+}
+
+// Determina en qué grupo/fase está un cliente según su último paso completado
+function resGetCurrentPhase(datos, items, groups) {
+  var lastDoneIdx = -1;
+  for (var i = items.length - 1; i >= 0; i--) {
+    var val = datos[items[i].id];
+    if (val && (val.done === true || val.done === 'na')) { lastDoneIdx = i; break; }
+  }
+  // Si completó todo, está en la última fase
+  if (lastDoneIdx === items.length - 1) return groups[groups.length - 1].label;
+  // El siguiente paso pendiente determina la fase actual
+  var nextIdx = lastDoneIdx + 1;
+  for (var g = 0; g < groups.length; g++) {
+    if (nextIdx >= groups[g].from && nextIdx <= groups[g].to) return groups[g].label;
+  }
+  return groups[0].label;
+}
+
+function resBuildUnifiedRows() {
+  var rows = [];
+  allRows.forEach(function(row) {
+    var datos = row.datos || {};
+    var done = resumenCountDone(datos, FE_ITEMS);
+    var pct = Math.round((done / FE_ITEMS.length) * 100);
+    var riesgo = resumenIsEnRiesgo(row.cliente, pct, FE_ITEMS.length, 'fe');
+    var fechas = getImplFechas(row.cliente, 'fe');
+    var dr = diasRestantes(fechas.fin);
+    var fase = resGetCurrentPhase(datos, FE_ITEMS, FE_GROUPS);
+    rows.push({ cliente: row.cliente, implementadora: row.implementadora, done: done, total: FE_ITEMS.length, pct: pct, riesgo: riesgo, tipo: 'FE', fechas: fechas, dr: dr, fase: fase });
+  });
+  allRowsAdm.forEach(function(row) {
+    var datos = row.datos || {};
+    var done = resumenCountDone(datos, ADM_ITEMS);
+    var pct = Math.round((done / ADM_ITEMS.length) * 100);
+    var riesgo = resumenIsEnRiesgo(row.cliente, pct, ADM_ITEMS.length, 'adm');
+    var fechas = getImplFechas(row.cliente, 'adm');
+    var dr = diasRestantes(fechas.fin);
+    var fase = resGetCurrentPhase(datos, ADM_ITEMS, ADM_GROUPS);
+    rows.push({ cliente: row.cliente, implementadora: row.implementadora, done: done, total: ADM_ITEMS.length, pct: pct, riesgo: riesgo, tipo: 'Adm', fechas: fechas, dr: dr, fase: fase });
+  });
+  return rows;
+}
+
+function resClassifyUrgency(rows) {
+  var vencidos = [], proximos = [], enRiesgo = [];
+  rows.forEach(function(r) {
+    if (r.pct >= 100) return; // completado, no aplica
+    if (r.dr !== null && r.dr < 0) vencidos.push(r);
+    else if (r.dr !== null && r.dr <= 7) proximos.push(r);
+    if (r.riesgo) enRiesgo.push(r);
+  });
+  return { vencidos: vencidos, proximos: proximos, enRiesgo: enRiesgo };
+}
+
+function resRenderSection(titulo, items, colorClass, iconColor) {
+  if (!items.length) return '<div class="res-section"><div class="res-section-hdr"><div class="res-icon" style="background:' + iconColor + '">✓</div><h3>' + titulo + '</h3></div><div class="res-ok">Todo al dia</div></div>';
+
+  // Group by client
+  var groups = {};
+  items.forEach(function(r) {
+    var key = r.cliente;
+    if (!groups[key]) groups[key] = [];
+    groups[key].push(r);
+  });
+
+  var html = '<div class="res-section"><div class="res-section-hdr"><div class="res-icon" style="background:' + iconColor + '">!</div><h3>' + titulo + ' (' + items.length + ')</h3></div>';
+
+  Object.keys(groups).forEach(function(cliente) {
+    var clientItems = groups[cliente];
+    html += '<div class="res-client-group">';
+    html += '<div class="res-client-hdr"><span class="res-client-name">' + cliente + '</span><span class="res-client-count ' + colorClass + '">' + clientItems.length + '</span></div>';
+    html += '<div class="res-client-items"><table class="res-items-table"><thead><tr>';
+    html += '<th>Tipo</th><th>Fase</th><th>Progreso</th><th>Fin esperado</th><th>Dias</th>';
+    html += '</tr></thead><tbody>';
+
+    clientItems.forEach(function(r) {
+      var tipoBg = r.tipo === 'FE' ? 'background:#eff6ff;color:var(--blue)' : 'background:#f3e8ff;color:#8b5cf6';
+      var diasTxt = '', diasColor = '';
+      if (r.dr !== null) {
+        if (r.dr < 0) { diasTxt = '+' + Math.abs(r.dr) + 'd'; diasColor = 'color:var(--red);font-weight:600'; }
+        else { diasTxt = r.dr + 'd'; diasColor = r.dr <= 7 ? 'color:var(--amber);font-weight:600' : 'color:var(--muted)'; }
+      }
+      html += '<tr style="cursor:pointer" onclick="switchMainTab(\'' + (r.tipo === 'FE' ? 'fe' : 'adm') + '\');setTimeout(function(){openDetail(\'' + esc(r.cliente) + '\')},50)">';
+      html += '<td style="text-align:center"><span style="display:inline-block;padding:2px 8px;border-radius:6px;font-size:0.7rem;font-weight:600;' + tipoBg + '">' + r.tipo + '</span></td>';
+      html += '<td style="text-align:center;font-size:0.74rem">' + r.fase + '</td>';
+      html += '<td style="text-align:center;font-size:0.74rem">' + r.done + '/' + r.total + ' (' + r.pct + '%)</td>';
+      html += '<td style="text-align:center;font-size:0.74rem">' + fmtDate(r.fechas.fin) + '</td>';
+      html += '<td style="text-align:center;' + diasColor + '">' + diasTxt + '</td>';
+      html += '</tr>';
+    });
+    html += '</tbody></table></div></div>';
+  });
+
+  html += '</div>';
+  return html;
+}
+
+function renderResumen(el) {
+
+  var rows = resBuildUnifiedRows();
+  var urg = resClassifyUrgency(rows);
+  var totalPendientes = urg.vencidos.length + urg.proximos.length + urg.enRiesgo.length;
+  var totalActivas = rows.filter(function(r) { return r.pct < 100; }).length;
+
+  // ===== GREETING =====
+  var html = '<div class="res-greeting">';
+  html += '<h2>' + resGetGreeting() + ', ' + resGetFirstName() + '</h2>';
+  if (totalPendientes === 0) {
+    html += '<p>Todas las implementaciones van segun lo previsto</p>';
+  } else {
+    html += '<p>Hay ' + totalActivas + ' implementaciones activas, ' + totalPendientes + ' requieren atencion</p>';
+  }
+  html += '</div>';
+
+  // ===== URGENCY CARDS =====
+  html += '<div class="res-urgency">';
+  html += '<div class="res-urg-card res-urg-urgent"><p class="urg-label">Vencidas</p><p class="urg-num">' + urg.vencidos.length + '</p><p class="urg-sub">pasaron la fecha fin</p></div>';
+  html += '<div class="res-urg-card res-urg-warn"><p class="urg-label">Proximas a vencer</p><p class="urg-num">' + urg.proximos.length + '</p><p class="urg-sub">a 7 dias o menos</p></div>';
+  html += '<div class="res-urg-card res-urg-soon"><p class="urg-label">En riesgo</p><p class="urg-num">' + urg.enRiesgo.length + '</p><p class="urg-sub">progreso bajo vs tiempo</p></div>';
+  html += '</div>';
+
+  // ===== INSIGHTS =====
+  if (totalPendientes > 0) {
+    // Implementadora con más atrasos
+    var implCount = {};
+    urg.vencidos.concat(urg.enRiesgo).forEach(function(r) {
+      var key = r.implementadora || 'Sin asignar';
+      implCount[key] = (implCount[key] || 0) + 1;
+    });
+    var topImpl = null, topImplN = 0;
+    Object.keys(implCount).forEach(function(k) { if (implCount[k] > topImplN) { topImpl = k; topImplN = implCount[k]; } });
+
+    if (topImpl) {
+      html += '<div class="res-insights">';
+      html += '<div class="res-insight-item"><span class="res-insight-icon">⚡</span> ' + topImpl + ' tiene ' + topImplN + ' implementacion' + (topImplN > 1 ? 'es' : '') + ' con atencion requerida</div>';
+      html += '</div>';
+    }
+  }
+
+  // ===== CHARTS ROW: Barras por tipo + Funnel por fase (side by side) =====
+  var allPhases = ['SERVICIO', 'ONBOARDING', 'GERENCIA', 'IMPLEMENTACION', 'TRANSICION'];
+  var phaseCounts = {};
+  allPhases.forEach(function(p) { phaseCounts[p] = 0; });
+  rows.forEach(function(r) {
+    if (r.pct >= 100) return;
+    if (phaseCounts[r.fase] !== undefined) phaseCounts[r.fase]++;
+  });
+  var maxPhase = Math.max.apply(null, allPhases.map(function(p) { return phaseCounts[p]; })) || 1;
+  var phaseColors = { 'SERVICIO': '#8b5cf6', 'ONBOARDING': '#6366f1', 'GERENCIA': '#4361ee', 'IMPLEMENTACION': '#059669', 'TRANSICION': '#d97706' };
+  var phaseLabels = { 'SERVICIO': 'Servicio', 'ONBOARDING': 'Onboarding', 'GERENCIA': 'Gerencia', 'IMPLEMENTACION': 'Implementacion', 'TRANSICION': 'Transicion' };
+
+  // Count by type
+  var feActivas = 0, feCompletas = 0, admActivas = 0, admCompletas = 0;
+  rows.forEach(function(r) {
+    if (r.tipo === 'FE') { if (r.pct >= 100) feCompletas++; else feActivas++; }
+    else { if (r.pct >= 100) admCompletas++; else admActivas++; }
+  });
+  var maxTipo = Math.max(feActivas, feCompletas, admActivas, admCompletas) || 1;
+  var tipoRows = [
+    { label: 'FE en proceso', val: feActivas, color: '#4361ee' },
+    { label: 'FE completada', val: feCompletas, color: '#10b981' },
+    { label: 'Adm en proceso', val: admActivas, color: '#8b5cf6' },
+    { label: 'Adm completada', val: admCompletas, color: '#10b981' }
+  ];
+
+  html += '<div class="res-charts">';
+  html += '<div class="res-chart-card"><h4>Por tipo de implementacion</h4>';
+  tipoRows.forEach(function(t) {
+    var pct = Math.round((t.val / maxTipo) * 100);
+    if (pct < 8 && t.val > 0) pct = 8;
+    html += '<div class="res-funnel-bar">';
+    html += '<div class="res-funnel-label">' + t.label + '</div>';
+    html += '<div class="res-funnel-track"><div class="res-funnel-fill" style="width:' + pct + '%;background:' + t.color + '"><span class="res-funnel-num">' + t.val + '</span></div></div>';
+    html += '</div>';
+  });
+  html += '</div>';
+
+  html += '<div class="res-chart-card"><h4>Pipeline por fase</h4>';
+  allPhases.forEach(function(p) {
+    var c = phaseCounts[p];
+    var pct = Math.round((c / maxPhase) * 100);
+    if (pct < 8 && c > 0) pct = 8;
+    html += '<div class="res-funnel-bar">';
+    html += '<div class="res-funnel-label">' + phaseLabels[p] + '</div>';
+    html += '<div class="res-funnel-track"><div class="res-funnel-fill" style="width:' + pct + '%;background:' + phaseColors[p] + '"><span class="res-funnel-num">' + c + '</span></div></div>';
+    html += '</div>';
+  });
+  html += '</div>';
+  html += '</div>';
+
+  // ===== SECTIONS: Vencidas, Próximas, En riesgo =====
+  html += resRenderSection('Vencidas', urg.vencidos, 'urgent', 'var(--red)');
+  html += resRenderSection('Proximas a vencer', urg.proximos, 'warn', 'var(--amber)');
+  html += resRenderSection('En riesgo', urg.enRiesgo, 'soon', 'var(--blue)');
+
+  // ===== TABLE: all implementations =====
+  html += '<div class="res-section"><div class="res-section-hdr"><h3>Todas las implementaciones (' + rows.length + ')</h3></div>';
+  if (rows.length === 0) {
+    html += '<div class="res-ok">No hay implementaciones activas</div>';
+  } else {
+    rows.sort(function(a, b) {
+      if (a.riesgo && !b.riesgo) return -1;
+      if (!a.riesgo && b.riesgo) return 1;
+      if (a.pct >= 100 && b.pct < 100) return 1;
+      if (a.pct < 100 && b.pct >= 100) return -1;
+      return a.pct - b.pct;
+    });
+
+    html += '<table class="res-items-table"><thead><tr>';
+    html += '<th>#</th><th>Cliente</th><th>Tipo</th><th>Implementadora</th><th>Fase</th><th>Fin</th><th>Progreso</th><th>Estado</th>';
+    html += '</tr></thead><tbody>';
+
+    rows.forEach(function(row, idx) {
+      var tipoBg = row.tipo === 'FE' ? 'background:#eff6ff;color:var(--blue)' : 'background:#f3e8ff;color:#8b5cf6';
+      var badgeColor, badgeLabel;
+      if (row.dr !== null && row.dr < 0 && row.pct < 100) { badgeColor = 'background:#fef2f2;color:var(--red)'; badgeLabel = 'Vencida'; }
+      else if (row.riesgo) { badgeColor = 'background:#fef2f2;color:var(--red)'; badgeLabel = 'En riesgo'; }
+      else if (row.pct >= 100) { badgeColor = 'background:#ecfdf5;color:var(--green)'; badgeLabel = 'Completado'; }
+      else if (row.pct === 0) { badgeColor = 'background:#f3f4f6;color:#6b7280'; badgeLabel = 'Sin iniciar'; }
+      else { badgeColor = 'background:#eff6ff;color:var(--blue)'; badgeLabel = 'En progreso'; }
+
+      var finStyle = '';
+      if (row.dr !== null && row.pct < 100) {
+        if (row.dr < 0) finStyle = 'color:var(--red);font-weight:600';
+        else if (row.dr <= 7) finStyle = 'color:var(--amber);font-weight:600';
+      }
+      var diasTxt = '';
+      if (row.dr !== null && row.pct < 100) {
+        diasTxt = row.dr < 0 ? ' <span style="font-size:0.65rem">(' + Math.abs(row.dr) + 'd atraso)</span>' : ' <span style="font-size:0.65rem;color:var(--muted)">(' + row.dr + 'd)</span>';
+      }
+
+      html += '<tr style="cursor:pointer" onclick="switchMainTab(\'' + (row.tipo === 'FE' ? 'fe' : 'adm') + '\');setTimeout(function(){openDetail(\'' + esc(row.cliente) + '\')},50)">';
+      html += '<td>' + (idx + 1) + '</td>';
+      html += '<td style="font-weight:600">' + (row.cliente || '') + '</td>';
+      html += '<td style="text-align:center"><span style="display:inline-block;padding:2px 8px;border-radius:6px;font-size:0.7rem;font-weight:600;' + tipoBg + '">' + row.tipo + '</span></td>';
+      html += '<td style="text-align:center">' + (row.implementadora || '-') + '</td>';
+      html += '<td style="text-align:center;font-size:0.74rem">' + row.fase + '</td>';
+      html += '<td style="text-align:center;font-size:0.74rem;' + finStyle + '">' + fmtDate(row.fechas.fin) + diasTxt + '</td>';
+      html += '<td style="text-align:center"><span class="ck-progress-bar"><span class="ck-progress-fill" style="width:' + row.pct + '%;background:' + getBarColor(row.pct) + '"></span></span><span class="ck-progress-text">' + row.done + '/' + row.total + '</span></td>';
+      html += '<td style="text-align:center"><span class="ck-status-badge" style="' + badgeColor + '">' + badgeLabel + '</span></td>';
+      html += '</tr>';
+    });
+    html += '</tbody></table>';
+  }
+  html += '</div>';
+
+  el.innerHTML = html;
+}
+
+// ==================== MAIN TAB SWITCH ====================
+function switchMainTab(tab) {
+  mainTab = tab;
+  var btns = document.querySelectorAll('.main-tab');
+  btns[0].className = 'main-tab' + (tab === 'resumen' ? ' active' : '');
+  btns[1].className = 'main-tab' + (tab === 'fe' ? ' active' : '');
+  btns[2].className = 'main-tab' + (tab === 'adm' ? ' active' : '');
+  currentCliente = null;
+  render();
+}
+
+// ==================== RENDER ====================
+function render() {
+  var navArea = document.getElementById('navArea');
+  var content = document.getElementById('content');
+
+  if (mainTab === 'resumen') {
+    navArea.innerHTML = '';
+    renderResumen(content);
+    return;
+  }
+
+  if (currentCliente) {
+    navArea.innerHTML = '';
+    renderDetail(content);
+  } else {
+    renderNav(navArea);
+    renderList(content);
+  }
+}
+
+// ==================== NAV (implementadora pills) ====================
+function renderNav(el) {
+  var pills = ['Todas'].concat(IMPLEMENTADORAS);
+  var html = '<div class="nav-area"><div class="contadora-pills">';
+  for (var i = 0; i < pills.length; i++) {
+    var active = pills[i] === selectedImpl ? ' active' : '';
+    html += '<button class="contadora-pill' + active + '" onclick="selectImpl(\'' + esc(pills[i]) + '\')">' + pills[i] + '</button>';
+  }
+  html += '</div></div>';
+  el.innerHTML = html;
+}
+
+function selectImpl(name) {
+  selectedImpl = name;
+  render();
+}
+
+function toggleView(mode) {
+  viewMode = mode;
+  render();
+}
+
+// ==================== LIST VIEW ====================
+function renderList(el) {
+  var filtered = getFilteredRows();
+  var totalSteps = getTotalSteps();
+  var totalClientes = filtered.length;
+  var completados = 0;
+  var enProgreso = 0;
+  var sinIniciar = 0;
+
+  for (var i = 0; i < filtered.length; i++) {
+    var datos = filtered[i].datos || {};
+    var done = countDone(datos);
+    if (done >= totalSteps) completados++;
+    else if (done > 0) enProgreso++;
+    else sinIniciar++;
+  }
+
+  var html = '';
+
+  // Summary stats
+  html += '<div class="summary-stats">';
+  html += '<div class="summary-stat"><div class="summary-stat-label">Total clientes</div><div class="summary-stat-value" style="color:var(--navy)">' + totalClientes + '</div></div>';
+  html += '<div class="summary-stat"><div class="summary-stat-label">Completados</div><div class="summary-stat-value" style="color:var(--green)">' + completados + '</div></div>';
+  html += '<div class="summary-stat"><div class="summary-stat-label">En progreso</div><div class="summary-stat-value" style="color:var(--amber)">' + enProgreso + '</div></div>';
+  html += '<div class="summary-stat"><div class="summary-stat-label">Sin iniciar</div><div class="summary-stat-value" style="color:var(--muted)">' + sinIniciar + '</div></div>';
+  html += '</div>';
+
+  var tipoFecha = mainTab === 'adm' ? 'adm' : 'fe';
+
+  // Add button + view toggle row
+  var iconTable = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3" y2="18"/><line x1="9" y1="6" x2="9" y2="18"/></svg>';
+  var iconCards = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>';
+
+  html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">';
+  html += '<div class="view-toggle">';
+  html += '<button class="view-toggle-btn' + (viewMode === 'table' ? ' active' : '') + '" onclick="toggleView(\'table\')">' + iconTable + ' Tabla</button>';
+  html += '<button class="view-toggle-btn' + (viewMode === 'cards' ? ' active' : '') + '" onclick="toggleView(\'cards\')">' + iconCards + ' Cuadros</button>';
+  html += '</div>';
+  if (canEdit()) {
+    html += '<button class="btn-add" onclick="openAddModal()">+ Agregar checklist</button>';
+  }
+  html += '</div>';
+
+  // Client list
+  if (filtered.length === 0) {
+    html += '<div class="empty">No hay clientes registrados.</div>';
+  } else if (viewMode === 'table') {
+    html += '<table class="ck-client-table"><thead><tr>';
+    html += '<th>#</th><th>Cliente</th><th>Implementadora</th><th>Inicio</th><th>Fin esperado</th><th>Progreso</th><th>Estado</th>';
+    html += '</tr></thead><tbody>';
+
+    for (var j = 0; j < filtered.length; j++) {
+      var row = filtered[j];
+      var datos = row.datos || {};
+      var done = countDone(datos);
+      var pct = Math.round((done / totalSteps) * 100);
+      var status = getStatusInfo(done, totalSteps);
+      var fechas = getImplFechas(row.cliente, tipoFecha);
+      var dr = diasRestantes(fechas.fin);
+      var finStyle = '';
+      if (dr !== null && pct < 100) {
+        if (dr < 0) finStyle = 'color:var(--red);font-weight:600';
+        else if (dr <= 7) finStyle = 'color:var(--amber);font-weight:600';
+      }
+
+      html += '<tr onclick="openDetail(\'' + esc(row.cliente) + '\')">';
+      html += '<td>' + (j + 1) + '</td>';
+      html += '<td><span class="ck-table-name">' + row.cliente + '</span></td>';
+      html += '<td><span class="ck-table-contadora">' + (row.implementadora || '') + '</span></td>';
+      html += '<td style="font-size:0.78rem">' + fmtDate(fechas.inicio) + '</td>';
+      html += '<td style="font-size:0.78rem;' + finStyle + '">' + fmtDate(fechas.fin) + (dr !== null && dr < 0 && pct < 100 ? ' <span style="font-size:0.68rem">(' + Math.abs(dr) + 'd atraso)</span>' : dr !== null && dr >= 0 && pct < 100 ? ' <span style="font-size:0.68rem;color:var(--muted)">(' + dr + 'd)</span>' : '') + '</td>';
+      html += '<td><span class="ck-progress-bar"><span class="ck-progress-fill" style="width:' + pct + '%;background:' + getBarColor(pct) + '"></span></span><span class="ck-progress-text">' + done + '/' + totalSteps + '</span></td>';
+      html += '<td><span class="ck-status-badge ' + status.css + '">' + status.label + '</span></td>';
+      html += '</tr>';
+    }
+
+    html += '</tbody></table>';
+  } else {
+    // Cards view
+    html += '<div class="client-grid">';
+    for (var j = 0; j < filtered.length; j++) {
+      var row = filtered[j];
+      var datos = row.datos || {};
+      var done = countDone(datos);
+      var pct = Math.round((done / totalSteps) * 100);
+      var fechas = getImplFechas(row.cliente, tipoFecha);
+      var dr = diasRestantes(fechas.fin);
+
+      html += '<div class="client-card" onclick="openDetail(\'' + esc(row.cliente) + '\')">';
+      html += '<div class="client-card-name">' + row.cliente + '</div>';
+      html += '<div class="client-card-impl">' + (row.implementadora || 'Sin asignar') + '</div>';
+      html += '<div class="client-card-progress">';
+      html += '<div class="client-card-bar"><div class="client-card-fill" style="width:' + pct + '%;background:' + getBarColor(pct) + '"></div></div>';
+      html += '<div class="client-card-pct" style="color:' + getBarColor(pct) + '">' + pct + '%</div>';
+      html += '</div>';
+      html += '<div class="client-card-count">' + done + ' de ' + totalSteps + ' pasos</div>';
+      if (fechas.inicio || fechas.fin) {
+        var drText = '';
+        if (dr !== null && pct < 100) {
+          if (dr < 0) drText = '<span style="color:var(--red);font-weight:600">' + Math.abs(dr) + 'd atraso</span>';
+          else drText = '<span style="color:var(--muted)">' + dr + 'd restantes</span>';
+        }
+        html += '<div style="font-size:0.72rem;color:var(--muted);margin-top:4px;display:flex;gap:8px;align-items:center">';
+        html += '<span>' + fmtDate(fechas.inicio) + ' → ' + fmtDate(fechas.fin) + '</span>';
+        if (drText) html += drText;
+        html += '</div>';
+      }
+      html += '</div>';
+    }
+    html += '</div>';
+  }
+
+  el.innerHTML = html;
+}
+
+function getFilteredRows() {
+  var rows = getRows().slice();
+  if (selectedImpl !== 'Todas') {
+    rows = rows.filter(function(r) { return r.implementadora === selectedImpl; });
+  }
+  rows.sort(function(a, b) { return (a.cliente || '').localeCompare(b.cliente || ''); });
+  return rows;
+}
+
+// ==================== DETAIL VIEW ====================
+function openDetail(cliente) {
+  currentCliente = getRows().find(function(r) { return r.cliente === cliente; });
+  if (!currentCliente) return;
+  localEdits = {};
+  // Copy current datos into localEdits (including nota)
+  var items = getItems();
+  var datos = currentCliente.datos || {};
+  for (var i = 0; i < items.length; i++) {
+    var item = items[i];
+    var val = datos[item.id];
+    if (val) {
+      localEdits[item.id] = { done: val.done, fecha: val.fecha || '', nota: val.nota || '' };
+    } else {
+      localEdits[item.id] = { done: false, fecha: '', nota: '' };
+    }
+  }
+  render();
+}
+
+function closeDetail() {
+  currentCliente = null;
+  localEdits = {};
+  render();
+}
+
+function renderDetail(el) {
+  var row = currentCliente;
+  var datos = row.datos || {};
+  var items = getItems();
+  var groups = getGroups();
+  var totalSteps = getTotalSteps();
+  var done = countDone(localEdits);
+  var pct = Math.round((done / totalSteps) * 100);
+  var implName = row.implementadora || 'Sin asignar';
+
+  var html = '';
+
+  // Header
+  html += '<div class="detail-header">';
+  html += '<button class="detail-back" onclick="closeDetail()">&larr; Volver al listado</button>';
+  html += '<div><div class="detail-title">' + row.cliente + '</div>';
+  if (canEdit()) {
+    html += '<div class="detail-sub" style="display:flex;align-items:center;gap:8px">Implementadora: ';
+    html += '<select id="detail-impl-select" onchange="changeImplementadora(this.value)" style="padding:3px 8px;border:1px solid var(--border);border-radius:6px;font-size:0.8rem;font-family:inherit">';
+    html += '<option value=""' + (!row.implementadora ? ' selected' : '') + '>Sin asignar</option>';
+    for (var ii = 0; ii < IMPLEMENTADORAS.length; ii++) {
+      html += '<option value="' + IMPLEMENTADORAS[ii] + '"' + (row.implementadora === IMPLEMENTADORAS[ii] ? ' selected' : '') + '>' + IMPLEMENTADORAS[ii] + '</option>';
+    }
+    html += '</select></div>';
+  } else {
+    html += '<div class="detail-sub">Implementadora: ' + implName + '</div>';
+  }
+  html += '</div>';
+  html += '</div>';
+
+  // Fechas de implementación
+  var tipoFechaD = mainTab === 'adm' ? 'adm' : 'fe';
+  var fechasD = getImplFechas(row.cliente, tipoFechaD);
+  if (fechasD.inicio || fechasD.fin) {
+    var drD = diasRestantes(fechasD.fin);
+    html += '<div style="display:flex;gap:20px;align-items:center;margin:8px 0 4px;padding:10px 16px;background:#f8f9fb;border:1px solid var(--border);border-radius:8px;font-size:0.82rem">';
+    html += '<div><span style="color:var(--muted);font-size:0.7rem;text-transform:uppercase;letter-spacing:0.3px">Inicio</span><div style="font-weight:600;color:var(--navy)">' + fmtDate(fechasD.inicio) + '</div></div>';
+    html += '<div><span style="color:var(--muted);font-size:0.7rem;text-transform:uppercase;letter-spacing:0.3px">Fin esperado</span><div style="font-weight:600;color:var(--navy)">' + fmtDate(fechasD.fin) + '</div></div>';
+    if (drD !== null && pct < 100) {
+      var drColor = drD < 0 ? 'var(--red)' : drD <= 7 ? 'var(--amber)' : 'var(--green)';
+      var drLabel = drD < 0 ? Math.abs(drD) + ' días de atraso' : drD === 0 ? 'Vence hoy' : drD + ' días restantes';
+      html += '<div><span style="color:var(--muted);font-size:0.7rem;text-transform:uppercase;letter-spacing:0.3px">Plazo</span><div style="font-weight:600;color:' + drColor + '">' + drLabel + '</div></div>';
+    }
+    if (fechasD.inicio && fechasD.fin && pct < 100) {
+      var inicioD = resumenParseDate(fechasD.inicio);
+      var finD = resumenParseDate(fechasD.fin);
+      var hoyD = new Date(); hoyD.setHours(0,0,0,0);
+      var totalMsD = finD - inicioD;
+      if (totalMsD > 0) {
+        var tiempoPct = Math.min(100, Math.max(0, Math.round(((hoyD - inicioD) / totalMsD) * 100)));
+        var tiempoColor = tiempoPct > 50 && pct < 40 ? 'var(--red)' : tiempoPct > pct ? 'var(--amber)' : 'var(--green)';
+        html += '<div><span style="color:var(--muted);font-size:0.7rem;text-transform:uppercase;letter-spacing:0.3px">Tiempo transcurrido</span><div style="font-weight:600;color:' + tiempoColor + '">' + tiempoPct + '%</div></div>';
+      }
+    }
+    html += '</div>';
+  }
+
+  // Progress bar + save button
+  html += '<div class="progress-row">';
+  html += '<span class="pr-count">' + done + ' / ' + totalSteps + '</span>';
+  html += '<div class="pr-bar"><div class="pr-fill" style="width:' + pct + '%;background:' + getBarColor(pct) + '"></div></div>';
+  html += '<span class="pr-pct">' + pct + '%</span>';
+  if (canEdit()) {
+    html += '<button class="btn btn-primary" id="btn-save" onclick="saveChecklist()" style="margin-left:12px">Guardar cambios</button>';
+    html += '<button class="btn" id="btn-delete" onclick="deleteChecklist()" style="margin-left:8px;color:var(--red);border-color:var(--red)">Eliminar checklist</button>';
+  }
+  html += '</div>';
+
+  // Checklist table
+  html += '<table class="check-table"><thead><tr>';
+  html += '<th>#</th><th>Tarea</th><th>Responsable</th><th class="center">Estado</th><th class="center">Fecha</th><th style="width:40px" class="center">Nota</th>';
+  html += '</tr></thead><tbody>';
+
+  var lastGroup = '';
+  for (var i = 0; i < items.length; i++) {
+    var item = items[i];
+    var groupKey = item.grupo;
+
+    // Group header
+    if (groupKey !== lastGroup) {
+      var grp = groups.find(function(g) { return g.label === groupKey.toUpperCase(); });
+      var groupLabel = groupKey.toUpperCase();
+      if (grp) {
+        var respLabel = grp.responsable ? grp.responsable : implName;
+        groupLabel += ' — ' + respLabel;
+      }
+      html += '<tr class="group-row"><td colspan="6">' + groupLabel + '</td></tr>';
+      lastGroup = groupKey;
+    }
+
+    var val = localEdits[item.id] || { done: false, fecha: '' };
+    var isDone = val.done === true || val.done === 'na';
+    var rowClass = isDone ? ' class="row-done"' : '';
+    var responsableLabel = item.responsable === 'Implementadora' ? implName : item.responsable;
+
+    html += '<tr' + rowClass + '>';
+    html += '<td>' + item.n + '</td>';
+    html += '<td>' + item.label + '</td>';
+    html += '<td>' + responsableLabel + '</td>';
+
+    // Estado column
+    html += '<td class="center">';
+    if (canEdit()) {
+      var yesActive = val.done === true ? ' active-yes' : '';
+      var noActive = val.done === false ? ' active-no' : '';
+      var naActive = val.done === 'na' ? ' active-na' : '';
+      html += '<div class="toggle-group">';
+      html += '<button class="toggle-opt' + yesActive + '" onclick="toggleItem(\'' + item.id + '\', true)">Si</button>';
+      html += '<button class="toggle-opt' + noActive + '" onclick="toggleItem(\'' + item.id + '\', false)">No</button>';
+      html += '<button class="toggle-opt' + naActive + '" onclick="toggleItem(\'' + item.id + '\', \'na\')">N/A</button>';
+      html += '</div>';
+    } else {
+      // Read-only labels
+      if (val.done === true) html += '<span class="status-label st-yes">Si</span>';
+      else if (val.done === 'na') html += '<span class="status-label st-na">N/A</span>';
+      else html += '<span class="status-label st-no">No</span>';
+    }
+    html += '</td>';
+
+    // Fecha column
+    html += '<td class="center">' + formatDateShort(val.fecha) + '</td>';
+
+    // Nota column
+    var notaVal = val.nota || '';
+    var notaClass = notaVal ? 'nota-btn has-nota' : 'nota-btn';
+    html += '<td class="center"><button class="' + notaClass + '" title="' + (notaVal ? 'Ver/editar nota' : 'Agregar nota') + '" onclick="openNotaModal(\'' + item.id + '\',\'' + esc(item.label) + '\')">&#9998;</button></td>';
+
+    html += '</tr>';
+  }
+
+  html += '</tbody></table>';
+
+  el.innerHTML = html;
+}
+
+// ==================== TOGGLE ITEM ====================
+function toggleItem(itemId, value) {
+  if (!canEdit() || saving) return;
+  var current = localEdits[itemId] || { done: false, fecha: '' };
+
+  // If clicking the already-active value, do nothing
+  if (current.done === value) return;
+
+  localEdits[itemId] = {
+    done: value,
+    fecha: (value === true || value === 'na') ? todayStr() : '',
+    nota: current.nota || ''
+  };
+
+  // Re-render detail
+  renderDetail(document.getElementById('content'));
+}
+
+// ==================== SAVE ====================
+async function saveChecklist() {
+  if (saving || !currentCliente) return;
+  saving = true;
+  var btn = document.getElementById('btn-save');
+  if (btn) btn.disabled = true;
+
+  var items = getItems();
+  var newDatos = {};
+  for (var i = 0; i < items.length; i++) {
+    var item = items[i];
+    var val = localEdits[item.id] || { done: false, fecha: '', nota: '' };
+    newDatos[item.id] = { done: val.done, fecha: val.fecha, nota: val.nota || '' };
+  }
+
+  var res = await sb.from(getTableName()).upsert({
+    cliente: currentCliente.cliente,
+    implementadora: currentCliente.implementadora,
+    datos: newDatos,
+    updated_at: new Date().toISOString()
+  }, { onConflict: 'cliente' });
+
+  saving = false;
+  if (btn) btn.disabled = false;
+
+  if (res.error) {
+    showToast('Error al guardar: ' + res.error.message, 'error');
+    console.error(res.error);
+    return;
+  }
+
+  // Update local data
+  currentCliente.datos = newDatos;
+  var rows = getRows();
+  var idx = rows.findIndex(function(r) { return r.cliente === currentCliente.cliente; });
+  if (idx >= 0) rows[idx].datos = newDatos;
+
+  showToast('Cambios guardados');
+}
+
+async function deleteChecklist() {
+  if (!currentCliente || !canEdit()) return;
+  if (!confirm('¿Eliminar el checklist de ' + currentCliente.cliente + '? Esta acción no se puede deshacer.')) return;
+
+  var res = await sb.from(getTableName()).delete().eq('cliente', currentCliente.cliente);
+  if (res.error) {
+    showToast('Error al eliminar: ' + res.error.message, 'error');
+    console.error(res.error);
+    return;
+  }
+
+  // Quitar de la lista local
+  var rows = getRows();
+  var idx = rows.findIndex(function(r) { return r.cliente === currentCliente.cliente; });
+  if (idx >= 0) rows.splice(idx, 1);
+
+  showToast('Checklist eliminado');
+  closeDetail();
+}
+
+// ==================== ADD CLIENT MODAL ====================
+function openAddModal() {
+  if (!canEdit()) return;
+  var overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.id = 'add-modal';
+
+  var optionsHtml = '<option value="">Seleccionar...</option>';
+  for (var i = 0; i < IMPLEMENTADORAS.length; i++) {
+    optionsHtml += '<option value="' + IMPLEMENTADORAS[i] + '">' + IMPLEMENTADORAS[i] + '</option>';
+  }
+
+  overlay.innerHTML = '<div class="modal-box">' +
+    '<h3>Agregar checklist</h3>' +
+    '<div class="field"><label>Cliente</label><input type="text" id="add-cliente" placeholder="Nombre del cliente"></div>' +
+    '<div class="field"><label>Implementadora</label><select id="add-impl">' + optionsHtml + '</select></div>' +
+    '<div class="modal-btns">' +
+    '<button class="btn-cancel" onclick="closeAddModal()">Cancelar</button>' +
+    '<button class="btn-save" onclick="saveNewClient()">Guardar</button>' +
+    '</div></div>';
+
+  document.body.appendChild(overlay);
+}
+
+function closeAddModal() {
+  var m = document.getElementById('add-modal');
+  if (m) m.remove();
+}
+
+async function saveNewClient() {
+  var cliente = document.getElementById('add-cliente').value.trim();
+  var impl = document.getElementById('add-impl').value;
+
+  if (!cliente) { showToast('Escribe el nombre del cliente', 'error'); return; }
+  if (!impl) { showToast('Selecciona una implementadora', 'error'); return; }
+
+  // Check duplicate
+  var rows = getRows();
+  var exists = rows.find(function(r) { return r.cliente.toLowerCase() === cliente.toLowerCase(); });
+  if (exists) { showToast('Ese cliente ya existe', 'error'); return; }
+
+  // Build empty datos
+  var items = getItems();
+  var datos = {};
+  for (var i = 0; i < items.length; i++) {
+    datos[items[i].id] = { done: false, fecha: '' };
+  }
+
+  var res = await sb.from(getTableName()).upsert({
+    cliente: cliente,
+    implementadora: impl,
+    datos: datos,
+    updated_at: new Date().toISOString()
+  }, { onConflict: 'cliente' });
+
+  if (res.error) {
+    showToast('Error al guardar: ' + res.error.message, 'error');
+    console.error(res.error);
+    return;
+  }
+
+  showToast('Cliente agregado');
+  closeAddModal();
+  await loadData();
+  render();
+}
+
+// ==================== CAMBIAR IMPLEMENTADORA ====================
+async function changeImplementadora(val) {
+  if (!currentCliente) return;
+  var newImpl = val || null;
+  var res = await sb.from(getTableName()).update({ implementadora: newImpl, updated_at: new Date().toISOString() }).eq('cliente', currentCliente.cliente);
+  if (res.error) {
+    showToast('Error: ' + res.error.message, 'error');
+    return;
+  }
+  currentCliente.implementadora = newImpl;
+  var rows = getRows();
+  var idx = rows.findIndex(function(r) { return r.cliente === currentCliente.cliente; });
+  if (idx >= 0) rows[idx].implementadora = newImpl;
+  showToast('Implementadora actualizada');
+  renderDetail(document.getElementById('content'));
+}
+
+// ==================== NOTAS POR TAREA ====================
+function openNotaModal(itemId, label) {
+  var val = localEdits[itemId] || { done: false, fecha: '', nota: '' };
+  notaCtx = itemId;
+
+  var overlay = document.createElement('div');
+  overlay.className = 'nota-overlay';
+  overlay.id = 'nota-overlay';
+  overlay.onclick = function(e) { if (e.target === overlay) closeNotaModal(); };
+
+  overlay.innerHTML = '<div class="nota-modal">'
+    + '<h3>' + label + '</h3>'
+    + '<div class="nota-sub">Nota / novedad de este paso</div>'
+    + '<textarea id="nota-textarea" placeholder="Escribe la nota aquí...">' + (val.nota || '') + '</textarea>'
+    + '<div class="nota-modal-btns">'
+    + '<button class="btn-cancel" onclick="closeNotaModal()">Cancelar</button>'
+    + '<button class="btn-save" onclick="saveNotaImpl()">Guardar</button>'
+    + '</div></div>';
+
+  document.body.appendChild(overlay);
+  document.getElementById('nota-textarea').focus();
+}
+
+function closeNotaModal() {
+  var el = document.getElementById('nota-overlay');
+  if (el) el.remove();
+  notaCtx = null;
+}
+
+function saveNotaImpl() {
+  if (!notaCtx) return;
+  var txt = document.getElementById('nota-textarea').value.trim();
+  if (localEdits[notaCtx]) {
+    localEdits[notaCtx].nota = txt;
+  }
+  closeNotaModal();
+  renderDetail(document.getElementById('content'));
+}
+
+// ==================== INIT ====================
+checkSession();
+</script>
+</body>
+</html>
