@@ -1,0 +1,1039 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tareas · Account One</title>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+/* ── Variables (B Claro) ─────────────────────────────────────────────── */
+:root {
+  --fg:#2A2B2D; --fg-mute:#6b7280; --display:#1f2630;
+  --accent:#25AAE1; --accent-dk:#1B87B8;
+  --green:#059669; --amber:#d97706; --red:#dc2626;
+  --page-bg:#f8f9fb; --line:#eef0f3; --line-soft:#f3f4f6;
+  --card-bg:#fff; --card-r:12px; --hover-bg:#f3f6f9;
+  --side-bg:#fff; --side-fg:#2A2B2D; --side-mute:#8b8f96; --side-bdr:#eef0f3;
+  --side-hover:#f3f6f9; --side-act:#eef8fd; --side-act-fg:#1B87B8;
+  --mark-bg:#28368D; --mark-fg:#fff;
+}
+*,*::before,*::after{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{font-family:'Poppins',system-ui,sans-serif;font-size:14px;line-height:1.5;color:var(--fg);background:var(--page-bg);-webkit-font-smoothing:antialiased}
+button{font-family:inherit;cursor:pointer;border:none;background:none;padding:0;color:inherit}
+svg.ic{display:block;flex-shrink:0;fill:none;stroke:currentColor;stroke-width:1.75;stroke-linecap:round;stroke-linejoin:round}
+select{font-family:inherit}
+
+/* ── Shell ────────────────────────────────────────────────────────────── */
+.sh{display:flex;height:100%}
+.side{width:252px;flex-shrink:0;display:flex;flex-direction:column;background:var(--side-bg);border-right:1px solid var(--side-bdr);overflow-y:auto;overflow-x:hidden}
+.main{flex:1;display:flex;flex-direction:column;min-width:0;overflow:hidden}
+
+/* Sidebar brand */
+.side-brand{display:flex;align-items:center;gap:10px;padding:20px 18px 18px}
+.side-mark{width:34px;height:34px;border-radius:10px;background:var(--mark-bg);color:var(--mark-fg);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.side-bname{font-size:14.5px;font-weight:700;color:var(--side-fg);letter-spacing:-0.01em}
+.side-btag{font-size:10px;text-transform:uppercase;letter-spacing:0.12em;font-weight:600;color:var(--side-mute);margin-top:2px}
+
+/* Sidebar nav */
+.side-nav{flex:1;padding:2px 10px 16px;display:flex;flex-direction:column;gap:2px}
+.nav-a{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:10px;color:var(--side-fg);text-decoration:none;position:relative;transition:background .14s}
+.nav-a:hover{background:var(--side-hover)}
+.nav-a.is-active{background:var(--side-act);color:var(--side-act-fg)}
+.nav-a.is-active::before{content:'';position:absolute;left:-10px;top:9px;bottom:9px;width:3px;border-radius:0 3px 3px 0;background:var(--accent)}
+.nav-a .ic{opacity:.55}.nav-a:hover .ic{opacity:.75}.nav-a.is-active .ic{opacity:1;color:var(--side-act-fg)}
+.nav-lbl{font-size:13px;font-weight:500;flex:1}
+.nav-a.is-active .nav-lbl{font-weight:600}
+.nav-sec{font-size:9.5px;text-transform:uppercase;letter-spacing:.14em;font-weight:700;color:var(--side-mute);padding:20px 12px 6px}
+
+/* Sidebar user */
+.side-user{display:flex;align-items:center;gap:10px;padding:14px 18px;border-top:1px solid var(--side-bdr)}
+.side-av{width:32px;height:32px;border-radius:50%;background:var(--mark-bg);color:var(--mark-fg);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0}
+.side-uname{font-size:12.5px;font-weight:600;color:var(--side-fg);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.side-urole{font-size:10.5px;color:var(--side-mute);margin-top:1px}
+.side-uinfo{flex:1;min-width:0}
+.side-ver{padding:0 20px 14px;font-size:10px;color:var(--side-mute);opacity:.65}
+
+/* ── Topbar ───────────────────────────────────────────────────────────── */
+.topbar{display:flex;align-items:center;justify-content:space-between;padding:0 28px;background:#fff;border-bottom:1px solid var(--line);min-height:52px;flex-shrink:0}
+.top-trail{display:flex;align-items:center;gap:8px;font-size:13px}
+.top-crumb{color:var(--fg-mute)}.top-sep{color:var(--fg-mute);opacity:.4;font-size:11px}.top-cur{color:var(--display);font-weight:600}
+.top-right{display:flex;align-items:center;gap:12px}
+.top-chip{font-size:12px;color:var(--fg-mute)}
+.top-av{width:30px;height:30px;border-radius:50%;background:var(--mark-bg);color:var(--mark-fg);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700}
+
+/* ── Page area ────────────────────────────────────────────────────────── */
+.page-wrap{flex:1;display:flex;flex-direction:column;overflow:hidden}
+.page-head{padding:24px 28px 0;display:flex;align-items:flex-end;justify-content:space-between;gap:16px}
+.page-eye{font-size:11px;text-transform:uppercase;letter-spacing:.14em;font-weight:600;color:var(--accent);margin-bottom:6px}
+.page-h1{font-size:24px;font-weight:700;letter-spacing:-0.02em;color:var(--display);margin:0 0 2px;line-height:1.15}
+.page-sub{font-size:13px;color:var(--fg-mute);margin:0}
+
+/* ── Subtabs ──────────────────────────────────────────────────────────── */
+.tabs-bar{display:flex;gap:2px;padding:0 28px;border-bottom:1px solid var(--line);flex-shrink:0}
+.sub-tab{padding:10px 16px;font-size:13px;font-weight:600;color:var(--fg-mute);cursor:pointer;position:relative;margin-bottom:-1px;border-bottom:2px solid transparent;transition:color .12s,border-color .12s;background:none;border-top:none;border-left:none;border-right:none;font-family:inherit}
+.sub-tab:hover{color:var(--fg)}
+.sub-tab.is-active{color:var(--display);border-bottom-color:var(--accent)}
+
+/* ── Control bar ──────────────────────────────────────────────────────── */
+.ctrl-bar{display:flex;align-items:center;gap:10px;padding:12px 28px;flex-shrink:0;flex-wrap:wrap;background:#fff;border-bottom:1px solid var(--line)}
+.pills-wrap{display:flex;gap:4px;flex-wrap:wrap}
+.wf-pill{padding:5px 14px;border-radius:8px;font-size:12px;font-weight:600;color:var(--fg-mute);background:transparent;cursor:pointer;transition:background .14s,color .14s}
+.wf-pill:hover{background:var(--hover-bg);color:var(--fg)}
+.wf-pill.is-active{background:var(--display);color:#fff}
+.ctrl-sep{width:1px;height:20px;background:var(--line);flex-shrink:0}
+.view-toggle{display:flex;background:#f1f3f5;border-radius:8px;padding:2px}
+.vt-btn{padding:5px 12px;border-radius:6px;font-size:11.5px;font-weight:600;color:var(--fg-mute);transition:background .12s,color .12s,box-shadow .12s}
+.vt-btn.is-active{background:#fff;color:var(--display);box-shadow:0 1px 2px rgba(0,0,0,.06)}
+.ctrl-right{margin-left:auto;display:flex;align-items:center;gap:10px}
+.ctrl-label{font-size:12px;color:var(--fg-mute);font-weight:500}
+.mo-select{border:1px solid var(--line);border-radius:8px;padding:5px 10px;font-size:12px;color:var(--fg);background:#fff;cursor:pointer;font-weight:500}
+.mo-select:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(37,170,225,.12)}
+
+/* ── Kanban ───────────────────────────────────────────────────────────── */
+.kb-scroll{flex:1;overflow:auto;padding:20px 28px 40px}
+.kb-scroll::-webkit-scrollbar{height:8px}.kb-scroll::-webkit-scrollbar-thumb{background:#d1d5db;border-radius:4px}
+.kb-banner{margin-bottom:14px;font-size:12px;background:#fffbeb;color:#92400e;border:1px solid #fde68a;border-radius:10px;padding:8px 14px;font-weight:500}
+.kb-board{display:flex;gap:10px;min-width:max-content;align-items:flex-start}
+.kb-col{width:264px;flex-shrink:0;border-radius:var(--card-r);overflow:hidden;background:var(--line-soft);border:1px solid var(--line)}
+.kb-col-head{padding:10px 14px;display:flex;align-items:center;gap:8px;background:#fff;border-bottom:1px solid var(--line);position:relative}
+.kb-col-head::before{content:'';position:absolute;top:0;left:0;right:0;height:3px}
+.eq-contab .kb-col-head::before,.kb-col-head.eq-contab::before{background:#25AAE1}
+.eq-impuestos .kb-col-head::before,.kb-col-head.eq-impuestos::before{background:#d97706}
+.eq-cliente .kb-col-head::before,.kb-col-head.eq-cliente::before{background:var(--green)}
+.eq-dgii .kb-col-head::before,.kb-col-head.eq-dgii::before{background:#6b7280}
+.kb-col-head.eq-done::before{background:var(--green)}
+.kb-col-num{font-size:11px;font-weight:700;color:var(--fg-mute);opacity:.5;flex-shrink:0;width:16px}
+.kb-col-title{font-size:12.5px;font-weight:600;color:var(--display);flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.eq-badge{font-size:9.5px;font-weight:700;padding:2px 8px;border-radius:6px;text-transform:uppercase;letter-spacing:.04em;flex-shrink:0;white-space:nowrap}
+.eq-badge-contab{background:#eef8fd;color:#1B87B8}
+.eq-badge-impuestos{background:#fef3c7;color:#b45309}
+.eq-badge-cliente{background:#ecfdf5;color:#047857}
+.eq-badge-dgii{background:#f1f5f9;color:#475569}
+.eq-badge-done{background:#ecfdf5;color:#047857}
+.kb-col-body{padding:8px;display:flex;flex-direction:column;gap:6px;min-height:360px}
+.kb-col.kb-done{border-color:#bbf7d0}
+.kb-done .kb-col-body{background:#f0fdf4}
+.kb-empty{font-size:11px;color:#c4c8cd;text-align:center;padding:32px 0}
+
+/* Handoff markers */
+.kb-handoff{display:flex;flex-direction:column;align-items:center;justify-content:center;align-self:stretch;padding:0 2px;flex-shrink:0}
+.kb-handoff-text{font-size:9px;color:var(--fg-mute);text-transform:uppercase;letter-spacing:.16em;font-weight:600;writing-mode:vertical-rl;opacity:.45}
+
+/* ── Cards ────────────────────────────────────────────────────────────── */
+.kb-card{background:#fff;border-radius:10px;padding:12px 14px;cursor:pointer;border:1px solid var(--line);transition:box-shadow .15s,border-color .15s}
+.kb-card:hover{box-shadow:0 2px 8px rgba(40,54,141,.07);border-color:#d1d5db}
+.kb-card.is-selected{border-color:var(--accent);box-shadow:0 0 0 3px rgba(37,170,225,.14)}
+.kb-card-done{border-color:#bbf7d0}
+.kb-card-done:hover{border-color:#86efac}
+.kb-card-name{font-size:13px;font-weight:600;color:var(--display);line-height:1.3}
+.kb-card-meta{font-size:11px;color:var(--fg-mute);margin-top:2px}
+.kb-prog{width:100%;height:3px;background:var(--line);border-radius:2px;overflow:hidden;margin-top:8px}
+.kb-prog-fill{height:100%;border-radius:2px;background:var(--accent);transition:width .3s}
+.kb-card-foot{display:flex;align-items:center;justify-content:space-between;margin-top:8px;gap:6px}
+.kb-status{font-size:10px;font-weight:600;padding:2px 8px;border-radius:6px;line-height:1.4}
+.kb-wait{background:#fef3c7;color:#92400e}.kb-block{background:#fee2e2;color:#991b1b}
+.kb-card-counts{display:flex;align-items:center;gap:8px;font-size:10.5px;color:var(--fg-mute);font-weight:500;margin-left:auto}
+.kb-cm{display:inline-flex;align-items:center;gap:3px}
+.kb-placeholder{color:var(--fg-mute);font-size:13px;padding:48px 28px;text-align:center}
+
+/* ── Modal ────────────────────────────────────────────────────────────── */
+.md-overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:50;display:flex;align-items:center;justify-content:center;padding:16px}
+.md-panel{background:#fff;border-radius:16px;width:100%;max-width:740px;max-height:85vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 20px 60px rgba(40,54,141,.15)}
+.md-header{padding:18px 22px 14px;border-bottom:1px solid var(--line);display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+.md-eye{font-size:10px;text-transform:uppercase;letter-spacing:.12em;font-weight:600;color:var(--fg-mute);margin-bottom:4px}
+.md-title{font-size:18px;font-weight:700;color:var(--display);margin:0;letter-spacing:-0.01em}
+.md-sub{font-size:12px;color:var(--fg-mute);margin-top:4px;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.md-sub b{color:var(--fg);font-weight:600}
+.md-close{font-size:22px;color:var(--fg-mute);width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center;transition:background .12s,color .12s;flex-shrink:0;line-height:1}
+.md-close:hover{background:var(--hover-bg);color:var(--fg)}
+.md-body{flex:1;overflow:hidden;display:flex}
+.md-left{width:55%;overflow-y:auto;padding:18px 20px;border-right:1px solid var(--line)}
+.md-right{width:45%;overflow-y:auto;padding:18px 20px;background:var(--page-bg)}
+
+/* Checklist */
+.chk-section{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--fg-mute);margin:16px 0 8px}
+.chk-team{display:flex;align-items:center;gap:7px;font-size:11px}
+.chk-team-contab{color:#1B87B8}.chk-team-impuestos{color:#b45309}.chk-team-cliente{color:#047857}
+.chk-divider{border-top:2px solid var(--line);margin:14px 0 2px}
+.chk-section:first-child{margin-top:0}
+.chk-stage{margin-bottom:10px}
+.chk-stage-head{font-size:12px;font-weight:600;color:var(--fg-mute);display:flex;align-items:center;gap:6px;margin-bottom:4px}
+.team-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.td-contab{background:#25AAE1}.td-impuestos{background:#d97706}.td-cliente{background:var(--green)}.td-dgii{background:#6b7280}
+.chk-item{display:flex;align-items:center;gap:8px;padding:3px 0;font-size:13px}
+.chk-input{width:16px;height:16px;accent-color:var(--accent);cursor:pointer;flex-shrink:0}
+.chk-input:disabled{accent-color:#c4c8cd;cursor:default}
+.chk-label{flex:1;line-height:1.35}
+.chk-label.is-done{color:var(--fg-mute);text-decoration:line-through}
+.chk-label.is-other{color:var(--fg-mute)}
+.chk-date{font-size:10px;color:var(--fg-mute);flex-shrink:0}
+.chk-hint{font-size:11px;color:var(--fg-mute);margin-top:8px;line-height:1.4;opacity:.7}
+.chk-pagado{font-size:12px;font-weight:600;color:#047857;background:#d1fae5;border-radius:8px;padding:7px 11px;margin-top:10px}
+
+/* Estado buttons */
+.est-row{display:flex;gap:8px;margin-top:4px}
+.est-btn{flex:1;font-size:12px;font-weight:600;padding:8px;border-radius:8px;transition:background .12s,color .12s}
+.est-wait{background:#fef9ee;color:var(--amber)}
+.est-wait.is-active{background:#fde68a;color:#78350f}
+.est-block{background:#fef2f2;color:var(--red)}
+.est-block.is-active{background:#fecaca;color:#7f1d1d}
+.bloq-box{margin-top:10px;background:#fef2f2;border:1px solid #fecaca;border-radius:10px;padding:12px}
+.bloq-box textarea{width:100%;border:1px solid #fecaca;border-radius:8px;padding:8px 10px;font-size:13px;font-family:inherit;resize:vertical}
+.bloq-box textarea:focus{outline:none;border-color:var(--red);box-shadow:0 0 0 3px rgba(220,38,38,.1)}
+.bloq-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:8px}
+.bloq-cancel{font-size:12px;padding:6px 12px;border-radius:8px;border:1px solid var(--line);background:#fff;font-weight:500}
+.bloq-confirm{font-size:12px;padding:6px 12px;border-radius:8px;background:var(--red);color:#fff;font-weight:600}
+
+/* Comments */
+.cm-section{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--fg-mute);margin-bottom:10px}
+.cm-pinned{background:#fef2f2;border:1px solid #fecaca;border-radius:10px;padding:10px 12px;margin-bottom:12px}
+.cm-pinned-head{font-size:10px;font-weight:700;color:#991b1b;margin-bottom:2px}
+.cm-pinned-text{font-size:13px;color:#7f1d1d}
+.cm-pinned-meta{font-size:10px;color:#b45309;margin-top:4px}
+.cm-input-row{display:flex;gap:8px;margin-bottom:14px}
+.cm-input{flex:1;border:1px solid var(--line);border-radius:10px;padding:8px 14px;font-size:13px;font-family:inherit;background:#fff}
+.cm-input:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(37,170,225,.12)}
+.cm-send{background:var(--display);color:#fff;padding:0 14px;border-radius:10px;font-size:14px;display:flex;align-items:center;transition:background .12s}
+.cm-send:hover{background:#2d3748}
+.cm-item{display:flex;gap:8px;margin-bottom:12px}
+.cm-av{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#fff;flex-shrink:0}
+.cm-av.eq-contab{background:#25AAE1}.cm-av.eq-impuestos{background:#d97706}.cm-av.eq-cliente{background:var(--green)}.cm-av.eq-dgii{background:#6b7280}
+.cm-body{flex:1;min-width:0}
+.cm-bubble{background:#fff;border:1px solid var(--line);border-radius:10px;padding:10px 12px;font-size:13px}
+.cm-head{display:flex;align-items:baseline;justify-content:space-between;gap:8px;margin-bottom:2px}
+.cm-head b{font-size:12.5px;color:var(--display)}
+.cm-time{font-size:10px;color:var(--fg-mute);flex-shrink:0}
+.cm-actions{display:flex;gap:10px;margin-top:4px}
+.cm-act{font-size:10px;color:var(--fg-mute);cursor:pointer;background:none;border:none;padding:0;font-family:inherit}
+.cm-act:hover{color:var(--fg)}
+.cm-act-del:hover{color:var(--red)}
+.cm-empty{font-size:13px;color:var(--fg-mute)}
+
+/* Edit textarea in comments */
+.cm-edit{width:100%;border:1px solid var(--line);border-radius:8px;padding:8px 10px;font-size:13px;font-family:inherit;resize:vertical}
+.cm-edit:focus{outline:none;border-color:var(--accent)}
+.cm-edit-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:6px}
+/* ── M3: Lista / Cronograma / Vistas ──────────────────────────────────── */
+.mo-select-on{border-color:var(--accent);color:var(--side-act-fg);font-weight:600}
+.lst-wrap,.cal-wrap{max-width:1040px}
+.lst{width:100%;border-collapse:collapse;font-size:13px;background:#fff;border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.lst thead th{text-align:left;font-size:10.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--fg-mute);font-weight:700;padding:10px 14px;border-bottom:1px solid var(--line);background:var(--line-soft)}
+.lst td{padding:11px 14px;border-bottom:1px solid var(--line-soft);vertical-align:middle}
+.lst tbody tr:last-child td{border-bottom:none}
+.lst-row{cursor:pointer;transition:background .12s}
+.lst-row:hover{background:var(--hover-bg)}
+.lst-cli{font-weight:600;color:var(--display)}
+.lst-mut{color:var(--fg-mute)}
+.prog{display:inline-block;width:84px;height:6px;border-radius:3px;background:var(--line);overflow:hidden;vertical-align:middle}
+.prog-bar{display:block;height:100%;background:var(--accent);border-radius:3px}
+.lst-pct{font-size:11px;color:var(--fg-mute);margin-left:8px}
+.lst-late{color:var(--red);font-weight:600}.lst-soon{color:var(--amber);font-weight:600}.lst-ok{color:var(--green);font-weight:700}
+.chip{display:inline-block;font-size:11px;font-weight:600;padding:2px 8px;border-radius:6px}
+.chip-amber{background:#fef3c7;color:#92400e}.chip-red{background:#fee2e2;color:#991b1b}.chip-wf{background:var(--side-act);color:var(--side-act-fg)}
+.eq-dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:7px;vertical-align:middle}
+.eq-dot.eq-contab{background:#25AAE1}.eq-dot.eq-impuestos{background:#d97706}.eq-dot.eq-cliente{background:#059669}.eq-dot.eq-dgii{background:#64748b}
+.vista-head{display:flex;align-items:baseline;gap:12px;margin-bottom:14px}
+.vista-title{font-size:18px;font-weight:700;color:var(--display);margin:0;letter-spacing:-0.01em}
+.vista-count{font-size:12px;color:var(--fg-mute)}
+.cal-sub{font-size:12.5px;color:var(--fg-mute);margin-bottom:16px}
+.cal-row{display:flex;gap:14px;align-items:flex-start;background:#fff;border:1px solid var(--line);border-left-width:4px;border-radius:12px;padding:14px 16px;margin-bottom:10px}
+.cal-row.cal-late{border-left-color:var(--red)}.cal-row.cal-soon{border-left-color:var(--amber)}.cal-row.cal-ok{border-left-color:var(--green)}
+.cal-date{text-align:center;min-width:48px}
+.cal-day{font-size:23px;font-weight:700;color:var(--display);line-height:1}
+.cal-mon{font-size:11px;text-transform:uppercase;color:var(--fg-mute);margin-top:2px}
+.cal-wf{font-weight:600;color:var(--display);margin-bottom:5px;font-size:14px}
+.cal-state{font-size:11px;font-weight:600;color:var(--fg-mute);margin-left:8px;text-transform:uppercase;letter-spacing:.04em}
+.cal-pend{font-size:12.5px;color:var(--fg-mute);line-height:1.9}
+.cal-cli{font-size:12px;font-weight:600;color:var(--side-act-fg);background:var(--side-act);border-radius:6px;padding:3px 9px;margin:0 5px 4px 0;display:inline-block;cursor:pointer}
+.cal-cli:hover{filter:brightness(.96)}
+/* equipo backgrounds */
+.eq-bg-contab{background:#25AAE1}.eq-bg-impuestos{background:#d97706}.eq-bg-cliente{background:#059669}.eq-bg-dgii{background:#64748b}
+/* Matriz */
+.mx-wrap{max-width:100%;overflow-x:auto}
+.mx{border-collapse:separate;border-spacing:0;font-size:13px;background:#fff;border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.mx th{font-size:10.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--fg-mute);font-weight:700;padding:11px 12px;background:var(--line-soft);border-bottom:1px solid var(--line);text-align:center}
+.mx th.mx-cli-h{text-align:left}
+.mx td{padding:8px 10px;border-bottom:1px solid var(--line-soft);text-align:center}
+.mx tbody tr:last-child td{border-bottom:none}
+.mx-cli{text-align:left;font-weight:600;color:var(--display);white-space:nowrap}
+.mx-sub{font-size:11px;color:var(--fg-mute);font-weight:400;margin-top:1px}
+.mx-cell{cursor:pointer}
+.mx-cell:hover{background:var(--hover-bg)}
+.mx-pill{display:inline-flex;align-items:center;justify-content:center;min-width:40px;padding:3px 8px;border-radius:7px;color:#fff;font-size:11px;font-weight:700;opacity:.94}
+.mx-done{background:var(--green)}
+.mx-flag{margin-left:5px;font-size:11px;vertical-align:middle}
+.mx-late{color:var(--red)}.mx-soon{color:var(--amber)}
+/* Gantt */
+.gt-wrap{max-width:1060px}
+.gt-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:10px}
+.gt-title{font-size:16px;font-weight:700;color:var(--display)}
+.gt-legend{display:flex;gap:14px;font-size:11px;color:var(--fg-mute)}
+.gt-lg{display:flex;align-items:center;gap:5px}
+.gt-dot{width:10px;height:10px;border-radius:3px;display:inline-block}
+.gt-row{display:flex;align-items:center;gap:12px;padding:9px 14px;border:1px solid var(--line);border-radius:10px;margin-bottom:8px;cursor:pointer;background:#fff;transition:background .12s}
+.gt-row:hover{background:var(--hover-bg)}
+.gt-row-late{border-left:3px solid var(--red)}
+.gt-name{width:160px;flex-shrink:0;font-weight:600;color:var(--display);font-size:13px}
+.gt-sub{font-size:11px;color:var(--fg-mute);font-weight:400;margin-top:1px}
+.gt-track{flex:1;display:flex;gap:3px;height:20px}
+.gt-seg{flex:1;border-radius:3px}
+.gt-done{opacity:1}
+.gt-cur{opacity:1;outline:2px solid var(--display);outline-offset:-2px}
+.gt-pend{opacity:.2}
+.gt-status{width:96px;flex-shrink:0;text-align:right;font-size:12px}
+/* Gantt-calendario */
+.gc-wrap{min-width:720px}
+.gc-sub{font-size:12.5px;color:var(--fg-mute);margin-bottom:14px}
+.gc-head{display:flex;align-items:stretch;margin-bottom:2px}
+.gc-gutter{width:128px;flex-shrink:0}
+.gc-axis{flex:1;display:flex;border-bottom:1px solid var(--line)}
+.gc-day{flex:1;text-align:center;font-size:9.5px;color:var(--fg-mute);padding:3px 0;border-left:1px solid var(--line-soft);white-space:nowrap;overflow:hidden}
+.gc-we{background:var(--line-soft)}
+.gc-today{background:#e0f2fb;color:var(--accent-dk);font-weight:700}
+.gc-row{display:flex;align-items:center;height:42px;border-bottom:1px solid var(--line-soft);cursor:pointer}
+.gc-row:hover{background:var(--hover-bg)}
+.gc-row-lbl{font-size:13px;font-weight:600;color:var(--display);padding-right:8px}
+.gc-row-sub{display:block;font-size:10px;color:var(--fg-mute);font-weight:400}
+.gc-track{flex:1;position:relative;height:100%;border-left:1px solid var(--line-soft)}
+.gc-today-line{position:absolute;top:0;bottom:0;width:2px;background:var(--accent);opacity:.45;z-index:1}
+.gc-bar{position:absolute;top:10px;height:22px;border-radius:6px;display:flex;align-items:center;padding:0 9px;color:#fff;font-size:11px;font-weight:600;white-space:nowrap;box-shadow:0 1px 2px rgba(0,0,0,.12);z-index:2}
+.gc-bar-ok{background:var(--accent)}.gc-bar-soon{background:var(--amber)}.gc-bar-late{background:var(--red)}
+/* Lista estilo Asana */
+.as-toolbar{display:flex;align-items:center;gap:8px;margin-bottom:12px;justify-content:flex-end}
+.as-tb-lbl{font-size:12px;color:var(--fg-mute)}
+.as-sel{border:1px solid var(--line);border-radius:8px;padding:5px 10px;font-size:12px;color:var(--fg);background:#fff;cursor:pointer;font-weight:500}
+.as-sel:focus{outline:none;border-color:var(--accent)}
+.as-list{background:#fff;border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.as-head,.as-row{display:grid;grid-template-columns:minmax(220px,2.2fr) 1.3fr .9fr 1.4fr 1fr;align-items:center;gap:12px;padding:10px 16px}
+.as-head{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--fg-mute);font-weight:700;border-bottom:1px solid var(--line);background:var(--line-soft)}
+.as-grp-head{display:flex;align-items:center;gap:8px;padding:9px 16px;cursor:pointer;border-bottom:1px solid var(--line-soft);background:#fcfcfd}
+.as-grp-head:hover{background:var(--hover-bg)}
+.as-caret{font-size:10px;color:var(--fg-mute);width:12px}
+.as-grp-name{font-weight:700;color:var(--display);font-size:13px}
+.as-grp-count{font-size:11px;color:var(--fg-mute);background:var(--line);border-radius:10px;padding:1px 8px}
+.as-row{border-bottom:1px solid var(--line-soft);cursor:pointer;font-size:13px;transition:background .12s}
+.as-row:hover{background:var(--hover-bg)}
+.as-col-name{display:flex;align-items:center;gap:8px;color:var(--display);min-width:0}
+.as-col-name b{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.as-check{color:var(--line);font-size:14px;flex-shrink:0}
+.as-wf{font-size:11px;color:var(--fg-mute);font-weight:500}
+.as-col-asg{display:flex;align-items:center;gap:8px;color:var(--fg-mute);min-width:0}
+.as-av{width:24px;height:24px;border-radius:50%;background:var(--mark-bg);color:#fff;display:inline-flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;flex-shrink:0}
+.as-tag{display:inline-block;font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px;white-space:nowrap}
+.as-eqt-contab{background:#e0f2fb;color:#1B87B8}.as-eqt-impuestos{background:#fef3c7;color:#b45309}.as-eqt-cliente{background:#d1fae5;color:#047857}.as-eqt-dgii{background:#e2e8f0;color:#475569}
+.as-tag-green{background:#d1fae5;color:#047857}.as-tag-red{background:#fee2e2;color:#b91c1c}.as-tag-amber{background:#fef3c7;color:#b45309}.as-tag-gray{background:#f1f5f9;color:#64748b}
+.as-stage{font-size:11px;color:var(--fg-mute);margin-left:6px}
+/* Comentarios: avatar + tag de departamento */
+.cm-av.eq-admin{background:#28368D}.cm-av.eq-implementacion{background:#059669}.cm-av.eq-comercial{background:#7c3aed}.cm-av.eq-equipo{background:#64748b}
+.cm-who{display:flex;align-items:center;min-width:0}
+.cm-dept{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;padding:1px 6px;border-radius:5px;margin-left:6px;white-space:nowrap}
+.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(20px);background:#1f2630;color:#fff;font-size:13px;font-weight:500;padding:10px 18px;border-radius:10px;box-shadow:0 6px 24px rgba(0,0,0,.25);opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;z-index:100;max-width:92vw}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+.toast.toast-err{background:#b91c1c}
+.mo-refresh{border:1px solid var(--line);border-radius:8px;width:30px;height:30px;font-size:15px;color:var(--fg-mute);background:#fff;cursor:pointer;flex-shrink:0}
+.mo-refresh:hover{background:var(--hover-bg);color:var(--accent-dk)}
+/* M4 · Tablero libre */
+.tl-board{display:flex;gap:12px;align-items:flex-start;min-width:max-content;padding-bottom:8px}
+.tl-col{width:280px;flex-shrink:0;background:var(--line-soft);border:1px solid var(--line);border-radius:12px;display:flex;flex-direction:column;max-height:calc(100vh - 230px)}
+.tl-col-head{display:flex;align-items:center;gap:6px;padding:10px 12px 6px}
+.tl-col-title{flex:1;border:1px solid transparent;border-radius:6px;padding:3px 6px;font-size:13px;font-weight:700;color:var(--display);background:transparent;font-family:inherit}
+.tl-col-title:hover{border-color:var(--line)}.tl-col-title:focus{outline:none;border-color:var(--accent);background:#fff}
+.tl-col-count{font-size:11px;color:var(--fg-mute);background:var(--line);border-radius:10px;padding:1px 7px}
+.tl-col-del{color:var(--fg-mute);font-size:16px;line-height:1;width:20px;border-radius:6px}
+.tl-col-del:hover{background:#fee2e2;color:#b91c1c}
+.tl-col-body{flex:1;overflow-y:auto;padding:4px 8px;display:flex;flex-direction:column;gap:7px;min-height:40px}
+.tl-empty{text-align:center;color:var(--line);font-size:12px;padding:8px}
+.tl-card{background:#fff;border:1px solid var(--line);border-radius:9px;padding:9px 11px;cursor:pointer;box-shadow:0 1px 2px rgba(0,0,0,.04)}
+.tl-card:hover{border-color:var(--accent)}
+.tl-card-title{font-size:13px;color:var(--display);line-height:1.35}
+.tl-card-meta{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:7px}
+.tl-etq{font-size:10px;font-weight:700;padding:1px 8px;border-radius:20px}
+.etq-contab{background:#e0f2fb;color:#1B87B8}.etq-imp{background:#fef3c7;color:#b45309}.etq-impl{background:#d1fae5;color:#047857}.etq-com{background:#ede9fe;color:#6d28d9}.etq-adm{background:#e8eaf6;color:#28368D}
+.etq-importante{background:#fee2e2;color:#b91c1c}.etq-urgente{background:#ffedd5;color:#c2410c}.etq-nourg{background:#f1f5f9;color:#475569}.etq-noimp{background:#f8fafc;color:#94a3b8}
+.tl-cli{font-size:11px;font-weight:600;color:#1B87B8;background:#e0f2fb;border-radius:6px;padding:1px 7px}
+.tl-due{font-size:11px;color:var(--fg-mute);font-weight:600}.tl-due-late{color:#b91c1c}
+.tl-av{width:22px;height:22px;border-radius:50%;background:var(--mark-bg);color:#fff;display:inline-flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;margin-left:auto}
+.tl-add-btn{margin:4px 8px 10px;border:1px solid transparent;border-radius:7px;padding:7px 10px;font-size:12.5px;font-weight:600;color:var(--fg-mute);background:transparent;cursor:pointer;text-align:left}
+.tl-add-btn:hover{background:#fff;border-color:var(--line);color:var(--accent-dk)}
+/* modal tarea libre */
+.lm-overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:60;display:flex;align-items:center;justify-content:center;padding:16px}
+.lm-modal{background:#fff;border-radius:16px;width:100%;max-width:540px;max-height:88vh;overflow:auto;box-shadow:0 12px 40px rgba(0,0,0,.25)}
+.lm-head{display:flex;align-items:flex-start;gap:10px;padding:16px 18px 8px}
+.lm-title{flex:1;border:1px solid transparent;border-radius:8px;padding:6px 8px;font-size:17px;font-weight:700;color:var(--display);font-family:inherit}
+.lm-title:hover{border-color:var(--line)}.lm-title:focus{outline:none;border-color:var(--accent)}
+.lm-x{font-size:24px;color:var(--fg-mute);line-height:1}
+.lm-body{padding:4px 18px 8px}
+.lm-lbl{display:block;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--fg-mute);font-weight:700;margin:10px 0 4px}
+.lm-area,.lm-sel{width:100%;border:1px solid var(--line);border-radius:8px;padding:8px 10px;font-size:13px;font-family:inherit;color:var(--fg);background:#fff}
+.lm-area:focus,.lm-sel:focus{outline:none;border-color:var(--accent)}
+.lm-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px 14px}
+.lm-foot{display:flex;justify-content:space-between;padding:12px 18px 18px;border-top:1px solid var(--line);margin-top:8px}
+.lm-del{color:#b91c1c;font-size:13px;font-weight:600;padding:8px 12px;border-radius:8px}
+.lm-del:hover{background:#fee2e2}
+.lm-save{background:var(--display);color:#fff;font-size:13px;font-weight:600;padding:8px 18px;border-radius:8px}
+.tl-col-add{flex-shrink:0;width:200px;border:1.5px dashed var(--line);border-radius:12px;padding:12px;color:var(--fg-mute);font-size:13px;font-weight:600;background:transparent;cursor:pointer;align-self:stretch}
+.tl-col-add:hover{border-color:var(--accent);color:var(--accent-dk)}
+.cm-dept.eq-admin{background:#e8eaf6;color:#28368D}.cm-dept.eq-contab{background:#e0f2fb;color:#1B87B8}.cm-dept.eq-impuestos{background:#fef3c7;color:#b45309}.cm-dept.eq-implementacion{background:#d1fae5;color:#047857}.cm-dept.eq-comercial{background:#ede9fe;color:#6d28d9}.cm-dept.eq-equipo{background:#f1f5f9;color:#475569}.cm-dept.eq-cliente{background:#d1fae5;color:#047857}.cm-dept.eq-dgii{background:#e2e8f0;color:#475569}
+</style>
+</head>
+<body>
+<div class="sh">
+  <span id="userchip" style="display:none"></span><span id="useravatar" style="display:none"></span>
+<!-- ── Main ─────────────────────────────────────────────────────────── -->
+  <div class="main">
+    <div class="page-wrap">
+      <div class="page-head">
+        <div>
+          <div class="page-eye">Gestión</div>
+          <h1 class="page-h1">Tareas</h1>
+        </div>
+      </div>
+      <div class="tabs-bar" id="subtabs"></div>
+      <div class="ctrl-bar" id="navbar"></div>
+      <div class="kb-scroll" id="center"></div>
+    </div>
+  </div>
+</div>
+<div id="modal"></div>
+<div id="toast" class="toast"></div>
+
+<script>
+// ── Icons ─────────────────────────────────────────────────────────────
+const ICO_PATHS={
+  msg:'<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>',
+  check:'<polyline points="20 6 9 17 4 12"/>',
+  send:'<line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>'
+};
+function ico(name,size){size=size||14;return '<svg class="ic" viewBox="0 0 24 24" width="'+size+'" height="'+size+'">'+(ICO_PATHS[name]||'')+'</svg>';}
+
+// ── Supabase ──────────────────────────────────────────────────────────
+const SUPABASE_URL='https://ouetusstqvpyjeycfdio.supabase.co';
+const SUPABASE_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im91ZXR1c3N0cXZweWpleWNmZGlvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY2NDcwNzksImV4cCI6MjA5MjIyMzA3OX0.Bsys947JLGEuf3zdBF2GPFdbJVJtaZdC4YEmyBU5Bow';
+const sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
+
+const MESES=['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+function mesPresentacion(){const d=new Date();let mi=d.getMonth(),y=d.getFullYear();if(d.getDate()<24){mi-=1;if(mi<0){mi=11;y-=1;}}return{mes:MESES[mi],anio:y};}
+const _mp=mesPresentacion();
+let ANIO=_mp.anio, MES=_mp.mes;
+let FILTRO='mio', FILTRO_SET=false;
+const EQ_LABEL={contab:'Contabilidad',impuestos:'Impuestos',cliente:'Cliente',dgii:'DGII'};
+// Departamento del autor de un comentario (por su rol en el portal)
+const DEPTS={admin:'Administración',contab:'Contabilidad',impuestos:'Impuestos',implementacion:'Implementación',comercial:'Comercial',cliente:'Cliente',dgii:'DGII',equipo:'Equipo'};
+function deptKey(rol){return rol==='admin'?'admin':rol==='contadora'?'contab':rol==='analista'?'impuestos':rol==='implementadora'?'implementacion':rol==='ventas'?'comercial':'equipo';}
+
+// ── State ─────────────────────────────────────────────────────────────
+let WF={orden:[],wf:{},etapas:{},tareas:{}};
+let CLIENTES=[];
+let CONTAB_DATA={}, IMP_MAP={}, COMENTS={}, ESTADO={};
+let USER={id:null,nombre:'',rol:'',equipo:'contab'};
+let DB_OK=false;
+let SUB='wf', TAX=null, VIEW='kanban', SEL=null, VISTA='', GROUPBY='impuesto', PERSONA='';
+// M4 · Tareas libres
+let LIBRE_COLS=[], LIBRE_TASKS=[], LIBRE_FILTRO='todas', LIBRE_SEL=null, LIBRE_DRAG=null, LIBRE_COLDRAG=null, LIBRE_DRAFT=null;
+// Dos etiquetas independientes: Tipo de tarea (área) e Importancia
+const AREAS=['Contabilidad','Impuestos','Implementación','Comercial','Administrativo'];
+const IMPORTANCIAS=['Importante','Urgente','No urgente','No importante'];
+const ETQ_CLS={'Contabilidad':'etq-contab','Impuestos':'etq-imp','Implementación':'etq-impl','Comercial':'etq-com','Administrativo':'etq-adm','Importante':'etq-importante','Urgente':'etq-urgente','No urgente':'etq-nourg','No importante':'etq-noimp'};
+const COLAPSADO={};
+const VISTAS=[['esperando','⏳ Esperando cliente'],['midia','📌 Mi día'],['vencen','⏰ Vencen pronto'],['bloqueados','⛔ Bloqueados'],['atrasados','🔴 Atrasados']];
+const VIEWS=[['kanban','Kanban'],['lista','Lista'],['gantt','Gantt']];
+// Calendario OFICIAL DGII/TSS 2026 (copiado de portal-admin.html). {mes_trabajo: {impuesto:{m,d}}}
+const CAL_DGII={0:{ir3:{m:1,d:10},ir17:{m:1,d:10},anticipo:{m:1,d:16},itbis:{m:1,d:20}},1:{ir3:{m:2,d:10},ir17:{m:2,d:10},anticipo:{m:2,d:16},itbis:{m:2,d:20}},2:{ir3:{m:3,d:10},ir17:{m:3,d:10},anticipo:{m:3,d:15},itbis:{m:3,d:20}},3:{ir3:{m:4,d:8},ir17:{m:4,d:8},anticipo:{m:4,d:15},itbis:{m:4,d:20}},4:{ir3:{m:5,d:10},ir17:{m:5,d:10},anticipo:{m:5,d:15},itbis:{m:5,d:22}},5:{ir3:{m:6,d:10},ir17:{m:6,d:10},anticipo:{m:6,d:15},itbis:{m:6,d:20}},6:{ir3:{m:7,d:10},ir17:{m:7,d:10},anticipo:{m:7,d:15},itbis:{m:7,d:20}},7:{ir3:{m:8,d:10},ir17:{m:8,d:10},anticipo:{m:8,d:15},itbis:{m:8,d:21}},8:{ir3:{m:9,d:9},ir17:{m:9,d:9},anticipo:{m:9,d:15},itbis:{m:9,d:20}},9:{ir3:{m:10,d:10},ir17:{m:10,d:10},anticipo:{m:10,d:15},itbis:{m:10,d:20}},10:{ir3:{m:11,d:10},ir17:{m:11,d:10},anticipo:{m:11,d:15},itbis:{m:11,d:21}},11:{ir3:{m:0,d:11},ir17:{m:0,d:11},anticipo:{m:0,d:15},itbis:{m:0,d:20}}};
+const CAL_TSS={0:{m:1,d:4},1:{m:2,d:4},2:{m:3,d:6},3:{m:4,d:6},4:{m:5,d:3},5:{m:6,d:3},6:{m:7,d:5},7:{m:8,d:3},8:{m:9,d:5},9:{m:10,d:4},10:{m:11,d:3},11:{m:0,d:7}};
+const CALKEY={'IR-3':'ir3','IR-17':'ir17','Anticipo':'anticipo','ITBIS':'itbis'};
+
+// ── Seed data ─────────────────────────────────────────────────────────
+const SEED_WF={
+  orden:['TSS','IR-3','IR-17','Anticipo','ITBIS'],
+  wf:{'TSS':'TSS','IR-3':'IR-3','IR-17':'IR-17','Anticipo':'Anticipo','ITBIS':'ITBIS'},
+  etapas:{
+    'TSS':[{id:'tss_nomina',label:'Nómina',equipo:'contab'},{id:'tss_autorizacion',label:'Autorización',equipo:'contab'},{id:'tss_declaracion',label:'Declaración',equipo:'impuestos'},{id:'tss_cliente',label:'Aprobación cliente',equipo:'cliente'},{id:'tss_pago',label:'Pago',equipo:'dgii'}],
+    'IR-3':[{id:'ir3_autorizacion',label:'Autorización',equipo:'contab'},{id:'ir3_declaracion',label:'Declaración',equipo:'impuestos'},{id:'ir3_pago',label:'Aprobación y pago',equipo:'dgii'}],
+    'IR-17':[{id:'ir17_proveedores',label:'Proveedores',equipo:'contab'},{id:'ir17_borrador',label:'Borrador',equipo:'contab'},{id:'ir17_declaracion',label:'Declaración',equipo:'impuestos'},{id:'ir17_cliente',label:'Aprobación cliente',equipo:'cliente'},{id:'ir17_pago',label:'Pago',equipo:'dgii'}],
+    'Anticipo':[{id:'ant_autorizacion',label:'Autorización',equipo:'contab'},{id:'ant_cliente',label:'Cliente',equipo:'cliente'},{id:'ant_pago',label:'Pago',equipo:'dgii'}],
+    'ITBIS':[{id:'itbis_facturas',label:'Facturas',equipo:'contab'},{id:'itbis_borrador',label:'Borrador y autorización',equipo:'contab'},{id:'itbis_declaracion',label:'Declaración',equipo:'impuestos'},{id:'itbis_cliente',label:'Aprobación cliente',equipo:'cliente'},{id:'itbis_pago',label:'Pago',equipo:'dgii'}]
+  },
+  tareas:{
+    'tss_nomina':[t('contadores','solicitud_nomina','Solicitud de Nómina'),t('contadores','recepcion_nomina','Recepción de Nómina'),t('contadores','registro_nomina','Registro de Nómina'),t('contadores','informar_impuestos','Informar a Impuestos')],
+    'tss_autorizacion':[t('contadores','autorizacion_tss','Subir autorización TSS')],
+    'tss_declaracion':[t('impuestos','presentada_contadora','Presentada por contadora'),t('impuestos','borrador_devuelto','Nómina devuelta'),t('impuestos','borrador_recibido_corregido','Nómina recibida corregida'),t('impuestos','aprobada_impuestos','Aprobada por Impuestos')],
+    'tss_cliente':[t('impuestos','aprobado_cliente','Aprobado por cliente')],
+    'tss_pago':[t('impuestos','pagado','Pagado')],
+    'ir3_autorizacion':[t('contadores','autorizacion_ir3','Subir autorización IR-3')],
+    'ir3_declaracion':[t('impuestos','presentada_contadora','Presentada por contadora'),t('impuestos','aprobada_impuestos','Aprobada por Impuestos')],
+    'ir3_pago':[t('impuestos','aprobado_cliente','Aprobado por cliente'),t('impuestos','pagado','Pagado')],
+    'ir17_proveedores':[t('contadores','solicitar_proveedores','Solicitar Proveedores'),t('contadores','recepcion_proveedores','Recepción Proveedores'),t('contadores','registrar_proveedores','Registrar gastos')],
+    'ir17_borrador':[t('contadores','borrador_ir17','Borrador IR-17'),t('contadores','enviar_ir17','Enviar al cliente'),t('contadores','notificacion_ir17','Subir autorización IR-17')],
+    'ir17_declaracion':[t('impuestos','borrador_presentado','Borrador presentado'),t('impuestos','borrador_devuelto','Borrador devuelto'),t('impuestos','borrador_recibido_corregido','Borrador corregido'),t('impuestos','aprobada_impuestos','Aprobada por Impuestos')],
+    'ir17_cliente':[t('impuestos','aprobado_cliente','Aprobado por cliente')],
+    'ir17_pago':[t('impuestos','pagado','Pagado')],
+    'ant_autorizacion':[t('contadores','autorizacion_anticipo','Subir autorización Anticipo')],
+    'ant_cliente':[t('impuestos','autorizacion_enviada','Autorización enviada')],
+    'ant_pago':[t('impuestos','anticipo_pagado','Anticipo pagado')],
+    'itbis_facturas':[t('contadores','verificar_facturas','Verificar facturas'),t('contadores','solicitar_facturas','Solicitar/confirmar facturas'),t('contadores','facturas_registradas','Facturas registradas')],
+    'itbis_borrador':[t('contadores','borrador_itbis','Borrador ITBIS'),t('contadores','enviar_itbis','Subir autorización ITBIS')],
+    'itbis_declaracion':[t('impuestos','pago_a_cuenta','¿Solicitar pago a cuenta?'),t('impuestos','borrador_presentado','Borrador presentado'),t('impuestos','borrador_devuelto','Borrador devuelto'),t('impuestos','borrador_recibido_corregido','Borrador corregido'),t('impuestos','aprobada_impuestos','Aprobada por Impuestos')],
+    'itbis_cliente':[t('impuestos','aprobado_cliente','Aprobado por cliente')],
+    'itbis_pago':[t('impuestos','pagado','Pagado')]
+  }
+};
+function t(origen,id,label){return{checklist_origen:origen,tarea_id:id,label:label};}
+const SEED_CLIENTES=[{nombre:'Audiobap',contadora:'Beliani',respContab:true},{nombre:'Igsan',contadora:'Yessica',respContab:true},{nombre:'Fleximoney',contadora:'Beliani',respContab:true},{nombre:'Nomad',contadora:'Victoria',respContab:true},{nombre:'Polux',contadora:'Yessica',respContab:true},{nombre:'Grupisa',contadora:'Victoria',respContab:true},{nombre:'CLC',contadora:'Beliani',respContab:true},{nombre:'Suplident',contadora:'Yessica',respContab:true}];
+
+// ── Load ──────────────────────────────────────────────────────────────
+async function loadAll(){
+  try{
+    const {data:{user}}=await sb.auth.getUser();
+    if(user){USER.id=user.id;const {data:p}=await sb.from('profiles').select('nombre,rol').eq('id',user.id).single();if(p){USER.nombre=p.nombre||user.email;USER.rol=p.rol;USER.equipo=deptKey(p.rol);}}
+  }catch(e){}
+  if(!FILTRO_SET){FILTRO=(USER.rol==='admin'||!USER.nombre)?'todos':'mio';FILTRO_SET=true;}
+  try{
+    const [wfR,etR,tkR]=await Promise.all([sb.from('wf_workflows').select('*').eq('activo',true).order('orden'),sb.from('wf_etapas').select('*').order('orden'),sb.from('wf_etapa_tareas').select('*').order('orden')]);
+    if(!wfR.error&&wfR.data&&wfR.data.length){DB_OK=true;WF={orden:[],wf:{},etapas:{},tareas:{}};wfR.data.forEach(w=>{WF.orden.push(w.id);WF.wf[w.id]=w.label;WF.etapas[w.id]=[];});(etR.data||[]).forEach(e=>{(WF.etapas[e.workflow_id]=WF.etapas[e.workflow_id]||[]).push(e);WF.tareas[e.id]=[];});(tkR.data||[]).forEach(tk=>{(WF.tareas[tk.etapa_id]=WF.tareas[tk.etapa_id]||[]).push(tk);});}
+  }catch(e){}
+  if(!DB_OK){WF=JSON.parse(JSON.stringify(SEED_WF));}
+  TAX=TAX||WF.orden[0];
+  try{const {data,error}=await sb.from('clientes').select('nombre,contadora_contabilidad,responsabilidad_contabilidad,activo');if(!error&&data&&data.length){CLIENTES=data.filter(c=>c.activo!==false&&c.responsabilidad_contabilidad===true).map(c=>({nombre:c.nombre,contadora:c.contadora_contabilidad||'Sin asignar',respContab:true})).sort((a,b)=>a.nombre.localeCompare(b.nombre));}}catch(e){}
+  if(!CLIENTES.length) CLIENTES=SEED_CLIENTES.slice();
+  await loadChecklists();
+  await loadLibre();
+}
+
+// ── Derivation ────────────────────────────────────────────────────────
+function contadoraDe(cli){const c=CLIENTES.find(x=>x.nombre===cli);return c?c.contadora:'Sin asignar';}
+// esMio = lo que valida la RLS de checklist_contadores: profiles.nombre ILIKE contadora||'%'
+// (el nombre del usuario EMPIEZA con el de la contadora). Anclado al inicio → sin falsos
+// positivos por substring (antes "Ana" calzaba con "Mariana").
+function esMio(c){if(!USER.nombre||!c.contadora)return false;const a=c.contadora.trim().toLowerCase(),u=USER.nombre.trim().toLowerCase();return !!a&&(u===a||u.startsWith(a+' ')||u.startsWith(a));}
+// Rol del equipo de impuestos: tolera ambos vocabularios (analista viejo / impuestos nuevo).
+function esImpuestos(){const r=(USER.rol||'').toLowerCase();return r==='analista'||r==='impuestos';}
+function puedeMarcar(cli,origen){
+  if(USER.rol==='admin')return true;
+  if(!USER.id)return !DB_OK;                                    // demo local sin sesión
+  if(origen==='contadores')return esMio({contadora:contadoraDe(cli)}); // por nombre = igual que la RLS (no por rol)
+  if(origen==='impuestos')return esImpuestos();
+  return false;
+}
+function tareaFecha(cli,wfId,tk){if(tk.checklist_origen==='contadores'){const d=CONTAB_DATA[contadoraDe(cli)+'_'+cli+'_'+MES];if(!d)return null;const it=d.datos&&d.datos[tk.tarea_id];return(it&&it.done===true)?(it.fecha||'✓'):null;}else{const r=IMP_MAP[cli+'||'+MES+'||'+wfId];if(!r)return null;const it=r.datos&&r.datos[tk.tarea_id];return(it&&it.done===true)?(it.fecha||'✓'):null;}}
+function tareaPor(cli,wfId,tk){const d=tk.checklist_origen==='contadores'?CONTAB_DATA[contadoraDe(cli)+'_'+cli+'_'+MES]:IMP_MAP[cli+'||'+MES+'||'+wfId];const it=d&&d.datos&&d.datos[tk.tarea_id];return(it&&it.por)||'';}
+// El PAGO manda: si la tarea de pago final está hecha, el trabajo cuenta como
+// completado aunque queden tareas sin marcar (ya se pagó — no hay nada más que hacer).
+const PAGO_FINAL_IDS=['pagado','anticipo_pagado'];
+function jobState(cli,wfId){const etapas=WF.etapas[wfId]||[];let totalDone=0,totalTasks=0,pagado=false;const doneMap={};etapas.forEach(e=>{const tks=WF.tareas[e.id]||[];let ed=0;tks.forEach(tk=>{totalTasks++;const f=tareaFecha(cli,wfId,tk);if(f){ed++;totalDone++;(doneMap[e.id]=doneMap[e.id]||{})[tk.tarea_id]=f;if(PAGO_FINAL_IDS.includes(tk.tarea_id))pagado=true;}});e._done=ed;e._total=tks.length;});let idx=etapas.findIndex(e=>e._done<e._total);if(idx===-1||pagado)idx=etapas.length;return{etapas,idx,totalDone,totalTasks,doneMap,pagado};}
+function jkey(cli){return cli+'||'+MES+'||'+ANIO+'||'+TAX;}
+
+// ── Render ────────────────────────────────────────────────────────────
+function render(){
+  // User info
+  const uName=USER.nombre?USER.nombre:(DB_OK?'':'Vista local');
+  const uInit=USER.nombre?USER.nombre.slice(0,2).toUpperCase():'··';
+  const setTxt=(id,v)=>{const el=document.getElementById(id);if(el)el.textContent=v;};
+  setTxt('userchip',uName);setTxt('useravatar',uInit);setTxt('topavatar',uInit);
+  const td=document.getElementById('topdate');
+  if(td){const d=new Date();td.textContent=d.toLocaleDateString('es-DO',{weekday:'long',day:'numeric',month:'long',year:'numeric'}).replace(/^\w/,c=>c.toUpperCase());}
+
+  // Subtabs
+  const subs=[['wf','Workflows'],['libre','Tareas Kanban']];
+  document.getElementById('subtabs').innerHTML=subs.map(([k,l])=>'<button onclick="SUB=\''+k+'\';SEL=null;closePanel();render()" class="sub-tab'+(SUB===k?' is-active':'')+'">'+l+'</button>').join('');
+
+  const nb=document.getElementById('navbar');
+  if(SUB==='wf'){
+    let h='<div class="pills-wrap">'+WF.orden.map(id=>'<button onclick="TAX=\''+id+'\';SEL=null;closePanel();render()" class="wf-pill'+(TAX===id?' is-active':'')+'">'+WF.wf[id]+'</button>').join('')+'</div>';
+    h+='<div class="ctrl-sep"></div>';
+    h+='<div class="view-toggle">'+VIEWS.map(([v,l])=>'<button onclick="VIEW=\''+v+'\';render()" class="vt-btn'+(VIEW===v?' is-active':'')+'">'+l+'</button>').join('')+'</div>';
+    h+='<div class="ctrl-right">';
+    if(USER.rol==='admin'){
+      const opt=p=>'<option value="'+attrEsc(p)+'"'+(PERSONA===p?' selected':'')+'>'+escHtml(p)+'</option>';
+      h+='<select onchange="PERSONA=this.value;closeCard();render()" class="mo-select'+(PERSONA?' mo-select-on':'')+'"><option value="">Equipo: Todos</option>'+
+        '<optgroup label="Contadoras">'+FILTRO_CONTADORAS.map(opt).join('')+'</optgroup>'+
+        '<optgroup label="Analistas">'+FILTRO_ANALISTAS.map(opt).join('')+'</optgroup></select>';
+    }else{
+      h+='<div class="view-toggle"><button onclick="FILTRO=\'mio\';closeCard();render()" class="vt-btn'+(FILTRO==='mio'?' is-active':'')+'">Mis clientes</button><button onclick="FILTRO=\'todos\';closeCard();render()" class="vt-btn'+(FILTRO==='todos'?' is-active':'')+'">Todos</button></div>';
+    }
+    h+='<select onchange="VISTA=this.value;render()" class="mo-select'+(VISTA?' mo-select-on':'')+'"><option value="">Vistas…</option>'+VISTAS.map(([k,l])=>'<option value="'+k+'"'+(VISTA===k?' selected':'')+'>'+l+'</option>').join('')+'</select>';
+    h+='<label class="ctrl-label">Mes:</label><select onchange="MES=this.value;closeCard();render()" class="mo-select">'+MESES.map(m=>'<option'+(m===MES?' selected':'')+'>'+m+'</option>').join('')+'</select>';
+    h+='<button onclick="refrescarDatos()" class="mo-refresh" title="Actualizar datos">↻</button></div>';
+    nb.innerHTML=h;
+    if(VIEW==='lista') renderLista();
+    else if(VIEW==='gantt') renderGantt();
+    else renderKanban();
+  }else{
+    let h='<div class="view-toggle"><button onclick="LIBRE_FILTRO=\'mias\';render()" class="vt-btn'+(LIBRE_FILTRO==='mias'?' is-active':'')+'">Mis tareas</button><button onclick="LIBRE_FILTRO=\'todas\';render()" class="vt-btn'+(LIBRE_FILTRO==='todas'?' is-active':'')+'">Todas</button></div>';
+    h+='<div class="ctrl-right"><button onclick="colAdd()" class="mo-select">+ Columna</button><button onclick="refrescarDatos()" class="mo-refresh" title="Actualizar">↻</button></div>';
+    nb.innerHTML=h;
+    renderLibre();
+  }
+}
+
+// ── M3: vencimientos, vistas guardadas, lista, cronograma ──
+function jkeyW(cli,wf){return cli+'||'+MES+'||'+ANIO+'||'+wf;}
+function hoyMid(){const d=new Date();return new Date(d.getFullYear(),d.getMonth(),d.getDate());}
+function venceInfo(wf){
+  const mi=MESES.indexOf(MES);let due=null;
+  if(wf==='TSS')due=CAL_TSS[mi];
+  else if(CALKEY[wf]&&CAL_DGII[mi])due=CAL_DGII[mi][CALKEY[wf]];
+  if(!due)return{date:null,diff:0,overdue:false,soon:false,none:true};
+  const dy=due.m<mi?ANIO+1:ANIO;const date=new Date(dy,due.m,due.d);
+  const diff=Math.round((date-hoyMid())/86400000);
+  return{date,diff,overdue:diff<0,soon:diff>=0&&diff<=3,none:false};
+}
+function fmtDia(d){return d.toLocaleDateString('es-DO',{day:'numeric',month:'short'});}
+function etapaEsMia(cli,et){const tks=WF.tareas[et.id]||[];return tks.length?puedeMarcar(cli,tks[0].checklist_origen):false;}
+function pasaVista(cli,wf){
+  const st=jobState(cli,wf),completo=st.idx>=st.etapas.length,stat=ESTADO[jkeyW(cli,wf)],vi=venceInfo(wf);
+  switch(VISTA){
+    case 'esperando':return stat==='esperando';
+    case 'bloqueados':return stat==='bloqueado';
+    case 'atrasados':return !completo&&vi.overdue;
+    case 'vencen':return !completo&&vi.soon;
+    case 'midia':return !completo&&(USER.rol==='admin'||esMio({contadora:contadoraDe(cli)}))&&etapaEsMia(cli,st.etapas[st.idx]);
+    default:return true;
+  }
+}
+// Filtro de admin: lista CURADA del equipo (la data cruda tiene duplicados e
+// inactivas — ej. "Karina"/"Karina Sánchez", Taína — hasta que se limpie la maestra).
+const FILTRO_CONTADORAS=['Beliani','Morelia','Victoria','Yessica'];
+const FILTRO_ANALISTAS=['Doriluz','Karina','Lovelace'];
+// match flexible por primer nombre ("Karina" calza con "Karina Sánchez")
+function matchPersona(nombre,p){if(!nombre)return false;const n=nombre.trim().toLowerCase(),q=p.trim().toLowerCase();return n===q||n.split(' ')[0]===q;}
+// ¿el cliente pertenece a la persona seleccionada? (contadora asignada O analista en sus filas de impuestos del mes)
+function clienteDePersona(c,p){
+  if(matchPersona(c.contadora,p))return true;
+  return WF.orden.some(wf=>{const r=IMP_MAP[c.nombre+'||'+MES+'||'+wf];return r&&matchPersona(r.contadora,p);});
+}
+function baseClientes(){
+  if(USER.rol==='admin')return PERSONA?CLIENTES.filter(c=>clienteDePersona(c,PERSONA)):CLIENTES;
+  return (FILTRO==='mio'&&USER.nombre)?CLIENTES.filter(esMio):CLIENTES;
+}
+function openJob(cli,wf){TAX=wf;SEL=cli;BLOQ_OPEN=false;renderModal();}
+function rowHTML(cli,contadora,wf,withImp){
+  const st=jobState(cli,wf),completo=st.idx>=st.etapas.length;
+  const et=completo?{label:'Completado',equipo:'cliente'}:st.etapas[st.idx];
+  const pct=st.totalTasks?Math.round(st.totalDone/st.totalTasks*100):0;
+  const stat=ESTADO[jkeyW(cli,wf)],vi=venceInfo(wf);
+  const venceTxt=completo?'<span class="lst-ok">✓</span>':(vi.none?'<span class="lst-mut">—</span>':(vi.overdue?'<span class="lst-late">vencido '+(-vi.diff)+'d</span>':(vi.soon?'<span class="lst-soon">'+(vi.diff===0?'hoy':'en '+vi.diff+'d')+'</span>':fmtDia(vi.date))));
+  const estadoTxt=stat==='esperando'?'<span class="chip chip-amber">Esperando</span>':stat==='bloqueado'?'<span class="chip chip-red">Bloqueado</span>':'<span class="lst-mut">—</span>';
+  return '<tr onclick="openJob(\''+esc(cli)+'\',\''+wf+'\')" class="lst-row">'+
+    '<td class="lst-cli">'+escHtml(cli)+'</td>'+
+    (withImp?'<td><span class="chip chip-wf">'+wf+'</span></td>':'')+
+    '<td class="lst-mut">'+escHtml(contadora)+'</td>'+
+    '<td><span class="eq-dot eq-'+et.equipo+'"></span>'+et.label+'</td>'+
+    '<td><span class="prog"><span class="prog-bar" style="width:'+pct+'%"></span></span><span class="lst-pct">'+pct+'%</span></td>'+
+    '<td>'+estadoTxt+'</td><td>'+venceTxt+'</td></tr>';
+}
+function listaTabla(rows,withImp){
+  let h='<table class="lst"><thead><tr><th>Cliente</th>'+(withImp?'<th>Impuesto</th>':'')+'<th>Contadora</th><th>Etapa actual</th><th>Avance</th><th>Estado</th><th>Vence</th></tr></thead><tbody>';
+  rows.forEach(r=>h+=rowHTML(r.cli,r.contadora,r.wf,withImp));
+  return h+'</tbody></table>';
+}
+// LISTA estilo Asana: trabajos (cliente×impuesto) en filas agrupadas, con avatar,
+// vence y tags de etapa/estado. Agrupable por impuesto/etapa/contadora/estado.
+function toggleGrp(k){COLAPSADO[k]=!COLAPSADO[k];render();}
+function grpKey(j){
+  switch(GROUPBY){
+    case 'etapa':return j.completo?'Completado':(j.et.label||'—');
+    case 'contadora':return j.contadora||'Sin asignar';
+    case 'estado':return j.completo?'Completado':(j.stat==='bloqueado'?'Bloqueado':(j.stat==='esperando'?'Esperando cliente':'En curso'));
+    default:return j.wf;
+  }
+}
+function asRow(j){
+  const av=(j.contadora||'?').slice(0,2).toUpperCase();
+  const vence=j.completo?'<span class="lst-ok">✓</span>':(j.vi.none?'<span class="lst-mut">—</span>':(j.vi.overdue?'<span class="lst-late">vencido</span>':(j.vi.soon?'<span class="lst-soon">'+(j.vi.diff===0?'hoy':'en '+j.vi.diff+'d')+'</span>':fmtDia(j.vi.date))));
+  const etapaTag=j.completo?'<span class="as-stage">—</span>':'<span class="as-tag as-eqt-'+j.et.equipo+'">'+EQ_LABEL[j.et.equipo]+'</span> <span class="as-stage">'+escHtml(j.et.label)+'</span>';
+  const estadoTag=j.completo?'<span class="as-tag as-tag-green">Completado</span>':(j.stat==='bloqueado'?'<span class="as-tag as-tag-red">Bloqueado</span>':(j.stat==='esperando'?'<span class="as-tag as-tag-amber">Esperando</span>':'<span class="as-tag as-tag-gray">En curso</span>'));
+  return '<div class="as-row" onclick="openJob(\''+esc(j.cli)+'\',\''+j.wf+'\')">'+
+    '<div class="as-col-name"><span class="as-check">○</span><b>'+escHtml(j.cli)+'</b>'+(GROUPBY!=='impuesto'?' <span class="as-wf">'+j.wf+'</span>':'')+'</div>'+
+    '<div class="as-col-asg"><span class="as-av">'+av+'</span>'+escHtml(j.contadora)+'</div>'+
+    '<div>'+vence+'</div><div>'+etapaTag+'</div><div>'+estadoTag+'</div></div>';
+}
+function buildJobs(filterFn){
+  const base=baseClientes(),jobs=[];
+  WF.orden.forEach(wf=>base.forEach(c=>{
+    const st=jobState(c.nombre,wf),completo=st.idx>=st.etapas.length,stat=ESTADO[jkeyW(c.nombre,wf)];
+    const et=completo?{label:'Completado',equipo:'cliente'}:(st.etapas[st.idx]||{label:'—',equipo:'contab'});
+    const j={cli:c.nombre,contadora:c.contadora,wf,st,completo,stat,et,vi:venceInfo(wf)};
+    if(!filterFn||filterFn(j))jobs.push(j);
+  }));
+  return jobs;
+}
+function pasaVistaJob(j){
+  switch(VISTA){
+    case 'esperando':return j.stat==='esperando';
+    case 'bloqueados':return j.stat==='bloqueado';
+    case 'atrasados':return !j.completo&&j.vi.overdue;
+    case 'vencen':return !j.completo&&j.vi.soon;
+    case 'midia':return !j.completo&&(USER.rol==='admin'||esMio({contadora:j.contadora}))&&etapaEsMia(j.cli,j.st.etapas[j.st.idx]);
+    default:return true;
+  }
+}
+// ¿el trabajo (cli,wf) pasa la vista guardada activa? (filtro aplicable a cualquier vista)
+function vistaOK(cli,wf){
+  if(!VISTA)return true;
+  const st=jobState(cli,wf),completo=st.idx>=st.etapas.length,stat=ESTADO[jkeyW(cli,wf)];
+  const et=completo?{label:'Completado',equipo:'cliente'}:(st.etapas[st.idx]||{label:'—',equipo:'contab'});
+  return pasaVistaJob({cli,contadora:contadoraDe(cli),wf,st,completo,stat,et,vi:venceInfo(wf)});
+}
+const VISTA_TIT={esperando:'Esperando al cliente',midia:'Mi día',vencen:'Vencen pronto',bloqueados:'Bloqueados',atrasados:'Atrasados'};
+// Render de lista estilo Asana compartido por la vista Lista y por las Vistas guardadas
+function asListaHTML(jobs,titulo){
+  const groups={},order=[];
+  jobs.forEach(j=>{const k=grpKey(j);if(!groups[k]){groups[k]=[];order.push(k);}groups[k].push(j);});
+  if(GROUPBY==='impuesto')order.sort((a,b)=>WF.orden.indexOf(a)-WF.orden.indexOf(b));else order.sort();
+  let h=titulo?'<div class="vista-head"><h2 class="vista-title">'+titulo+'</h2><span class="vista-count">'+jobs.length+' trabajo(s) · '+MES+'</span></div>':'';
+  h+='<div class="as-toolbar"><span class="as-tb-lbl">Agrupar por</span><select onchange="GROUPBY=this.value;render()" class="as-sel">'+
+    [['impuesto','Impuesto'],['etapa','Etapa'],['contadora','Contadora'],['estado','Estado']].map(([k,l])=>'<option value="'+k+'"'+(GROUPBY===k?' selected':'')+'>'+l+'</option>').join('')+'</select></div>';
+  if(!jobs.length)return h+'<div class="kb-placeholder">Nada por aquí 🎉</div>';
+  h+='<div class="as-list"><div class="as-head"><div>Nombre del trabajo</div><div>Contadora</div><div>Vence</div><div>Etapa</div><div>Estado</div></div>';
+  order.forEach(k=>{
+    const rows=groups[k],col=COLAPSADO[k];
+    h+='<div class="as-group"><div class="as-grp-head" onclick="toggleGrp(\''+esc(k)+'\')"><span class="as-caret">'+(col?'▸':'▾')+'</span><span class="as-grp-name">'+escHtml(k)+'</span><span class="as-grp-count">'+rows.length+'</span></div>';
+    if(!col)rows.forEach(j=>h+=asRow(j));
+    h+='</div>';
+  });
+  return h+'</div>';
+}
+function renderLista(){
+  const center=document.getElementById('center');
+  if(!baseClientes().length){center.innerHTML='<div class="kb-placeholder">No hay clientes'+(FILTRO==='mio'?' con tu nombre. Prueba "Todos".':'')+'</div>';return;}
+  center.innerHTML=asListaHTML(buildJobs(VISTA?pasaVistaJob:null),VISTA?VISTA_TIT[VISTA]:null);
+  if(SEL)renderModal();
+}
+// GANTT-CALENDARIO: eje de días real; una barra por impuesto en su fecha de
+// vencimiento oficial (escalonadas como un Gantt). Clic en una barra abre su Kanban.
+const MESES_SHORT=['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+function renderGantt(){
+  const center=document.getElementById('center');const base=baseClientes();
+  const taxes=WF.orden.filter(wf=>!venceInfo(wf).none&&(!VISTA||base.some(c=>vistaOK(c.nombre,wf))));
+  if(!taxes.length){center.innerHTML='<div class="kb-placeholder">Sin fechas de vencimiento para mostrar.</div>';return;}
+  let min=null,max=null;
+  taxes.forEach(wf=>{const vi=venceInfo(wf);const n=(WF.etapas[wf]||[]).length||4;const s=new Date(vi.date);s.setDate(s.getDate()-n*3);if(!min||s<min)min=new Date(s);if(!max||vi.date>max)max=new Date(vi.date);});
+  min.setDate(min.getDate()-1);max.setDate(max.getDate()+2);
+  const span=(max-min)||1,pct=d=>(d-min)/span*100,today=hoyMid();
+  const days=[];for(let d=new Date(min);d<=max;d.setDate(d.getDate()+1))days.push(new Date(d));
+  let axis='';days.forEach((d,i)=>{const we=d.getDay()===0||d.getDay()===6,isT=d.getTime()===today.getTime(),lbl=(i===0||d.getDate()===1)?d.getDate()+' '+MESES_SHORT[d.getMonth()]:d.getDate();axis+='<div class="gc-day'+(we?' gc-we':'')+(isT?' gc-today':'')+'">'+lbl+'</div>';});
+  let rows='';
+  taxes.forEach(wf=>{
+    const vi=venceInfo(wf),n=(WF.etapas[wf]||[]).length||4,s=new Date(vi.date);s.setDate(s.getDate()-n*3);
+    const left=pct(s),width=Math.max(3,pct(vi.date)-left);
+    const matching=VISTA?base.filter(c=>vistaOK(c.nombre,wf)):base;
+    const tot=matching.length,pend=matching.filter(c=>{const st=jobState(c.nombre,wf);return st.idx<st.etapas.length;}).length,done=tot-pend;
+    const cls=vi.overdue?'gc-bar-late':(vi.soon?'gc-bar-soon':'gc-bar-ok');
+    rows+='<div class="gc-row" onclick="TAX=\''+wf+'\';VIEW=\'kanban\';VISTA=\'\';render()">'+
+      '<div class="gc-gutter gc-row-lbl">'+wf+'<span class="gc-row-sub">'+done+'/'+tot+' listos</span></div>'+
+      '<div class="gc-track"><div class="gc-today-line" style="left:'+pct(today)+'%"></div>'+
+      '<div class="gc-bar '+cls+'" style="left:'+left+'%;width:'+width+'%" title="'+wf+' vence '+fmtDia(vi.date)+'">'+fmtDia(vi.date)+'</div></div></div>';
+  });
+  const presMes=MESES[(MESES.indexOf(MES)+1)%12];
+  center.innerHTML='<div class="gc-wrap"><div class="gc-sub">Cronograma de vencimientos · período <b>'+MES+' '+ANIO+'</b> (se presenta en '+presMes+') · la línea azul es hoy</div>'+
+    '<div class="gc-head"><div class="gc-gutter"></div><div class="gc-axis">'+axis+'</div></div>'+rows+'</div>';
+  if(SEL)renderModal();
+}
+
+function renderKanban(){
+  const center=document.getElementById('center');
+  if(VIEW!=='kanban'){center.innerHTML='<div class="kb-placeholder">Vista '+VIEW+'</div>';return;}
+  const etapas=WF.etapas[TAX]||[];
+  const banner=DB_OK?'':'<div class="kb-banner">Vista local con datos de ejemplo (no hay sesión / faltan las tablas). En el portal, con sesión, carga datos reales.</div>';
+  let lista=baseClientes();
+  if(VISTA)lista=lista.filter(c=>vistaOK(c.nombre,TAX));
+  const cols={};etapas.forEach((e,i)=>cols[i]=[]);const done=[];
+  lista.forEach(c=>{const st=jobState(c.nombre,TAX);if(st.idx>=etapas.length)done.push(c);else cols[st.idx].push(c);});
+  if(!lista.length){center.innerHTML=banner+'<div class="kb-placeholder">No hay clientes para mostrar'+(FILTRO==='mio'?' con tu nombre. Prueba "Todos".':'')+'</div>';return;}
+
+  let h=banner+'<div class="kb-board">';
+  etapas.forEach((s,si)=>{
+    if(si>0&&etapas[si-1].equipo!==s.equipo) h+='<div class="kb-handoff"><div class="kb-handoff-text">handoff</div></div>';
+    h+='<div class="kb-col"><div class="kb-col-head eq-'+s.equipo+'"><span class="kb-col-num">'+String(si+1).padStart(2,'0')+'</span><span class="kb-col-title">'+escHtml(s.label)+'</span><span class="eq-badge eq-badge-'+s.equipo+'">'+EQ_LABEL[s.equipo]+'</span></div>';
+    h+='<div class="kb-col-body" ondragover="allowDrop(event)" ondrop="dropCol(event,'+si+')">';
+    cols[si].forEach(c=>{h+=cardHTML(c,s);});
+    if(!cols[si].length) h+='<div class="kb-empty">Sin clientes en esta etapa</div>';
+    h+='</div></div>';
+  });
+  // Done column
+  h+='<div class="kb-col kb-done"><div class="kb-col-head eq-done"><span class="kb-col-title">Completado</span><span class="eq-badge eq-badge-done">'+done.length+'</span></div>';
+  h+='<div class="kb-col-body" ondragover="allowDrop(event)" ondrop="dropCol(event,'+etapas.length+')">';
+  done.forEach(c=>h+='<div onclick="selectJob(\''+esc(c.nombre)+'\')" class="kb-card kb-card-done"><div class="kb-card-name">'+escHtml(c.nombre)+'</div><div class="kb-card-meta">'+escHtml(c.contadora)+'</div></div>');
+  if(!done.length) h+='<div class="kb-empty">—</div>';
+  h+='</div></div></div>';
+  center.innerHTML=h;
+  if(SEL) renderModal();
+}
+
+function cardHTML(c,s){
+  const st=jobState(c.nombre,TAX),etTks=(WF.tareas[s.id]||[]).length,etDone=s._done||0;
+  const stat=ESTADO[jkey(c.nombre)],cm=(COMENTS[jkey(c.nombre)]||[]).length;
+  const pct=st.totalTasks?Math.round(st.totalDone/st.totalTasks*100):0;
+  let chip='';
+  if(stat==='esperando') chip='<span class="kb-status kb-wait">Esperando</span>';
+  if(stat==='bloqueado') chip='<span class="kb-status kb-block">Bloqueado</span>';
+  return '<div draggable="true" ondragstart="dragStart(event,\''+esc(c.nombre)+'\')" onclick="selectJob(\''+esc(c.nombre)+'\')" class="kb-card'+(SEL===c.nombre?' is-selected':'')+'">'
+    +'<div class="kb-card-name">'+escHtml(c.nombre)+'</div>'
+    +'<div class="kb-card-meta">'+escHtml(c.contadora)+' · '+st.totalDone+'/'+st.totalTasks+'</div>'
+    +'<div class="kb-prog"><div class="kb-prog-fill" style="width:'+pct+'%"></div></div>'
+    +'<div class="kb-card-foot">'+chip
+    +'<div class="kb-card-counts">'+(cm?'<span class="kb-cm">'+ico('msg',12)+' '+cm+'</span>':'')+'<span>'+etDone+'/'+etTks+'</span></div>'
+    +'</div></div>';
+}
+
+// ── Modal ─────────────────────────────────────────────────────────────
+let BLOQ_OPEN=false, EDIT_ID=null;
+function selectJob(cli){SEL=cli;BLOQ_OPEN=false;renderModal();}
+function closePanel(){closeCard();}
+function closeCard(){SEL=null;BLOQ_OPEN=false;document.getElementById('modal').innerHTML='';}
+function fmtFechaHora(iso){if(!iso)return '';try{const d=new Date(iso);return d.toLocaleDateString('es-DO',{day:'numeric',month:'short'})+', '+d.toLocaleTimeString('es-DO',{hour:'numeric',minute:'2-digit',hour12:true});}catch(e){return '';}}
+
+function renderModal(){
+  if(!SEL){document.getElementById('modal').innerHTML='';return;}
+  const cli=SEL,st=jobState(cli,TAX),etapas=WF.etapas[TAX]||[];
+  const etActual=st.idx<etapas.length?etapas[st.idx]:{label:'Completado',equipo:'cliente'};
+  const stat=ESTADO[jkey(cli)],cm=COMENTS[jkey(cli)]||[],bloqueo=cm.filter(c=>c.tipo==='bloqueo').slice(-1)[0];
+
+  // LEFT: tareas agrupadas por RESPONSABLE (Contabilidad → Impuestos → Cliente)
+  // aprobado_cliente / pagado siempre son del cliente, aunque vivan en el checklist de impuestos.
+  const CLIENT_TASK_IDS=['aprobado_cliente','pagado','anticipo_pagado'];
+  const seccionDe=tk=>CLIENT_TASK_IDS.includes(tk.tarea_id)?'cliente':(tk.checklist_origen==='contadores'?'contab':'imp');
+  const SECCIONES=[['contab','Tareas de Contabilidad','contab'],['imp','Tareas de Impuestos','impuestos'],['cliente','Tareas del cliente','cliente']];
+  let izq='';
+  SECCIONES.forEach(([key,titulo,eqCss])=>{
+    // etapas que tienen tareas de esta sección
+    const conTareas=etapas.map(e=>({e,tks:(WF.tareas[e.id]||[]).filter(tk=>seccionDe(tk)===key)})).filter(x=>x.tks.length);
+    if(!conTareas.length)return;
+    if(izq)izq+='<div class="chk-divider"></div>';
+    izq+='<div class="chk-section chk-team chk-team-'+eqCss+'"><span class="team-dot td-'+eqCss+'"></span>'+titulo+'</div>';
+    conTareas.forEach(({e,tks})=>{
+      izq+='<div class="chk-stage"><div class="chk-stage-head">'+escHtml(e.label)+'</div>';
+      tks.forEach(tk=>{
+        const f=(st.doneMap[e.id]||{})[tk.tarea_id];
+        const pm=puedeMarcar(cli,tk.checklist_origen);
+        const por=tareaPor(cli,TAX,tk);
+        izq+='<div class="chk-item"><input type="checkbox" '+(f?'checked ':'')+
+          (pm?'onchange="toggleTarea(\''+esc(cli)+'\',\''+tk.checklist_origen+'\',\''+tk.tarea_id+'\')" class="chk-input"':'disabled title="Solo el equipo responsable marca esta tarea" class="chk-input"')+
+          '><span class="chk-label'+(f?' is-done':'')+((!pm&&!f)?' is-other':'')+'">'+ escHtml(tk.label)+'</span>'+
+          (f?'<span class="chk-date"'+(por?' title="Marcado por '+attrEsc(por)+'"':'')+'>'+(f!=='✓'?f:'✓')+(por?' · '+escHtml(por):'')+'</span>':'')+'</div>';
+      });
+      izq+='</div>';
+    });
+  });
+  if(st.pagado&&st.totalDone<st.totalTasks)izq+='<div class="chk-pagado">✓ Pagado — el trabajo cuenta como completado aunque queden tareas sin marcar.</div>';
+  izq+='<div class="chk-hint">Marca las tareas: se guardan en el checklist real y la tarjeta avanza sola.</div>';
+  izq+='<div class="chk-section">Estado</div>';
+  izq+='<div class="est-row"><button onclick="setEstado(\''+esc(cli)+'\',\'esperando\')" class="est-btn est-wait'+(stat==='esperando'?' is-active':'')+'">Esperando cliente</button>';
+  izq+='<button onclick="toggleBloq()" class="est-btn est-block'+(stat==='bloqueado'?' is-active':'')+'">'+(stat==='bloqueado'?'Quitar bloqueo':'Bloqueado')+'</button></div>';
+  if(BLOQ_OPEN) izq+='<div class="bloq-box"><textarea id="block-reason" rows="2" placeholder="¿Por qué se bloquea? Ej: falta el 607 de mayo"></textarea><div class="bloq-actions"><button onclick="BLOQ_OPEN=false;renderModal()" class="bloq-cancel">Cancelar</button><button onclick="saveBloqueo(\''+esc(cli)+'\')" class="bloq-confirm">Bloquear</button></div></div>';
+
+  // RIGHT: comments
+  let der='<div class="cm-section">Comentarios</div>';
+  if(bloqueo&&stat==='bloqueado') der+='<div class="cm-pinned"><div class="cm-pinned-head">BLOQUEADO · fijado</div><div class="cm-pinned-text">'+escHtml(bloqueo.texto)+'</div><div class="cm-pinned-meta">'+escHtml(bloqueo.autor_nombre||'—')+(bloqueo.autor_equipo?' · '+(DEPTS[bloqueo.autor_equipo]||''):'')+' · '+fmtFechaHora(bloqueo.created_at)+'</div></div>';
+  der+='<div class="cm-input-row"><input id="newc" placeholder="Escribe un comentario…" class="cm-input" onkeydown="if(event.key===\'Enter\')addCom(\''+esc(cli)+'\')"><button onclick="addCom(\''+esc(cli)+'\')" class="cm-send">'+ico('send',14)+'</button></div>';
+  const normales=cm.filter(c=>c.tipo!=='bloqueo').slice().sort((a,b)=>(b.created_at||'').localeCompare(a.created_at||''));
+  if(!normales.length) der+='<div class="cm-empty">Sin comentarios todavía.</div>';
+  normales.forEach(c=>{
+    const mine=(c.usuario_id&&c.usuario_id===USER.id),canDel=mine||USER.rol==='admin',editing=(EDIT_ID&&EDIT_ID===c.id);
+    let inner;
+    if(editing){
+      inner='<textarea id="editc" rows="2" class="cm-edit">'+escHtml(c.texto)+'</textarea><div class="cm-edit-actions"><button onclick="EDIT_ID=null;renderModal()" class="bloq-cancel">Cancelar</button><button onclick="saveEdit(\''+esc(cli)+'\',\''+c.id+'\')" class="cm-send" style="padding:5px 12px;font-size:12px;border-radius:8px">Guardar</button></div>';
+    }else{
+      const ctrls=(c.id&&(mine||canDel))?'<div class="cm-actions">'+(mine?'<button onclick="EDIT_ID=\''+c.id+'\';renderModal()" class="cm-act">editar</button>':'')+(canDel?'<button onclick="deleteCom(\''+esc(cli)+'\',\''+c.id+'\')" class="cm-act cm-act-del">eliminar</button>':'')+'</div>':'';
+      inner='<div>'+escHtml(c.texto)+'</div>'+ctrls;
+    }
+    der+='<div class="cm-item"><div class="cm-av eq-'+(c.autor_equipo||'equipo')+'">'+escHtml((c.autor_nombre||'?')[0])+'</div><div class="cm-body"><div class="cm-bubble"><div class="cm-head"><span class="cm-who"><b>'+escHtml(c.autor_nombre||'—')+'</b><span class="cm-dept eq-'+(c.autor_equipo||'equipo')+'">'+(DEPTS[c.autor_equipo]||'Equipo')+'</span></span><span class="cm-time">'+fmtFechaHora(c.created_at)+'</span></div>'+inner+'</div></div></div>';
+  });
+
+  // Assemble modal
+  const html='<div class="md-overlay" onclick="if(event.target===this)closeCard()"><div class="md-panel">'
+    +'<div class="md-header"><div><div class="md-eye">'+TAX+' · '+MES+' '+ANIO+'</div><h3 class="md-title">'+escHtml(cli)+'</h3>'
+    +'<div class="md-sub">Etapa: <b>'+etActual.label+'</b> <span class="eq-badge eq-badge-'+etActual.equipo+'">'+EQ_LABEL[etActual.equipo]+'</span> '+st.totalDone+'/'+st.totalTasks+'</div></div>'
+    +'<button onclick="closeCard()" class="md-close">&times;</button></div>'
+    +'<div class="md-body"><div class="md-left">'+izq+'</div><div class="md-right">'+der+'</div></div></div></div>';
+  document.getElementById('modal').innerHTML=html;
+  if(BLOQ_OPEN) setTimeout(()=>{const r=document.getElementById('block-reason');if(r)r.focus();},30);
+}
+function toggleBloq(){const stat=ESTADO[jkey(SEL)];if(stat==='bloqueado'){setEstado(SEL,'bloqueado');}else{BLOQ_OPEN=!BLOQ_OPEN;renderModal();}}
+
+// ── Actions ───────────────────────────────────────────────────────────
+async function setEstado(cli,status){const cur=ESTADO[jkey(cli)];const nuevo=(cur===status)?null:status;ESTADO[jkey(cli)]=nuevo;BLOQ_OPEN=false;renderModal();render();try{const {error}=await sb.from('workflow_estado').upsert({cliente:cli,mes:MES,anio:ANIO,impuesto:TAX,status:nuevo,updated_by:USER.id||null},{onConflict:'cliente,mes,anio,impuesto'});if(error)throw error;}catch(e){ESTADO[jkey(cli)]=cur;toast('No se pudo cambiar el estado. Se revirtió.',true);renderModal();render();}}
+async function saveBloqueo(cli){const ta=document.getElementById('block-reason');const r=((ta&&ta.value)||'').trim();if(!r){toast('Escribe la razón del bloqueo.',true);if(ta)ta.focus();return;}BLOQ_OPEN=false;ESTADO[jkey(cli)]='bloqueado';const c={cliente:cli,mes:MES,anio:ANIO,impuesto:TAX,texto:r,tipo:'bloqueo',usuario_id:USER.id||null,autor_nombre:USER.nombre||'Tú',autor_equipo:USER.equipo,created_at:new Date().toISOString()};(COMENTS[jkey(cli)]=COMENTS[jkey(cli)]||[]).push(c);renderModal();render();try{const {error:e1}=await sb.from('workflow_estado').upsert({cliente:cli,mes:MES,anio:ANIO,impuesto:TAX,status:'bloqueado',updated_by:USER.id||null},{onConflict:'cliente,mes,anio,impuesto'});if(e1)throw e1;if(USER.id){const ins={...c};delete ins.created_at;const {data,error:e2}=await sb.from('workflow_comentarios').insert(ins).select();if(e2)throw e2;if(data&&data[0]){c.id=data[0].id;renderModal();}}}catch(e){toast('No se pudo guardar el bloqueo.',true);}}
+async function addCom(cli){const inp=document.getElementById('newc');const v=((inp&&inp.value)||'').trim();if(!v)return;const c={cliente:cli,mes:MES,anio:ANIO,impuesto:TAX,texto:v,tipo:'comentario',usuario_id:USER.id||null,autor_nombre:USER.nombre||'Tú',autor_equipo:USER.equipo,created_at:new Date().toISOString()};(COMENTS[jkey(cli)]=COMENTS[jkey(cli)]||[]).push(c);renderModal();render();try{if(USER.id){const ins={...c};delete ins.created_at;const {data,error}=await sb.from('workflow_comentarios').insert(ins).select();if(error)throw error;if(data&&data[0]){c.id=data[0].id;if(data[0].created_at)c.created_at=data[0].created_at;renderModal();}}}catch(e){COMENTS[jkey(cli)]=(COMENTS[jkey(cli)]||[]).filter(x=>x!==c);toast('No se pudo enviar el comentario.',true);renderModal();render();}}
+async function saveEdit(cli,id){const ta=document.getElementById('editc');const v=((ta&&ta.value)||'').trim();EDIT_ID=null;if(!v){renderModal();return;}const c=(COMENTS[jkey(cli)]||[]).find(x=>x.id===id);const prev=c?c.texto:null;if(c)c.texto=v;renderModal();try{const {error}=await sb.from('workflow_comentarios').update({texto:v}).eq('id',id);if(error)throw error;}catch(e){if(c)c.texto=prev;toast('No se pudo editar el comentario.',true);renderModal();}}
+async function deleteCom(cli,id){if(!confirm('¿Eliminar este comentario?'))return;const k=jkey(cli);const arr=COMENTS[k]||[];const removed=arr.find(x=>x.id===id);COMENTS[k]=arr.filter(x=>x.id!==id);EDIT_ID=null;renderModal();render();try{const {error}=await sb.from('workflow_comentarios').delete().eq('id',id);if(error)throw error;}catch(e){if(removed){(COMENTS[k]=COMENTS[k]||[]).push(removed);}toast('No se pudo eliminar el comentario.',true);renderModal();render();}}
+
+// ── Write-back ────────────────────────────────────────────────────────
+async function setTareaDone(cli,origen,tareaId,val){
+  const fecha=new Date().toISOString().slice(0,10);
+  const contab=origen==='contadores';
+  const key=contab?(contadoraDe(cli)+'_'+cli+'_'+MES):(cli+'||'+MES+'||'+TAX);
+  const MAP=contab?CONTAB_DATA:IMP_MAP;
+  let e=MAP[key]||(MAP[key]=contab?{_id:null,datos:{}}:{_id:null,datos:{},contadora:contadoraDe(cli)});
+  const prevTask=e.datos[tareaId]?{...e.datos[tareaId]}:undefined;
+  const por=val?(USER.nombre||'?'):((prevTask&&prevTask.por)||'');
+  const item=contab?{done:val,fecha:val?((prevTask&&prevTask.fecha)||fecha):'',nota:(prevTask&&prevTask.nota)||'',por:por}:{done:val,fecha:val?((prevTask&&prevTask.fecha)||fecha):null,por:por};
+  e.datos[tareaId]=item;
+  let error=null;
+  try{
+    // 1) Merge atómico server-side (no pisa lo que otro guardó en la misma fila)
+    const {error:er}=await sb.rpc('wf_merge_checklist',{p_origen:origen,p_cliente:cli,p_mes:MES,p_anio:ANIO,p_impuesto:contab?null:TAX,p_contadora:contadoraDe(cli),p_item:tareaId,p_val:item});
+    if(er&&(er.code==='PGRST202'||/not find the function|does not exist|schema cache/i.test(er.message||''))){
+      // Respaldo (aún no se corrió db/workflows-merge-rpc.sql): escritura no-atómica
+      if(contab){if(e._id){({error}=await sb.from('checklist_contadores').update({datos:e.datos,updated_at:new Date().toISOString()}).eq('id',e._id));}else{const {data,error:e3}=await sb.from('checklist_contadores').insert({contadora:contadoraDe(cli),cliente:cli,mes:MES,anio:ANIO,datos:e.datos}).select();error=e3;if(data&&data[0])e._id=data[0].id;}}
+      else{if(e._id){({error}=await sb.from('impuestos_checklist').update({datos:e.datos}).eq('id',e._id));}else{const {data,error:e3}=await sb.from('impuestos_checklist').insert({cliente:cli,mes:MES,anio:ANIO,impuesto:TAX,contadora:e.contadora||null,datos:e.datos}).select();error=e3;if(data&&data[0])e._id=data[0].id;}}
+    }else error=er;
+  }catch(ex){error=ex;}
+  if(error){ // revertir el cambio local y avisar (la BD lo rechazó — RLS/permiso/conexión)
+    if(prevTask===undefined)delete e.datos[tareaId];else e.datos[tareaId]=prevTask;
+    console.error('write',origen,error);toast('No se pudo guardar — ¿permiso o conexión? Se revirtió.',true);
+    render();if(SEL===cli)renderModal();
+    return false;
+  }
+  return true;
+}
+async function toggleTarea(cli,origen,tareaId){if(!puedeMarcar(cli,origen))return;const cur=tareaFecha(cli,TAX,{checklist_origen:origen,tarea_id:tareaId})?true:false;
+  if(!cur&&PAGO_FINAL_IDS.includes(tareaId)&&!confirm('Marcar como PAGADO da el trabajo por terminado. ¿Confirmas?'))return;
+  const ok=await setTareaDone(cli,origen,tareaId,!cur);if(ok!==false){renderModal();render();}}
+
+// ── Drag & drop ───────────────────────────────────────────────────────
+let DRAG=null;
+function dragStart(e,cli){DRAG=cli;}
+function allowDrop(e){e.preventDefault();}
+// Arrastre = avanzar UNA SOLA etapa (completa la etapa actual), sin importar cuán
+// lejos se suelte. Solo hacia adelante y solo si la etapa actual te toca a ti.
+async function dropCol(e,targetIdx){
+  e.preventDefault();const cli=DRAG;DRAG=null;if(!cli)return;
+  const etapas=WF.etapas[TAX]||[];const st=jobState(cli,TAX);const cur=st.idx;
+  if(targetIdx<=cur||cur>=etapas.length)return;                 // solo adelante
+  const tks=WF.tareas[etapas[cur].id]||[];
+  if(!tks.length||tks.some(tk=>!puedeMarcar(cli,tk.checklist_origen)))return; // no es tu etapa
+  for(const tk of tks){await setTareaDone(cli,tk.checklist_origen,tk.tarea_id,true);}
+  render();if(SEL===cli)renderModal();
+}
+
+// ── Utils ─────────────────────────────────────────────────────────────
+function esc(s){return(s||'').replace(/\\/g,'\\\\').replace(/"/g,'&quot;').replace(/'/g,"\\'");}
+function attrEsc(s){return(s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');}
+function escHtml(s){return(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+let _toastT;
+function toast(msg,err){const el=document.getElementById('toast');if(!el)return;el.textContent=msg;el.className='toast show'+(err?' toast-err':'');clearTimeout(_toastT);_toastT=setTimeout(()=>{el.className='toast';},3800);}
+
+// ── Init ──────────────────────────────────────────────────────────────
+// Recarga solo los datos que cambian (checklists, comentarios, estado) — no la maestra.
+async function loadChecklists(){
+  try{const {data}=await sb.from('checklist_contadores').select('*').eq('anio',ANIO);CONTAB_DATA={};(data||[]).forEach(r=>{CONTAB_DATA[r.contadora+'_'+r.cliente+'_'+r.mes]={_id:r.id,datos:r.datos||{}};});}catch(e){}
+  try{const {data}=await sb.from('impuestos_checklist').select('*').eq('anio',ANIO);IMP_MAP={};(data||[]).forEach(r=>{IMP_MAP[r.cliente+'||'+r.mes+'||'+r.impuesto]={_id:r.id,datos:r.datos||{},contadora:r.contadora,en_atraso:r.en_atraso,importe:r.importe};});}catch(e){}
+  try{const {data}=await sb.from('workflow_comentarios').select('*').eq('anio',ANIO).order('created_at');COMENTS={};(data||[]).forEach(c=>{const k=c.cliente+'||'+c.mes+'||'+c.anio+'||'+c.impuesto;(COMENTS[k]=COMENTS[k]||[]).push(c);});}catch(e){}
+  try{const {data}=await sb.from('workflow_estado').select('*').eq('anio',ANIO);ESTADO={};(data||[]).forEach(s=>{ESTADO[s.cliente+'||'+s.mes+'||'+s.anio+'||'+s.impuesto]=s.status;});}catch(e){}
+}
+async function loadLibre(){
+  try{const {data}=await sb.from('tl_columnas').select('*').order('orden');if(data)LIBRE_COLS=data;}catch(e){}
+  try{const {data}=await sb.from('tl_tareas').select('*').order('orden');if(data)LIBRE_TASKS=data;}catch(e){}
+}
+let _refrescando=false;
+async function refrescarDatos(silencioso){
+  if(_refrescando)return;_refrescando=true;
+  try{await loadChecklists();await loadLibre();render();if(SEL)renderModal();if(LIBRE_SEL)renderLibreModal();if(!silencioso)toast('Datos actualizados');}finally{_refrescando=false;}
+}
+
+// ════════ M4 · Tablero de tareas libres ════════
+function hoyISO(){return new Date().toISOString().slice(0,10);}
+function fmtDiaISO(s){try{return new Date(s+'T00:00:00').toLocaleDateString('es-DO',{day:'numeric',month:'short'});}catch(e){return s;}}
+function equipoNombres(){const set=new Set([...FILTRO_CONTADORAS,...FILTRO_ANALISTAS]);if(USER.nombre)set.add(USER.nombre);return [...set].sort((a,b)=>a.localeCompare(b));}
+function tlCard(t){
+  const av=(t.asignado||'').trim().slice(0,2).toUpperCase();
+  const vence=t.fecha_limite?'<span class="tl-due'+(t.fecha_limite<hoyISO()?' tl-due-late':'')+'">'+fmtDiaISO(t.fecha_limite)+'</span>':'';
+  const etq=t.etiqueta?'<span class="tl-etq '+(ETQ_CLS[t.etiqueta]||'etq-nourg')+'">'+escHtml(t.etiqueta)+'</span>':'';
+  const imp=t.importancia?'<span class="tl-etq '+(ETQ_CLS[t.importancia]||'etq-nourg')+'">'+escHtml(t.importancia)+'</span>':'';
+  const cli=t.cliente?'<span class="tl-cli">'+escHtml(t.cliente)+'</span>':'';
+  return '<div class="tl-card" draggable="true" ondragstart="taskDragStart(event,\''+t.id+'\')" onclick="openLibre(\''+t.id+'\')">'+
+    '<div class="tl-card-title">'+escHtml(t.titulo)+'</div>'+
+    ((etq||imp||cli||vence||av)?'<div class="tl-card-meta">'+etq+imp+cli+vence+(t.asignado?'<span class="tl-av" title="'+attrEsc(t.asignado)+'">'+escHtml(av)+'</span>':'')+'</div>':'')+'</div>';
+}
+function renderLibre(){
+  const center=document.getElementById('center');
+  if(!DB_OK){center.innerHTML='<div class="kb-placeholder">Inicia sesión en el portal para ver el tablero de tareas.</div>';return;}
+  const cols=LIBRE_COLS.slice().sort((a,b)=>a.orden-b.orden);
+  let tasks=LIBRE_TASKS;
+  if(LIBRE_FILTRO==='mias'&&USER.nombre)tasks=tasks.filter(t=>t.asignado&&t.asignado.trim().toLowerCase()===USER.nombre.trim().toLowerCase());
+  let h='<div class="tl-board">';
+  cols.forEach(col=>{
+    const ct=tasks.filter(t=>t.columna_id===col.id).sort((a,b)=>a.orden-b.orden);
+    h+='<div class="tl-col" draggable="true" ondragstart="colDragStart(event,\''+col.id+'\')" ondragover="allowDrop(event)" ondrop="colDrop(event,\''+col.id+'\')">';
+    h+='<div class="tl-col-head"><input class="tl-col-title" value="'+attrEsc(col.titulo)+'" onchange="colRename(\''+col.id+'\',this.value)"><span class="tl-col-count">'+ct.length+'</span><button class="tl-col-del" onclick="colDel(\''+col.id+'\')" title="Borrar columna">×</button></div>';
+    h+='<div class="tl-col-body" ondragover="allowDrop(event)" ondrop="taskDrop(event,\''+col.id+'\')">';
+    ct.forEach(t=>h+=tlCard(t));
+    if(!ct.length)h+='<div class="tl-empty">—</div>';
+    h+='</div>';
+    h+='<button class="tl-add-btn" onclick="nuevaLibre(\''+col.id+'\')">+ Agregar tarea</button>';
+    h+='</div>';
+  });
+  if(!cols.length)h+='<div class="kb-placeholder">Aún no hay columnas. Crea una con "+ Columna".</div>';
+  h+='</div>';
+  center.innerHTML=h;
+  if(LIBRE_SEL)renderLibreModal();
+}
+// Drag
+function taskDragStart(e,id){LIBRE_DRAG=id;e.stopPropagation();}
+function colDragStart(e,id){if(LIBRE_DRAG)return;LIBRE_COLDRAG=id;}
+async function taskDrop(e,colId){e.preventDefault();e.stopPropagation();if(!LIBRE_DRAG)return;const id=LIBRE_DRAG;LIBRE_DRAG=null;await moveTask(id,colId);}
+async function colDrop(e,colId){e.preventDefault();if(LIBRE_DRAG)return;if(LIBRE_COLDRAG&&LIBRE_COLDRAG!==colId){const d=LIBRE_COLDRAG;LIBRE_COLDRAG=null;await reorderCol(d,colId);}}
+// CRUD columnas
+async function colAdd(){const orden=LIBRE_COLS.length?Math.max(...LIBRE_COLS.map(c=>c.orden))+1:1;const {error}=await sb.from('tl_columnas').insert({titulo:'Nueva columna',orden:orden});if(error){toast('No se pudo crear la columna.',true);return;}await loadLibre();render();}
+async function colRename(id,v){const c=LIBRE_COLS.find(x=>x.id===id);if(c)c.titulo=v;const {error}=await sb.from('tl_columnas').update({titulo:v.trim()||'Columna'}).eq('id',id);if(error){toast('No se pudo renombrar.',true);await loadLibre();render();}}
+async function colDel(id){const n=LIBRE_TASKS.filter(t=>t.columna_id===id).length;if(!confirm('¿Borrar esta columna'+(n?' y sus '+n+' tarea(s)':'')+'?'))return;const {error}=await sb.from('tl_columnas').delete().eq('id',id);if(error){toast('No se pudo borrar la columna.',true);return;}await loadLibre();render();}
+async function reorderCol(dragId,targetId){const a=LIBRE_COLS.find(c=>c.id===dragId),b=LIBRE_COLS.find(c=>c.id===targetId);if(!a||!b)return;const ao=a.orden;await Promise.all([sb.from('tl_columnas').update({orden:b.orden}).eq('id',dragId),sb.from('tl_columnas').update({orden:ao}).eq('id',targetId)]);await loadLibre();render();}
+// CRUD tareas
+function nuevaLibre(colId){LIBRE_DRAFT={columna_id:colId,titulo:'',descripcion:'',asignado:USER.nombre||'',cliente:'',fecha_limite:'',etiqueta:'',importancia:''};LIBRE_SEL='__nuevo';renderLibreModal();}
+async function moveTask(id,colId){const t=LIBRE_TASKS.find(x=>x.id===id);if(!t)return;if(t.columna_id===colId)return;const orden=LIBRE_TASKS.filter(x=>x.columna_id===colId).length+1;t.columna_id=colId;t.orden=orden;render();const {error}=await sb.from('tl_tareas').update({columna_id:colId,orden:orden}).eq('id',id);if(error){toast('No se pudo mover la tarea.',true);await loadLibre();render();}}
+function openLibre(id){LIBRE_DRAFT=null;LIBRE_SEL=id;renderLibreModal();}
+function closeLibre(){LIBRE_SEL=null;LIBRE_DRAFT=null;document.getElementById('modal').innerHTML='';}
+function renderLibreModal(){
+  const nuevo=LIBRE_SEL==='__nuevo';
+  const t=nuevo?LIBRE_DRAFT:LIBRE_TASKS.find(x=>x.id===LIBRE_SEL);
+  if(!t){closeLibre();return;}
+  const cols=LIBRE_COLS.slice().sort((a,b)=>a.orden-b.orden);
+  const optPersona='<option value="">Sin asignar</option>'+equipoNombres().map(p=>'<option'+(t.asignado===p?' selected':'')+'>'+escHtml(p)+'</option>').join('');
+  const optCli='<option value="">— sin cliente —</option>'+CLIENTES.map(c=>'<option'+(t.cliente===c.nombre?' selected':'')+'>'+escHtml(c.nombre)+'</option>').join('');
+  const optCol=cols.map(c=>'<option value="'+c.id+'"'+(t.columna_id===c.id?' selected':'')+'>'+escHtml(c.titulo)+'</option>').join('');
+  const optEtq='<option value="">Sin etiqueta</option>'+AREAS.map(v=>'<option'+(t.etiqueta===v?' selected':'')+'>'+v+'</option>').join('');
+  const optImp='<option value="">Sin importancia</option>'+IMPORTANCIAS.map(v=>'<option'+(t.importancia===v?' selected':'')+'>'+v+'</option>').join('');
+  const h='<div class="lm-overlay" onclick="if(event.target===this)closeLibre()"><div class="lm-modal">'+
+    '<div class="lm-head"><input id="lm-titulo" class="lm-title" placeholder="Título de la tarea" value="'+attrEsc(t.titulo)+'"><button onclick="closeLibre()" class="lm-x">&times;</button></div>'+
+    '<div class="lm-body">'+
+      '<label class="lm-lbl">Descripción</label><textarea id="lm-desc" class="lm-area" rows="3">'+escHtml(t.descripcion||'')+'</textarea>'+
+      '<div class="lm-grid">'+
+        '<div><label class="lm-lbl">Asignado a</label><select id="lm-asig" class="lm-sel">'+optPersona+'</select></div>'+
+        '<div><label class="lm-lbl">Cliente</label><select id="lm-cli" class="lm-sel">'+optCli+'</select></div>'+
+        '<div><label class="lm-lbl">Fecha límite</label><input id="lm-fecha" type="date" class="lm-sel" value="'+(t.fecha_limite||'')+'"></div>'+
+        '<div><label class="lm-lbl">Columna</label><select id="lm-col" class="lm-sel">'+optCol+'</select></div>'+
+        '<div><label class="lm-lbl">Tipo de tarea</label><select id="lm-etq" class="lm-sel">'+optEtq+'</select></div>'+
+        '<div><label class="lm-lbl">Importancia</label><select id="lm-imp" class="lm-sel">'+optImp+'</select></div>'+
+      '</div>'+
+    '</div>'+
+    '<div class="lm-foot">'+(nuevo?'<span></span>':'<button onclick="delLibre()" class="lm-del">Eliminar</button>')+'<button onclick="saveLibre()" class="lm-save">'+(nuevo?'Crear tarea':'Guardar')+'</button></div>'+
+  '</div></div>';
+  document.getElementById('modal').innerHTML=h;
+  if(nuevo)setTimeout(()=>{const el=document.getElementById('lm-titulo');if(el)el.focus();},30);
+}
+async function saveLibre(){
+  const nuevo=LIBRE_SEL==='__nuevo';const g=id=>document.getElementById(id);
+  const titulo=(g('lm-titulo').value||'').trim();
+  if(!titulo){toast('Escribe un título.',true);g('lm-titulo').focus();return;}
+  const upd={titulo:titulo,descripcion:g('lm-desc').value||null,asignado:g('lm-asig').value||null,cliente:g('lm-cli').value||null,fecha_limite:g('lm-fecha').value||null,etiqueta:g('lm-etq').value||null,importancia:g('lm-imp').value||null,columna_id:g('lm-col').value};
+  if(nuevo){
+    const orden=LIBRE_TASKS.filter(x=>x.columna_id===upd.columna_id).length+1;closeLibre();
+    const {error}=await sb.from('tl_tareas').insert({...upd,orden:orden,creado_por:USER.id||null}).select();
+    if(error)toast('No se pudo crear la tarea.',true);else await loadLibre();
+    render();
+  }else{
+    const t=LIBRE_TASKS.find(x=>x.id===LIBRE_SEL);if(!t)return;
+    Object.assign(t,upd);closeLibre();render();
+    const {error}=await sb.from('tl_tareas').update(upd).eq('id',t.id);
+    if(error){toast('No se pudo guardar la tarea.',true);await loadLibre();render();}
+  }
+}
+async function delLibre(){if(!confirm('¿Eliminar esta tarea?'))return;const id=LIBRE_SEL;LIBRE_TASKS=LIBRE_TASKS.filter(x=>x.id!==id);closeLibre();render();const {error}=await sb.from('tl_tareas').delete().eq('id',id);if(error){toast('No se pudo eliminar.',true);await loadLibre();render();}}
+// Refrescar al volver a la pestaña (otro pudo haber cambiado algo)
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&DB_OK)refrescarDatos(true);});
+loadAll().then(()=>{TAX=TAX||WF.orden[0];render();}).catch(e=>{console.error(e);WF=JSON.parse(JSON.stringify(SEED_WF));CLIENTES=SEED_CLIENTES.slice();TAX=WF.orden[0];render();});
+</script>
+</body>
+</html>

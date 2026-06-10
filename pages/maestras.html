@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Maestras</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f4f6f9;margin:0;color:#1e293b}
+  .hdr-contab{background:#3b82f6}.hdr-impuestos{background:#f59e0b}.hdr-cliente{background:#10b981}.hdr-dgii{background:#64748b}
+  input.ed,select.ed{border:1px solid transparent;border-radius:6px;padding:2px 6px;background:transparent}
+  input.ed:hover,select.ed:hover{border-color:#e2e8f0;background:#fff}
+  input.ed:focus,select.ed:focus{border-color:#3b82f6;background:#fff;outline:none}
+</style>
+</head>
+<body>
+<div class="h-screen overflow-hidden flex flex-col">
+  <div class="bg-white border-b px-6 py-3 flex items-center justify-between flex-shrink-0">
+    <div><h1 class="text-lg font-bold text-[#1a2332]">Maestras</h1><div class="text-xs text-slate-400">Tablas de definición del portal. Cada elemento tiene su ID estable. Editar aquí cambia la estructura en datos.</div></div>
+    <span id="status" class="text-xs text-slate-400"></span>
+  </div>
+  <div class="flex flex-1 overflow-hidden">
+    <aside class="w-48 bg-white border-r p-3 flex-shrink-0 text-sm">
+      <div class="text-[10px] uppercase tracking-widest text-slate-400 mb-2">Maestras</div>
+      <button class="w-full text-left px-3 py-2 rounded-lg bg-[#1a2332] text-white font-semibold">Workflows</button>
+      <div class="mt-2 text-[11px] text-slate-300 px-3">Equipo, clientes y calendarios se migran aquí después.</div>
+    </aside>
+    <main id="main" class="flex-1 overflow-auto p-6"></main>
+  </div>
+</div>
+
+<script>
+const SUPABASE_URL='https://ouetusstqvpyjeycfdio.supabase.co';
+const SUPABASE_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im91ZXR1c3N0cXZweWpleWNmZGlvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY2NDcwNzksImV4cCI6MjA5MjIyMzA3OX0.Bsys947JLGEuf3zdBF2GPFdbJVJtaZdC4YEmyBU5Bow';
+const sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
+const EQ_LABEL={contab:'Contabilidad',impuestos:'Impuestos',cliente:'Cliente',dgii:'DGII'};
+
+// ── Catálogo de items reales de los dos checklists (para el picker de "agregar tarea") ──
+const CONTAB_ITEMS=[
+  {id:'solicitud_nomina',label:'Solicitud de Nómina',imp:'TSS'},{id:'recepcion_nomina',label:'Recepción de Nómina',imp:'TSS'},{id:'registro_nomina',label:'Registro de Nómina',imp:'TSS'},{id:'informar_impuestos',label:'Informar a Impuestos',imp:'TSS'},{id:'autorizacion_tss',label:'Subir autorización de pago de TSS',imp:'TSS'},
+  {id:'autorizacion_ir3',label:'Subir autorización de pago de IR-3',imp:'IR-3'},
+  {id:'solicitar_proveedores',label:'Solicitar Proveedores Informales',imp:'IR-17'},{id:'recepcion_proveedores',label:'Recepción de Proveedores',imp:'IR-17'},{id:'registrar_proveedores',label:'Registrar gastos de Proveedores',imp:'IR-17'},{id:'borrador_ir17',label:'Realizar Borrador de IR-17',imp:'IR-17'},{id:'enviar_ir17',label:'Enviar borrador de IR-17 al cliente',imp:'IR-17'},{id:'notificacion_ir17',label:'Subir autorización de pago de IR-17',imp:'IR-17'},
+  {id:'autorizacion_anticipo',label:'Subir autorización de pago de Anticipo',imp:'Anticipo'},
+  {id:'verificar_facturas',label:'Verificar facturas de gastos',imp:'ITBIS'},{id:'solicitar_facturas',label:'Solicitar o confirmar facturas',imp:'ITBIS'},{id:'facturas_registradas',label:'Facturas de gastos registradas',imp:'ITBIS'},{id:'borrador_itbis',label:'Realizar Borrador ITBIS',imp:'ITBIS'},{id:'enviar_itbis',label:'Subir autorización de pago de ITBIS',imp:'ITBIS'},
+  {id:'registros_realizados',label:'Registrar gastos',imp:'Presentación'},{id:'presupuesto',label:'Presupuesto y ejecución',imp:'Presentación'},{id:'proyeccion_impuestos',label:'Proyección de impuestos',imp:'Presentación'},{id:'resumen_declaracion',label:'Resumen de declaración del mes',imp:'Presentación'},{id:'video_reunion',label:'Video o reunión con cliente',imp:'Presentación'}
+];
+const IMP_ITEMS={
+  'TSS':['presentada_contadora','borrador_devuelto','borrador_recibido_corregido','aprobada_impuestos','aprobado_cliente','pagado'],
+  'IR-3':['presentada_contadora','aprobada_impuestos','aprobado_cliente','pagado'],
+  'IR-17':['borrador_presentado','borrador_devuelto','borrador_recibido_corregido','aprobada_impuestos','aprobado_cliente','pagado'],
+  'Anticipo':['autorizacion_enviada','anticipo_pagado'],
+  'ITBIS':['pago_a_cuenta','borrador_presentado','borrador_devuelto','borrador_recibido_corregido','aprobada_impuestos','aprobado_cliente','pagado']
+};
+const IMP_LABEL={presentada_contadora:'Presentada por contadora',borrador_devuelto:'Borrador devuelto',borrador_recibido_corregido:'Borrador recibido corregido',aprobada_impuestos:'Aprobada por Impuestos',aprobado_cliente:'Aprobado por cliente',pagado:'Pagado',borrador_presentado:'Borrador presentado por contador/a',autorizacion_enviada:'Autorización enviada',anticipo_pagado:'Anticipo pagado',pago_a_cuenta:'¿Solicitar pago a cuenta?'};
+// Etiquetas específicas por impuesto (mismo id, otro nombre). TSS habla de nómina, no de borrador.
+const IMP_LABEL_TAX={'TSS':{borrador_devuelto:'Nómina devuelta',borrador_recibido_corregido:'Nómina recibida corregida'}};
+function impLabel(wfId,id){return (IMP_LABEL_TAX[wfId]&&IMP_LABEL_TAX[wfId][id])||IMP_LABEL[id]||id;}
+
+let WF={orden:[],wf:{},act:{},etapas:{},tareas:{}};
+let DB_OK=false, ADMIN=false;
+
+async function load(){
+  try{ const {data:{user}}=await sb.auth.getUser(); if(user){const {data:p}=await sb.from('profiles').select('rol').eq('id',user.id).single(); ADMIN=p&&p.rol==='admin';} }catch(e){}
+  try{
+    const [wfR,etR,tkR]=await Promise.all([
+      sb.from('wf_workflows').select('*').order('orden'),
+      sb.from('wf_etapas').select('*').order('orden'),
+      sb.from('wf_etapa_tareas').select('*').order('orden')
+    ]);
+    if(!wfR.error&&wfR.data){
+      DB_OK=true; WF={orden:[],wf:{},act:{},etapas:{},tareas:{}};
+      wfR.data.forEach(w=>{WF.orden.push(w.id);WF.wf[w.id]=w.label;WF.act[w.id]=w.activo;WF.etapas[w.id]=[];});
+      (etR.data||[]).forEach(e=>{(WF.etapas[e.workflow_id]=WF.etapas[e.workflow_id]||[]).push(e);WF.tareas[e.id]=[];});
+      (tkR.data||[]).forEach(t=>{(WF.tareas[t.etapa_id]=WF.tareas[t.etapa_id]||[]).push(t);});
+    }
+  }catch(e){}
+  render();
+}
+function setStatus(t){const el=document.getElementById('status');el.textContent=t;if(t)setTimeout(()=>{if(el.textContent===t)el.textContent='';},2000);}
+
+function render(){
+  const m=document.getElementById('main');
+  if(!DB_OK){m.innerHTML='<div class="text-slate-400 text-sm p-6">No pude cargar la maestra (¿sesión iniciada? ¿tablas creadas?). Esta pantalla edita la maestra de workflows; ábrela dentro del portal con sesión de admin.</div>';return;}
+  if(!ADMIN){m.innerHTML='<div class="text-amber-600 text-sm p-6 bg-amber-50 rounded-lg">Solo administradores pueden editar la maestra. Abriendo en modo lectura.</div>'+renderBody(false);return;}
+  m.innerHTML=renderBody(true);
+}
+function renderBody(editable){
+  let h='<div class="max-w-4xl space-y-5">';
+  WF.orden.forEach(wfId=>{
+    h+=`<div class="bg-white rounded-xl border p-4">
+      <div class="flex items-center gap-2 mb-3">
+        <span class="text-[10px] px-2 py-0.5 rounded bg-slate-100 text-slate-500 font-mono">${wfId}</span>
+        <input class="ed text-base font-bold text-[#1a2332] flex-1" value="${attr(WF.wf[wfId])}" ${editable?`onchange="wfRename('${wfId}',this.value)"`:'disabled'}>
+        <label class="text-xs text-slate-500 flex items-center gap-1"><input type="checkbox" ${WF.act[wfId]?'checked':''} ${editable?`onchange="wfToggle('${wfId}',this.checked)"`:'disabled'}> activo</label>
+      </div>`;
+    (WF.etapas[wfId]||[]).forEach((e,ei,arr)=>{
+      h+=`<div class="ml-1 mb-2 border-l-2 pl-3" style="border-color:#e2e8f0">
+        <div class="flex items-center gap-2">
+          <select class="ed text-[10px] text-white rounded hdr-${e.equipo}" ${editable?`onchange="etEquipo('${e.id}',this.value)"`:'disabled'}>${['contab','impuestos','cliente','dgii'].map(q=>`<option value="${q}" ${q===e.equipo?'selected':''}>${EQ_LABEL[q]}</option>`).join('')}</select>
+          <input class="ed text-sm font-semibold flex-1" value="${attr(e.label)}" ${editable?`onchange="etRename('${e.id}',this.value)"`:'disabled'}>
+          <span class="text-[10px] text-slate-300 font-mono">${e.id}</span>
+          ${editable?`<button onclick="etMove('${e.id}',-1)" class="text-slate-400 hover:text-slate-700 px-1 ${ei===0?'invisible':''}">↑</button><button onclick="etMove('${e.id}',1)" class="text-slate-400 hover:text-slate-700 px-1 ${ei===arr.length-1?'invisible':''}">↓</button><button onclick="etDelete('${e.id}')" class="text-red-300 hover:text-red-600 px-1">✕</button>`:''}
+        </div>
+        <ul class="ml-2 mt-1 space-y-0.5">`;
+      (WF.tareas[e.id]||[]).forEach((t,ti,tarr)=>{
+        h+=`<li class="flex items-center gap-2 text-sm">
+          <span class="text-slate-300">·</span>
+          <input class="ed flex-1" value="${attr(t.label)}" ${editable?`onchange="tkRename(${t.id},this.value)"`:'disabled'}>
+          <span class="text-[10px] text-slate-300 font-mono">${t.checklist_origen}:${t.tarea_id}</span>
+          ${editable?`<button onclick="tkMove(${t.id},-1)" class="text-slate-400 hover:text-slate-700 px-1 ${ti===0?'invisible':''}">↑</button><button onclick="tkMove(${t.id},1)" class="text-slate-400 hover:text-slate-700 px-1 ${ti===tarr.length-1?'invisible':''}">↓</button><button onclick="tkDelete(${t.id})" class="text-red-300 hover:text-red-600 px-1">✕</button>`:''}
+        </li>`;
+      });
+      if(editable)h+=`<li class="flex items-center gap-2 mt-1">${addTareaSelect(wfId,e.id)}<button onclick="tkAdd('${e.id}')" class="text-xs bg-slate-100 hover:bg-slate-200 rounded px-2 py-1">＋ tarea</button></li>`;
+      h+='</ul></div>';
+    });
+    if(editable)h+=`<button onclick="etAdd('${wfId}')" class="ml-1 text-xs text-blue-600 hover:underline">＋ agregar etapa</button>`;
+    h+='</div>';
+  });
+  h+='</div>';
+  return h;
+}
+function addTareaSelect(wfId,etId){
+  let opts='<option value="">— elegir tarea del checklist —</option>';
+  const cont=CONTAB_ITEMS.filter(i=>i.imp===wfId||(!['TSS','IR-3','IR-17','Anticipo','ITBIS'].includes(wfId)&&i.imp==='Presentación'));
+  if(cont.length){opts+='<optgroup label="Contabilidad">'+cont.map(i=>`<option value="contadores|${i.id}">${i.label}</option>`).join('')+'</optgroup>';}
+  const imp=IMP_ITEMS[wfId]||[];
+  if(imp.length){opts+='<optgroup label="Impuestos">'+imp.map(id=>`<option value="impuestos|${id}">${impLabel(wfId,id)}</option>`).join('')+'</optgroup>';}
+  return `<select id="addtk_${etId}" class="border border-slate-200 rounded px-2 py-1 text-xs flex-1">${opts}</select>`;
+}
+
+// ── Acciones (escriben en datos) ──
+async function wfRename(id,v){await sb.from('wf_workflows').update({label:v.trim()||id}).eq('id',id);WF.wf[id]=v;setStatus('Guardado');}
+async function wfToggle(id,on){await sb.from('wf_workflows').update({activo:on}).eq('id',id);WF.act[id]=on;setStatus('Guardado');}
+async function etRename(id,v){await sb.from('wf_etapas').update({label:v.trim()}).eq('id',id);setStatus('Guardado');}
+async function etEquipo(id,v){await sb.from('wf_etapas').update({equipo:v}).eq('id',id);await load();}
+async function etMove(id,dir){
+  const wfId=Object.keys(WF.etapas).find(k=>WF.etapas[k].some(e=>e.id===id));const arr=WF.etapas[wfId];const i=arr.findIndex(e=>e.id===id);const j=i+dir;if(j<0||j>=arr.length)return;
+  const a=arr[i],b=arr[j];await Promise.all([sb.from('wf_etapas').update({orden:b.orden}).eq('id',a.id),sb.from('wf_etapas').update({orden:a.orden}).eq('id',b.id)]);await load();
+}
+async function etDelete(id){if(!confirm('¿Borrar esta etapa y sus tareas de la maestra?'))return;await sb.from('wf_etapas').delete().eq('id',id);await load();setStatus('Etapa borrada');}
+async function etAdd(wfId){
+  const arr=WF.etapas[wfId]||[];const orden=arr.length?Math.max(...arr.map(e=>e.orden))+1:1;
+  const id=wfId.toLowerCase().replace(/[^a-z0-9]/g,'')+'_e'+Date.now();
+  await sb.from('wf_etapas').insert({id:id,workflow_id:wfId,label:'Nueva etapa',equipo:'contab',orden:orden});await load();
+}
+async function tkRename(id,v){await sb.from('wf_etapa_tareas').update({label:v.trim()}).eq('id',id);setStatus('Guardado');}
+async function tkMove(id,dir){
+  let etId,arr,i;for(const k in WF.tareas){const x=WF.tareas[k].findIndex(t=>t.id===id);if(x>=0){etId=k;arr=WF.tareas[k];i=x;break;}}if(arr==null)return;const j=i+dir;if(j<0||j>=arr.length)return;
+  const a=arr[i],b=arr[j];await Promise.all([sb.from('wf_etapa_tareas').update({orden:b.orden}).eq('id',a.id),sb.from('wf_etapa_tareas').update({orden:a.orden}).eq('id',b.id)]);await load();
+}
+async function tkDelete(id){if(!confirm('¿Quitar esta tarea de la etapa?'))return;await sb.from('wf_etapa_tareas').delete().eq('id',id);await load();setStatus('Tarea quitada');}
+async function tkAdd(etId){
+  const sel=document.getElementById('addtk_'+etId);const v=sel&&sel.value;if(!v){return;}
+  const [origen,tareaId]=v.split('|');
+  const wfId=Object.keys(WF.etapas).find(k=>(WF.etapas[k]||[]).some(e=>e.id===etId))||'';
+  const label=origen==='contadores'?(CONTAB_ITEMS.find(i=>i.id===tareaId)||{}).label:impLabel(wfId,tareaId);
+  const arr=WF.tareas[etId]||[];const orden=arr.length?Math.max(...arr.map(t=>t.orden))+1:1;
+  const {error}=await sb.from('wf_etapa_tareas').insert({etapa_id:etId,checklist_origen:origen,tarea_id:tareaId,label:label||tareaId,orden:orden});
+  if(error){setStatus('Ya existe en esta etapa');}else{await load();setStatus('Tarea agregada');}
+}
+
+function attr(s){return (s||'').replace(/"/g,'&quot;');}
+load();
+</script>
+</body>
+</html>

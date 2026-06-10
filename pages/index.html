@@ -686,6 +686,17 @@ const MENU = [
     desc: 'Leads, funnel de ventas, ROAS y seguimiento del pipeline comercial.'
   },
   {
+    id: 'tareas',
+    title: 'Tareas',
+    navDesc: 'Workflows de impuestos y tareas',
+    icon: '✅',
+    iconBg: '#ecfdf5',
+    roles: ['admin', 'comercial', 'contadores', 'impuestos', 'implementaciones'],
+    href: 'tareas.html',
+    active: true,
+    desc: 'Proceso de impuestos de cada cliente como Kanban cross-team, y tareas libres del equipo.'
+  },
+  {
     id: 'contabilidad',
     title: 'Contabilidad',
     navDesc: 'Cierres y estados financieros',
@@ -751,7 +762,9 @@ const MENU = [
     navDesc: 'Roles y acceso al portal',
     children: [
       { id: 'usuarios', title: 'Usuarios y Permisos', href: 'usuarios.html', active: true,
-        desc: 'Gestiona accesos, habilidades y pantallas por usuario.' }
+        desc: 'Gestiona accesos, habilidades y pantallas por usuario.' },
+      { id: 'maestras', title: 'Maestras', href: 'maestras.html', active: true,
+        desc: 'Tablas de definición del portal (workflows, etc.) con sus IDs estables.' }
     ]
   }
 ];
