@@ -144,9 +144,9 @@ body.embed .content { padding-top:12px; }
 .pm-panel-body td { padding:12px 14px; border-bottom:1px solid #f1f5f9; vertical-align:middle; }
 .pm-dual .pm-panel-body tbody td { height:44px; box-sizing:border-box; }
 .pm-panel-body tr:last-child td { border-bottom:none; }
-.pm-table-compact { font-size:0.75rem; }
-.pm-table-compact th { font-size:0.62rem; white-space:nowrap; }
-.pm-table-compact td { padding:8px 8px !important; white-space:nowrap; }
+.pm-table-compact { font-size:0.7rem; }
+.pm-table-compact th { font-size:0.58rem; white-space:nowrap; padding:6px 6px !important; }
+.pm-table-compact td { padding:6px 6px !important; white-space:nowrap; }
 
 /* Dark panel header */
 .pm-panel-dark .pm-panel-hdr { background:var(--navy); color:white; border-bottom:none; }
@@ -404,6 +404,7 @@ var ANIO = new Date().getFullYear();
 var MESES_KEY = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
 var MESES_LABEL = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
 var MESES_FULL = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+var MESES_ABR_GLOBAL = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
 
 var IMPUESTOS = [
   { id: 'TSS', label: 'TSS', deadline: 3 },
@@ -2508,12 +2509,12 @@ function renderProyecciónDetail() {
 
   h += '<div class="pm-panel pm-panel-dark"><div class="pm-panel-hdr">';
   h += '<h3 style="text-transform:uppercase;font-size:0.78rem;letter-spacing:0.3px">Realidad hasta hoy</h3></div>';
-  h += '<div class="pm-panel-body" style="overflow-x:auto"><div style="display:inline-block;min-width:100%"><table class="pm-table-compact"><thead><tr>';
-  h += '<th>Mes</th><th class="pm-text-right">Ventas IT1</th><th class="pm-text-right">Costos Op.</th><th class="pm-text-right">Gastos</th><th class="pm-text-right">Ing./Gto. No Op.</th><th class="pm-text-right">Gtos. N/A</th>';
+  h += '<div class="pm-panel-body" style="overflow-x:auto"><div style="min-width:100%"><table class="pm-table-compact"><thead><tr>';
+  h += '<th>Mes</th><th class="pm-text-right">Ventas</th><th class="pm-text-right">Costos</th><th class="pm-text-right">Gastos</th><th class="pm-text-right">No Op.</th><th class="pm-text-right">N/A</th>';
   h += '</tr></thead><tbody>';
   pmEjecución.forEach(function(e) {
     var eIF = (e.ingreso_no_operacional || 0) - (e.gasto_no_operacional || 0);
-    h += '<tr><td class="pm-font-bold">' + MESES_FULL[e.mes - 1] + '</td>';
+    h += '<tr><td class="pm-font-bold">' + MESES_ABR_GLOBAL[e.mes - 1] + '</td>';
     h += '<td class="pm-text-right">' + pmFormatMoneyShort(e.ventas_it1) + '</td>';
     h += '<td class="pm-text-right">' + pmFormatMoneyShort(e.costos_operativos) + '</td>';
     h += '<td class="pm-text-right">' + pmFormatMoneyShort(e.gastos) + '</td>';
@@ -2527,27 +2528,27 @@ function renderProyecciónDetail() {
   h += '<td class="pm-text-right">' + pmFormatMoneyShort(totalIF) + '</td>';
   h += '<td class="pm-text-right">' + pmFormatMoneyShort(totalGNA) + '</td></tr>';
   h += '</tbody></table>';
-  h += '<div class="pm-ganancia"><span>Ganancia / Pérdida</span><span class="pm-amount" style="color:' + (gananciaNeta >= 0 ? 'var(--green)' : 'var(--red)') + '">$' + pmFormatMoney(gananciaNeta) + '</span></div>';
+  h += '<div class="pm-ganancia"><span>G/P Actual</span><span class="pm-amount" style="color:' + (gananciaNeta >= 0 ? 'var(--green)' : 'var(--red)') + '">$' + pmFormatMoney(gananciaNeta) + '</span></div>';
   h += '</div></div></div>';
 
   h += '<div class="pm-panel pm-panel-dark"><div class="pm-panel-hdr">';
   h += '<h3 style="text-transform:uppercase;font-size:0.78rem;letter-spacing:0.3px">Proyección a fin de año (promedios)</h3></div>';
-  h += '<div class="pm-panel-body" style="overflow-x:auto"><div style="display:inline-block;min-width:100%"><table class="pm-table-compact"><thead><tr>';
-  h += '<th>Mes</th><th class="pm-text-right">Ventas IT1</th><th class="pm-text-right">Costos Op.</th><th class="pm-text-right">Gastos</th><th class="pm-text-right">Ing./Gto. No Op.</th><th class="pm-text-right">Gtos. N/A</th>';
+  h += '<div class="pm-panel-body" style="overflow-x:auto"><div style="min-width:100%"><table class="pm-table-compact"><thead><tr>';
+  h += '<th>Mes</th><th class="pm-text-right">Ventas</th><th class="pm-text-right">Costos</th><th class="pm-text-right">Gastos</th><th class="pm-text-right">No Op.</th><th class="pm-text-right">N/A</th>';
   h += '</tr></thead><tbody>';
   var avgIF = avgINO - avgGNO;
   for (var m = 1; m <= 12; m++) {
     var realRow = pmEjecución.find(function(e) { return e.mes === m; });
     if (realRow) {
       var rIF = (realRow.ingreso_no_operacional || 0) - (realRow.gasto_no_operacional || 0);
-      h += '<tr><td>' + MESES_FULL[m - 1] + '</td>';
+      h += '<tr><td>' + MESES_ABR_GLOBAL[m - 1] + '</td>';
       h += '<td class="pm-text-right">' + pmFormatMoneyShort(realRow.ventas_it1) + '</td>';
       h += '<td class="pm-text-right">' + pmFormatMoneyShort(realRow.costos_operativos) + '</td>';
       h += '<td class="pm-text-right">' + pmFormatMoneyShort(realRow.gastos) + '</td>';
       h += '<td class="pm-text-right">' + pmFormatMoneyShort(rIF) + '</td>';
       h += '<td class="pm-text-right">' + pmFormatMoneyShort(realRow.gastos_no_admitidos) + '</td></tr>';
     } else {
-      h += '<tr style="background:#fffbeb"><td>' + MESES_FULL[m - 1] + '</td>';
+      h += '<tr style="background:#fffbeb"><td>' + MESES_ABR_GLOBAL[m - 1] + '</td>';
       h += '<td class="pm-text-right">' + pmFormatMoneyShort(avgV) + '</td>';
       h += '<td class="pm-text-right">' + pmFormatMoneyShort(avgCO) + '</td>';
       h += '<td class="pm-text-right">' + pmFormatMoneyShort(avgG) + '</td>';
@@ -2562,7 +2563,7 @@ function renderProyecciónDetail() {
   h += '<td class="pm-text-right">' + pmFormatMoneyShort(projIF) + '</td>';
   h += '<td class="pm-text-right">' + pmFormatMoneyShort(projGNA) + '</td></tr>';
   h += '</tbody></table>';
-  h += '<div class="pm-ganancia"><span>Ganancia / Pérdida (Proyectada)</span><span class="pm-amount" style="color:' + (projGanancia >= 0 ? 'var(--green)' : 'var(--red)') + '">$' + pmFormatMoney(projGanancia) + '</span></div>';
+  h += '<div class="pm-ganancia"><span>G/P Proyectada</span><span class="pm-amount" style="color:' + (projGanancia >= 0 ? 'var(--green)' : 'var(--red)') + '">$' + pmFormatMoney(projGanancia) + '</span></div>';
   h += '</div></div></div></div>';
 
   h += '<div class="pm-dual">';
