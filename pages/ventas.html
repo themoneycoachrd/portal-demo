@@ -732,10 +732,13 @@ function leadTotal(lead) {
 }
 
 function leadVendido(lead, includeSoft) {
-  // Vendido = Impl + FE con descuento. Servicio no entra. Software suma a partir de marzo.
-  const desc = (lead.desc != null ? lead.desc : 25) / 100;
-  let total = (lead.impl || 0) * (1 - desc) + (lead.fe || 0) * (1 - desc);
-  if (includeSoft) total += (lead.soft || 0);
+  // Vendido = cada servicio × (1 - su descuento individual)
+  var di = (lead.desc_impl != null ? lead.desc_impl : 0) / 100;
+  var df = (lead.desc_fe != null ? lead.desc_fe : 0) / 100;
+  var ds = (lead.desc_serv != null ? lead.desc_serv : 0) / 100;
+  var dw = (lead.desc_soft != null ? lead.desc_soft : 0) / 100;
+  var total = (lead.impl || 0) * (1 - di) + (lead.fe || 0) * (1 - df) + (lead.serv || 0) * (1 - ds);
+  if (includeSoft) total += (lead.soft || 0) * (1 - dw);
   return total;
 }
 
@@ -774,7 +777,11 @@ async function loadData() {
         fe: parseFloat(row.fe) || 0,
         serv: parseFloat(row.serv) || 0,
         soft: parseFloat(row.soft) || 0,
-        desc: parseFloat(row.descuento),
+        desc_impl: parseFloat(row.desc_impl) || 0,
+        desc_fe: parseFloat(row.desc_fe) || 0,
+        desc_serv: parseFloat(row.desc_serv) || 0,
+        desc_soft: parseFloat(row.desc_soft) || 0,
+        rnc: row.rnc || '',
         notas: row.notas || '',
         categoria: row.categoria || '',
         resp: row.responsable || ''
@@ -811,7 +818,9 @@ async function dbInsertLead(mes, lead) {
     temperatura: lead.temp || 'Tibio', demo: lead.demo || null,
     funnel: lead.f, impl: lead.impl || 0, fe: lead.fe || 0,
     serv: lead.serv || 0, soft: lead.soft || 0,
-    descuento: lead.desc != null ? lead.desc : 25,
+    desc_impl: lead.desc_impl || 0, desc_fe: lead.desc_fe || 0,
+    desc_serv: lead.desc_serv || 0, desc_soft: lead.desc_soft || 0,
+    rnc: lead.rnc || '',
     notas: lead.notas || '',
     categoria: lead.categoria || '',
     responsable: lead.resp || null
@@ -829,7 +838,9 @@ async function dbUpdateLead(lead) {
     temperatura: lead.temp || 'Tibio', demo: lead.demo || null,
     funnel: lead.f, impl: lead.impl || 0, fe: lead.fe || 0,
     serv: lead.serv || 0, soft: lead.soft || 0,
-    descuento: lead.desc != null ? lead.desc : 25,
+    desc_impl: lead.desc_impl || 0, desc_fe: lead.desc_fe || 0,
+    desc_serv: lead.desc_serv || 0, desc_soft: lead.desc_soft || 0,
+    rnc: lead.rnc || '',
     notas: lead.notas || '',
     categoria: lead.categoria || '',
     responsable: lead.resp || null
@@ -1174,7 +1185,7 @@ function renderPipeline() {
   // Table
   if (filtered.length > 0) {
     html += '<div class="card"><div class="table-wrapper"><table>';
-    html += '<thead><tr><th>#</th><th>Nombre</th><th>Empresa</th><th>Resp</th><th>Temp</th><th>Demo</th><th>Funnel</th><th>Impl</th><th>FE</th><th>Serv</th><th>Soft</th>';
+    html += '<thead><tr><th>#</th><th>Nombre</th><th>RNC</th><th>Empresa</th><th>Resp</th><th>Temp</th><th>Demo</th><th>Funnel</th><th>Impl</th><th>FE</th><th>Serv</th><th>Soft</th>';
     if (!isVentas) html += '<th>Cotizado</th><th>Desc%</th><th>Vendido</th>';
     html += '<th>Notas</th><th>Categoria</th></tr></thead>';
     html += '<tbody>';
@@ -1182,11 +1193,14 @@ function renderPipeline() {
       const realIdx = leads.indexOf(lead);
       const isExpanded = APP.expandedRow === realIdx;
       const isGanado = lead.f === 'Cerrado Ganado';
-      const descPct = lead.desc != null ? lead.desc : 25;
+      var descVals = [lead.desc_impl||0, lead.desc_fe||0, lead.desc_serv||0, lead.desc_soft||0];
+      var descNonZero = descVals.filter(function(d){return d > 0;});
+      var descAvg = descNonZero.length > 0 ? Math.round(descNonZero.reduce(function(a,b){return a+b;},0) / descNonZero.length) : 0;
       const vendido = isGanado ? leadVendido(lead, includeSoft) : 0;
       html += `<tr class="${isExpanded ? 'expanded' : ''}${isGanado ? ' ganado-row' : ''}" data-idx="${realIdx}" style="cursor:pointer;${isGanado ? 'background:#ecfdf5;' : ''}">
         <td>${idx + 1}</td>
         <td><strong>${lead.n}</strong></td>
+        <td style="font-size:0.78rem;color:var(--muted)">${lead.rnc || ''}</td>
         <td>${lead.e || lead.t}</td>
         <td><span style="font-size:0.72rem;font-weight:600;color:${lead.resp === 'Naomi' ? '#8b5cf6' : lead.resp === 'Felix' ? '#4361ee' : 'var(--muted)'}">${lead.resp || '—'}</span></td>
         <td><span class="badge ${tempBadgeClass(lead.temp)}">${TEMP_DISPLAY[lead.temp]}</span></td>
@@ -1197,7 +1211,7 @@ function renderPipeline() {
         <td class="currency">${fmt(lead.serv)}</td>
         <td class="currency">${fmt(lead.soft)}</td>
         ${!isVentas ? `<td class="currency"><strong>${fmt(leadTotal(lead))}</strong></td>
-        <td>${isGanado ? descPct + '%' : '-'}</td>
+        <td>${isGanado ? descAvg + '%' : '-'}</td>
         <td class="currency">${isGanado ? '<strong>' + fmt(Math.round(vendido)) + '</strong>' : '-'}</td>` : ''}
         <td>${lead.notas}</td>
         <td>${renderCatBadges(lead.categoria)}</td>
@@ -1216,11 +1230,11 @@ function renderPipeline() {
 }
 
 function renderEditRow(lead, idx) {
-  const descVal = lead.desc != null ? lead.desc : 25;
-  const colSpan = !tengoPermiso('comercial', 'roas', 'consulta') ? 13 : 16;
+  const colSpan = !tengoPermiso('comercial', 'roas', 'consulta') ? 14 : 17;
   return `<tr class="edit-row"><td colspan="${colSpan}">
-    <div class="edit-form" style="grid-template-columns:repeat(5,1fr);">
+    <div class="edit-form" style="grid-template-columns:repeat(6,1fr);">
       <div class="field"><label>Nombre</label><input type="text" data-field="n" value="${esc(lead.n)}"></div>
+      <div class="field"><label>RNC</label><input type="text" data-field="rnc" value="${esc(lead.rnc)}" placeholder="000-00000-0"></div>
       <div class="field"><label>Tipo de Empresa</label><input type="text" data-field="t" value="${esc(lead.t)}"></div>
       <div class="field"><label>Empresa</label><input type="text" data-field="e" value="${esc(lead.e)}"></div>
       <div class="field"><label>Temperatura</label>
@@ -1243,12 +1257,17 @@ function renderEditRow(lead, idx) {
       </div>
       <div class="field"><label>Fecha Demo</label><input type="date" data-field="demo" value="${lead.demo}"></div>
       <div class="field"><label>Implementación</label><input type="number" data-field="impl" value="${lead.impl}"></div>
-      <div class="field"><label>FE</label><input type="number" data-field="fe" value="${lead.fe}"></div>
+      <div class="field"><label>Facturación Electrónica</label><input type="number" data-field="fe" value="${lead.fe}"></div>
       <div class="field"><label>Servicio</label><input type="number" data-field="serv" value="${lead.serv}"></div>
       <div class="field"><label>Software</label><input type="number" data-field="soft" value="${lead.soft}"></div>
     </div>
-    <div class="edit-form" style="grid-template-columns:1fr 2fr 2fr;margin-top:8px;">
-      <div class="field"><label>Descuento % (Impl + FE)</label><input type="number" data-field="desc" value="${descVal}" min="0" max="100"></div>
+    <div class="edit-form" style="grid-template-columns:repeat(4,1fr);margin-top:8px;">
+      <div class="field"><label>Desc% Impl</label><input type="number" data-field="desc_impl" value="${lead.desc_impl||0}" min="0" max="100"></div>
+      <div class="field"><label>Desc% FE</label><input type="number" data-field="desc_fe" value="${lead.desc_fe||0}" min="0" max="100"></div>
+      <div class="field"><label>Desc% Serv</label><input type="number" data-field="desc_serv" value="${lead.desc_serv||0}" min="0" max="100"></div>
+      <div class="field"><label>Desc% Soft</label><input type="number" data-field="desc_soft" value="${lead.desc_soft||0}" min="0" max="100"></div>
+    </div>
+    <div class="edit-form" style="grid-template-columns:2fr 2fr;margin-top:8px;">
       <div class="field"><label>Notas</label><textarea data-field="notas">${esc(lead.notas)}</textarea></div>
       <div class="field"><label>Categorías</label>
         ${renderCatChecks(lead.categoria)}
@@ -1265,8 +1284,9 @@ function renderEditRow(lead, idx) {
 function renderAddLeadForm() {
   return `<div class="card" id="add-lead-form">
     <h3 style="font-size:0.95rem;margin-bottom:12px;">Nuevo Lead</h3>
-    <div class="edit-form" style="grid-template-columns:repeat(5,1fr);">
+    <div class="edit-form" style="grid-template-columns:repeat(6,1fr);">
       <div class="field"><label>Nombre</label><input type="text" data-field="n" value=""></div>
+      <div class="field"><label>RNC</label><input type="text" data-field="rnc" value="" placeholder="000-00000-0"></div>
       <div class="field"><label>Tipo de Empresa</label><input type="text" data-field="t" value=""></div>
       <div class="field"><label>Empresa</label><input type="text" data-field="e" value=""></div>
       <div class="field"><label>Temperatura</label>
@@ -1293,8 +1313,13 @@ function renderAddLeadForm() {
       <div class="field"><label>Servicio</label><input type="number" data-field="serv" value="0"></div>
       <div class="field"><label>Software</label><input type="number" data-field="soft" value="0"></div>
     </div>
-    <div class="edit-form" style="grid-template-columns:1fr 2fr 1fr;margin-top:12px;">
-      <div class="field"><label>Descuento % (Impl + FE)</label><input type="number" data-field="desc" value="25" min="0" max="100"></div>
+    <div class="edit-form" style="grid-template-columns:repeat(4,1fr);margin-top:12px;">
+      <div class="field"><label>Desc% Impl</label><input type="number" data-field="desc_impl" value="0" min="0" max="100"></div>
+      <div class="field"><label>Desc% FE</label><input type="number" data-field="desc_fe" value="0" min="0" max="100"></div>
+      <div class="field"><label>Desc% Serv</label><input type="number" data-field="desc_serv" value="0" min="0" max="100"></div>
+      <div class="field"><label>Desc% Soft</label><input type="number" data-field="desc_soft" value="0" min="0" max="100"></div>
+    </div>
+    <div class="edit-form" style="grid-template-columns:2fr 2fr;margin-top:12px;">
       <div class="field"><label>Notas</label><textarea data-field="notas"></textarea></div>
       <div class="field"><label>Categorías</label>
         ${renderCatChecks('')}
@@ -1352,7 +1377,7 @@ function bindPipelineEvents() {
       editRow.querySelectorAll('[data-field]').forEach(input => {
         const field = input.dataset.field;
         const val = input.value;
-        if (['impl','fe','serv','soft','desc'].includes(field)) {
+        if (['impl','fe','serv','soft','desc_impl','desc_fe','desc_serv','desc_soft'].includes(field)) {
           lead[field] = parseFloat(val) || 0;
         } else {
           lead[field] = val;
@@ -1417,7 +1442,7 @@ function bindPipelineEvents() {
       form.querySelectorAll('[data-field]').forEach(input => {
         const field = input.dataset.field;
         const val = input.value;
-        if (['impl','fe','serv','soft','desc'].includes(field)) {
+        if (['impl','fe','serv','soft','desc_impl','desc_fe','desc_serv','desc_soft'].includes(field)) {
           newLead[field] = parseFloat(val) || 0;
         } else {
           newLead[field] = val;

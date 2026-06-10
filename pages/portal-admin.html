@@ -33,7 +33,7 @@ body { font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-se
 .month-tab:hover { background:#eef0f4; }
 .month-tab.active { background:var(--navy); color:white; border-color:var(--navy); }
 
-.content { padding:24px; max-width:1200px; margin:0 auto; }
+.content { padding:16px; max-width:1200px; margin:0 auto; }
 
 .dash-card { background:white; border-radius:12px; border:1px solid var(--border); padding:18px 20px; display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; }
 .dash-card-left { display:flex; align-items:center; gap:14px; }
@@ -59,7 +59,7 @@ body { font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-se
 .fecha-col.fv-red { color:#dc2626; }
 
 .task-section { background:white; border-radius:12px; border:1px solid var(--border); overflow:hidden; }
-.task-row { display:flex; align-items:center; justify-content:space-between; padding:14px 20px; border-bottom:1px solid #f1f5f9; gap:12px; }
+.task-row { display:flex; align-items:center; justify-content:space-between; padding:14px 14px; border-bottom:1px solid #f1f5f9; gap:12px; }
 .task-row:last-child { border-bottom:none; }
 .task-row.auto { background:#f8fafc; }
 .task-row.sub { padding-left:44px; background:#fafbfc; }
@@ -88,7 +88,7 @@ body { font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-se
 .input-monto { padding:7px 12px; border:1px solid var(--border); border-radius:8px; font-size:0.85rem; font-family:inherit; background:white; width:140px; }
 .input-monto:focus { outline:none; border-color:var(--blue); box-shadow:0 0 0 3px rgba(67,97,238,0.1); }
 
-.section-progress { display:flex; align-items:center; gap:10px; padding:14px 20px; background:#f8fafc; border-bottom:1px solid var(--border); }
+.section-progress { display:flex; align-items:center; gap:10px; padding:14px 14px; background:#f8fafc; border-bottom:1px solid var(--border); }
 .section-progress-label { font-size:0.78rem; font-weight:600; color:var(--muted); }
 .section-progress-bar { flex:1; height:8px; background:#eef0f4; border-radius:4px; overflow:hidden; max-width:200px; }
 .section-progress-fill { height:100%; border-radius:4px; transition:width 0.3s; }
@@ -194,19 +194,24 @@ body.embed .content { padding-top:12px; }
 .pm-dual > .pm-card { justify-content:space-between; }
 .pm-dual > .pm-card > table { flex:1; }
 .pm-panel { background:var(--card); border-radius:12px; border:1px solid var(--border); overflow:hidden; }
-.pm-panel-hdr { display:flex; align-items:center; justify-content:space-between; padding:16px 20px; border-bottom:1px solid var(--border); }
+.pm-panel-hdr { display:flex; align-items:center; justify-content:space-between; padding:14px 16px; border-bottom:1px solid var(--border); }
 .pm-panel-hdr h3 { font-size:0.88rem; font-weight:700; display:flex; align-items:center; gap:8px; }
 .pm-panel-hdr .pm-hdot { width:10px; height:10px; border-radius:50%; display:inline-block; }
 .pm-panel-hdr .pm-period { font-size:0.78rem; color:var(--blue); font-weight:600; }
 .pm-panel-body { padding:0; }
 .pm-panel-body table { width:100%; border-collapse:collapse; font-size:0.82rem; }
-.pm-panel-body th { text-align:left; padding:10px 20px; font-size:0.65rem; text-transform:uppercase; letter-spacing:0.3px; color:var(--muted); border-bottom:1px solid var(--border); background:#f8fafc; font-weight:700; }
-.pm-panel-body td { padding:14px 20px; border-bottom:1px solid #f1f5f9; vertical-align:middle; }
-.pm-dual .pm-panel-body tbody td { height:54px; box-sizing:border-box; }
+.pm-panel-body th { text-align:left; padding:8px 14px; font-size:0.65rem; text-transform:uppercase; letter-spacing:0.3px; color:var(--muted); border-bottom:1px solid var(--border); background:#f8fafc; font-weight:700; }
+.pm-panel-body td { padding:12px 14px; border-bottom:1px solid #f1f5f9; vertical-align:middle; }
+.pm-dual .pm-panel-body tbody td { height:44px; box-sizing:border-box; }
 .pm-panel-body tr:last-child td { border-bottom:none; }
-.pm-table-compact { font-size:0.75rem; }
-.pm-table-compact th { font-size:0.62rem; white-space:nowrap; }
-.pm-table-compact td { padding:10px 12px !important; white-space:nowrap; }
+.pm-table-compact { font-size:0.7rem; }
+.pm-table-compact th { font-size:0.58rem; white-space:nowrap; padding:6px 6px !important; }
+.pm-table-compact td { padding:6px 6px !important; white-space:nowrap; }
+
+/* Zoom buttons */
+.pm-zoom-btns { display:flex; gap:4px; }
+.pm-zoom-btn { background:rgba(255,255,255,0.15); border:1px solid rgba(255,255,255,0.25); color:white; width:26px; height:26px; border-radius:6px; cursor:pointer; font-size:0.85rem; font-weight:700; display:flex; align-items:center; justify-content:center; transition:background 0.15s; }
+.pm-zoom-btn:hover { background:rgba(255,255,255,0.3); }
 
 /* Dark panel header */
 .pm-panel-dark .pm-panel-hdr { background:var(--navy); color:white; border-bottom:none; }
@@ -226,12 +231,12 @@ body.embed .content { padding-top:12px; }
 /* Total rows, ganancia bar */
 .pm-row-total td { border-top:2px solid var(--border); font-weight:700; background:#fffbeb; }
 .pm-row-ganancia td { background:var(--navy) !important; color:white !important; border-top-color:var(--navy) !important; }
-.pm-ganancia { background:var(--navy); color:white; padding:12px 20px; display:flex; justify-content:space-between; align-items:center; font-size:0.85rem; font-weight:700; }
-.pm-ganancia .pm-amount { color:var(--green); font-size:1.1rem; font-weight:800; }
+.pm-ganancia { background:var(--navy); color:white; padding:10px 14px; display:flex; justify-content:space-between; align-items:center; font-size:0.82rem; font-weight:700; }
+.pm-ganancia .pm-amount { color:var(--green); font-size:1rem; font-weight:800; }
 
 /* Summary cards */
 .pm-summary-row { display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:12px; margin-bottom:16px; }
-.pm-summary-card { background:var(--card); border-radius:12px; padding:16px 20px; border:1px solid var(--border); }
+.pm-summary-card { background:var(--card); border-radius:12px; padding:14px 16px; border:1px solid var(--border); }
 .pm-summary-card .pm-sc-label { font-size:0.65rem; text-transform:uppercase; letter-spacing:0.5px; color:var(--light); font-weight:600; margin-bottom:4px; display:flex; align-items:center; justify-content:space-between; }
 .pm-summary-card .pm-sc-value { font-size:1.5rem; font-weight:800; color:var(--green); }
 .pm-summary-card .pm-sc-value.navy { color:var(--navy); }
@@ -289,7 +294,7 @@ body.embed .content { padding-top:12px; }
 .pm-section-label { font-size:0.78rem; font-weight:700; text-transform:uppercase; letter-spacing:0.3px; color:var(--muted); margin-bottom:10px; }
 
 /* CRS banner */
-.pm-crs-banner { background:var(--navy); padding:20px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:16px; }
+.pm-crs-banner { background:var(--navy); padding:14px 16px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:16px; }
 .pm-crs-pill { background:rgba(255,255,255,0.15); padding:14px 24px; border-radius:10px; border:1px solid rgba(255,255,255,0.25); display:flex; align-items:center; gap:16px; }
 
 @media (max-width:768px) {
@@ -490,6 +495,7 @@ var ANIO = new Date().getFullYear();
 var MESES_KEY = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
 var MESES_LABEL = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
 var MESES_FULL = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+var MESES_ABR_GLOBAL = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
 
 var IMPUESTOS = [
   { id: 'TSS', label: 'TSS', deadline: 3 },
@@ -839,6 +845,25 @@ function pmFormatMoney(n) {
 function pmFormatMoneyShort(n) {
   if (n === null || n === undefined || n === 0) return '0';
   return Math.round(parseFloat(n)).toLocaleString('en-US');
+}
+
+// Zoom para paneles de proyección
+var pmZoomLevels = {};
+function pmZoomTable(panelId, dir) {
+  if (!pmZoomLevels[panelId]) pmZoomLevels[panelId] = 100;
+  pmZoomLevels[panelId] += dir * 10;
+  if (pmZoomLevels[panelId] < 60) pmZoomLevels[panelId] = 60;
+  if (pmZoomLevels[panelId] > 150) pmZoomLevels[panelId] = 150;
+  var el = document.getElementById(panelId);
+  if (!el) return;
+  var tbl = el.querySelector('table');
+  var gan = el.querySelector('.pm-ganancia');
+  var scale = pmZoomLevels[panelId] / 100;
+  if (tbl) tbl.style.fontSize = (0.7 * scale) + 'rem';
+  if (tbl) { var ths = tbl.querySelectorAll('th'); for (var i = 0; i < ths.length; i++) ths[i].style.fontSize = (0.58 * scale) + 'rem'; }
+  if (gan) { gan.style.fontSize = (0.82 * scale) + 'rem'; var amt = gan.querySelector('.pm-amount'); if (amt) amt.style.fontSize = (1 * scale) + 'rem'; }
+  var pctEl = el.querySelector('.pm-zoom-pct');
+  if (pctEl) pctEl.textContent = pmZoomLevels[panelId] + '%';
 }
 
 // Contribución Residuos Sólidos — Ley 98-25
@@ -2944,14 +2969,16 @@ function renderProyecciónDetail() {
 
   h += '<div class="pm-dual">';
 
-  h += '<div class="pm-panel pm-panel-dark"><div class="pm-panel-hdr">';
-  h += '<h3 style="text-transform:uppercase;font-size:0.78rem;letter-spacing:0.3px">Realidad hasta hoy</h3></div>';
-  h += '<div class="pm-panel-body" style="overflow-x:auto"><div style="display:inline-block;min-width:100%"><table class="pm-table-compact"><thead><tr>';
-  h += '<th>Mes</th><th class="pm-text-right">Ventas IT1</th><th class="pm-text-right">Costos Op.</th><th class="pm-text-right">Gastos</th><th class="pm-text-right">Ing./Gto. No Op.</th><th class="pm-text-right">Gtos. N/A</th>';
+  h += '<div class="pm-panel pm-panel-dark" id="pm-proy-real"><div class="pm-panel-hdr" style="display:flex;justify-content:space-between;align-items:center">';
+  h += '<h3 style="text-transform:uppercase;font-size:0.78rem;letter-spacing:0.3px">Realidad hasta hoy</h3>';
+  h += '<div class="pm-zoom-btns"><button class="pm-zoom-btn" onclick="pmZoomTable(\'pm-proy-real\',-1)">−</button><span class="pm-zoom-pct" style="color:white;font-size:0.65rem;min-width:32px;text-align:center">100%</span><button class="pm-zoom-btn" onclick="pmZoomTable(\'pm-proy-real\',1)">+</button></div>';
+  h += '</div>';
+  h += '<div class="pm-panel-body" style="overflow-x:auto"><div style="min-width:100%"><table class="pm-table-compact"><thead><tr>';
+  h += '<th>Mes</th><th class="pm-text-right">Ventas</th><th class="pm-text-right">Costos</th><th class="pm-text-right">Gastos</th><th class="pm-text-right">No Op.</th><th class="pm-text-right">N/A</th>';
   h += '</tr></thead><tbody>';
   pmEjecución.forEach(function(e) {
     var eIF = (e.ingreso_no_operacional || 0) - (e.gasto_no_operacional || 0);
-    h += '<tr><td class="pm-font-bold">' + MESES_FULL[e.mes - 1] + '</td>';
+    h += '<tr><td class="pm-font-bold">' + MESES_ABR_GLOBAL[e.mes - 1] + '</td>';
     h += '<td class="pm-text-right">' + pmFormatMoneyShort(e.ventas_it1) + '</td>';
     h += '<td class="pm-text-right">' + pmFormatMoneyShort(e.costos_operativos) + '</td>';
     h += '<td class="pm-text-right">' + pmFormatMoneyShort(e.gastos) + '</td>';
@@ -2965,27 +2992,29 @@ function renderProyecciónDetail() {
   h += '<td class="pm-text-right">' + pmFormatMoneyShort(totalIF) + '</td>';
   h += '<td class="pm-text-right">' + pmFormatMoneyShort(totalGNA) + '</td></tr>';
   h += '</tbody></table>';
-  h += '<div class="pm-ganancia"><span>Ganancia / Pérdida</span><span class="pm-amount" style="color:' + (gananciaNeta >= 0 ? 'var(--green)' : 'var(--red)') + '">$' + pmFormatMoney(gananciaNeta) + '</span></div>';
+  h += '<div class="pm-ganancia"><span>G/P Actual</span><span class="pm-amount" style="color:' + (gananciaNeta >= 0 ? 'var(--green)' : 'var(--red)') + '">$' + pmFormatMoney(gananciaNeta) + '</span></div>';
   h += '</div></div></div>';
 
-  h += '<div class="pm-panel pm-panel-dark"><div class="pm-panel-hdr">';
-  h += '<h3 style="text-transform:uppercase;font-size:0.78rem;letter-spacing:0.3px">Proyección a fin de año (promedios)</h3></div>';
-  h += '<div class="pm-panel-body" style="overflow-x:auto"><div style="display:inline-block;min-width:100%"><table class="pm-table-compact"><thead><tr>';
-  h += '<th>Mes</th><th class="pm-text-right">Ventas IT1</th><th class="pm-text-right">Costos Op.</th><th class="pm-text-right">Gastos</th><th class="pm-text-right">Ing./Gto. No Op.</th><th class="pm-text-right">Gtos. N/A</th>';
+  h += '<div class="pm-panel pm-panel-dark" id="pm-proy-est"><div class="pm-panel-hdr" style="display:flex;justify-content:space-between;align-items:center">';
+  h += '<h3 style="text-transform:uppercase;font-size:0.78rem;letter-spacing:0.3px">Proyección anual</h3>';
+  h += '<div class="pm-zoom-btns"><button class="pm-zoom-btn" onclick="pmZoomTable(\'pm-proy-est\',-1)">−</button><span class="pm-zoom-pct" style="color:white;font-size:0.65rem;min-width:32px;text-align:center">100%</span><button class="pm-zoom-btn" onclick="pmZoomTable(\'pm-proy-est\',1)">+</button></div>';
+  h += '</div>';
+  h += '<div class="pm-panel-body" style="overflow-x:auto"><div style="min-width:100%"><table class="pm-table-compact"><thead><tr>';
+  h += '<th>Mes</th><th class="pm-text-right">Ventas</th><th class="pm-text-right">Costos</th><th class="pm-text-right">Gastos</th><th class="pm-text-right">No Op.</th><th class="pm-text-right">N/A</th>';
   h += '</tr></thead><tbody>';
   var avgIF = avgINO - avgGNO;
   for (var m = 1; m <= 12; m++) {
     var realRow = pmEjecución.find(function(e) { return e.mes === m; });
     if (realRow) {
       var rIF = (realRow.ingreso_no_operacional || 0) - (realRow.gasto_no_operacional || 0);
-      h += '<tr><td>' + MESES_FULL[m - 1] + '</td>';
+      h += '<tr><td>' + MESES_ABR_GLOBAL[m - 1] + '</td>';
       h += '<td class="pm-text-right">' + pmFormatMoneyShort(realRow.ventas_it1) + '</td>';
       h += '<td class="pm-text-right">' + pmFormatMoneyShort(realRow.costos_operativos) + '</td>';
       h += '<td class="pm-text-right">' + pmFormatMoneyShort(realRow.gastos) + '</td>';
       h += '<td class="pm-text-right">' + pmFormatMoneyShort(rIF) + '</td>';
       h += '<td class="pm-text-right">' + pmFormatMoneyShort(realRow.gastos_no_admitidos) + '</td></tr>';
     } else {
-      h += '<tr style="background:#fffbeb"><td>' + MESES_FULL[m - 1] + '</td>';
+      h += '<tr style="background:#fffbeb"><td>' + MESES_ABR_GLOBAL[m - 1] + '</td>';
       h += '<td class="pm-text-right">' + pmFormatMoneyShort(avgV) + '</td>';
       h += '<td class="pm-text-right">' + pmFormatMoneyShort(avgCO) + '</td>';
       h += '<td class="pm-text-right">' + pmFormatMoneyShort(avgG) + '</td>';
@@ -3000,7 +3029,7 @@ function renderProyecciónDetail() {
   h += '<td class="pm-text-right">' + pmFormatMoneyShort(projIF) + '</td>';
   h += '<td class="pm-text-right">' + pmFormatMoneyShort(projGNA) + '</td></tr>';
   h += '</tbody></table>';
-  h += '<div class="pm-ganancia"><span>Ganancia / Pérdida (Proyectada)</span><span class="pm-amount" style="color:' + (projGanancia >= 0 ? 'var(--green)' : 'var(--red)') + '">$' + pmFormatMoney(projGanancia) + '</span></div>';
+  h += '<div class="pm-ganancia"><span>G/P Proyectada</span><span class="pm-amount" style="color:' + (projGanancia >= 0 ? 'var(--green)' : 'var(--red)') + '">$' + pmFormatMoney(projGanancia) + '</span></div>';
   h += '</div></div></div></div>';
 
   h += '<div class="pm-dual">';
@@ -3008,26 +3037,26 @@ function renderProyecciónDetail() {
   h += '<div class="pm-panel pm-panel-dark"><div class="pm-panel-hdr">';
   h += '<h3 style="text-transform:uppercase;font-size:0.78rem;letter-spacing:0.3px">Impuesto Sobre la Renta</h3></div>';
   h += '<div class="pm-panel-body" style="padding:0"><table style="font-size:0.82rem"><tbody>';
-  h += '<tr><td style="padding:10px 20px;font-weight:600">Ganancia Proyectada (12 meses)</td><td class="pm-text-right" style="padding:10px 20px;font-weight:700;color:' + projGanColor + '">' + pmFormatMoney(projGanancia) + '</td></tr>';
-  h += '<tr><td style="padding:10px 20px;color:var(--muted)">Pérdidas compensables</td><td class="pm-text-right" style="padding:10px 20px">' + (perdidas > 0 ? pmFormatMoney(perdidas) : '—') + '</td></tr>';
-  h += '<tr style="border-top:2px solid var(--text);background:#f8fafc;font-weight:700"><td style="padding:10px 20px">Renta Neta Imponible</td><td class="pm-text-right" style="padding:10px 20px">' + pmFormatMoney(baseISR) + '</td></tr>';
-  h += '<tr><td style="padding:10px 20px;font-weight:700">ISR (27%) Proyectado</td><td class="pm-text-right" style="padding:10px 20px;font-weight:700">' + pmFormatMoney(isrProyectado) + '</td></tr>';
-  h += '<tr style="background:#fef2f2"><td colspan="2" style="padding:6px 20px;color:var(--red);font-weight:700;font-size:0.7rem;text-transform:uppercase">Menos:</td></tr>';
-  h += '<tr><td style="padding:10px 20px;color:var(--muted)">Anticipos Pagados (Año Actual)</td><td class="pm-text-right" style="padding:10px 20px;font-weight:700">' + pmFormatMoney(totalAnticipos) + '</td></tr>';
-  h += '<tr><td style="padding:10px 20px;color:var(--muted)">Retenciones ISR</td><td class="pm-text-right" style="padding:10px 20px;font-weight:700">—</td></tr>';
-  h += '<tr style="border-top:3px solid var(--red)"><td style="padding:14px 20px"><span style="color:var(--red);font-weight:700;text-transform:uppercase">Total a Pagar</span><br><span style="color:var(--red);font-size:0.7rem">(estimado)</span></td>';
-  h += '<td class="pm-text-right" style="padding:14px 20px;font-size:1.1rem;font-weight:800;color:' + (isrAPagar > 0 ? 'var(--red)' : 'var(--green)') + '">' + pmFormatMoney(isrAPagar) + '</td></tr>';
+  h += '<tr><td style="padding:10px 14px;font-weight:600">Ganancia Proyectada (12 meses)</td><td class="pm-text-right" style="padding:10px 14px;font-weight:700;color:' + projGanColor + '">' + pmFormatMoney(projGanancia) + '</td></tr>';
+  h += '<tr><td style="padding:10px 14px;color:var(--muted)">Pérdidas compensables</td><td class="pm-text-right" style="padding:10px 14px">' + (perdidas > 0 ? pmFormatMoney(perdidas) : '—') + '</td></tr>';
+  h += '<tr style="border-top:2px solid var(--text);background:#f8fafc;font-weight:700"><td style="padding:10px 14px">Renta Neta Imponible</td><td class="pm-text-right" style="padding:10px 14px">' + pmFormatMoney(baseISR) + '</td></tr>';
+  h += '<tr><td style="padding:10px 14px;font-weight:700">ISR (27%) Proyectado</td><td class="pm-text-right" style="padding:10px 14px;font-weight:700">' + pmFormatMoney(isrProyectado) + '</td></tr>';
+  h += '<tr style="background:#fef2f2"><td colspan="2" style="padding:6px 14px;color:var(--red);font-weight:700;font-size:0.7rem;text-transform:uppercase">Menos:</td></tr>';
+  h += '<tr><td style="padding:10px 14px;color:var(--muted)">Anticipos Pagados (Año Actual)</td><td class="pm-text-right" style="padding:10px 14px;font-weight:700">' + pmFormatMoney(totalAnticipos) + '</td></tr>';
+  h += '<tr><td style="padding:10px 14px;color:var(--muted)">Retenciones ISR</td><td class="pm-text-right" style="padding:10px 14px;font-weight:700">—</td></tr>';
+  h += '<tr style="border-top:3px solid var(--red)"><td style="padding:14px 14px"><span style="color:var(--red);font-weight:700;text-transform:uppercase">Total a Pagar</span><br><span style="color:var(--red);font-size:0.7rem">(estimado)</span></td>';
+  h += '<td class="pm-text-right" style="padding:14px 14px;font-size:1.1rem;font-weight:800;color:' + (isrAPagar > 0 ? 'var(--red)' : 'var(--green)') + '">' + pmFormatMoney(isrAPagar) + '</td></tr>';
   h += '</tbody></table></div></div>';
 
   h += '<div class="pm-panel pm-panel-dark"><div class="pm-panel-hdr">';
   h += '<h3 style="text-transform:uppercase;font-size:0.78rem;letter-spacing:0.3px">Impuesto al Activo</h3></div>';
   h += '<div class="pm-panel-body" style="padding:0"><table style="font-size:0.82rem"><tbody>';
-  h += '<tr><td style="padding:10px 20px;font-weight:600">Total de Activos</td><td class="pm-text-right" style="padding:10px 20px;font-weight:700">' + pmFormatMoney(activos) + '</td></tr>';
-  h += '<tr style="background:#fef2f2"><td colspan="2" style="padding:6px 20px;color:var(--red);font-weight:700;font-size:0.7rem;text-transform:uppercase">Menos:</td></tr>';
-  h += '<tr style="background:#f0fdf4"><td style="padding:10px 20px;color:var(--muted)">Activos exentos</td><td class="pm-text-right" style="padding:10px 20px">' + pmFormatMoney(activosExentos) + '</td></tr>';
-  h += '<tr style="border-top:1px solid var(--border);font-weight:700"><td style="padding:10px 20px">Base Imponible Activos</td><td class="pm-text-right" style="padding:10px 20px">' + pmFormatMoney(baseActivos) + '</td></tr>';
-  h += '<tr><td style="padding:10px 20px;color:var(--muted)">Impuesto Calculado (1%)</td><td class="pm-text-right" style="padding:10px 20px;font-weight:600">' + pmFormatMoney(impActivo) + '</td></tr>';
-  h += '<tr style="background:#f8fafc"><td style="padding:10px 20px;color:var(--muted)">Comparativo ISR Liq.</td><td class="pm-text-right" style="padding:10px 20px;font-weight:700">' + pmFormatMoney(isrProyectado) + '</td></tr>';
+  h += '<tr><td style="padding:10px 14px;font-weight:600">Total de Activos</td><td class="pm-text-right" style="padding:10px 14px;font-weight:700">' + pmFormatMoney(activos) + '</td></tr>';
+  h += '<tr style="background:#fef2f2"><td colspan="2" style="padding:6px 14px;color:var(--red);font-weight:700;font-size:0.7rem;text-transform:uppercase">Menos:</td></tr>';
+  h += '<tr style="background:#f0fdf4"><td style="padding:10px 14px;color:var(--muted)">Activos exentos</td><td class="pm-text-right" style="padding:10px 14px">' + pmFormatMoney(activosExentos) + '</td></tr>';
+  h += '<tr style="border-top:1px solid var(--border);font-weight:700"><td style="padding:10px 14px">Base Imponible Activos</td><td class="pm-text-right" style="padding:10px 14px">' + pmFormatMoney(baseActivos) + '</td></tr>';
+  h += '<tr><td style="padding:10px 14px;color:var(--muted)">Impuesto Calculado (1%)</td><td class="pm-text-right" style="padding:10px 14px;font-weight:600">' + pmFormatMoney(impActivo) + '</td></tr>';
+  h += '<tr style="background:#f8fafc"><td style="padding:10px 14px;color:var(--muted)">Comparativo ISR Liq.</td><td class="pm-text-right" style="padding:10px 14px;font-weight:700">' + pmFormatMoney(isrProyectado) + '</td></tr>';
   h += '</tbody></table></div></div></div>';
 
   // Nota resumen: comparación ISR vs Activos — estilo CRS banner
@@ -3036,7 +3065,7 @@ function renderProyecciónDetail() {
   var mayorPagar = Math.max(impMayor - totalAnticipos, 0);
   var notaLabel = aplicaActivos ? 'Aplica: Impuesto al Activo (1%)' : 'Aplica: ISR (27%)';
   h += '<div class="pm-panel" style="margin-bottom:24px;overflow:hidden">';
-  h += '<div class="pm-crs-banner" style="padding:14px 20px">';
+  h += '<div class="pm-crs-banner" style="padding:14px 14px">';
   h += '<div><div style="color:rgba(255,255,255,0.7);font-size:0.7rem;text-transform:uppercase;letter-spacing:0.3px">' + notaLabel + '</div>';
   if (aplicaActivos) {
     h += '<div style="color:white;font-size:0.85rem;font-family:monospace">1% Activos: $' + pmFormatMoney(impActivo) + ' &gt; ISR: $' + pmFormatMoney(isrProyectado) + '</div>';
@@ -3046,14 +3075,14 @@ function renderProyecciónDetail() {
   h += '</div>';
   h += '<div class="pm-crs-pill" style="padding:10px 18px"><span style="color:white;font-weight:700;font-size:0.82rem">Total a Pagar*</span>';
   h += '<span style="color:#fbbf24;font-weight:800;font-size:1.3rem">$' + pmFormatMoney(mayorPagar) + '</span></div></div>';
-  h += '<div style="background:var(--navy);padding:2px 20px 10px;font-size:0.65rem;color:rgba(255,255,255,0.5)">*Estimado si se pagan todos los anticipos del año.</div>';
+  h += '<div style="background:var(--navy);padding:2px 14px 10px;font-size:0.65rem;color:rgba(255,255,255,0.5)">*Estimado si se pagan todos los anticipos del año.</div>';
   h += '</div>';
 
   h += '<div class="pm-dual">';
 
   h += '<div class="pm-panel pm-panel-dark"><div class="pm-panel-hdr">';
   h += '<h3 style="text-transform:uppercase;font-size:0.78rem;letter-spacing:0.3px">Anticipos Año Corriente</h3></div>';
-  h += '<div class="pm-panel-body" style="padding:20px">';
+  h += '<div class="pm-panel-body" style="padding:14px">';
   if (esPersonaFisica) {
     var mesesCuota = ['Junio', 'Septiembre', 'Diciembre'];
     for (var qi = 0; qi < 3; qi++) {
@@ -3079,13 +3108,13 @@ function renderProyecciónDetail() {
   h += '<div class="pm-panel pm-panel-dark"><div class="pm-panel-hdr">';
   h += '<h3 style="text-transform:uppercase;font-size:0.78rem;letter-spacing:0.3px">Proyección Anticipo Próx. Año</h3></div>';
   h += '<div class="pm-panel-body" style="padding:0"><table style="font-size:0.82rem"><tbody>';
-  h += '<tr><td style="padding:10px 20px;color:var(--muted)">Ingresos Totales</td><td class="pm-text-right" style="padding:10px 20px;font-weight:700">$' + pmFormatMoney(projV) + '</td></tr>';
-  h += '<tr><td style="padding:10px 20px;color:var(--muted)">ISR Liquidado (Base)</td><td class="pm-text-right" style="padding:10px 20px;font-weight:700">$' + pmFormatMoney(isrProyectado) + '</td></tr>';
-  h += '<tr><td style="padding:10px 20px;color:var(--muted)">T.E.T. (Tasa Efectiva)</td><td class="pm-text-right" style="padding:10px 20px;font-weight:600;color:var(--blue)">' + tet.toFixed(0) + '%</td></tr>';
-  h += '<tr style="background:#fffbeb"><td style="padding:10px 20px;font-weight:600">Total Anticipo Calculado</td><td class="pm-text-right" style="padding:10px 20px;font-weight:700;color:var(--amber)">$' + pmFormatMoney(totalAntCalc) + '</td></tr>';
+  h += '<tr><td style="padding:10px 14px;color:var(--muted)">Ingresos Totales</td><td class="pm-text-right" style="padding:10px 14px;font-weight:700">$' + pmFormatMoney(projV) + '</td></tr>';
+  h += '<tr><td style="padding:10px 14px;color:var(--muted)">ISR Liquidado (Base)</td><td class="pm-text-right" style="padding:10px 14px;font-weight:700">$' + pmFormatMoney(isrProyectado) + '</td></tr>';
+  h += '<tr><td style="padding:10px 14px;color:var(--muted)">T.E.T. (Tasa Efectiva)</td><td class="pm-text-right" style="padding:10px 14px;font-weight:600;color:var(--blue)">' + tet.toFixed(0) + '%</td></tr>';
+  h += '<tr style="background:#fffbeb"><td style="padding:10px 14px;font-weight:600">Total Anticipo Calculado</td><td class="pm-text-right" style="padding:10px 14px;font-weight:700;color:var(--amber)">$' + pmFormatMoney(totalAntCalc) + '</td></tr>';
   var antEstLabel = esPersonaFisica ? 'Cuota Estimada (×3)' : 'Anticipo Mensual Estimado';
-  h += '<tr style="border-top:1px solid var(--border)"><td style="padding:14px 20px;font-weight:700">' + antEstLabel + '</td>';
-  h += '<td class="pm-text-right" style="padding:14px 20px"><div style="font-weight:800;font-size:1.3rem;color:var(--amber)">$' + pmFormatMoney(antMensualProx) + '</div>';
+  h += '<tr style="border-top:1px solid var(--border)"><td style="padding:14px 14px;font-weight:700">' + antEstLabel + '</td>';
+  h += '<td class="pm-text-right" style="padding:14px 14px"><div style="font-weight:800;font-size:1.3rem;color:var(--amber)">$' + pmFormatMoney(antMensualProx) + '</div>';
   if (antActual > 0) {
     var arrow = varAntPct < 0 ? '↓' : '↑';
     var varColor = varAntPct < 0 ? 'var(--green)' : 'var(--red)';

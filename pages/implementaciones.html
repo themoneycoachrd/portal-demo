@@ -434,27 +434,30 @@ var ADM_ITEMS = [
   { id: 'paso_9', n: 9, label: 'Revisión de plantillas', responsable: 'Implementadora', grupo: 'Implementacion' },
   { id: 'paso_10', n: 10, label: 'Carga de plantillas previo al go live', responsable: 'Implementadora', grupo: 'Implementacion' },
   { id: 'paso_11', n: 11, label: 'Sesion 4 (Go Live)', responsable: 'Implementadora', grupo: 'Implementacion' },
-  { id: 'paso_12', n: 12, label: 'Firma de Actas 1-4', responsable: 'Implementadora', grupo: 'Implementacion' },
-  { id: 'paso_13', n: 13, label: 'Firma de Go Live y aceptacion final del proyecto', responsable: 'Implementadora', grupo: 'Implementacion' },
+  { id: 'paso_12a', n: 12, label: 'Firma de Acta 1', responsable: 'Implementadora', grupo: 'Implementacion' },
+  { id: 'paso_12b', n: 13, label: 'Firma de Acta 2', responsable: 'Implementadora', grupo: 'Implementacion' },
+  { id: 'paso_12c', n: 14, label: 'Firma de Acta 3', responsable: 'Implementadora', grupo: 'Implementacion' },
+  { id: 'paso_12d', n: 15, label: 'Firma de Acta 4', responsable: 'Implementadora', grupo: 'Implementacion' },
+  { id: 'paso_13', n: 16, label: 'Firma de Go Live y aceptacion final del proyecto', responsable: 'Implementadora', grupo: 'Implementacion' },
   // Transicion
-  { id: 'paso_14', n: 14, label: 'Reunion de asignacion de contadora con gerencia', responsable: 'Implementadora', grupo: 'Transicion' },
-  { id: 'paso_15', n: 15, label: 'Correo de asignacion de contadora y firma de recepcion de cliente', responsable: 'Implementadora', grupo: 'Transicion' },
-  { id: 'paso_16', n: 16, label: 'Envio de correo al cliente con link para agendar reunion presentacion contadora', responsable: 'Implementadora', grupo: 'Transicion' },
-  { id: 'paso_17', n: 17, label: 'Sesion 5 de presentacion de contadora agendada', responsable: 'Implementadora', grupo: 'Transicion' },
-  { id: 'paso_18', n: 18, label: 'Correo de encuesta de satisfacción de Implementacion', responsable: 'Implementadora', grupo: 'Transicion' }
+  { id: 'paso_14', n: 17, label: 'Reunion de asignacion de contadora con gerencia', responsable: 'Implementadora', grupo: 'Transicion' },
+  { id: 'paso_15', n: 18, label: 'Correo de asignacion de contadora y firma de recepcion de cliente', responsable: 'Implementadora', grupo: 'Transicion' },
+  { id: 'paso_16', n: 19, label: 'Envio de correo al cliente con link para agendar reunion presentacion contadora', responsable: 'Implementadora', grupo: 'Transicion' },
+  { id: 'paso_17', n: 20, label: 'Sesion 5 de presentacion de contadora agendada', responsable: 'Implementadora', grupo: 'Transicion' },
+  { id: 'paso_18', n: 21, label: 'Correo de encuesta de satisfacción de Implementacion', responsable: 'Implementadora', grupo: 'Transicion' }
 ];
 
 var ADM_GROUPS = [
   { label: 'ONBOARDING', responsable: null, from: 0, to: 2 },
   { label: 'GERENCIA', responsable: 'Felix', from: 3, to: 3 },
-  { label: 'IMPLEMENTACIÓN', responsable: null, from: 4, to: 12 },
-  { label: 'TRANSICIÓN', responsable: null, from: 13, to: 17 }
+  { label: 'IMPLEMENTACIÓN', responsable: null, from: 4, to: 15 },
+  { label: 'TRANSICIÓN', responsable: null, from: 16, to: 20 }
 ];
 
 // Helpers to get current tab config
 function getItems() { return mainTab === 'adm' ? ADM_ITEMS : FE_ITEMS; }
 function getGroups() { return mainTab === 'adm' ? ADM_GROUPS : FE_GROUPS; }
-function getTotalSteps() { return mainTab === 'adm' ? 18 : 15; }
+function getTotalSteps() { return mainTab === 'adm' ? 21 : 15; }
 function getTableName() { return mainTab === 'adm' ? 'impl_checklist_adm' : 'impl_checklist_fe'; }
 function getRows() { return mainTab === 'adm' ? allRowsAdm : allRows; }
 function setRows(data) { if (mainTab === 'adm') allRowsAdm = data; else allRows = data; }
