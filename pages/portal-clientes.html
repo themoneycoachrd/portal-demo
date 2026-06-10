@@ -204,6 +204,11 @@ body.embed .content { padding-top:12px; }
 .pm-sem-dot.rojo .pm-dot { background:var(--red); }
 .pm-sem-dot.na .pm-dot { background:#9ca3af; }
 
+/* Zoom buttons */
+.pm-zoom-btns { display:flex; gap:4px; }
+.pm-zoom-btn { background:rgba(255,255,255,0.15); border:1px solid rgba(255,255,255,0.25); color:white; width:26px; height:26px; border-radius:6px; cursor:pointer; font-size:0.85rem; font-weight:700; display:flex; align-items:center; justify-content:center; transition:background 0.15s; }
+.pm-zoom-btn:hover { background:rgba(255,255,255,0.3); }
+
 /* Variation arrows */
 .pm-var-up { color:var(--red); font-weight:600; font-size:0.78rem; }
 .pm-var-down { color:var(--green); font-weight:600; font-size:0.78rem; }
@@ -778,6 +783,25 @@ function pmFormatMoney(n) {
 function pmFormatMoneyShort(n) {
   if (n === null || n === undefined || n === 0) return '0';
   return Math.round(parseFloat(n)).toLocaleString('en-US');
+}
+
+// Zoom de tablas proyección
+var pmZoomLevels = {};
+function pmZoomTable(panelId, dir) {
+  if (!pmZoomLevels[panelId]) pmZoomLevels[panelId] = 100;
+  pmZoomLevels[panelId] += dir * 10;
+  if (pmZoomLevels[panelId] < 60) pmZoomLevels[panelId] = 60;
+  if (pmZoomLevels[panelId] > 150) pmZoomLevels[panelId] = 150;
+  var el = document.getElementById(panelId);
+  if (!el) return;
+  var tbl = el.querySelector('table');
+  var gan = el.querySelector('.pm-ganancia');
+  var scale = pmZoomLevels[panelId] / 100;
+  if (tbl) tbl.style.fontSize = (0.7 * scale) + 'rem';
+  if (tbl) { var ths = tbl.querySelectorAll('th'); for (var i = 0; i < ths.length; i++) ths[i].style.fontSize = (0.58 * scale) + 'rem'; }
+  if (gan) { gan.style.fontSize = (0.82 * scale) + 'rem'; var amt = gan.querySelector('.pm-amount'); if (amt) amt.style.fontSize = (1 * scale) + 'rem'; }
+  var pctEl = el.querySelector('.pm-zoom-pct');
+  if (pctEl) pctEl.textContent = pmZoomLevels[panelId] + '%';
 }
 
 // Contribución Residuos Sólidos — Ley 98-25
@@ -2507,8 +2531,10 @@ function renderProyecciónDetail() {
 
   h += '<div class="pm-dual">';
 
-  h += '<div class="pm-panel pm-panel-dark"><div class="pm-panel-hdr">';
-  h += '<h3 style="text-transform:uppercase;font-size:0.78rem;letter-spacing:0.3px">Realidad hasta hoy</h3></div>';
+  h += '<div class="pm-panel pm-panel-dark" id="pm-proy-real"><div class="pm-panel-hdr">';
+  h += '<h3 style="text-transform:uppercase;font-size:0.78rem;letter-spacing:0.3px">Realidad hasta hoy</h3>';
+  h += '<div class="pm-zoom-btns"><button class="pm-zoom-btn" onclick="pmZoomTable(\'pm-proy-real\',-1)">−</button><span class="pm-zoom-pct" style="font-size:0.65rem;min-width:32px;text-align:center">100%</span><button class="pm-zoom-btn" onclick="pmZoomTable(\'pm-proy-real\',1)">+</button></div>';
+  h += '</div>';
   h += '<div class="pm-panel-body" style="overflow-x:auto"><div style="min-width:100%"><table class="pm-table-compact"><thead><tr>';
   h += '<th>Mes</th><th class="pm-text-right">Ventas</th><th class="pm-text-right">Costos</th><th class="pm-text-right">Gastos</th><th class="pm-text-right">No Op.</th><th class="pm-text-right">N/A</th>';
   h += '</tr></thead><tbody>';
@@ -2531,8 +2557,10 @@ function renderProyecciónDetail() {
   h += '<div class="pm-ganancia"><span>G/P Actual</span><span class="pm-amount" style="color:' + (gananciaNeta >= 0 ? 'var(--green)' : 'var(--red)') + '">$' + pmFormatMoney(gananciaNeta) + '</span></div>';
   h += '</div></div></div>';
 
-  h += '<div class="pm-panel pm-panel-dark"><div class="pm-panel-hdr">';
-  h += '<h3 style="text-transform:uppercase;font-size:0.78rem;letter-spacing:0.3px">Proyección a fin de año (promedios)</h3></div>';
+  h += '<div class="pm-panel pm-panel-dark" id="pm-proy-est"><div class="pm-panel-hdr">';
+  h += '<h3 style="text-transform:uppercase;font-size:0.78rem;letter-spacing:0.3px">Proyección anual</h3>';
+  h += '<div class="pm-zoom-btns"><button class="pm-zoom-btn" onclick="pmZoomTable(\'pm-proy-est\',-1)">−</button><span class="pm-zoom-pct" style="font-size:0.65rem;min-width:32px;text-align:center">100%</span><button class="pm-zoom-btn" onclick="pmZoomTable(\'pm-proy-est\',1)">+</button></div>';
+  h += '</div>';
   h += '<div class="pm-panel-body" style="overflow-x:auto"><div style="min-width:100%"><table class="pm-table-compact"><thead><tr>';
   h += '<th>Mes</th><th class="pm-text-right">Ventas</th><th class="pm-text-right">Costos</th><th class="pm-text-right">Gastos</th><th class="pm-text-right">No Op.</th><th class="pm-text-right">N/A</th>';
   h += '</tr></thead><tbody>';
