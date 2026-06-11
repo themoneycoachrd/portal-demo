@@ -6,14 +6,14 @@
 <title>Calculadora RST — Account One</title>
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
-body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: transparent; padding: 20px 16px; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: transparent; padding: 16px 12px; }
 
 .calc-wrap { max-width: 740px; margin: 0 auto; }
 
 /* --- SLIDER --- */
-.calc-input-section { margin-bottom: 24px; }
+.calc-input-section { margin-bottom: 20px; }
 .calc-label { font-size: 14px; color: #6b7280; margin-bottom: 8px; }
-.calc-slider-row { padding: 0 2px; margin-bottom: 10px; }
+.calc-slider-row { padding: 0 2px; margin-bottom: 8px; }
 .calc-slider-row input[type="range"] {
   width: 100%; height: 6px;
   -webkit-appearance: none; appearance: none;
@@ -21,59 +21,58 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
   border-radius: 3px; outline: none; cursor: pointer;
 }
 .calc-slider-row input[type="range"]::-webkit-slider-thumb {
-  -webkit-appearance: none; width: 24px; height: 24px;
+  -webkit-appearance: none; width: 28px; height: 28px;
   border-radius: 50%; background: #1a2332; cursor: pointer;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+  box-shadow: 0 2px 6px rgba(0,0,0,0.25);
 }
 .calc-slider-row input[type="range"]::-moz-range-thumb {
-  width: 24px; height: 24px; border-radius: 50%;
+  width: 28px; height: 28px; border-radius: 50%;
   background: #1a2332; cursor: pointer; border: none;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+  box-shadow: 0 2px 6px rgba(0,0,0,0.25);
 }
-.calc-amount { font-size: 26px; font-weight: 700; color: #1a2332; }
+.calc-amount { font-size: 24px; font-weight: 700; color: #1a2332; }
 .calc-error {
   display: none; font-size: 13px; color: #991b1b;
-  background: #fee2e2; padding: 12px 16px; border-radius: 10px;
-  margin-top: 10px; align-items: center; gap: 8px;
+  background: #fee2e2; padding: 12px 14px; border-radius: 10px;
+  margin-top: 10px; align-items: center; gap: 8px; line-height: 1.4;
 }
 .calc-error.visible { display: flex; }
 
-/* --- GRID --- */
-.calc-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px; }
-
 /* --- CARDS --- */
 .calc-card {
-  background: #fff; border-radius: 14px; padding: 18px 20px;
+  background: #fff; border-radius: 14px; padding: 16px;
   box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+  margin-bottom: 14px;
 }
 .calc-card.ordinario { border: 2px solid #ef4444; }
 .calc-card.rst { border: 2px solid #10b981; }
 
 .calc-card-title {
   font-size: 13px; font-weight: 700; text-transform: uppercase;
-  letter-spacing: 0.4px; margin-bottom: 14px; padding-bottom: 10px;
+  letter-spacing: 0.4px; margin-bottom: 12px; padding-bottom: 8px;
 }
 .calc-card-title.ordinario { color: #ef4444; border-bottom: 2px solid #fecaca; }
 .calc-card-title.rst { color: #059669; border-bottom: 2px solid #a7f3d0; }
 
 .calc-section-label {
-  font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.4px;
-  color: #9ca3af; margin: 12px 0 6px; font-weight: 600;
+  font-size: 10px; text-transform: uppercase; letter-spacing: 0.3px;
+  color: #9ca3af; margin: 10px 0 4px; font-weight: 600; line-height: 1.4;
 }
-.calc-row { display: flex; justify-content: space-between; align-items: baseline; padding: 4px 0; font-size: 14px; }
-.calc-row-label { color: #6b7280; }
-.calc-row-value { font-weight: 600; color: #1a2332; white-space: nowrap; }
-.calc-row-rate { font-size: 11px; color: #9ca3af; margin-left: 3px; }
-.calc-row-na { font-weight: 500; color: #d1d5db; font-style: italic; font-size: 13px; }
-.calc-divider { border-top: 1px solid #f1f5f9; margin: 5px 0; }
+
+/* --- FILAS: label arriba, valor abajo --- */
+.calc-row { padding: 4px 0; font-size: 14px; }
+.calc-row-label { color: #6b7280; display: block; font-size: 13px; }
+.calc-row-value { font-weight: 600; color: #1a2332; display: block; font-size: 16px; }
+.calc-row-rate { font-size: 11px; color: #9ca3af; }
+.calc-row-na { font-weight: 500; color: #d1d5db; font-style: italic; font-size: 14px; display: block; }
+.calc-divider { border-top: 1px solid #f1f5f9; margin: 6px 0; }
 
 /* --- TOTALES --- */
 .calc-total-row {
-  display: flex; justify-content: space-between; align-items: baseline;
   padding: 10px 0 4px; border-top: 2px solid #e5e7eb; margin-top: 8px;
 }
-.calc-total-label { font-weight: 700; color: #1a2332; font-size: 14px; }
-.calc-total-value { font-weight: 700; font-size: 19px; }
+.calc-total-label { font-weight: 700; color: #1a2332; font-size: 14px; display: block; }
+.calc-total-value { font-weight: 700; font-size: 22px; display: block; margin-top: 2px; }
 .calc-total-value.red { color: #ef4444; }
 .calc-total-value.green { color: #059669; }
 
@@ -81,30 +80,32 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
 .calc-savings {
   background: linear-gradient(135deg, #ecfdf5, #d1fae5);
   border: 1px solid #a7f3d0; border-radius: 14px;
-  padding: 18px 20px; display: flex;
-  justify-content: space-between; align-items: center;
+  padding: 16px; text-align: center;
 }
 .calc-savings-label { font-size: 14px; font-weight: 600; color: #065f46; }
 .calc-savings-pct { font-size: 13px; color: #059669; margin-top: 3px; }
-.calc-savings-value { font-size: 24px; font-weight: 700; color: #059669; }
+.calc-savings-value { font-size: 26px; font-weight: 700; color: #059669; margin-top: 6px; }
 
 .calc-hidden { display: none !important; }
 
-/* --- MOBILE --- */
-@media (max-width: 640px) {
-  body { padding: 12px 10px; }
-  .calc-grid { grid-template-columns: 1fr; gap: 14px; }
-  .calc-card { padding: 16px; }
-  .calc-amount { font-size: 22px; }
-  .calc-row { font-size: 13px; }
-  .calc-row-rate { font-size: 10px; }
-  .calc-section-label { font-size: 10px; }
-  .calc-total-value { font-size: 17px; }
+/* --- DESKTOP: side by side + filas en línea --- */
+@media (min-width: 641px) {
+  body { padding: 20px 16px; }
+  .calc-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px; }
+  .calc-card { margin-bottom: 0; padding: 18px 20px; }
+  .calc-row { display: flex; justify-content: space-between; align-items: baseline; }
+  .calc-row-label { display: inline; font-size: 14px; }
+  .calc-row-value { display: inline; font-size: 15px; }
+  .calc-row-na { display: inline; }
+  .calc-total-row { display: flex; justify-content: space-between; align-items: baseline; }
+  .calc-total-label { display: inline; }
+  .calc-total-value { display: inline; font-size: 19px; margin-top: 0; }
   .calc-savings {
-    flex-direction: column; gap: 8px; text-align: center;
-    padding: 16px;
+    display: flex; justify-content: space-between; align-items: center;
+    text-align: left; padding: 18px 20px;
   }
-  .calc-savings-value { font-size: 22px; }
+  .calc-savings-value { margin-top: 0; font-size: 24px; }
+  .calc-amount { font-size: 26px; }
 }
 </style>
 </head>
@@ -122,12 +123,12 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
   </div>
 
   <div id="results">
-    <div class="calc-grid">
+    <div class="calc-cards">
       <!-- ORDINARIO -->
       <div class="calc-card ordinario">
         <div class="calc-card-title ordinario">Régimen ordinario</div>
 
-        <div class="calc-section-label">Impuesto sobre la renta (27% sobre los beneficios)</div>
+        <div class="calc-section-label">ISR (27% sobre los beneficios)</div>
         <div class="calc-row">
           <span class="calc-row-label">Ingresos brutos</span>
           <span class="calc-row-value" id="ord-ingresos">$5,000,000</span>
@@ -166,7 +167,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
       <div class="calc-card rst">
         <div class="calc-card-title rst">RST persona jurídica</div>
 
-        <div class="calc-section-label">Impuesto sobre la renta (7% sobre las ventas)</div>
+        <div class="calc-section-label">ISR (7% sobre las ventas)</div>
         <div class="calc-row">
           <span class="calc-row-label">Ingresos brutos</span>
           <span class="calc-row-value" id="rst-ingresos">$5,000,000</span>
@@ -267,7 +268,6 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
     document.getElementById('savings-value').textContent = fmtFull(ahorro);
     document.getElementById('savings-pct').textContent = 'Pagas ' + Math.round(pctAhorro) + '% menos al año';
 
-    // Auto-resize iframe
     if (window.parent !== window) {
       window.parent.postMessage({ type: 'calcRST-resize', height: document.body.scrollHeight + 32 }, '*');
     }
