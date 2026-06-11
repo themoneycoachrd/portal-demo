@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Calculadora RST</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: transparent; padding: 16px; }
+.calc-wrap { max-width: 720px; margin: 0 auto; }
+.calc-input-section { margin-bottom: 1.5rem; }
+.calc-label { font-size: 14px; color: #6b7280; margin-bottom: 6px; }
+.calc-input-row { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
+.calc-input-row input[type="range"] { flex: 1; height: 6px; -webkit-appearance: none; appearance: none; background: #e5e7eb; border-radius: 3px; outline: none; }
+.calc-input-row input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 20px; height: 20px; border-radius: 50%; background: #1a2332; cursor: pointer; }
+.calc-input-row input[type="range"]::-moz-range-thumb { width: 20px; height: 20px; border-radius: 50%; background: #1a2332; cursor: pointer; border: none; }
+.calc-amount { font-size: 22px; font-weight: 600; color: #1a2332; }
+.calc-error { display: none; font-size: 13px; color: #991b1b; background: #fee2e2; padding: 10px 14px; border-radius: 8px; margin-top: 8px; }
+.calc-error.visible { display: flex; align-items: center; gap: 8px; }
+.calc-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 1.5rem; }
+@media (max-width: 640px) { .calc-grid { grid-template-columns: 1fr; } }
+.calc-card { background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; padding: 1rem 1.25rem; }
+.calc-card.rst { border: 2px solid #10b981; }
+.calc-card-title { font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.3px; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid #f1f5f9; }
+.calc-card-title.ordinario { color: #6b7280; }
+.calc-card-title.rst { color: #065f46; }
+.calc-section-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.4px; color: #9ca3af; margin: 10px 0 4px; }
+.calc-row { display: flex; justify-content: space-between; align-items: baseline; padding: 5px 0; font-size: 14px; }
+.calc-row-label { color: #6b7280; }
+.calc-row-value { font-weight: 600; color: #1a2332; }
+.calc-row-rate { font-size: 12px; color: #9ca3af; margin-left: 4px; }
+.calc-row-na { font-weight: 500; color: #d1d5db; font-style: italic; }
+.calc-divider { border-top: 1px solid #f1f5f9; margin: 4px 0; }
+.calc-total { padding: 8px 0 4px; }
+.calc-total .calc-row-label { font-weight: 600; color: #1a2332; }
+.calc-total .calc-row-value { font-size: 18px; }
+.calc-total.danger .calc-row-value { color: #dc2626; }
+.calc-total.success .calc-row-value { color: #059669; }
+.calc-savings { background: #ecfdf5; border: 1px solid #a7f3d0; border-radius: 12px; padding: 1rem 1.25rem; display: flex; justify-content: space-between; align-items: center; }
+@media (max-width: 640px) { .calc-savings { flex-direction: column; gap: 8px; text-align: center; } }
+.calc-savings-label { font-size: 14px; font-weight: 600; color: #065f46; }
+.calc-savings-value { font-size: 22px; font-weight: 700; color: #059669; }
+.calc-savings-pct { font-size: 13px; color: #059669; margin-top: 2px; }
+.calc-hidden { display: none !important; }
+</style>
+</head>
+<body>
+<div class="calc-wrap">
+  <div class="calc-input-section">
+    <div class="calc-label">Ingresos anuales aproximados</div>
+    <div class="calc-input-row">
+      <input type="range" min="500000" max="12000000" step="100000" value="5000000" id="ingresos" oninput="calcRST()" />
+    </div>
+    <div class="calc-amount" id="ingresos-display">RD$5,000,000</div>
+    <div class="calc-error" id="error-msg">
+      ⚠️ Este monto supera el límite del RST (RD$12,000,000). Tu empresa califica para el régimen ordinario (ERCT).
+    </div>
+  </div>
+
+  <div id="results">
+    <div class="calc-grid">
+      <div class="calc-card">
+        <div class="calc-card-title ordinario">Régimen ordinario</div>
+
+        <div class="calc-section-label">Impuesto sobre la renta (27% sobre los beneficios)</div>
+        <div class="calc-row">
+          <span class="calc-row-label">Ingresos brutos</span>
+          <span class="calc-row-value" id="ord-ingresos">$5,000,000</span>
+        </div>
+        <div class="calc-row">
+          <span class="calc-row-label">Gastos estimados<span class="calc-row-rate">(60%)</span></span>
+          <span class="calc-row-value" id="ord-gastos">$3,000,000</span>
+        </div>
+        <div class="calc-divider"></div>
+        <div class="calc-row">
+          <span class="calc-row-label">Beneficio neto<span class="calc-row-rate">(40%)</span></span>
+          <span class="calc-row-value" id="ord-beneficio">$2,000,000</span>
+        </div>
+        <div class="calc-row">
+          <span class="calc-row-label">ISR<span class="calc-row-rate">(27%)</span></span>
+          <span class="calc-row-value" id="ord-isr">$540,000</span>
+        </div>
+
+        <div class="calc-section-label">Gastos contables (iguala promedio)</div>
+        <div class="calc-row">
+          <span class="calc-row-label">Mensual<span class="calc-row-rate">($20,000 x 12)</span></span>
+          <span class="calc-row-value">$240,000</span>
+        </div>
+        <div class="calc-row">
+          <span class="calc-row-label">Declaración anual</span>
+          <span class="calc-row-value">$40,000</span>
+        </div>
+
+        <div class="calc-divider" style="border-top-width: 2px; margin: 8px 0;"></div>
+        <div class="calc-row calc-total danger">
+          <span class="calc-row-label">Costo total anual</span>
+          <span class="calc-row-value" id="ord-total">$820,000</span>
+        </div>
+      </div>
+
+      <div class="calc-card rst">
+        <div class="calc-card-title rst">RST persona jurídica</div>
+
+        <div class="calc-section-label">Impuesto sobre la renta (7% sobre las ventas)</div>
+        <div class="calc-row">
+          <span class="calc-row-label">Ingresos brutos</span>
+          <span class="calc-row-value" id="rst-ingresos">$5,000,000</span>
+        </div>
+        <div class="calc-row">
+          <span class="calc-row-label">Gastos estimados</span>
+          <span class="calc-row-na">No aplica</span>
+        </div>
+        <div class="calc-divider"></div>
+        <div class="calc-row">
+          <span class="calc-row-label">Beneficio neto</span>
+          <span class="calc-row-na">No aplica</span>
+        </div>
+        <div class="calc-row">
+          <span class="calc-row-label">ISR<span class="calc-row-rate">(7%)</span></span>
+          <span class="calc-row-value" id="rst-isr">$350,000</span>
+        </div>
+
+        <div class="calc-section-label">Gastos contables (iguala Account One)</div>
+        <div class="calc-row">
+          <span class="calc-row-label">Mensual<span class="calc-row-rate">($15,500 x 12)</span></span>
+          <span class="calc-row-value">$186,000</span>
+        </div>
+        <div class="calc-row">
+          <span class="calc-row-label">Declaración anual</span>
+          <span class="calc-row-value">$0</span>
+        </div>
+
+        <div class="calc-divider" style="border-top-width: 2px; margin: 8px 0;"></div>
+        <div class="calc-row calc-total success">
+          <span class="calc-row-label">Costo total anual</span>
+          <span class="calc-row-value" id="rst-total">$536,000</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="calc-savings" id="savings-box">
+      <div>
+        <div class="calc-savings-label">Ahorro total con RST</div>
+        <div class="calc-savings-pct" id="savings-pct">Pagas 35% menos al año</div>
+      </div>
+      <div class="calc-savings-value" id="savings-value">RD$284,000</div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function() {
+  var RST_MENSUAL_RD = 15500;
+  var RST_ANUAL_CONTABLE = RST_MENSUAL_RD * 12;
+  var ORD_MENSUAL = 20000;
+  var ORD_ANUAL_CONTABLE = ORD_MENSUAL * 12;
+  var ORD_DECLARACION = 40000;
+
+  function fmt(n) {
+    return '$' + Math.round(n).toLocaleString('en-US');
+  }
+  function fmtFull(n) {
+    return 'RD$' + Math.round(n).toLocaleString('en-US');
+  }
+
+  window.calcRST = function() {
+    var v = parseInt(document.getElementById('ingresos').value);
+    document.getElementById('ingresos-display').textContent = fmtFull(v);
+
+    var errorEl = document.getElementById('error-msg');
+    var resultsEl = document.getElementById('results');
+
+    if (v > 12000000) {
+      errorEl.classList.add('visible');
+      resultsEl.classList.add('calc-hidden');
+      return;
+    }
+    errorEl.classList.remove('visible');
+    resultsEl.classList.remove('calc-hidden');
+
+    var gastos = v * 0.60;
+    var beneficio = v * 0.40;
+    var isrOrd = beneficio * 0.27;
+    var totalOrd = isrOrd + ORD_ANUAL_CONTABLE + ORD_DECLARACION;
+
+    var isrRst = v * 0.07;
+    var totalRst = isrRst + RST_ANUAL_CONTABLE;
+
+    var ahorro = totalOrd - totalRst;
+    var pctAhorro = totalOrd > 0 ? (ahorro / totalOrd * 100) : 0;
+
+    document.getElementById('ord-ingresos').textContent = fmt(v);
+    document.getElementById('ord-gastos').textContent = fmt(gastos);
+    document.getElementById('ord-beneficio').textContent = fmt(beneficio);
+    document.getElementById('ord-isr').textContent = fmt(isrOrd);
+    document.getElementById('ord-total').textContent = fmt(totalOrd);
+
+    document.getElementById('rst-ingresos').textContent = fmt(v);
+    document.getElementById('rst-isr').textContent = fmt(isrRst);
+    document.getElementById('rst-total').textContent = fmt(totalRst);
+
+    document.getElementById('savings-value').textContent = fmtFull(ahorro);
+    document.getElementById('savings-pct').textContent = 'Pagas ' + Math.round(pctAhorro) + '% menos al año';
+
+    // Comunicar altura al padre (HubSpot) para auto-resize del iframe
+    if (window.parent !== window) {
+      window.parent.postMessage({ type: 'calcRST-resize', height: document.body.scrollHeight + 32 }, '*');
+    }
+  };
+
+  calcRST();
+})();
+</script>
+</body>
+</html>
