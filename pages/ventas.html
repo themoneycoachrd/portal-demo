@@ -666,12 +666,14 @@ body.embed .footer { display: none !important; }
   <button class="main-tab" data-tab="pipeline">Pipeline</button>
   <button class="main-tab" data-tab="movimiento" id="tab-btn-movimiento" style="display:none">Movimiento</button>
   <button class="main-tab" data-tab="checklist-com" id="tab-btn-checklist-com" style="display:none">Checklist</button>
+  <button class="main-tab" data-tab="tracker" id="tab-btn-tracker" style="display:none">Tracker</button>
 </div>
 
 <div id="tab-roas" class="container"></div>
 <div id="tab-pipeline" class="container hidden"></div>
 <div id="tab-movimiento" class="container hidden"></div>
 <div id="tab-checklist-com" class="container hidden"></div>
+<div id="tab-tracker" class="container hidden"></div>
 
 <div class="footer">Conectado a Supabase — los datos se guardan en la nube.</div>
 
@@ -1045,7 +1047,13 @@ let APP = {
   chkViewMode: 'cards',
   chkData: [],        // rows from checklist_comercial
   chkSelected: null,  // id del checklist seleccionado para ver detalle
-  chkDirty: {}        // cambios sin guardar {id: {field: value}}
+  chkDirty: {},       // cambios sin guardar {id: {field: value}}
+  // Tracker quincenal de marketing
+  trkMonth: null,         // mes seleccionado en el tracker
+  trkData: [],            // filas de comercial_tracker (todo el año)
+  trkMeta: {},            // {mes: hubo_webinar}
+  trkEditing: null,       // {semana, field} celda en edición (semana = quincena 1|2)
+  trkExpand: { inversion: false, seguidores: false, citas: false }  // grupos colapsables
 };
 
 // ==================== COMPONENTS ====================
@@ -1056,6 +1064,9 @@ function renderMainTabs() {
   if (btnMov) btnMov.style.display = tengoPermiso('comercial', 'movimiento', 'consulta') ? '' : 'none';
   const btnChk = document.getElementById('tab-btn-checklist-com');
   if (btnChk) btnChk.style.display = tengoPermiso('comercial', 'checklist', 'consulta') ? '' : 'none';
+  // Tracker: mismo acceso que el Checklist (admin + comercial → tú y Naomi)
+  const btnTrk = document.getElementById('tab-btn-tracker');
+  if (btnTrk) btnTrk.style.display = tengoPermiso('comercial', 'checklist', 'consulta') ? '' : 'none';
 
   document.querySelectorAll('.main-tab').forEach(tab => {
     if (tab.style.display === 'none') return;
@@ -1070,6 +1081,7 @@ function renderMainTabs() {
   document.getElementById('tab-roas').classList.toggle('hidden', APP.activeTab !== 'roas');
   document.getElementById('tab-movimiento').classList.toggle('hidden', APP.activeTab !== 'movimiento');
   document.getElementById('tab-checklist-com').classList.toggle('hidden', APP.activeTab !== 'checklist-com');
+  document.getElementById('tab-tracker').classList.toggle('hidden', APP.activeTab !== 'tracker');
 }
 
 function renderPipeline() {
@@ -2273,6 +2285,194 @@ function showCrearChecklistModal() {
 
 // ==================== MAIN APP ====================
 
+// ==================== TRACKER SEMANAL ====================
+async function loadTracker() {
+  const [rows, meta] = await Promise.all([
+    sb.from('comercial_tracker').select('*').eq('anio', ANIO),
+    sb.from('comercial_tracker_meta').select('*').eq('anio', ANIO)
+  ]);
+  if (rows.error) console.error('Error cargando tracker:', rows.error);
+  APP.trkData = rows.data || [];
+  APP.trkMeta = {};
+  (meta.data || []).forEach(m => { APP.trkMeta[m.mes] = !!m.hubo_webinar; });
+  return true;
+}
+function trkRow(mes, semana) { return APP.trkData.find(r => r.mes === mes && r.semana === semana) || null; }
+// Seguidores de la última semana con dato ANTES de (mes, semana) — cruza meses.
+function trkPrevSeguidores(mes, semana) {
+  const myKey = MONTHS.indexOf(mes) * 10 + semana;
+  let prev = null, prevKey = -1;
+  APP.trkData.forEach(r => {
+    if (r.seguidores == null) return;
+    const k = MONTHS.indexOf(r.mes) * 10 + r.semana;
+    if (k < myKey && k > prevKey) { prevKey = k; prev = r.seguidores; }
+  });
+  return prev;
+}
+
+function renderTracker() {
+  const container = document.getElementById('tab-tracker');
+  if (!APP.trkMonth) APP.trkMonth = MONTHS[new Date().getMonth()];
+  const mes = APP.trkMonth;
+  const weeks = [1,2];                          // quincenas: 1 = Q1 (1-15), 2 = Q2 (16-fin)
+  const QLAB = { 1:'Q1 (1–15)', 2:'Q2 (16–fin)' };
+  const hayWeb = !!APP.trkMeta[mes];
+
+  // Formatos: costos unitarios = 2 decimales; todo lo demás = entero.
+  const fmtInt = (n) => Math.round(Number(n)||0).toLocaleString('es-DO');
+  const fmtMoneyInt = (n) => 'US$ ' + fmtInt(n);
+  const fmtCost = (n) => 'US$ ' + (Number(n)||0).toFixed(2);
+  const fmtPctInt = (n) => Math.round(Number(n)||0) + '%';
+
+  const sumW = (field) => weeks.reduce((s,w)=>{ const r=trkRow(mes,w); return s + (r && r[field]!=null ? Number(r[field]) : 0); }, 0);
+  const cell = (w, field, fmtFn) => {
+    const editing = APP.trkEditing && APP.trkEditing.semana===w && APP.trkEditing.field===field;
+    const r = trkRow(mes,w);
+    const raw = (r && r[field]!=null) ? r[field] : '';
+    if (editing) return '<td><input class="inline-edit trk-input" type="number" step="any" data-trk-week="'+w+'" data-trk-field="'+field+'" value="'+raw+'" autofocus></td>';
+    const disp = raw==='' ? '<span style="color:var(--muted)">—</span>' : fmtFn(Number(raw));
+    return '<td class="editable trk-edit-cell" data-trk-week="'+w+'" data-trk-field="'+field+'">'+disp+'</td>';
+  };
+  const der = (val, fmtFn) => (val==null||isNaN(val)) ? '<td style="background:#f7f8fa;color:var(--muted)">—</td>' : '<td style="background:#f7f8fa">'+fmtFn(val)+'</td>';
+  const labelTd = (txt,opts) => '<td style="text-align:left'+((opts&&opts.bold)?';font-weight:700':'')+((opts&&opts.indent)?';padding-left:26px;color:var(--muted)':'')+'">'+txt+'</td>';
+  const rowEdit = (label, field, fmtFn, indent) => '<tr>'+labelTd(label,{indent:indent})+weeks.map(w=>cell(w,field,fmtFn)).join('')+der(sumW(field),fmtFn)+'</tr>';
+
+  // Derivados
+  const showW = (w) => { const r=trkRow(mes,w); if(!r||r.citas==null) return null; return Number(r.citas||0)-Number(r.no_show||0); };
+  const totShow = sumW('citas')-sumW('no_show');
+  const pctW = (w) => { const sh=showW(w); if(sh==null||sh<=0) return null; const r=trkRow(mes,w); return Number(r.cierres||0)/sh*100; };
+  const crecW = (w) => { const r=trkRow(mes,w); if(!r||r.seguidores==null) return null; const prev=trkPrevSeguidores(mes,w); if(prev==null) return null; return r.seguidores - prev; };
+  const anyCrec = weeks.some(w=>crecW(w)!=null);
+  const totCrec = weeks.reduce((s,w)=>{ const c=crecW(w); return s+(c!=null?c:0); },0);
+  const cpCitaW = (w) => { const r=trkRow(mes,w); if(!r||!r.citas) return null; return Number(r.inv_citas||0)/Number(r.citas); };
+  const cpSegW = (w) => { const c=crecW(w); if(c==null||c<=0) return null; const r=trkRow(mes,w); return Number(r.inv_awareness||0)/c; };
+  const cpRegW = (w) => { const r=trkRow(mes,w); if(!r||!r.webinar_reg) return null; return Number(r.inv_webinar||0)/Number(r.webinar_reg); };
+  const invW = (w) => { const r=trkRow(mes,w); if(!r) return 0; return Number(r.inv_awareness||0)+Number(r.inv_citas||0)+(hayWeb?Number(r.inv_webinar||0):0); };
+
+  // Resumen
+  const totInv = sumW('inv_awareness')+sumW('inv_citas')+(hayWeb?sumW('inv_webinar'):0);
+  const totCierres = sumW('cierres');
+  let curSeg=null; weeks.forEach(w=>{ const r=trkRow(mes,w); if(r&&r.seguidores!=null) curSeg=r.seguidores; });
+  // Seguidores nuevos = la RESTA de la quincena 2 menos la quincena 1 (decisión Félix).
+  const segQ1 = (trkRow(mes,1)&&trkRow(mes,1).seguidores!=null)?Number(trkRow(mes,1).seguidores):null;
+  const segQ2 = (trkRow(mes,2)&&trkRow(mes,2).seguidores!=null)?Number(trkRow(mes,2).seguidores):null;
+  const nuevosMes = (segQ1!=null && segQ2!=null) ? (segQ2 - segQ1) : null;
+  const cpSeg = (nuevosMes!=null && nuevosMes>0) ? sumW('inv_awareness')/nuevosMes : null;
+
+  let html = '';
+  html += '<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:10px">';
+  html += '<h3 style="font-size:1rem;margin:0">Tracker quincenal · '+ANIO+'</h3>';
+  html += '<label style="display:flex;align-items:center;gap:8px;font-size:0.85rem;font-weight:600;cursor:pointer"><input type="checkbox" id="trk-webinar-toggle"'+(hayWeb?' checked':'')+'> ¿Hubo webinar este mes?</label>';
+  html += '</div>';
+  html += '<div class="month-tabs">';
+  MONTHS.forEach((m,i)=>{ html += '<button class="month-tab trk-month'+(m===mes?' active':'')+'" data-trk-month="'+m+'">'+MONTH_LABELS[i]+'</button>'; });
+  html += '</div>';
+
+  // ── Resumen (cards) ──
+  // Venta del mes = neto (con descuentos) de los leads Cerrado Ganado del mes seleccionado.
+  const leadsMes = (APP.data && APP.data.pipeline && APP.data.pipeline[mes]) ? APP.data.pipeline[mes] : [];
+  const ventaMes = leadsMes.filter(l => l.f === 'Cerrado Ganado').reduce((s,l) => s + leadVendido(l, true), 0);
+  const card=(lbl,val,cls)=>'<div class="stat-card"><div class="label">'+lbl+'</div><div class="value '+(cls||'')+'">'+val+'</div></div>';
+  html += '<div class="stats-grid" style="grid-template-columns:repeat(auto-fit,minmax(150px,1fr));margin:14px 0">';
+  html += card('Venta del mes', fmtMoneyInt(ventaMes), 'green');
+  html += card('Total invertido', fmtMoneyInt(totInv), 'navy');
+  html += card('Cierres', fmtInt(totCierres), 'green');
+  html += card('Total seguidores', curSeg!=null?fmtInt(curSeg):'—', 'navy');
+  html += card('Seguidores nuevos', nuevosMes!=null?('+'+fmtInt(nuevosMes)):'—', 'green');
+  html += card('Costo/Seguidor', cpSeg!=null?fmtCost(cpSeg):'—', 'amber');
+  html += '</div>';
+
+  html += '<div class="roas-table-wrapper"><table class="roas-table">';
+  html += '<thead><tr><th>KPI</th>'+weeks.map(w=>'<th>'+QLAB[w]+'</th>').join('')+'<th>Total</th></tr></thead><tbody>';
+
+  // Celda copiada (solo lectura, gris) de un campo de otra sección
+  const copyCell = (w, field, fmtFn) => { const r=trkRow(mes,w); return der((r && r[field]!=null)?Number(r[field]):null, fmtFn); };
+
+  // ── 1) Inversión Total (header = suma de las 3 inversiones) ──
+  const invCells = weeks.map(w=>der(invW(w),fmtMoneyInt)).join('')+der(weeks.reduce((s,w)=>s+invW(w),0),fmtMoneyInt);
+  html += '<tr class="trk-group" data-trk-group="inversion" style="cursor:pointer"><td style="text-align:left;font-weight:700">'+(APP.trkExpand.inversion?'▾':'▸')+' Inversión Total</td>'+invCells+'</tr>';
+  if (APP.trkExpand.inversion) {
+    html += rowEdit('Inversión Awareness','inv_awareness',fmtMoneyInt,true);
+    html += rowEdit('Inversión Citas','inv_citas',fmtMoneyInt,true);
+    if (hayWeb) html += rowEdit('Inversión Webinar','inv_webinar',fmtMoneyInt,true);
+  }
+
+  // ── 2) Seguidores (header = seguidores actuales) ──
+  // Total de Seguidores = los nuevos (resta Q2−Q1), no el snapshot repetido.
+  const segCells = weeks.map(w=>copyCell(w,'seguidores',fmtInt)).join('')+der(nuevosMes, n=>(n>=0?'+':'')+fmtInt(n));
+  const segHdr = ' Seguidores' + (curSeg!=null?' — '+fmtInt(curSeg)+' total':'') + (nuevosMes!=null?' · <span style="color:var(--green)">+'+fmtInt(nuevosMes)+' nuevos</span>':'');
+  html += '<tr class="trk-group" data-trk-group="seguidores" style="cursor:pointer"><td style="text-align:left;font-weight:700">'+(APP.trkExpand.seguidores?'▾':'▸')+segHdr+'</td>'+segCells+'</tr>';
+  if (APP.trkExpand.seguidores) {
+    html += rowEdit('Seguidores total','seguidores',fmtInt,true);
+    // Seguidores nuevos = Q2 − Q1 (en el total)
+    html += '<tr>'+labelTd('Seguidores nuevos',{indent:true})+der(null,fmtInt)+der(nuevosMes,fmtInt)+der(nuevosMes,fmtInt)+'</tr>';
+    html += '<tr>'+labelTd('Inversión Awareness',{indent:true})+weeks.map(w=>copyCell(w,'inv_awareness',fmtMoneyInt)).join('')+der(sumW('inv_awareness'),fmtMoneyInt)+'</tr>';
+    html += '<tr>'+labelTd('$ Costo/Seguidor',{indent:true})+der(null,fmtCost)+der(null,fmtCost)+der(cpSeg,fmtCost)+'</tr>';
+  }
+
+  // ── 3) Citas (header = cantidad de citas) ──
+  const citasCells = weeks.map(w=>copyCell(w,'citas',fmtInt)).join('')+der(sumW('citas'),fmtInt);
+  html += '<tr class="trk-group" data-trk-group="citas" style="cursor:pointer"><td style="text-align:left;font-weight:700">'+(APP.trkExpand.citas?'▾':'▸')+' Citas</td>'+citasCells+'</tr>';
+  if (APP.trkExpand.citas) {
+    html += rowEdit('Cantidad de citas','citas',fmtInt,true);
+    html += '<tr>'+labelTd('Inversión Citas',{indent:true})+weeks.map(w=>copyCell(w,'inv_citas',fmtMoneyInt)).join('')+der(sumW('inv_citas'),fmtMoneyInt)+'</tr>';
+    html += rowEdit('No show','no_show',fmtInt,true);
+    html += '<tr>'+labelTd('Show',{indent:true})+weeks.map(w=>der(showW(w),fmtInt)).join('')+der(totShow,fmtInt)+'</tr>';
+    html += rowEdit('Cierres','cierres',fmtInt,true);
+    html += '<tr>'+labelTd('% Cierre',{indent:true})+weeks.map(w=>der(pctW(w),fmtPctInt)).join('')+der(totShow>0?sumW('cierres')/totShow*100:null,fmtPctInt)+'</tr>';
+    html += '<tr>'+labelTd('$ Costo/Cita',{indent:true})+weeks.map(w=>der(cpCitaW(w),fmtCost)).join('')+der(sumW('citas')>0?sumW('inv_citas')/sumW('citas'):null,fmtCost)+'</tr>';
+  }
+
+  html += '</tbody></table></div>';
+  html += '<p style="font-size:0.75rem;color:var(--muted);margin-top:8px">Las celdas en gris se calculan o se copian (no se editan). Haz clic en un número editable para cambiarlo; se guarda al salir. Q1 = días 1–15, Q2 = 16 a fin de mes. Toca cada grupo para ver el detalle.</p>';
+  container.innerHTML = html;
+  bindTrackerEvents();
+}
+
+function bindTrackerEvents() {
+  document.querySelectorAll('.trk-month').forEach(b=>{ b.onclick=()=>{ APP.trkMonth=b.dataset.trkMonth; APP.trkEditing=null; renderTracker(); }; });
+  document.querySelectorAll('.trk-group').forEach(g=>{ g.onclick=()=>{ const k=g.dataset.trkGroup; APP.trkExpand[k]=!APP.trkExpand[k]; renderTracker(); }; });
+  const tog = document.getElementById('trk-webinar-toggle');
+  if (tog) tog.onchange = () => trkSaveWebinar(APP.trkMonth, tog.checked);
+  document.querySelectorAll('.trk-edit-cell').forEach(cell=>{
+    cell.onclick = () => { APP.trkEditing = { semana: parseInt(cell.dataset.trkWeek), field: cell.dataset.trkField }; renderTracker(); const inp=document.querySelector('.trk-input'); if(inp){inp.focus();inp.select();} };
+  });
+  document.querySelectorAll('.trk-input').forEach(inp=>{
+    inp.onblur = () => trkSaveCell(inp);
+    inp.onkeydown = (e) => { if(e.key==='Enter') trkSaveCell(inp); if(e.key==='Escape'){ APP.trkEditing=null; renderTracker(); } };
+  });
+}
+
+async function trkSaveCell(input) {
+  const semana = parseInt(input.dataset.trkWeek);
+  const field = input.dataset.trkField;
+  let v = input.value === '' ? null : parseFloat(input.value);
+  if (v != null && isNaN(v)) v = null;
+  APP.trkEditing = null;
+  const mes = APP.trkMonth;
+  let r = trkRow(mes, semana);
+  if (!r) { r = { anio: ANIO, mes, semana }; APP.trkData.push(r); }
+  const prev = r[field];
+  r[field] = v;
+  renderTracker();
+  // Persistir sin pisar otras columnas: UPDATE si ya existe, INSERT si es nueva.
+  if (r.id) {
+    const { error } = await sb.from('comercial_tracker').update({ [field]: v }).eq('id', r.id);
+    if (error) { r[field] = prev; alert('No se pudo guardar el cambio.'); renderTracker(); }
+  } else {
+    const payload = { anio: ANIO, mes, semana }; payload[field] = v;
+    const { data, error } = await sb.from('comercial_tracker').insert(payload).select();
+    if (error) { r[field] = prev; alert('No se pudo guardar el cambio.'); renderTracker(); }
+    else if (data && data[0]) { r.id = data[0].id; }
+  }
+}
+async function trkSaveWebinar(mes, val) {
+  APP.trkMeta[mes] = val;
+  renderTracker();
+  const { error } = await sb.from('comercial_tracker_meta').upsert({ anio: ANIO, mes, hubo_webinar: val }, { onConflict: 'anio,mes' });
+  if (error) { APP.trkMeta[mes] = !val; alert('No se pudo guardar.'); renderTracker(); }
+}
+
 function renderApp() {
   if (APP.activeTab === 'pipeline') {
     renderPipeline();
@@ -2280,6 +2480,8 @@ function renderApp() {
     renderMovimiento();
   } else if (APP.activeTab === 'checklist-com') {
     renderChecklistComercial();
+  } else if (APP.activeTab === 'tracker') {
+    renderTracker();
   } else {
     renderROAS();
   }
@@ -2355,7 +2557,7 @@ function showApp() {
 }
 
 async function startApp() {
-  var [data] = await Promise.all([loadData(), loadChecklistComercial()]);
+  var [data] = await Promise.all([loadData(), loadChecklistComercial(), loadTracker()]);
   APP.data = data;
   MONTHS.forEach(m => {
     if (!APP.data.pipeline[m]) APP.data.pipeline[m] = [];
