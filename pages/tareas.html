@@ -117,8 +117,8 @@ select{font-family:inherit}
 .kb-empty{font-size:11px;color:#c4c8cd;text-align:center;padding:32px 0}
 
 /* Handoff markers */
-.kb-handoff{display:flex;flex-direction:column;align-items:center;justify-content:center;align-self:stretch;padding:0 2px;flex-shrink:0}
-.kb-handoff-text{font-size:9px;color:var(--fg-mute);text-transform:uppercase;letter-spacing:.16em;font-weight:600;writing-mode:vertical-rl;opacity:.45}
+.kb-handoff{display:flex;align-items:stretch;justify-content:center;align-self:stretch;padding:0 4px;flex-shrink:0}
+.kb-handoff-text{font-size:11px;color:#fff;background:#28368D;text-transform:uppercase;letter-spacing:.12em;font-weight:800;writing-mode:vertical-rl;padding:16px 9px;border-radius:9px;white-space:nowrap;box-shadow:0 2px 10px rgba(40,54,141,.4);position:sticky;top:14px;align-self:flex-start;max-height:calc(100vh - 250px)}
 
 /* ── Cards ────────────────────────────────────────────────────────────── */
 .kb-card{background:#fff;border-radius:10px;padding:12px 14px;cursor:pointer;border:1px solid var(--line);transition:box-shadow .15s,border-color .15s}
@@ -337,6 +337,9 @@ select{font-family:inherit}
 .tl-board{display:flex;gap:12px;align-items:flex-start;min-width:max-content;padding-bottom:8px}
 .tl-col{width:280px;flex-shrink:0;background:var(--line-soft);border:1px solid var(--line);border-radius:12px;display:flex;flex-direction:column;max-height:calc(100vh - 230px)}
 .tl-col-head{display:flex;align-items:center;gap:6px;padding:10px 12px 6px}
+.tl-col-grip{cursor:grab;color:var(--fg-mute);opacity:.45;font-size:13px;line-height:1;flex-shrink:0;user-select:none}
+.tl-col-grip:hover{opacity:.9}
+.tl-col-grip:active{cursor:grabbing}
 .tl-col-title{flex:1;border:1px solid transparent;border-radius:6px;padding:3px 6px;font-size:13px;font-weight:700;color:var(--display);background:transparent;font-family:inherit}
 .tl-col-title:hover{border-color:var(--line)}.tl-col-title:focus{outline:none;border-color:var(--accent);background:#fff}
 .tl-col-count{font-size:11px;color:var(--fg-mute);background:var(--line);border-radius:10px;padding:1px 7px}
@@ -349,6 +352,25 @@ select{font-family:inherit}
 .tl-card-title{font-size:13px;color:var(--display);line-height:1.35}
 .tl-card-meta{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:7px}
 .tl-etq{font-size:10px;font-weight:700;padding:1px 8px;border-radius:20px}
+.tl-card-etqs{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:6px}
+.tl-etq2{font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px}
+.lm-etq-pick{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.lm-etq-tags{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:6px}
+.lm-etq-tag{display:inline-flex;align-items:center;gap:4px;font-size:11.5px;font-weight:700;padding:2px 4px 2px 9px;border-radius:14px}
+.lm-etq-x{border:none;background:none;color:inherit;cursor:pointer;font-size:14px;line-height:1;padding:0 3px;opacity:.7}
+.lm-etq-x:hover{opacity:1}
+.lm-etq-row{display:flex;gap:8px;align-items:center}
+.lm-etq-row .lm-sel{flex:1}
+.lm-etq-chip{font-size:11.5px;font-weight:600;padding:3px 11px;border-radius:14px;border:1px solid;background:#fff;cursor:pointer}
+.lm-etq-addbtn{font-size:11.5px;font-weight:600;padding:3px 11px;border-radius:14px;border:1px dashed var(--line);background:#fff;color:var(--fg-mute);cursor:pointer}
+.lm-etq-addbtn:hover{border-color:var(--accent);color:var(--accent)}
+.lm-etq-form{display:flex;align-items:center;gap:8px;margin-top:8px;flex-wrap:wrap}
+.lm-etq-input{flex:1;min-width:140px;border:1px solid var(--line);border-radius:8px;padding:6px 10px;font-size:13px;font-family:inherit;background:#fff}
+.lm-etq-input:focus{outline:none;border-color:var(--accent)}
+.lm-etq-sws{display:flex;gap:5px}
+.lm-etq-sw{width:20px;height:20px;border-radius:50%;border:2px solid transparent;cursor:pointer;padding:0}
+.lm-etq-sw.on{border-color:#1e293b;box-shadow:0 0 0 1px #fff inset}
+.lm-etq-create{border:none;background:var(--accent);color:#fff;border-radius:8px;padding:6px 13px;font-size:12px;font-weight:600;cursor:pointer}
 .etq-contab{background:#e0f2fb;color:#1B87B8}.etq-imp{background:#fef3c7;color:#b45309}.etq-impl{background:#d1fae5;color:#047857}.etq-com{background:#ede9fe;color:#6d28d9}.etq-adm{background:#e8eaf6;color:#28368D}
 .etq-importante{background:#fee2e2;color:#b91c1c}.etq-urgente{background:#ffedd5;color:#c2410c}.etq-nourg{background:#f1f5f9;color:#475569}.etq-noimp{background:#f8fafc;color:#94a3b8}
 .tl-cli{font-size:11px;font-weight:600;color:#1B87B8;background:#e0f2fb;border-radius:6px;padding:1px 7px}
@@ -364,10 +386,69 @@ select{font-family:inherit}
 .lm-title:hover{border-color:var(--line)}.lm-title:focus{outline:none;border-color:var(--accent)}
 .lm-x{font-size:24px;color:var(--fg-mute);line-height:1}
 .lm-body{padding:4px 18px 8px}
+.lm-modal.lm-wide{max-width:880px}
+.lm-rich-tb{display:flex;gap:6px;margin-bottom:6px}
+.lm-rich-btn{display:inline-flex;align-items:center;justify-content:center;min-width:30px;height:28px;border:1px solid var(--line);background:#fff;border-radius:6px;padding:3px 8px;font-size:13px;cursor:pointer;color:var(--fg)}
+.lm-rich-btn svg{display:block}
+.lm-rich-btn:hover{background:#f3f4f6}
+.lm-rich{min-height:96px;border:1px solid var(--line);border-radius:8px;padding:8px 10px;font-size:13px;color:var(--fg);background:#fff;overflow:auto;line-height:1.45}
+.lm-rich:focus{outline:none;border-color:var(--accent)}
+.lm-rich:empty:before{content:attr(data-ph);color:#9aa3af}
+.lm-rich ul,.lm-rich ol{margin:4px 0 4px 20px;padding:0}
+.lm-desc-save{margin:8px 0 2px;border:none;background:var(--accent);color:#fff;border-radius:8px;padding:6px 13px;font-size:12px;font-weight:600;cursor:pointer}
+.lm-desc-save:hover{filter:brightness(.95)}
+.lm-link-row{display:flex;align-items:center;gap:8px}
+.lm-link-row .lm-sel{flex:1}
+.lm-link-open{flex-shrink:0;font-size:12px;font-weight:600;color:#fff;background:var(--accent);border-radius:8px;padding:7px 12px;text-decoration:none;white-space:nowrap}
+.lm-link-open:hover{filter:brightness(.95)}
+/* Campana de menciones */
+.notif-wrap{position:relative;display:inline-flex}
+.notif-bell{position:relative;border:1px solid var(--line);background:#fff;border-radius:8px;padding:5px 8px;font-size:15px;line-height:1;cursor:pointer}
+.notif-bell:hover{background:#f3f4f6}
+.notif-badge{position:absolute;top:-6px;right:-6px;background:#dc2626;color:#fff;font-size:10px;font-weight:700;border-radius:9px;min-width:16px;height:16px;display:flex;align-items:center;justify-content:center;padding:0 4px}
+.notif-backdrop{position:fixed;inset:0;z-index:40}
+.notif-drop{position:absolute;top:calc(100% + 6px);right:0;width:320px;max-height:70vh;overflow:auto;background:#fff;border:1px solid var(--line);border-radius:12px;box-shadow:0 12px 36px rgba(0,0,0,.18);z-index:41}
+.notif-head{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-bottom:1px solid var(--line);font-weight:700;font-size:13px}
+.notif-readall{border:none;background:none;color:var(--accent);font-size:12px;font-weight:600;cursor:pointer}
+.notif-empty{padding:18px 14px;text-align:center;color:var(--fg-mute);font-size:13px}
+.notif-item{padding:10px 14px;border-bottom:1px solid #f1f2f5;cursor:pointer}
+.notif-item:hover{background:#f8fafc}
+.notif-item.unread{background:#eff6ff}
+.notif-item.unread:hover{background:#e6effd}
+.notif-it-top{font-size:13px;color:var(--fg);margin-bottom:2px}
+.notif-it-txt{font-size:12px;color:var(--fg-mute);margin-bottom:3px}
+.notif-it-time{font-size:11px;color:var(--fg-mute)}
+/* Autocomplete de @ */
+.cm-input-wrap{position:relative}
+.cm-mention{position:absolute;bottom:calc(100% + 4px);left:0;min-width:180px;background:#fff;border:1px solid var(--line);border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.15);z-index:30;overflow:hidden}
+.cm-mention-it{padding:7px 12px;font-size:13px;cursor:pointer;color:var(--fg)}
+.cm-mention-it:hover{background:var(--accent);color:#fff}
+.lm-body-2col{display:flex;align-items:stretch;flex-wrap:wrap;padding:0}
+.lm-body-2col .lm-main{flex:1.5;min-width:300px;padding:4px 18px 12px}
+.lm-body-2col .lm-side{flex:1;min-width:270px;border-left:1px solid var(--line);padding:8px 16px 12px;background:#fcfcfd}
+/* Checklist estilo Trello */
+.lm-chk{margin-top:14px;border-top:1px solid var(--line);padding-top:12px}
+.lm-chk-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+.lm-chk-count{font-size:11px;font-weight:700;color:var(--fg-mute);background:#eef1f6;border-radius:10px;padding:2px 8px}
+.lm-chk-bar{height:7px;background:#eef1f6;border-radius:4px;overflow:hidden;margin-bottom:10px}
+.lm-chk-fill{height:100%;background:var(--accent);border-radius:4px;transition:width .2s}
+.lm-chk-item{display:flex;align-items:center;gap:8px;padding:4px 0}
+.lm-chk-item input[type=checkbox]{width:16px;height:16px;cursor:pointer;flex-shrink:0}
+.lm-chk-txt{flex:1;font-size:13px;color:var(--fg)}
+.lm-chk-txt.done{text-decoration:line-through;color:var(--fg-mute)}
+.lm-chk-del{border:none;background:none;color:var(--fg-mute);font-size:17px;line-height:1;cursor:pointer;padding:0 4px;opacity:.5}
+.lm-chk-del:hover{opacity:1;color:#dc2626}
+.lm-chk-add{display:flex;gap:6px;margin-top:8px}
+.lm-chk-input{flex:1;border:1px solid var(--line);border-radius:8px;padding:6px 10px;font-size:13px;font-family:inherit;background:#fff}
+.lm-chk-input:focus{outline:none;border-color:var(--accent)}
+.lm-chk-addbtn{border:none;background:var(--accent);color:#fff;border-radius:8px;padding:6px 12px;font-size:12px;font-weight:600;cursor:pointer}
+.tl-chk-badge{font-size:10.5px;font-weight:700;color:var(--fg-mute);background:#eef1f6;border-radius:6px;padding:1px 6px}
+.tl-chk-badge.tl-chk-done{color:#15803d;background:#dcfce7}
 .lm-lbl{display:block;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--fg-mute);font-weight:700;margin:10px 0 4px}
 .lm-area,.lm-sel{width:100%;border:1px solid var(--line);border-radius:8px;padding:8px 10px;font-size:13px;font-family:inherit;color:var(--fg);background:#fff}
 .lm-area:focus,.lm-sel:focus{outline:none;border-color:var(--accent)}
 .lm-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px 14px}
+.lm-coms{margin-top:0}
 .lm-foot{display:flex;justify-content:space-between;padding:12px 18px 18px;border-top:1px solid var(--line);margin-top:8px}
 .lm-del{color:#b91c1c;font-size:13px;font-weight:600;padding:8px 12px;border-radius:8px}
 .lm-del:hover{background:#fee2e2}
@@ -430,7 +511,11 @@ let USER={id:null,nombre:'',rol:'',equipo:'contab'};
 let DB_OK=false;
 let SUB='wf', TAX=null, VIEW='kanban', SEL=null, VISTA='', GROUPBY='impuesto', PERSONA='';
 // M4 · Tareas libres
-let LIBRE_COLS=[], LIBRE_TASKS=[], LIBRE_FILTRO='todas', LIBRE_SEL=null, LIBRE_DRAG=null, LIBRE_COLDRAG=null, LIBRE_DRAFT=null;
+let LIBRE_COLS=[], LIBRE_TASKS=[], LIBRE_FILTRO='todas', LIBRE_PERSONA='', LIBRE_SEL=null, LIBRE_DRAG=null, LIBRE_COLDRAG=null, LIBRE_DRAFT=null, LIBRE_COMENTS={}, LIBRE_EDIT_ID=null;
+let NOTIFS=[], NOTIF_OPEN=false;
+let LIBRE_ETIQUETAS=[];
+const ETQ_COLORS=['#1B87B8','#047857','#b45309','#c2410c','#b91c1c','#6d28d9','#28368D','#0891b2','#475569','#be185d'];
+let LIBRE_ETQ_COLOR=ETQ_COLORS[0];
 // Dos etiquetas independientes: Tipo de tarea (área) e Importancia
 const AREAS=['Contabilidad','Impuestos','Implementación','Comercial','Administrativo'];
 const IMPORTANCIAS=['Importante','Urgente','No urgente','No importante'];
@@ -448,11 +533,11 @@ const SEED_WF={
   orden:['TSS','IR-3','IR-17','Anticipo','ITBIS'],
   wf:{'TSS':'TSS','IR-3':'IR-3','IR-17':'IR-17','Anticipo':'Anticipo','ITBIS':'ITBIS'},
   etapas:{
-    'TSS':[{id:'tss_nomina',label:'Nómina',equipo:'contab'},{id:'tss_autorizacion',label:'Autorización',equipo:'contab'},{id:'tss_declaracion',label:'Declaración',equipo:'impuestos'},{id:'tss_cliente',label:'Aprobación cliente',equipo:'cliente'},{id:'tss_pago',label:'Pago',equipo:'dgii'}],
-    'IR-3':[{id:'ir3_autorizacion',label:'Autorización',equipo:'contab'},{id:'ir3_declaracion',label:'Declaración',equipo:'impuestos'},{id:'ir3_pago',label:'Aprobación y pago',equipo:'dgii'}],
-    'IR-17':[{id:'ir17_proveedores',label:'Proveedores',equipo:'contab'},{id:'ir17_borrador',label:'Borrador',equipo:'contab'},{id:'ir17_declaracion',label:'Declaración',equipo:'impuestos'},{id:'ir17_cliente',label:'Aprobación cliente',equipo:'cliente'},{id:'ir17_pago',label:'Pago',equipo:'dgii'}],
-    'Anticipo':[{id:'ant_autorizacion',label:'Autorización',equipo:'contab'},{id:'ant_cliente',label:'Cliente',equipo:'cliente'},{id:'ant_pago',label:'Pago',equipo:'dgii'}],
-    'ITBIS':[{id:'itbis_facturas',label:'Facturas',equipo:'contab'},{id:'itbis_borrador',label:'Borrador y autorización',equipo:'contab'},{id:'itbis_declaracion',label:'Declaración',equipo:'impuestos'},{id:'itbis_cliente',label:'Aprobación cliente',equipo:'cliente'},{id:'itbis_pago',label:'Pago',equipo:'dgii'}]
+    'TSS':[{id:'tss_nomina',label:'Nómina',equipo:'contab'},{id:'tss_autorizacion',label:'Autorización',equipo:'contab'},{id:'tss_declaracion',label:'Declaración',equipo:'impuestos'},{id:'tss_cliente',label:'Aprobación cliente',equipo:'cliente'},{id:'tss_pago',label:'Pago',equipo:'cliente'}],
+    'IR-3':[{id:'ir3_autorizacion',label:'Autorización',equipo:'contab'},{id:'ir3_declaracion',label:'Declaración',equipo:'impuestos'},{id:'ir3_pago',label:'Aprobación y pago',equipo:'cliente'}],
+    'IR-17':[{id:'ir17_proveedores',label:'Proveedores',equipo:'contab'},{id:'ir17_borrador',label:'Borrador',equipo:'contab'},{id:'ir17_declaracion',label:'Declaración',equipo:'impuestos'},{id:'ir17_cliente',label:'Aprobación cliente',equipo:'cliente'},{id:'ir17_pago',label:'Pago',equipo:'cliente'}],
+    'Anticipo':[{id:'ant_autorizacion',label:'Autorización',equipo:'contab'}],
+    'ITBIS':[{id:'itbis_facturas',label:'Facturas',equipo:'contab'},{id:'itbis_borrador',label:'Borrador y autorización',equipo:'contab'},{id:'itbis_declaracion',label:'Declaración',equipo:'impuestos'},{id:'itbis_cliente',label:'Aprobación cliente',equipo:'cliente'},{id:'itbis_pago',label:'Pago',equipo:'cliente'}]
   },
   tareas:{
     'tss_nomina':[t('contadores','solicitud_nomina','Solicitud de Nómina'),t('contadores','recepcion_nomina','Recepción de Nómina'),t('contadores','registro_nomina','Registro de Nómina'),t('contadores','informar_impuestos','Informar a Impuestos')],
@@ -469,8 +554,6 @@ const SEED_WF={
     'ir17_cliente':[t('impuestos','aprobado_cliente','Aprobado por cliente')],
     'ir17_pago':[t('impuestos','pagado','Pagado')],
     'ant_autorizacion':[t('contadores','autorizacion_anticipo','Subir autorización Anticipo')],
-    'ant_cliente':[t('impuestos','autorizacion_enviada','Autorización enviada')],
-    'ant_pago':[t('impuestos','anticipo_pagado','Anticipo pagado')],
     'itbis_facturas':[t('contadores','verificar_facturas','Verificar facturas'),t('contadores','solicitar_facturas','Solicitar/confirmar facturas'),t('contadores','facturas_registradas','Facturas registradas')],
     'itbis_borrador':[t('contadores','borrador_itbis','Borrador ITBIS'),t('contadores','enviar_itbis','Subir autorización ITBIS')],
     'itbis_declaracion':[t('impuestos','pago_a_cuenta','¿Solicitar pago a cuenta?'),t('impuestos','borrador_presentado','Borrador presentado'),t('impuestos','borrador_devuelto','Borrador devuelto'),t('impuestos','borrador_recibido_corregido','Borrador corregido'),t('impuestos','aprobada_impuestos','Aprobada por Impuestos')],
@@ -494,8 +577,15 @@ async function loadAll(){
   }catch(e){}
   if(!DB_OK){WF=JSON.parse(JSON.stringify(SEED_WF));}
   TAX=TAX||WF.orden[0];
-  try{const {data,error}=await sb.from('clientes').select('nombre,contadora_contabilidad,responsabilidad_contabilidad,activo');if(!error&&data&&data.length){CLIENTES=data.filter(c=>c.activo!==false&&c.responsabilidad_contabilidad===true).map(c=>({nombre:c.nombre,contadora:c.contadora_contabilidad||'Sin asignar',respContab:true})).sort((a,b)=>a.nombre.localeCompare(b.nombre));}}catch(e){}
+  try{const {data,error}=await sb.from('clientes').select('nombre,contadora_contabilidad,contadora_impuestos,responsabilidad_contabilidad,activo');if(!error&&data&&data.length){CLIENTES=data.filter(c=>c.activo!==false&&c.responsabilidad_contabilidad===true).map(c=>({nombre:c.nombre,contadora:c.contadora_contabilidad||'Sin asignar',contadoraImp:c.contadora_impuestos||'',respContab:true})).sort((a,b)=>a.nombre.localeCompare(b.nombre));}}catch(e){}
   if(!CLIENTES.length) CLIENTES=SEED_CLIENTES.slice();
+  // Equipo desde la maestra (nombres reales + activo) — no hardcodeado
+  try{const {data}=await sb.from('equipo').select('nombre,rol_portal').eq('activo',true);if(data&&data.length){
+    const cont=[...new Set(data.filter(e=>e.rol_portal==='contadora').map(e=>e.nombre).filter(Boolean))].sort((a,b)=>a.localeCompare(b));
+    const ana=[...new Set(data.filter(e=>e.rol_portal==='analista').map(e=>e.nombre).filter(Boolean))].sort((a,b)=>a.localeCompare(b));
+    if(cont.length)EQ_CONTADORAS=cont; if(ana.length)EQ_ANALISTAS=ana;
+    EQ_TODOS=[...new Set(data.map(e=>e.nombre).filter(Boolean))].sort((a,b)=>a.localeCompare(b));
+  }}catch(e){}
   await loadChecklists();
   await loadLibre();
 }
@@ -546,21 +636,25 @@ function render(){
     if(USER.rol==='admin'){
       const opt=p=>'<option value="'+attrEsc(p)+'"'+(PERSONA===p?' selected':'')+'>'+escHtml(p)+'</option>';
       h+='<select onchange="PERSONA=this.value;closeCard();render()" class="mo-select'+(PERSONA?' mo-select-on':'')+'"><option value="">Equipo: Todos</option>'+
-        '<optgroup label="Contadoras">'+FILTRO_CONTADORAS.map(opt).join('')+'</optgroup>'+
-        '<optgroup label="Analistas">'+FILTRO_ANALISTAS.map(opt).join('')+'</optgroup></select>';
+        '<optgroup label="Contadoras">'+EQ_CONTADORAS.map(opt).join('')+'</optgroup>'+
+        '<optgroup label="Analistas">'+EQ_ANALISTAS.map(opt).join('')+'</optgroup></select>';
     }else{
       h+='<div class="view-toggle"><button onclick="FILTRO=\'mio\';closeCard();render()" class="vt-btn'+(FILTRO==='mio'?' is-active':'')+'">Mis clientes</button><button onclick="FILTRO=\'todos\';closeCard();render()" class="vt-btn'+(FILTRO==='todos'?' is-active':'')+'">Todos</button></div>';
     }
     h+='<select onchange="VISTA=this.value;render()" class="mo-select'+(VISTA?' mo-select-on':'')+'"><option value="">Vistas…</option>'+VISTAS.map(([k,l])=>'<option value="'+k+'"'+(VISTA===k?' selected':'')+'>'+l+'</option>').join('')+'</select>';
     h+='<label class="ctrl-label">Mes:</label><select onchange="MES=this.value;closeCard();render()" class="mo-select">'+MESES.map(m=>'<option'+(m===MES?' selected':'')+'>'+m+'</option>').join('')+'</select>';
+    h+=notifBellHTML();
     h+='<button onclick="refrescarDatos()" class="mo-refresh" title="Actualizar datos">↻</button></div>';
     nb.innerHTML=h;
     if(VIEW==='lista') renderLista();
     else if(VIEW==='gantt') renderGantt();
     else renderKanban();
   }else{
-    let h='<div class="view-toggle"><button onclick="LIBRE_FILTRO=\'mias\';render()" class="vt-btn'+(LIBRE_FILTRO==='mias'?' is-active':'')+'">Mis tareas</button><button onclick="LIBRE_FILTRO=\'todas\';render()" class="vt-btn'+(LIBRE_FILTRO==='todas'?' is-active':'')+'">Todas</button></div>';
-    h+='<div class="ctrl-right"><button onclick="colAdd()" class="mo-select">+ Columna</button><button onclick="refrescarDatos()" class="mo-refresh" title="Actualizar">↻</button></div>';
+    let h='<div class="view-toggle"><button onclick="LIBRE_FILTRO=\'mias\';LIBRE_PERSONA=\'\';render()" class="vt-btn'+(LIBRE_FILTRO==='mias'&&!LIBRE_PERSONA?' is-active':'')+'">Mis tareas</button><button onclick="LIBRE_FILTRO=\'todas\';LIBRE_PERSONA=\'\';render()" class="vt-btn'+(LIBRE_FILTRO==='todas'&&!LIBRE_PERSONA?' is-active':'')+'">Todas</button></div>';
+    const _po=n=>'<option'+(LIBRE_PERSONA===n?' selected':'')+'>'+escHtml(n)+'</option>';
+    const _og=(lbl,arr)=>arr.length?'<optgroup label="'+lbl+'">'+arr.map(_po).join('')+'</optgroup>':'';
+    const _verSel='<select onchange="setLibrePersona(this.value)" class="mo-select"><option value=""'+(LIBRE_PERSONA?'':' selected')+'>Todo el equipo</option>'+_og('Contadoras',EQ_CONTADORAS)+_og('Analistas',EQ_ANALISTAS)+_og('Administrativo',eqAdmin())+'</select>';
+    h+='<div class="ctrl-right"><label class="ctrl-label">Ver:</label>'+_verSel+'<button onclick="colAdd()" class="mo-select">+ Columna</button>'+notifBellHTML()+'<button onclick="refrescarDatos()" class="mo-refresh" title="Actualizar">↻</button></div>';
     nb.innerHTML=h;
     renderLibre();
   }
@@ -593,18 +687,22 @@ function pasaVista(cli,wf){
 }
 // Filtro de admin: lista CURADA del equipo (la data cruda tiene duplicados e
 // inactivas — ej. "Karina"/"Karina Sánchez", Taína — hasta que se limpie la maestra).
-const FILTRO_CONTADORAS=['Beliani','Morelia','Victoria','Yessica'];
-const FILTRO_ANALISTAS=['Doriluz','Karina','Lovelace'];
+// Se cargan de la tabla `equipo` (fuente real, con nombres correctos y activo/inactivo).
+// Estos valores son solo respaldo si la tabla no carga.
+let EQ_CONTADORAS=['Beliani','Morelia','Victoria','Yessica'];
+let EQ_ANALISTAS=['Doriluz','Karina'];
+let EQ_TODOS=[];
 // match flexible por primer nombre ("Karina" calza con "Karina Sánchez")
 function matchPersona(nombre,p){if(!nombre)return false;const n=nombre.trim().toLowerCase(),q=p.trim().toLowerCase();return n===q||n.split(' ')[0]===q;}
-// ¿el cliente pertenece a la persona seleccionada? (contadora asignada O analista en sus filas de impuestos del mes)
-function clienteDePersona(c,p){
-  if(matchPersona(c.contadora,p))return true;
-  return WF.orden.some(wf=>{const r=IMP_MAP[c.nombre+'||'+MES+'||'+wf];return r&&matchPersona(r.contadora,p);});
-}
+// El cliente "pertenece" a una persona si es su contadora de contabilidad O su
+// analista de impuestos (contadora_impuestos). Por eso una analista ve MÁS clientes
+// (los de todas las contadoras a las que ella es analista).
+function personaTiene(c,p){return matchPersona(c.contadora,p)||matchPersona(c.contadoraImp,p);}
+function personaTieneCli(cli,p){const c=CLIENTES.find(x=>x.nombre===cli);return c?personaTiene(c,p):false;}
+function clienteDePersona(c,p){return personaTiene(c,p);}
 function baseClientes(){
   if(USER.rol==='admin')return PERSONA?CLIENTES.filter(c=>clienteDePersona(c,PERSONA)):CLIENTES;
-  return (FILTRO==='mio'&&USER.nombre)?CLIENTES.filter(esMio):CLIENTES;
+  return (FILTRO==='mio'&&USER.nombre)?CLIENTES.filter(c=>personaTiene(c,USER.nombre)):CLIENTES;
 }
 function openJob(cli,wf){TAX=wf;SEL=cli;BLOQ_OPEN=false;renderModal();}
 function rowHTML(cli,contadora,wf,withImp){
@@ -664,7 +762,7 @@ function pasaVistaJob(j){
     case 'bloqueados':return j.stat==='bloqueado';
     case 'atrasados':return !j.completo&&j.vi.overdue;
     case 'vencen':return !j.completo&&j.vi.soon;
-    case 'midia':return !j.completo&&(USER.rol==='admin'||esMio({contadora:j.contadora}))&&etapaEsMia(j.cli,j.st.etapas[j.st.idx]);
+    case 'midia':return !j.completo&&(USER.rol==='admin'||personaTieneCli(j.cli,USER.nombre))&&etapaEsMia(j.cli,j.st.etapas[j.st.idx]);
     default:return true;
   }
 }
@@ -744,7 +842,7 @@ function renderKanban(){
 
   let h=banner+'<div class="kb-board">';
   etapas.forEach((s,si)=>{
-    if(si>0&&etapas[si-1].equipo!==s.equipo) h+='<div class="kb-handoff"><div class="kb-handoff-text">handoff</div></div>';
+    if(si>0&&etapas[si-1].equipo==='contab'&&s.equipo==='impuestos') h+='<div class="kb-handoff"><div class="kb-handoff-text">Contabilidad&nbsp;→&nbsp;Impuestos</div></div>';
     h+='<div class="kb-col"><div class="kb-col-head eq-'+s.equipo+'"><span class="kb-col-num">'+String(si+1).padStart(2,'0')+'</span><span class="kb-col-title">'+escHtml(s.label)+'</span><span class="eq-badge eq-badge-'+s.equipo+'">'+EQ_LABEL[s.equipo]+'</span></div>';
     h+='<div class="kb-col-body" ondragover="allowDrop(event)" ondrop="dropCol(event,'+si+')">';
     cols[si].forEach(c=>{h+=cardHTML(c,s);});
@@ -926,6 +1024,109 @@ async function loadChecklists(){
 async function loadLibre(){
   try{const {data}=await sb.from('tl_columnas').select('*').order('orden');if(data)LIBRE_COLS=data;}catch(e){}
   try{const {data}=await sb.from('tl_tareas').select('*').order('orden');if(data)LIBRE_TASKS=data;}catch(e){}
+  try{const {data}=await sb.from('tl_comentarios').select('*').order('created_at');LIBRE_COMENTS={};(data||[]).forEach(c=>{(LIBRE_COMENTS[c.tarea_id]=LIBRE_COMENTS[c.tarea_id]||[]).push(c);});}catch(e){}
+  try{const {data}=await sb.from('tl_etiquetas').select('*').order('orden');if(data)LIBRE_ETIQUETAS=data;}catch(e){}
+  await loadNotifs();
+}
+// Color de una etiqueta (de la maestra). Para "Tipo de tarea" usa la clase ETQ_CLS.
+function etqColor(nombre){ const e=LIBRE_ETIQUETAS.find(x=>x.nombre===nombre); return e?e.color:'#475569'; }
+function libreCur(){ return LIBRE_SEL==='__nuevo'?LIBRE_DRAFT:LIBRE_TASKS.find(x=>x.id===LIBRE_SEL); }
+// Captura lo que hay en el formulario al objeto de la tarea, para que un re-render
+// (agregar/quitar etiqueta, crear, etc.) NO pierda lo que se estaba escribiendo.
+function libreSyncForm(){
+  const t=libreCur(); if(!t) return; const g=id=>document.getElementById(id);
+  if(g('lm-titulo')) t.titulo=g('lm-titulo').value;
+  if(g('lm-desc')) t.descripcion=sanitizeDesc(g('lm-desc').innerHTML);
+  if(g('lm-basecamp')) t.link_basecamp=(g('lm-basecamp').value||'').trim()||null;
+  if(g('lm-asig')) t.asignado=g('lm-asig').value||null;
+  if(g('lm-cli')) t.cliente=g('lm-cli').value||null;
+  if(g('lm-fecha')) t.fecha_limite=g('lm-fecha').value||null;
+  if(g('lm-col')) t.columna_id=g('lm-col').value;
+  if(g('lm-etq')) t.etiqueta=g('lm-etq').value||null;
+}
+// Etiqueta (varias): el dropdown AGREGA; se acumulan como chips.
+function addEtqSel(sel){ const v=sel.value; if(!v)return; libreSyncForm(); const t=libreCur(); if(!t)return; if(!Array.isArray(t.etiquetas))t.etiquetas=[]; if(!t.etiquetas.includes(v))t.etiquetas.push(v); renderLibreModal(); }
+function removeEtq(nombre){ libreSyncForm(); const t=libreCur(); if(!t||!Array.isArray(t.etiquetas))return; t.etiquetas=t.etiquetas.filter(x=>x!==nombre); renderLibreModal(); }
+// Mostrar/ocultar el formulario de crear etiqueta (sin re-render)
+function toggleNewEtq(){ const fw=document.getElementById('lm-etq-formwrap'); if(!fw)return; const show=fw.style.display==='none'||!fw.style.display; fw.style.display=show?'flex':'none'; if(show){const el=document.getElementById('lm-etq-newname'); if(el)el.focus();} }
+function pickEtqColor(el){ LIBRE_ETQ_COLOR=el.dataset.c; document.querySelectorAll('.lm-etq-sw').forEach(s=>s.classList.toggle('on',s===el)); }
+async function crearEtq(){
+  const inp=document.getElementById('lm-etq-newname'); const nombre=((inp&&inp.value)||'').trim();
+  if(!nombre){ if(inp)inp.focus(); return; }
+  if(LIBRE_ETIQUETAS.some(e=>e.nombre.toLowerCase()===nombre.toLowerCase())){ toast('Esa etiqueta ya existe.',true); return; }
+  const color=LIBRE_ETQ_COLOR||ETQ_COLORS[0]; const orden=LIBRE_ETIQUETAS.length+1;
+  const {error}=await sb.from('tl_etiquetas').insert({nombre,color,orden});
+  if(error){ toast('No se pudo crear la etiqueta.',true); return; }
+  LIBRE_ETIQUETAS.push({nombre,color,orden});
+  // Al crearla, se le pone a la tarjeta de una vez
+  libreSyncForm(); const t=libreCur(); if(t){ if(!Array.isArray(t.etiquetas))t.etiquetas=[]; if(!t.etiquetas.includes(nombre))t.etiquetas.push(nombre); }
+  renderLibreModal();
+  toast('Etiqueta "'+nombre+'" creada.');
+}
+function firstName(n){ return (n||'').trim().split(/\s+/)[0]||''; }
+async function loadNotifs(){
+  if(!USER.nombre){ NOTIFS=[]; return; }
+  try{ const {data}=await sb.from('notificaciones').select('*').ilike('destinatario',firstName(USER.nombre)).order('created_at',{ascending:false}).limit(50); NOTIFS=data||[]; }catch(e){ NOTIFS=[]; }
+}
+// ── @menciones + campana ────────────────────────────────────────────────
+// Nombres mencionables = primer nombre de todo el equipo (match por nombre).
+function mentionNames(){ const s=new Set(); [...EQ_CONTADORAS,...EQ_ANALISTAS,...(EQ_TODOS||[])].forEach(n=>{const f=firstName(n); if(f)s.add(f);}); if(USER.nombre)s.add(firstName(USER.nombre)); return [...s].sort((a,b)=>a.localeCompare(b)); }
+function parseMentions(texto){
+  const found=new Set(); const re=/@([\p{L}]+)/gu; let m;
+  const names=mentionNames();
+  while((m=re.exec(texto||''))){ const tok=m[1].toLowerCase(); const hit=names.find(n=>n.toLowerCase()===tok); if(hit) found.add(hit); }
+  return [...found];
+}
+function notifBellHTML(){
+  const unread=NOTIFS.filter(n=>!n.leido).length;
+  let h='<div class="notif-wrap"><button class="notif-bell" onclick="toggleNotif(event)" title="Menciones">🔔'+(unread?'<span class="notif-badge">'+(unread>9?'9+':unread)+'</span>':'')+'</button>';
+  if(NOTIF_OPEN){
+    h+='<div class="notif-backdrop" onclick="NOTIF_OPEN=false;render()"></div>';
+    h+='<div class="notif-drop">';
+    h+='<div class="notif-head"><span>Menciones</span>'+(unread?'<button class="notif-readall" onclick="notifMarkAll()">Marcar leídas</button>':'')+'</div>';
+    if(!NOTIFS.length) h+='<div class="notif-empty">No tienes menciones.</div>';
+    NOTIFS.forEach(n=>{
+      h+='<div class="notif-item'+(n.leido?'':' unread')+'" onclick="notifOpen(\''+n.id+'\',\''+(n.tarea_id||'')+'\')">'+
+        '<div class="notif-it-top"><b>'+escHtml(n.autor_nombre||'Alguien')+'</b> te mencionó'+(n.tarea_titulo?' en <b>'+escHtml(n.tarea_titulo)+'</b>':'')+'</div>'+
+        ((n.texto)?'<div class="notif-it-txt">'+escHtml(String(n.texto).slice(0,90))+'</div>':'')+
+        '<div class="notif-it-time">'+fmtFechaHora(n.created_at)+'</div></div>';
+    });
+    h+='</div>';
+  }
+  h+='</div>';
+  return h;
+}
+function toggleNotif(e){ if(e){e.stopPropagation();} NOTIF_OPEN=!NOTIF_OPEN; render(); }
+async function notifMarkAll(){
+  const ids=NOTIFS.filter(n=>!n.leido).map(n=>n.id); NOTIFS.forEach(n=>n.leido=true); render();
+  if(ids.length){ try{ await sb.from('notificaciones').update({leido:true}).in('id',ids); }catch(e){} }
+}
+async function notifOpen(notifId, tareaId){
+  NOTIF_OPEN=false;
+  const n=NOTIFS.find(x=>x.id===notifId); if(n&&!n.leido){ n.leido=true; try{ sb.from('notificaciones').update({leido:true}).eq('id',notifId); }catch(e){} }
+  if(tareaId){ SUB='libre'; render(); openLibre(tareaId); } else { render(); }
+}
+// Autocomplete de @ en el input de comentario del tablero libre
+function libreMentionInput(){
+  const inp=document.getElementById('lc-new'); const box=document.getElementById('lc-mention'); if(!inp||!box) return;
+  const pos=inp.selectionStart; const upto=inp.value.slice(0,pos);
+  const m=upto.match(/@([\p{L}]*)$/u);
+  if(!m){ box.style.display='none'; box.innerHTML=''; return; }
+  const q=m[1].toLowerCase();
+  const names=mentionNames().filter(n=>n.toLowerCase().startsWith(q)).slice(0,6);
+  if(!names.length){ box.style.display='none'; box.innerHTML=''; return; }
+  box.innerHTML=names.map(n=>'<div class="cm-mention-it" onmousedown="libreMentionPick(event,\''+esc(n)+'\')">@'+escHtml(n)+'</div>').join('');
+  box.style.display='block';
+}
+function libreMentionPick(e,name){
+  if(e){e.preventDefault();}
+  const inp=document.getElementById('lc-new'); if(!inp) return;
+  const pos=inp.selectionStart; const val=inp.value; const upto=val.slice(0,pos);
+  const m=upto.match(/@([\p{L}]*)$/u); if(!m) return;
+  const start=pos-m[0].length;
+  inp.value=val.slice(0,start)+'@'+name+' '+val.slice(pos);
+  const box=document.getElementById('lc-mention'); if(box){box.style.display='none';box.innerHTML='';}
+  inp.focus(); const np=start+name.length+2; inp.setSelectionRange(np,np);
 }
 let _refrescando=false;
 async function refrescarDatos(silencioso){
@@ -936,28 +1137,39 @@ async function refrescarDatos(silencioso){
 // ════════ M4 · Tablero de tareas libres ════════
 function hoyISO(){return new Date().toISOString().slice(0,10);}
 function fmtDiaISO(s){try{return new Date(s+'T00:00:00').toLocaleDateString('es-DO',{day:'numeric',month:'short'});}catch(e){return s;}}
-function equipoNombres(){const set=new Set([...FILTRO_CONTADORAS,...FILTRO_ANALISTAS]);if(USER.nombre)set.add(USER.nombre);return [...set].sort((a,b)=>a.localeCompare(b));}
+function equipoNombres(){const base=EQ_TODOS.length?EQ_TODOS:[...EQ_CONTADORAS,...EQ_ANALISTAS];const set=new Set(base);if(USER.nombre)set.add(USER.nombre);return [...set].sort((a,b)=>a.localeCompare(b));}
+// "Administrativo" = todo el equipo que no es contadora ni analista (resto del equipo)
+function eqAdmin(){const ex=new Set([...EQ_CONTADORAS,...EQ_ANALISTAS].map(n=>n.toLowerCase()));return (EQ_TODOS.length?EQ_TODOS:[]).filter(n=>!ex.has(n.toLowerCase())).sort((a,b)=>a.localeCompare(b));}
+function setLibrePersona(v){LIBRE_PERSONA=v||'';if(LIBRE_PERSONA)LIBRE_FILTRO='todas';render();}
 function tlCard(t){
   const av=(t.asignado||'').trim().slice(0,2).toUpperCase();
   const vence=t.fecha_limite?'<span class="tl-due'+(t.fecha_limite<hoyISO()?' tl-due-late':'')+'">'+fmtDiaISO(t.fecha_limite)+'</span>':'';
-  const etq=t.etiqueta?'<span class="tl-etq '+(ETQ_CLS[t.etiqueta]||'etq-nourg')+'">'+escHtml(t.etiqueta)+'</span>':'';
-  const imp=t.importancia?'<span class="tl-etq '+(ETQ_CLS[t.importancia]||'etq-nourg')+'">'+escHtml(t.importancia)+'</span>':'';
+  const etqArr=[];
+  if(t.etiqueta) etqArr.push('<span class="tl-etq '+(ETQ_CLS[t.etiqueta]||'etq-nourg')+'">'+escHtml(t.etiqueta)+'</span>');
+  const etqList=(Array.isArray(t.etiquetas)&&t.etiquetas.length)?t.etiquetas:(t.importancia?[t.importancia]:[]);
+  etqList.forEach(n=>{const c=etqColor(n);etqArr.push('<span class="tl-etq2" style="background:'+c+'22;color:'+c+'">'+escHtml(n)+'</span>');});
+  const etqTop=etqArr.length?'<div class="tl-card-etqs">'+etqArr.join('')+'</div>':'';
   const cli=t.cliente?'<span class="tl-cli">'+escHtml(t.cliente)+'</span>':'';
+  const chkItems=Array.isArray(t.checklist)?t.checklist:[];
+  const chkDone=chkItems.filter(i=>i&&i.done).length;
+  const chk=chkItems.length?'<span class="tl-chk-badge'+(chkDone===chkItems.length?' tl-chk-done':'')+'" title="Checklist">✓ '+chkDone+'/'+chkItems.length+'</span>':'';
   return '<div class="tl-card" draggable="true" ondragstart="taskDragStart(event,\''+t.id+'\')" onclick="openLibre(\''+t.id+'\')">'+
+    etqTop+
     '<div class="tl-card-title">'+escHtml(t.titulo)+'</div>'+
-    ((etq||imp||cli||vence||av)?'<div class="tl-card-meta">'+etq+imp+cli+vence+(t.asignado?'<span class="tl-av" title="'+attrEsc(t.asignado)+'">'+escHtml(av)+'</span>':'')+'</div>':'')+'</div>';
+    ((cli||vence||chk||av)?'<div class="tl-card-meta">'+cli+vence+chk+(t.asignado?'<span class="tl-av" title="'+attrEsc(t.asignado)+'">'+escHtml(av)+'</span>':'')+'</div>':'')+'</div>';
 }
 function renderLibre(){
   const center=document.getElementById('center');
   if(!DB_OK){center.innerHTML='<div class="kb-placeholder">Inicia sesión en el portal para ver el tablero de tareas.</div>';return;}
   const cols=LIBRE_COLS.slice().sort((a,b)=>a.orden-b.orden);
   let tasks=LIBRE_TASKS;
-  if(LIBRE_FILTRO==='mias'&&USER.nombre)tasks=tasks.filter(t=>t.asignado&&t.asignado.trim().toLowerCase()===USER.nombre.trim().toLowerCase());
+  if(LIBRE_PERSONA){tasks=tasks.filter(t=>t.asignado&&t.asignado.trim().toLowerCase()===LIBRE_PERSONA.trim().toLowerCase());}
+  else if(LIBRE_FILTRO==='mias'&&USER.nombre)tasks=tasks.filter(t=>t.asignado&&t.asignado.trim().toLowerCase()===USER.nombre.trim().toLowerCase());
   let h='<div class="tl-board">';
   cols.forEach(col=>{
     const ct=tasks.filter(t=>t.columna_id===col.id).sort((a,b)=>a.orden-b.orden);
-    h+='<div class="tl-col" draggable="true" ondragstart="colDragStart(event,\''+col.id+'\')" ondragover="allowDrop(event)" ondrop="colDrop(event,\''+col.id+'\')">';
-    h+='<div class="tl-col-head"><input class="tl-col-title" value="'+attrEsc(col.titulo)+'" onchange="colRename(\''+col.id+'\',this.value)"><span class="tl-col-count">'+ct.length+'</span><button class="tl-col-del" onclick="colDel(\''+col.id+'\')" title="Borrar columna">×</button></div>';
+    h+='<div class="tl-col" ondragover="allowDrop(event)" ondrop="colDrop(event,\''+col.id+'\')">';
+    h+='<div class="tl-col-head"><span class="tl-col-grip" draggable="true" ondragstart="colDragStart(event,\''+col.id+'\')" title="Arrastra para reordenar la columna">⠿</span><input class="tl-col-title" value="'+attrEsc(col.titulo)+'" onchange="colRename(\''+col.id+'\',this.value)"><span class="tl-col-count">'+ct.length+'</span><button class="tl-col-del" onclick="colDel(\''+col.id+'\')" title="Borrar columna">×</button></div>';
     h+='<div class="tl-col-body" ondragover="allowDrop(event)" ondrop="taskDrop(event,\''+col.id+'\')">';
     ct.forEach(t=>h+=tlCard(t));
     if(!ct.length)h+='<div class="tl-empty">—</div>';
@@ -971,8 +1183,8 @@ function renderLibre(){
   if(LIBRE_SEL)renderLibreModal();
 }
 // Drag
-function taskDragStart(e,id){LIBRE_DRAG=id;e.stopPropagation();}
-function colDragStart(e,id){if(LIBRE_DRAG)return;LIBRE_COLDRAG=id;}
+function taskDragStart(e,id){LIBRE_DRAG=id;LIBRE_COLDRAG=null;try{e.dataTransfer.setData('text/plain',id);e.dataTransfer.effectAllowed='move';}catch(_){}e.stopPropagation();}
+function colDragStart(e,id){LIBRE_DRAG=null;LIBRE_COLDRAG=id;try{e.dataTransfer.setData('text/plain','col');e.dataTransfer.effectAllowed='move';}catch(_){}e.stopPropagation();}
 async function taskDrop(e,colId){e.preventDefault();e.stopPropagation();if(!LIBRE_DRAG)return;const id=LIBRE_DRAG;LIBRE_DRAG=null;await moveTask(id,colId);}
 async function colDrop(e,colId){e.preventDefault();if(LIBRE_DRAG)return;if(LIBRE_COLDRAG&&LIBRE_COLDRAG!==colId){const d=LIBRE_COLDRAG;LIBRE_COLDRAG=null;await reorderCol(d,colId);}}
 // CRUD columnas
@@ -981,7 +1193,7 @@ async function colRename(id,v){const c=LIBRE_COLS.find(x=>x.id===id);if(c)c.titu
 async function colDel(id){const n=LIBRE_TASKS.filter(t=>t.columna_id===id).length;if(!confirm('¿Borrar esta columna'+(n?' y sus '+n+' tarea(s)':'')+'?'))return;const {error}=await sb.from('tl_columnas').delete().eq('id',id);if(error){toast('No se pudo borrar la columna.',true);return;}await loadLibre();render();}
 async function reorderCol(dragId,targetId){const a=LIBRE_COLS.find(c=>c.id===dragId),b=LIBRE_COLS.find(c=>c.id===targetId);if(!a||!b)return;const ao=a.orden;await Promise.all([sb.from('tl_columnas').update({orden:b.orden}).eq('id',dragId),sb.from('tl_columnas').update({orden:ao}).eq('id',targetId)]);await loadLibre();render();}
 // CRUD tareas
-function nuevaLibre(colId){LIBRE_DRAFT={columna_id:colId,titulo:'',descripcion:'',asignado:USER.nombre||'',cliente:'',fecha_limite:'',etiqueta:'',importancia:''};LIBRE_SEL='__nuevo';renderLibreModal();}
+function nuevaLibre(colId){LIBRE_DRAFT={columna_id:colId,titulo:'',descripcion:'',asignado:USER.nombre||'',cliente:'',fecha_limite:'',etiqueta:'',etiquetas:[]};LIBRE_SEL='__nuevo';renderLibreModal();}
 async function moveTask(id,colId){const t=LIBRE_TASKS.find(x=>x.id===id);if(!t)return;if(t.columna_id===colId)return;const orden=LIBRE_TASKS.filter(x=>x.columna_id===colId).length+1;t.columna_id=colId;t.orden=orden;render();const {error}=await sb.from('tl_tareas').update({columna_id:colId,orden:orden}).eq('id',id);if(error){toast('No se pudo mover la tarea.',true);await loadLibre();render();}}
 function openLibre(id){LIBRE_DRAFT=null;LIBRE_SEL=id;renderLibreModal();}
 function closeLibre(){LIBRE_SEL=null;LIBRE_DRAFT=null;document.getElementById('modal').innerHTML='';}
@@ -993,21 +1205,46 @@ function renderLibreModal(){
   const optPersona='<option value="">Sin asignar</option>'+equipoNombres().map(p=>'<option'+(t.asignado===p?' selected':'')+'>'+escHtml(p)+'</option>').join('');
   const optCli='<option value="">— sin cliente —</option>'+CLIENTES.map(c=>'<option'+(t.cliente===c.nombre?' selected':'')+'>'+escHtml(c.nombre)+'</option>').join('');
   const optCol=cols.map(c=>'<option value="'+c.id+'"'+(t.columna_id===c.id?' selected':'')+'>'+escHtml(c.titulo)+'</option>').join('');
-  const optEtq='<option value="">Sin etiqueta</option>'+AREAS.map(v=>'<option'+(t.etiqueta===v?' selected':'')+'>'+v+'</option>').join('');
-  const optImp='<option value="">Sin importancia</option>'+IMPORTANCIAS.map(v=>'<option'+(t.importancia===v?' selected':'')+'>'+v+'</option>').join('');
-  const h='<div class="lm-overlay" onclick="if(event.target===this)closeLibre()"><div class="lm-modal">'+
-    '<div class="lm-head"><input id="lm-titulo" class="lm-title" placeholder="Título de la tarea" value="'+attrEsc(t.titulo)+'"><button onclick="closeLibre()" class="lm-x">&times;</button></div>'+
-    '<div class="lm-body">'+
-      '<label class="lm-lbl">Descripción</label><textarea id="lm-desc" class="lm-area" rows="3">'+escHtml(t.descripcion||'')+'</textarea>'+
-      '<div class="lm-grid">'+
-        '<div><label class="lm-lbl">Asignado a</label><select id="lm-asig" class="lm-sel">'+optPersona+'</select></div>'+
-        '<div><label class="lm-lbl">Cliente</label><select id="lm-cli" class="lm-sel">'+optCli+'</select></div>'+
-        '<div><label class="lm-lbl">Fecha límite</label><input id="lm-fecha" type="date" class="lm-sel" value="'+(t.fecha_limite||'')+'"></div>'+
-        '<div><label class="lm-lbl">Columna</label><select id="lm-col" class="lm-sel">'+optCol+'</select></div>'+
-        '<div><label class="lm-lbl">Tipo de tarea</label><select id="lm-etq" class="lm-sel">'+optEtq+'</select></div>'+
-        '<div><label class="lm-lbl">Importancia</label><select id="lm-imp" class="lm-sel">'+optImp+'</select></div>'+
-      '</div>'+
+  const optEtq='<option value="">Sin tipo</option>'+AREAS.map(v=>'<option'+(t.etiqueta===v?' selected':'')+'>'+v+'</option>').join('');
+  // "Etiqueta" = se pueden poner VARIAS. El dropdown AGREGA; se ven como chips.
+  const selEtqs=Array.isArray(t.etiquetas)?t.etiquetas:[];
+  const etqChips=selEtqs.map(n=>{const c=etqColor(n);return '<span class="lm-etq-tag" style="background:'+c+'22;color:'+c+'">'+escHtml(n)+'<button type="button" class="lm-etq-x" onclick="removeEtq(\''+esc(n)+'\')">×</button></span>';}).join('');
+  const optAdd='<option value="">+ Agregar etiqueta…</option>'+LIBRE_ETIQUETAS.filter(e=>!selEtqs.includes(e.nombre)).map(e=>'<option>'+escHtml(e.nombre)+'</option>').join('');
+  const sw=ETQ_COLORS.map(c=>'<button type="button" class="lm-etq-sw'+(c===LIBRE_ETQ_COLOR?' on':'')+'" data-c="'+c+'" style="background:'+c+'" onclick="pickEtqColor(this)"></button>').join('');
+  const etqSection='<label class="lm-lbl">Etiqueta</label>'+
+    (etqChips?'<div class="lm-etq-tags">'+etqChips+'</div>':'')+
+    '<div class="lm-etq-row"><select id="lm-imp" class="lm-sel" onchange="addEtqSel(this)">'+optAdd+'</select><button type="button" class="lm-etq-addbtn" onclick="toggleNewEtq()">+ Crear</button></div>'+
+    '<div id="lm-etq-formwrap" class="lm-etq-form" style="display:none"><input id="lm-etq-newname" class="lm-etq-input" placeholder="Nombre de la etiqueta" onkeydown="if(event.key===\'Enter\'){event.preventDefault();crearEtq();}"><div class="lm-etq-sws">'+sw+'</div><button type="button" class="lm-etq-create" onclick="crearEtq()">Crear</button></div>';
+  const fieldsHtml =
+    '<label class="lm-lbl">Descripción</label>'+
+    '<div class="lm-rich-tb">'+
+      '<button type="button" class="lm-rich-btn" onmousedown="return false" onclick="lmFmt(\'bold\')" title="Negrita"><b>B</b></button>'+
+      '<button type="button" class="lm-rich-btn" onmousedown="return false" onclick="lmFmt(\'italic\')" title="Itálica"><i>I</i></button>'+
+      '<button type="button" class="lm-rich-btn" onmousedown="return false" onclick="lmFmt(\'insertUnorderedList\')" title="Viñetas"><svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><circle cx="4" cy="6" r="1.7"/><circle cx="4" cy="12" r="1.7"/><circle cx="4" cy="18" r="1.7"/><rect x="8" y="5" width="13" height="2" rx="1"/><rect x="8" y="11" width="13" height="2" rx="1"/><rect x="8" y="17" width="13" height="2" rx="1"/></svg></button>'+
+      '<button type="button" class="lm-rich-btn" onmousedown="return false" onclick="lmFmt(\'insertOrderedList\')" title="Lista numerada"><svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><rect x="8" y="5" width="13" height="2" rx="1"/><rect x="8" y="11" width="13" height="2" rx="1"/><rect x="8" y="17" width="13" height="2" rx="1"/><text x="0.5" y="8.5" font-size="7.5" font-weight="700">1</text><text x="0.5" y="14.5" font-size="7.5" font-weight="700">2</text><text x="0.5" y="20.5" font-size="7.5" font-weight="700">3</text></svg></button>'+
+      '<button type="button" class="lm-rich-btn" onmousedown="return false" onclick="lmFmt(\'removeFormat\')" title="Quitar formato"><svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><text x="1" y="17" font-size="15" font-weight="700">T</text><line x1="13" y1="9" x2="21" y2="17" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/><line x1="21" y1="9" x2="13" y2="17" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg></button>'+
     '</div>'+
+    '<div id="lm-desc" class="lm-rich" contenteditable="true" data-ph="Escribe una descripción…">'+sanitizeDesc(t.descripcion||'')+'</div>'+
+    (nuevo?'':'<button type="button" class="lm-desc-save" onclick="saveLibreDesc()">Guardar descripción</button>')+
+    '<label class="lm-lbl">Link</label>'+
+    '<div class="lm-link-row"><input id="lm-basecamp" class="lm-sel" type="url" placeholder="https://…" value="'+attrEsc(t.link_basecamp||'')+'">'+
+      ((!nuevo && t.link_basecamp)?'<a class="lm-link-open" href="'+attrEsc(t.link_basecamp)+'" target="_blank" rel="noopener" title="Visitar link">↗ Visitar link</a>':'')+
+    '</div>'+
+    '<div class="lm-grid">'+
+      '<div><label class="lm-lbl">Asignado a</label><select id="lm-asig" class="lm-sel">'+optPersona+'</select></div>'+
+      '<div><label class="lm-lbl">Cliente</label><select id="lm-cli" class="lm-sel">'+optCli+'</select></div>'+
+      '<div><label class="lm-lbl">Fecha límite</label><input id="lm-fecha" type="date" class="lm-sel" value="'+(t.fecha_limite||'')+'"></div>'+
+      '<div><label class="lm-lbl">Columna</label><select id="lm-col" class="lm-sel">'+optCol+'</select></div>'+
+      '<div><label class="lm-lbl">Tipo de tarea</label><select id="lm-etq" class="lm-sel">'+optEtq+'</select></div>'+
+    '</div>'+
+    etqSection+
+    (nuevo?'':libreChecklistHTML(t));
+  const bodyHtml = nuevo
+    ? '<div class="lm-body">'+fieldsHtml+'</div>'
+    : '<div class="lm-body lm-body-2col"><div class="lm-main">'+fieldsHtml+'</div><div class="lm-side">'+libreComentsHTML(t.id)+'</div></div>';
+  const h='<div class="lm-overlay" onclick="if(event.target===this)closeLibre()"><div class="lm-modal'+(nuevo?'':' lm-wide')+'">'+
+    '<div class="lm-head"><input id="lm-titulo" class="lm-title" placeholder="Título de la tarea" value="'+attrEsc(t.titulo)+'"><button onclick="closeLibre()" class="lm-x">&times;</button></div>'+
+    bodyHtml+
     '<div class="lm-foot">'+(nuevo?'<span></span>':'<button onclick="delLibre()" class="lm-del">Eliminar</button>')+'<button onclick="saveLibre()" class="lm-save">'+(nuevo?'Crear tarea':'Guardar')+'</button></div>'+
   '</div></div>';
   document.getElementById('modal').innerHTML=h;
@@ -1017,20 +1254,151 @@ async function saveLibre(){
   const nuevo=LIBRE_SEL==='__nuevo';const g=id=>document.getElementById(id);
   const titulo=(g('lm-titulo').value||'').trim();
   if(!titulo){toast('Escribe un título.',true);g('lm-titulo').focus();return;}
-  const upd={titulo:titulo,descripcion:g('lm-desc').value||null,asignado:g('lm-asig').value||null,cliente:g('lm-cli').value||null,fecha_limite:g('lm-fecha').value||null,etiqueta:g('lm-etq').value||null,importancia:g('lm-imp').value||null,columna_id:g('lm-col').value};
+  const descEl=g('lm-desc');const bcEl=g('lm-basecamp');const cur=libreCur();
+  const upd={titulo:titulo,descripcion:descEl?(sanitizeDesc(descEl.innerHTML)||null):null,link_basecamp:(bcEl&&bcEl.value.trim())||null,etiqueta:g('lm-etq').value||null,etiquetas:(cur&&Array.isArray(cur.etiquetas))?cur.etiquetas:[],asignado:g('lm-asig').value||null,cliente:g('lm-cli').value||null,fecha_limite:g('lm-fecha').value||null,columna_id:g('lm-col').value};
+  // Resiliencia: si una columna opcional aún no existe en la BD (migración sin correr),
+  // se quita del payload y se reintenta, en vez de fallar todo el guardado.
+  const OPC=['link_basecamp','checklist','etiquetas'];const stripped=[];
+  async function intentar(payload){
+    let res;
+    if(nuevo){const orden=LIBRE_TASKS.filter(x=>x.columna_id===payload.columna_id).length+1;res=await sb.from('tl_tareas').insert({...payload,orden:orden,creado_por:USER.id||null}).select();}
+    else{const t=LIBRE_TASKS.find(x=>x.id===LIBRE_SEL);res=await sb.from('tl_tareas').update(payload).eq('id',t.id);}
+    if(res.error){const m=(res.error.message||'').match(/'?([a-z_]+)'?\s+column/i);if(m&&OPC.includes(m[1])&&(m[1] in payload)){stripped.push(m[1]);const p={...payload};delete p[m[1]];return intentar(p);}}
+    return res;
+  }
+  const avisoStrip=()=>{ if(stripped.includes('link_basecamp')&&upd.link_basecamp) toast('Tarea guardada, pero el Link no: falta correr db/tareas-libres-basecamp.sql en Supabase.',true); };
   if(nuevo){
-    const orden=LIBRE_TASKS.filter(x=>x.columna_id===upd.columna_id).length+1;closeLibre();
-    const {error}=await sb.from('tl_tareas').insert({...upd,orden:orden,creado_por:USER.id||null}).select();
-    if(error)toast('No se pudo crear la tarea.',true);else await loadLibre();
+    closeLibre();
+    const {error}=await intentar(upd);
+    if(error)toast('No se pudo crear la tarea: '+(error.message||error.code||''),true);else{avisoStrip();await loadLibre();}
     render();
   }else{
     const t=LIBRE_TASKS.find(x=>x.id===LIBRE_SEL);if(!t)return;
     Object.assign(t,upd);closeLibre();render();
-    const {error}=await sb.from('tl_tareas').update(upd).eq('id',t.id);
-    if(error){toast('No se pudo guardar la tarea.',true);await loadLibre();render();}
+    const {error}=await intentar(upd);
+    if(error){toast('No se pudo guardar la tarea: '+(error.message||error.code||''),true);await loadLibre();render();}
+    else avisoStrip();
   }
 }
 async function delLibre(){if(!confirm('¿Eliminar esta tarea?'))return;const id=LIBRE_SEL;LIBRE_TASKS=LIBRE_TASKS.filter(x=>x.id!==id);closeLibre();render();const {error}=await sb.from('tl_tareas').delete().eq('id',id);if(error){toast('No se pudo eliminar.',true);await loadLibre();render();}}
+// ── Descripción enriquecida (negrita + viñetas, estilo Trello) ──
+// Deja solo tags seguros y sin atributos (la escribe el equipo, pero igual se sanea).
+function sanitizeDesc(html){
+  const allowed=new Set(['B','STRONG','I','EM','U','UL','OL','LI','BR','DIV','P','SPAN']);
+  const tmp=document.createElement('div'); tmp.innerHTML=html||'';
+  tmp.querySelectorAll('*').forEach(el=>{
+    if(!allowed.has(el.tagName)){ el.replaceWith(...el.childNodes); }
+    else { [...el.attributes].forEach(a=>el.removeAttribute(a.name)); }
+  });
+  return tmp.innerHTML;
+}
+function lmFmt(cmd){ document.execCommand(cmd,false,null); const el=document.getElementById('lm-desc'); if(el) el.focus(); }
+async function saveLibreDesc(){
+  const id=LIBRE_SEL; if(!id||id==='__nuevo') return;
+  const el=document.getElementById('lm-desc'); if(!el) return;
+  const html=sanitizeDesc(el.innerHTML);
+  const t=LIBRE_TASKS.find(x=>x.id===id); if(!t) return;
+  const prev=t.descripcion; t.descripcion=html;
+  const {error}=await sb.from('tl_tareas').update({descripcion:html}).eq('id',id);
+  if(error){ t.descripcion=prev; toast('No se pudo guardar la descripción.',true); }
+  else { toast('Descripción guardada.'); }
+}
+
+// ── Checklist estilo Trello en cada tarea libre (vive en tl_tareas.checklist JSONB) ──
+function libreChecklistHTML(t){
+  const items = Array.isArray(t.checklist) ? t.checklist : [];
+  const done = items.filter(i=>i&&i.done).length;
+  const pct = items.length ? Math.round(done/items.length*100) : 0;
+  let h='<div class="lm-chk"><div class="lm-chk-head"><label class="lm-lbl" style="margin:0">Checklist</label>'+(items.length?'<span class="lm-chk-count">'+done+'/'+items.length+'</span>':'')+'</div>';
+  if(items.length) h+='<div class="lm-chk-bar"><div class="lm-chk-fill" style="width:'+pct+'%"></div></div>';
+  items.forEach(i=>{
+    if(!i||!i.id) return;
+    h+='<div class="lm-chk-item"><input type="checkbox"'+(i.done?' checked':'')+' onchange="toggleChkItem(\''+i.id+'\')"><span class="lm-chk-txt'+(i.done?' done':'')+'">'+escHtml(i.texto||'')+'</span><button class="lm-chk-del" onclick="delChkItem(\''+i.id+'\')" title="Eliminar">×</button></div>';
+  });
+  h+='<div class="lm-chk-add"><input id="lm-chk-new" class="lm-chk-input" placeholder="Agregar ítem…" onkeydown="if(event.key===\'Enter\')addChkItem()"><button class="lm-chk-addbtn" onclick="addChkItem()">Agregar</button></div>';
+  h+='</div>';
+  return h;
+}
+function _chkGenId(){ return 'c'+Date.now().toString(36)+Math.floor(Math.random()*1e6).toString(36); }
+async function _saveChecklist(t, prev){
+  const {error}=await sb.from('tl_tareas').update({checklist: t.checklist}).eq('id', t.id);
+  if(error){ t.checklist = prev; toast('No se pudo guardar el checklist.',true); renderLibreModal(); }
+  else render();
+}
+async function addChkItem(){
+  const id=LIBRE_SEL; if(!id||id==='__nuevo') return;
+  const inp=document.getElementById('lm-chk-new'); const v=((inp&&inp.value)||'').trim(); if(!v) return;
+  const t=LIBRE_TASKS.find(x=>x.id===id); if(!t) return;
+  const prev = Array.isArray(t.checklist)?t.checklist.slice():[];
+  t.checklist = (Array.isArray(t.checklist)?t.checklist.slice():[]).concat([{id:_chkGenId(),texto:v,done:false}]);
+  renderLibreModal();
+  const i2=document.getElementById('lm-chk-new'); if(i2) i2.focus();
+  await _saveChecklist(t, prev);
+}
+async function toggleChkItem(itemId){
+  const t=LIBRE_TASKS.find(x=>x.id===LIBRE_SEL); if(!t||!Array.isArray(t.checklist)) return;
+  const prev=t.checklist.map(x=>({...x}));
+  t.checklist = t.checklist.map(x=> x.id===itemId ? {...x, done:!x.done} : x);
+  renderLibreModal();
+  await _saveChecklist(t, prev);
+}
+async function delChkItem(itemId){
+  const t=LIBRE_TASKS.find(x=>x.id===LIBRE_SEL); if(!t||!Array.isArray(t.checklist)) return;
+  const prev=t.checklist.slice();
+  t.checklist = t.checklist.filter(x=>x.id!==itemId);
+  renderLibreModal();
+  await _saveChecklist(t, prev);
+}
+
+// ── Comentarios del tablero libre (mismo patrón que los workflows) ──────────
+function libreComentsHTML(tareaId){
+  const list=(LIBRE_COMENTS[tareaId]||[]).slice().sort((a,b)=>(b.created_at||'').localeCompare(a.created_at||''));
+  let h='<div class="lm-coms"><label class="lm-lbl">Comentarios</label>';
+  h+='<div class="cm-input-wrap"><div class="cm-input-row"><input id="lc-new" class="cm-input" placeholder="Escribe un comentario… (@ para mencionar)" autocomplete="off" oninput="libreMentionInput()" onkeydown="if(event.key===\'Enter\')addLibreCom()"><button onclick="addLibreCom()" class="cm-send">'+ico('send',14)+'</button></div><div id="lc-mention" class="cm-mention" style="display:none"></div></div>';
+  if(!list.length)h+='<div class="cm-empty">Sin comentarios todavía.</div>';
+  list.forEach(c=>{
+    const mine=(c.usuario_id&&c.usuario_id===USER.id),canDel=mine||USER.rol==='admin',editing=(LIBRE_EDIT_ID&&LIBRE_EDIT_ID===c.id);
+    let inner;
+    if(editing){
+      inner='<textarea id="lc-edit" rows="2" class="cm-edit">'+escHtml(c.texto)+'</textarea><div class="cm-edit-actions"><button onclick="LIBRE_EDIT_ID=null;renderLibreModal()" class="bloq-cancel">Cancelar</button><button onclick="saveLibreEdit(\''+c.id+'\')" class="cm-send" style="padding:5px 12px;font-size:12px;border-radius:8px">Guardar</button></div>';
+    }else{
+      const ctrls=(c.id&&(mine||canDel))?'<div class="cm-actions">'+(mine?'<button onclick="LIBRE_EDIT_ID=\''+c.id+'\';renderLibreModal()" class="cm-act">editar</button>':'')+(canDel?'<button onclick="deleteLibreCom(\''+c.id+'\')" class="cm-act cm-act-del">eliminar</button>':'')+'</div>':'';
+      inner='<div>'+escHtml(c.texto)+'</div>'+ctrls;
+    }
+    h+='<div class="cm-item"><div class="cm-av eq-'+(c.autor_equipo||'equipo')+'">'+escHtml((c.autor_nombre||'?')[0])+'</div><div class="cm-body"><div class="cm-bubble"><div class="cm-head"><span class="cm-who"><b>'+escHtml(c.autor_nombre||'—')+'</b></span><span class="cm-time">'+fmtFechaHora(c.created_at)+'</span></div>'+inner+'</div></div></div>';
+  });
+  h+='</div>';
+  return h;
+}
+async function addLibreCom(){
+  const id=LIBRE_SEL;if(!id||id==='__nuevo')return;
+  const inp=document.getElementById('lc-new');const v=((inp&&inp.value)||'').trim();if(!v)return;
+  if(!USER.id){toast('Inicia sesión para comentar.',true);return;}
+  const c={tarea_id:id,texto:v,usuario_id:USER.id,autor_nombre:USER.nombre||'Tú',autor_equipo:USER.equipo,created_at:new Date().toISOString()};
+  (LIBRE_COMENTS[id]=LIBRE_COMENTS[id]||[]).push(c);renderLibreModal();
+  try{const ins={...c};delete ins.created_at;const {data,error}=await sb.from('tl_comentarios').insert(ins).select();if(error)throw error;if(data&&data[0]){c.id=data[0].id;if(data[0].created_at)c.created_at=data[0].created_at;renderLibreModal();}}
+  catch(e){LIBRE_COMENTS[id]=(LIBRE_COMENTS[id]||[]).filter(x=>x!==c);toast('No se pudo enviar el comentario.',true);renderLibreModal();return;}
+  // @menciones → notificación a cada persona mencionada (menos uno mismo)
+  const mencionados=parseMentions(v).filter(n=>n.toLowerCase()!==firstName(USER.nombre).toLowerCase());
+  if(mencionados.length){
+    const t=LIBRE_TASKS.find(x=>x.id===id);
+    const rows=mencionados.map(n=>({destinatario:n,tipo:'mencion',origen:'tablero',tarea_id:id,tarea_titulo:t?t.titulo:null,texto:v,autor_nombre:USER.nombre||'Alguien',leido:false}));
+    try{ await sb.from('notificaciones').insert(rows); if(mencionados.length===1) toast('Se notificó a @'+mencionados[0]+'.'); else toast('Se notificó a '+mencionados.length+' personas.'); }catch(e){}
+  }
+}
+async function saveLibreEdit(cid){
+  const ta=document.getElementById('lc-edit');const v=((ta&&ta.value)||'').trim();LIBRE_EDIT_ID=null;if(!v){renderLibreModal();return;}
+  const arr=LIBRE_COMENTS[LIBRE_SEL]||[];const c=arr.find(x=>x.id===cid);const prev=c?c.texto:null;if(c)c.texto=v;renderLibreModal();
+  try{const {error}=await sb.from('tl_comentarios').update({texto:v}).eq('id',cid);if(error)throw error;}
+  catch(e){if(c)c.texto=prev;toast('No se pudo editar el comentario.',true);renderLibreModal();}
+}
+async function deleteLibreCom(cid){
+  if(!confirm('¿Eliminar este comentario?'))return;
+  const id=LIBRE_SEL;const arr=LIBRE_COMENTS[id]||[];const removed=arr.find(x=>x.id===cid);
+  LIBRE_COMENTS[id]=arr.filter(x=>x.id!==cid);LIBRE_EDIT_ID=null;renderLibreModal();
+  try{const {error}=await sb.from('tl_comentarios').delete().eq('id',cid);if(error)throw error;}
+  catch(e){if(removed)(LIBRE_COMENTS[id]=LIBRE_COMENTS[id]||[]).push(removed);toast('No se pudo eliminar el comentario.',true);renderLibreModal();}
+}
 // Refrescar al volver a la pestaña (otro pudo haber cambiado algo)
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&DB_OK)refrescarDatos(true);});
 loadAll().then(()=>{TAX=TAX||WF.orden[0];render();}).catch(e=>{console.error(e);WF=JSON.parse(JSON.stringify(SEED_WF));CLIENTES=SEED_CLIENTES.slice();TAX=WF.orden[0];render();});

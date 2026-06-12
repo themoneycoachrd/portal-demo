@@ -370,6 +370,7 @@ body.embed #app-wrapper { display: block !important; }
     <button class="main-tab active" data-tab="tablero" onclick="switchTab('tablero')">Wow Board</button>
     <button class="main-tab" data-tab="historial" onclick="switchTab('historial')">Historial</button>
     <button class="main-tab" data-tab="retro" onclick="switchTab('retro')">Retroalimentación</button>
+    <button class="main-tab" data-tab="casos" id="tab-btn-casos" onclick="switchTab('casos')" style="display:none">Casos Iguala</button>
   </div>
 
   <div class="container">
@@ -378,6 +379,7 @@ body.embed #app-wrapper { display: block !important; }
     <div id="tab-tablero" class="tab-content active"></div>
     <div id="tab-historial" class="tab-content"></div>
     <div id="tab-retro" class="tab-content"></div>
+    <div id="tab-casos" class="tab-content"></div>
   </div>
 </div>
 
@@ -590,7 +592,8 @@ var APP = {
   wowData: [],      // registros de wow_points
   payTarget: null,   // empleado (nombre) para modal de pago
   retroData: [],     // registros de retroalimentacion
-  retroFilter: { empleado: '', tipo: '', severidad: '', estado: '' }
+  retroFilter: { empleado: '', tipo: '', severidad: '', estado: '' },
+  casosData: []      // casos_rrhh (solo admin/cobros)
 };
 
 // ==================== AUTH ====================
@@ -641,6 +644,8 @@ function showApp() {
   document.getElementById('login-screen').style.display = 'none';
   document.getElementById('app-wrapper').classList.remove('hidden');
   document.getElementById('user-display-name').textContent = APP.userName;
+  var btnCasos = document.getElementById('tab-btn-casos');
+  if (btnCasos) btnCasos.style.display = puedeVerCasos() ? '' : 'none';
   startApp();
 }
 
@@ -653,6 +658,11 @@ async function startApp() {
   ]);
   APP.wowData = wowRes.data || [];
   APP.retroData = retroRes.data || [];
+
+  if (puedeVerCasos()) {
+    var cr = await sb.from('casos_rrhh').select('*').order('created_at', { ascending: false });
+    APP.casosData = cr.data || [];
+  }
 
   render();
 }
@@ -716,6 +726,7 @@ function render() {
   renderTablero();
   renderHistorial();
   renderRetro();
+  renderCasos();
 }
 
 function switchTab(tab) {
@@ -1422,6 +1433,138 @@ async function saveRetroCase() {
   var { data } = await sb.from('retroalimentacion').select('*').order('created_at', { ascending: false });
   APP.retroData = data || [];
   renderRetro();
+}
+
+// ==================== CASOS RRHH ====================
+var CASO_TIPOS = ['Evaluación 360', 'Búsqueda de personal', 'Proceso disciplinario', 'Capacitación', 'Otro'];
+var CASO_ESTADOS = [['abierto', 'Abierto'], ['en_proceso', 'En proceso'], ['cerrado', 'Cerrado']];
+var CASO_INP = 'width:100%;padding:8px;border:1px solid var(--border);border-radius:6px;font-family:inherit;font-size:0.88rem;box-sizing:border-box';
+
+// Acceso: admin, rol cobros, o (mientras no tenga usuario) por nombre Svetlana.
+function puedeVerCasos() {
+  var r = (APP.userRole || '').toLowerCase();
+  var n = (APP.userName || '').toLowerCase();
+  return r === 'admin' || r === 'cobros' || r === 'rrhh' || n.indexOf('svetlana') >= 0;
+}
+function casoEstadoLabel(e) { var f = CASO_ESTADOS.find(function(x){ return x[0] === e; }); return f ? f[1] : (e || ''); }
+function casoFecha(d) { return d ? new Date(d + 'T00:00:00').toLocaleDateString('es-DO', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'; }
+function casoFld(l, ctrl) { return '<div><label style="font-size:0.75rem;font-weight:600;color:var(--muted);display:block;margin-bottom:3px">' + l + '</label>' + ctrl + '</div>'; }
+
+function renderCasos() {
+  var container = document.getElementById('tab-casos');
+  if (!container) return;
+  if (!puedeVerCasos()) { container.innerHTML = ''; return; }
+  var data = APP.casosData || [];
+  var total = data.length;
+  var abiertos = data.filter(function(c){ return c.estado === 'abierto'; }).length;
+  var enProc = data.filter(function(c){ return c.estado === 'en_proceso'; }).length;
+  var cerrados = data.filter(function(c){ return c.estado === 'cerrado'; }).length;
+
+  var h = '';
+  h += '<div class="retro-stats">';
+  h += '<div class="retro-stat"><div class="retro-stat-count">' + total + '</div><div class="retro-stat-label">Total casos</div></div>';
+  h += '<div class="retro-stat"><div class="retro-stat-count" style="color:var(--red)">' + abiertos + '</div><div class="retro-stat-label">Abiertos</div></div>';
+  h += '<div class="retro-stat"><div class="retro-stat-count" style="color:var(--amber)">' + enProc + '</div><div class="retro-stat-label">En proceso</div></div>';
+  h += '<div class="retro-stat"><div class="retro-stat-count" style="color:var(--green)">' + cerrados + '</div><div class="retro-stat-label">Cerrados</div></div>';
+  h += '</div>';
+
+  h += '<div class="retro-toolbar"><div></div><button class="btn-modal" style="padding:8px 16px;font-size:0.82rem" onclick="openCasoModal()">+ Nuevo caso</button></div>';
+
+  if (!data.length) {
+    h += '<div style="text-align:center;padding:40px;color:var(--muted);font-size:0.9rem">No hay casos registrados. Crea uno con "+ Nuevo caso".</div>';
+  } else {
+    h += '<div style="overflow-x:auto"><table class="retro-table"><thead><tr><th>Caso</th><th>Tipo</th><th>Empleado</th><th>Apertura</th><th>Objetivo</th><th>Estado</th><th></th></tr></thead><tbody>';
+    data.forEach(function(c) {
+      h += '<tr>';
+      h += '<td style="font-weight:600;color:var(--navy)">' + esc(c.titulo || c.tipo) + '</td>';
+      h += '<td>' + esc(c.tipo) + '</td>';
+      h += '<td>' + esc(c.empleado || '') + '</td>';
+      h += '<td style="white-space:nowrap">' + casoFecha(c.fecha_apertura) + '</td>';
+      h += '<td style="white-space:nowrap">' + casoFecha(c.fecha_objetivo) + '</td>';
+      h += '<td><span class="retro-estado ' + c.estado + '">' + casoEstadoLabel(c.estado) + '</span></td>';
+      h += '<td style="white-space:nowrap">';
+      h += '<button style="padding:3px 8px;border:1px solid var(--border);border-radius:6px;background:white;font-size:0.72rem;cursor:pointer;color:var(--blue)" onclick="openCasoModal(\'' + c.id + '\')">Editar</button>';
+      if (c.estado !== 'cerrado') h += ' <button style="padding:3px 8px;border:1px solid var(--border);border-radius:6px;background:white;font-size:0.72rem;cursor:pointer;color:var(--green)" onclick="openCerrarCaso(\'' + c.id + '\')">Cerrar</button>';
+      h += '</td></tr>';
+    });
+    h += '</tbody></table></div>';
+  }
+  container.innerHTML = h;
+}
+
+function openCasoModal(id) {
+  var c = id ? (APP.casosData || []).find(function(x){ return String(x.id) === String(id); }) : null;
+  var old = document.getElementById('caso-modal'); if (old) old.remove();
+  var tipoOpts = CASO_TIPOS.map(function(t){ return '<option' + (c && c.tipo === t ? ' selected' : '') + '>' + t + '</option>'; }).join('');
+  var estOpts = CASO_ESTADOS.map(function(e){ var sel = c ? (c.estado === e[0]) : (e[0] === 'abierto'); return '<option value="' + e[0] + '"' + (sel ? ' selected' : '') + '>' + e[1] + '</option>'; }).join('');
+  var m = '';
+  m += '<div id="caso-modal" style="position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:4000;display:flex;align-items:center;justify-content:center;padding:20px" onclick="if(event.target===this)this.remove()">';
+  m += '<div style="background:#fff;border-radius:14px;max-width:500px;width:100%;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.3)">';
+  m += '<div style="padding:18px 22px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between"><h3 style="margin:0">' + (id ? 'Editar caso' : 'Nuevo caso') + '</h3><button onclick="document.getElementById(\'caso-modal\').remove()" style="border:none;background:none;font-size:1.6rem;line-height:1;cursor:pointer;color:var(--muted)">&times;</button></div>';
+  m += '<div style="padding:18px 22px;display:flex;flex-direction:column;gap:12px">';
+  m += '<input type="hidden" id="caso-id" value="' + (id || '') + '">';
+  m += casoFld('Tipo de caso', '<select id="caso-tipo" style="' + CASO_INP + '">' + tipoOpts + '</select>');
+  m += casoFld('Título / descripción corta', '<input id="caso-titulo" value="' + esc(c ? c.titulo : '') + '" style="' + CASO_INP + '">');
+  m += casoFld('Empleado / puesto', '<input id="caso-empleado" value="' + esc(c ? c.empleado : '') + '" placeholder="Ej: Karina, o un puesto futuro (Implementador 2)" style="' + CASO_INP + '">');
+  m += casoFld('Fecha objetivo (opcional)', '<input type="date" id="caso-objetivo" value="' + (c && c.fecha_objetivo ? c.fecha_objetivo : '') + '" style="' + CASO_INP + '">');
+  m += casoFld('Notas', '<textarea id="caso-notas" rows="3" style="' + CASO_INP + '">' + esc(c ? c.descripcion : '') + '</textarea>');
+  m += casoFld('Estado', '<select id="caso-estado" style="' + CASO_INP + '">' + estOpts + '</select>');
+  m += '</div>';
+  m += '<div style="padding:14px 22px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:8px"><button onclick="document.getElementById(\'caso-modal\').remove()" style="padding:8px 14px;border:1px solid var(--border);border-radius:8px;background:#fff;cursor:pointer">Cancelar</button><button onclick="saveCaso()" style="padding:8px 14px;border:none;border-radius:8px;background:var(--navy);color:#fff;cursor:pointer;font-weight:600">Guardar</button></div>';
+  m += '</div></div>';
+  document.body.insertAdjacentHTML('beforeend', m);
+}
+
+async function saveCaso() {
+  var id = document.getElementById('caso-id').value;
+  var obj = {
+    tipo: document.getElementById('caso-tipo').value,
+    titulo: document.getElementById('caso-titulo').value.trim() || null,
+    empleado: document.getElementById('caso-empleado').value.trim() || null,
+    descripcion: document.getElementById('caso-notas').value.trim() || null,
+    fecha_objetivo: document.getElementById('caso-objetivo').value || null,
+    estado: document.getElementById('caso-estado').value
+  };
+  if (!obj.empleado) { alert('Indica el empleado o puesto.'); return; }
+  var res;
+  if (id) { res = await sb.from('casos_rrhh').update(obj).eq('id', id); }
+  else { obj.created_by = APP.userId; res = await sb.from('casos_rrhh').insert(obj); }
+  if (res.error) { alert('Error al guardar: ' + res.error.message); return; }
+  var modal = document.getElementById('caso-modal'); if (modal) modal.remove();
+  await reloadCasos();
+}
+
+function openCerrarCaso(id) {
+  var c = (APP.casosData || []).find(function(x){ return String(x.id) === String(id); });
+  if (!c) return;
+  var old = document.getElementById('cerrar-modal'); if (old) old.remove();
+  var today = new Date().toISOString().split('T')[0];
+  var m = '';
+  m += '<div id="cerrar-modal" style="position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:4100;display:flex;align-items:center;justify-content:center;padding:20px" onclick="if(event.target===this)this.remove()">';
+  m += '<div style="background:#fff;border-radius:14px;max-width:440px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,0.3)">';
+  m += '<div style="padding:18px 22px;border-bottom:1px solid var(--border)"><h3 style="margin:0">Cerrar caso</h3><div style="font-size:0.82rem;color:var(--muted);margin-top:2px">' + esc(c.titulo || c.tipo) + ' · ' + esc(c.empleado || '') + '</div></div>';
+  m += '<div style="padding:18px 22px;display:flex;flex-direction:column;gap:12px">';
+  m += casoFld('Fecha de cierre', '<input type="date" id="cc-fecha" value="' + today + '" style="' + CASO_INP + '">');
+  m += casoFld('Nota de resolución', '<textarea id="cc-nota" rows="3" placeholder="¿Cómo se resolvió?" style="' + CASO_INP + '">' + esc(c.nota_cierre || '') + '</textarea>');
+  m += '</div>';
+  m += '<div style="padding:14px 22px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:8px"><button onclick="document.getElementById(\'cerrar-modal\').remove()" style="padding:8px 14px;border:1px solid var(--border);border-radius:8px;background:#fff;cursor:pointer">Cancelar</button><button onclick="confirmCerrarCaso(\'' + id + '\')" style="padding:8px 14px;border:none;border-radius:8px;background:var(--green);color:#fff;cursor:pointer;font-weight:600">Cerrar caso</button></div>';
+  m += '</div></div>';
+  document.body.insertAdjacentHTML('beforeend', m);
+}
+
+async function confirmCerrarCaso(id) {
+  var fecha = document.getElementById('cc-fecha').value || new Date().toISOString().split('T')[0];
+  var nota = document.getElementById('cc-nota').value.trim() || null;
+  var { error } = await sb.from('casos_rrhh').update({ estado: 'cerrado', fecha_cierre: fecha, nota_cierre: nota }).eq('id', id);
+  if (error) { alert('Error al cerrar: ' + error.message); return; }
+  var modal = document.getElementById('cerrar-modal'); if (modal) modal.remove();
+  await reloadCasos();
+}
+
+async function reloadCasos() {
+  var { data } = await sb.from('casos_rrhh').select('*').order('created_at', { ascending: false });
+  APP.casosData = data || [];
+  renderCasos();
 }
 
 // ==================== UTILS ====================

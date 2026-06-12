@@ -210,7 +210,15 @@ body { font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-se
 .score-row-label { font-size:12px; color:var(--muted); width:120px; min-width:120px; }
 .score-row-bar { flex:1; height:10px; background:#f1f5f9; border-radius:5px; overflow:hidden; }
 .score-row-fill { height:100%; border-radius:5px; transition:width 0.3s; }
-.score-row-pts { font-size:12px; font-weight:700; width:50px; text-align:right; }
+.score-row-pts { font-size:12px; font-weight:700; width:50px; text-align:right; cursor:help; }
+.dl-banner { background:#fff7ed; border:1px solid #fed7aa; border-radius:12px; padding:12px 14px; margin:14px 0; }
+.dl-banner-title { font-size:13px; font-weight:800; color:#9a3412; margin-bottom:8px; text-transform:uppercase; letter-spacing:0.03em; }
+.dl-banner-items { display:flex; gap:12px; flex-wrap:wrap; }
+.dl-item { display:flex; align-items:center; gap:9px; background:#fff; border:1px solid #fde2c4; border-radius:10px; padding:9px 13px; flex:1; min-width:185px; }
+.dl-ic { font-size:19px; line-height:1; }
+.dl-k { font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:0.03em; font-weight:700; }
+.dl-v { font-size:15px; color:#1e293b; margin-top:1px; }
+.dl-v b { color:#c2410c; font-weight:800; }
 .escala-mini { display:grid; grid-template-columns:repeat(4,1fr); gap:6px; margin-top:8px; }
 .escala-item { text-align:center; padding:8px 4px; border-radius:8px; border:1px solid var(--border); transition:all 0.2s; }
 .escala-item.active { border-width:2px; }
@@ -242,6 +250,17 @@ body { font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-se
 .penalty-pts { background:rgba(239,68,68,0.2); color:#fca5a5; padding:2px 8px; border-radius:6px; font-weight:700; font-size:11px; white-space:nowrap; min-width:50px; text-align:center; }
 .penalty-area { font-weight:600; opacity:0.85; }
 .penalty-detail { opacity:0.6; }
+.ded-split { display:flex; align-items:stretch; gap:0; }
+.ded-col { flex:1; min-width:0; }
+.ded-divider { width:1px; background:rgba(255,255,255,0.18); margin:0 18px; flex-shrink:0; }
+.excel-row { display:flex; align-items:center; gap:8px; padding:5px 0; font-size:12px; border-bottom:1px solid rgba(255,255,255,0.06); }
+.excel-row:last-child { border-bottom:none; }
+.excel-pts { background:rgba(16,185,129,0.2); color:#6ee7b7; padding:2px 8px; border-radius:6px; font-weight:700; font-size:11px; white-space:nowrap; min-width:50px; text-align:center; }
+@media (max-width:640px) { .ded-split { flex-direction:column; } .ded-divider { width:auto; height:1px; margin:14px 0; } }
+.kpi-detail-name { display:flex; align-items:center; gap:10px; font-size:1.15rem; font-weight:800; color:var(--navy); margin-bottom:12px; }
+.kpi-detail-avatar { width:34px; height:34px; border-radius:50%; display:flex; align-items:center; justify-content:center; color:#fff; font-size:13px; font-weight:800; flex-shrink:0; }
+.dig-pts-row td { border-top:2px solid var(--navy); background:#f0f7ff; text-align:center; }
+.dig-pts-row td:first-child { text-align:left; }
 .penalty-none { font-size:12px; opacity:0.5; text-align:center; padding:8px 0; }
 @media (max-width:500px) { .bono-body { grid-template-columns:1fr; gap:10px; } }
 
@@ -254,6 +273,14 @@ body { font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-se
 .comp-weight { font-size:11px; color:var(--light); }
 .comp-score-pill { padding:4px 12px; border-radius:8px; font-size:12px; font-weight:700; }
 .comp-body { padding:18px; }
+.comp-header-click { cursor:pointer; user-select:none; }
+.comp-header-click:hover { background:#fafbfc; }
+.comp-chev { font-size:13px; color:var(--muted); width:14px; }
+.comp-instr { font-size:13px; color:var(--muted); margin-top:2px; }
+.comp-instr b { color:var(--text); }
+.comp-header-right { display:flex; align-items:center; gap:12px; }
+.comp-dl { font-size:13px; font-weight:700; color:#9a3412; background:#fff7ed; border:1px solid #fed7aa; border-radius:8px; padding:5px 11px; white-space:nowrap; }
+.comp-dl b { color:#c2410c; font-size:14px; }
 
 /* ─── Digitacion table (KPI) ─── */
 .dig-table { width:100%; border-collapse:collapse; font-size:0.82rem; }
@@ -994,7 +1021,8 @@ let ckViewMode = 'table'; // 'table' or 'cards'
 let kpiSubTab = 'detalle';
 let kpiQuarter = getCurrentQuarter();
 let kpiContadora = null;
-let kpiMes = null;
+let kpiMes = getCurrentMonth();              // default = mes en presentación
+let kpiCompOpen = { dig: true, res: true, vid: true };  // secciones colapsables (abiertas por defecto)
 
 // Reporte state
 let rptSelectedContadora = null;
@@ -1238,6 +1266,28 @@ function getWeekCarga(weekObj) {
   if (typeof weekObj === 'object') return weekObj.carga || 0;
   return weekObj || 0;
 }
+function getWeekFecha(weekObj) {
+  return (typeof weekObj === 'object') ? (weekObj.fecha || '') : '';
+}
+// Fechas límite del KPI de un mes M:
+//  - Digitación de Facturas = 5 del mes de presentación (M+1).
+//  - Reporte y Cierre Mes Anterior (portal + correo) = último día del MES TRABAJADO (M).
+function mesCutoffs(mes) {
+  const mi = MESES.indexOf(mes);
+  const pres = new Date(ANIO, mi + 1, 1);              // 1ro del mes de presentación (maneja dic→ene)
+  const py = pres.getFullYear(), pm = pres.getMonth();
+  return {
+    digCutoff: new Date(py, pm, 5, 23, 59, 59),        // 5 del mes de presentación (M+1)
+    portalCutoff: new Date(py, pm, 0, 23, 59, 59)      // último día del mes trabajado (M)
+  };
+}
+// ¿la fecha 'YYYY-MM-DD' está dentro del límite? Sin fecha → se da por a tiempo.
+function fechaATiempo(fechaStr, cutoff) {
+  if (!fechaStr) return true;
+  const d = new Date(fechaStr + 'T12:00:00');
+  if (isNaN(d.getTime())) return true;
+  return d.getTime() <= cutoff.getTime();
+}
 
 // Dynamic Adm: uses previous month actual, falls back to asignaciones
 function getEffectiveAdm(contadora, mes, clientName) {
@@ -1305,31 +1355,74 @@ function calcTotal(dig, res, vid) {
   return Math.round(dig * 5 + res * 3 + vid * 2);
 }
 
+// Fechas de corte del KPI de un mes M:
+//  - Digitación de Facturas: día 5 del mes de presentación (M+1).
+//  - Reporte y Cierre Mes Anterior (portal + correo): último día del MES TRABAJADO (M).
+function mesCutoffs(mes) {
+  const mi = MESES.indexOf(mes);
+  const presStart = new Date(ANIO, mi + 1, 1);              // 1ro del mes de presentación (maneja dic→ene)
+  const presY = presStart.getFullYear(), presM = presStart.getMonth();
+  const digCutoff = new Date(presY, presM, 5, 23, 59, 59);          // hasta el 5 del mes de presentación
+  const portalCutoff = new Date(presY, presM, 0, 23, 59, 59);       // último día del mes trabajado (M)
+  return { digCutoff, portalCutoff };
+}
+function getWeekFecha(w) { return (typeof w === 'object') ? (w.fecha || '') : ''; }
+// ¿La fecha (YYYY-MM-DD) está dentro del corte? Sin fecha registrada → se da por buena (no penaliza).
+function fechaATiempo(fechaStr, cutoff) {
+  if (!fechaStr) return true;
+  const dt = new Date(fechaStr + 'T12:00:00');
+  if (isNaN(dt.getTime())) return true;
+  return dt.getTime() <= cutoff.getTime();
+}
+
 function calcScoresForContadora(contadora, mes) {
   const entry = getDetalle(contadora, mes);
   const clients = getClients(contadora, mes);
   const d = entry.datos;
+  const { digCutoff, portalCutoff } = mesCutoffs(mes);
 
-  let digActual = 0;
+  let digActual = 0;     // total digitadas (para mostrar)
+  let digEffective = 0;  // efectivo para el score: las digitadas DESPUÉS del 5 valen 75% (penalidad 25%)
+  let digLate = 0;       // digitadas tarde (para mostrar)
   let admTotal = 0;
+  let cargaTotal = 0;
   clients.forEach(c => {
     const effAdm = getEffectiveAdm(contadora, mes, c.nombre);
     if (isMvException(contadora, c.nombre)) return;
     const weeks = d.digitacion[c.nombre] || emptyWeeks();
-    digActual += weeks.reduce((s, w) => s + getWeekQty(w), 0);
+    weeks.forEach((w, wi) => {
+      const dg = getWeekQty(w), cg = getWeekCarga(w);
+      cargaTotal += cg;
+      if (dg > 0) {
+        digActual += dg;
+        // A tiempo = digitado en las semanas del mes (índices 0-4 = S1-S5).
+        // Tarde = columna "Fuera de fecha" (índice 5), vale 75%.
+        if (wi < 5) { digEffective += dg; }
+        else { digEffective += dg * 0.75; digLate += dg; }
+      }
+    });
     admTotal += effAdm;
   });
-  const digScore = admTotal > 0 ? Math.min(10, Math.round(digActual / admTotal * 10 * 10) / 10) : 10;
+  // Digitación = (a tiempo + 75% de las tardías) / cargadas. Sin cargas → 0 (decisión Félix 11 jun).
+  const digScore = cargaTotal > 0 ? Math.min(10, Math.round(digEffective / cargaTotal * 10 * 10) / 10) : 0;
 
+  // Reporte y Cierre Mes Anterior (portal + correo): límite = último día del mes trabajado.
+  // A tiempo = punto completo; tarde (marcado después del cierre) = 25% (esfuerzo). Sin fecha = a tiempo.
   const resTotal = clients.length;
-  const resDone = clients.filter(c => d.resumenes[c.nombre] && d.resumenes[c.nombre].done).length;
-  const resScore = resTotal > 0 ? Math.round(resDone / resTotal * 10 * 10) / 10 : 10;
+  let resOnTime = 0, resLate = 0;
+  clients.forEach(c => { const r = d.resumenes[c.nombre]; if (r && r.done) { if (fechaATiempo(r.fecha, portalCutoff)) resOnTime++; else resLate++; } });
+  const resDone = resOnTime + resLate;                       // total marcados (a tiempo + tarde)
+  const resEffective = resOnTime + resLate * 0.25;
+  const resScore = resTotal > 0 ? Math.round(resEffective / resTotal * 10 * 10) / 10 : 10;
 
   const vidTotal = clients.length;
-  const vidDone = clients.filter(c => d.video[c.nombre] && d.video[c.nombre].done).length;
-  const vidScore = vidTotal > 0 ? Math.round(vidDone / vidTotal * 10 * 10) / 10 : 10;
+  let vidOnTime = 0, vidLate = 0;
+  clients.forEach(c => { const v = d.video[c.nombre]; if (v && v.done) { if (fechaATiempo(v.fecha, portalCutoff)) vidOnTime++; else vidLate++; } });
+  const vidDone = vidOnTime + vidLate;
+  const vidEffective = vidOnTime + vidLate * 0.25;
+  const vidScore = vidTotal > 0 ? Math.round(vidEffective / vidTotal * 10 * 10) / 10 : 10;
 
-  return { digScore, resScore, vidScore, digActual, admTotal, resDone, resTotal, vidDone, vidTotal };
+  return { digScore, resScore, vidScore, digActual, digEffective, digLate, admTotal, cargaTotal, resDone, resOnTime, resLate, resTotal, vidDone, vidOnTime, vidLate, vidTotal };
 }
 
 function calcPenalties(contadora, mes) {
@@ -1338,44 +1431,45 @@ function calcPenalties(contadora, mes) {
   const d = entry.datos;
   const penalties = [];
   const vidTipo = getVideoTipo(mes);
+  const { portalCutoff } = mesCutoffs(mes);
 
-  // Digitación penalties
-  let digActual = 0, admTotal = 0;
-  clients.forEach(c => {
-    const effAdm = getEffectiveAdm(contadora, mes, c.nombre);
-    if (isMvException(contadora, c.nombre)) return;
-    const weeks = d.digitacion[c.nombre] || emptyWeeks();
-    digActual += weeks.reduce((s, w) => s + getWeekQty(w), 0);
-    admTotal += effAdm;
-  });
-  const digScore = admTotal > 0 ? Math.min(10, Math.round(digActual / admTotal * 10 * 10) / 10) : 10;
-  const digLost = Math.round((10 - digScore) * 5);
+  // Digitación penalties (las digitadas tarde valen 75% → efectivo)
+  const sc = calcScoresForContadora(contadora, mes);
+  const digLost = Math.round((10 - sc.digScore) * 5);
   if (digLost > 0) {
-    const pctDone = admTotal > 0 ? Math.round(digActual / admTotal * 100) : 0;
-    penalties.push({ pts: digLost, area: 'Digitacion', detail: digActual + ' de ' + admTotal + ' tx (' + pctDone + '%)', color: '#ef4444' });
+    const pctDone = sc.cargaTotal > 0 ? Math.round(sc.digEffective / sc.cargaTotal * 100) : 0;
+    let det = sc.digActual + ' de ' + sc.cargaTotal + ' cargadas (' + pctDone + '%)';
+    if (sc.digLate > 0) det += ' · ' + sc.digLate + ' tarde a 75%';
+    penalties.push({ pts: digLost, area: 'Digitacion', detail: det, color: '#ef4444' });
   }
 
-  // Llenado portal penalties (per client)
+  // Llenado portal penalties (no hecho = pierde todo; hecho tarde = pierde 75%, le queda 25%)
   const resTotal = clients.length;
   if (resTotal > 0) {
-    const ptsPerClient = Math.round(30 / resTotal * 10) / 10;
+    const ptsPerClient = 30 / resTotal;
     clients.forEach(c => {
       const r = d.resumenes[c.nombre];
-      if (!r || !r.done) {
-        penalties.push({ pts: ptsPerClient, area: 'Llenado Portal', detail: c.nombre, color: '#f59e0b' });
+      const ok = r && r.done && fechaATiempo(r.fecha, portalCutoff);
+      if (!ok) {
+        const tarde = r && r.done;
+        const pts = Math.round((tarde ? ptsPerClient * 0.75 : ptsPerClient) * 10) / 10;
+        penalties.push({ pts: pts, area: 'Llenado Portal', detail: c.nombre + (tarde ? ' (tarde · queda 25%)' : ''), color: '#f59e0b' });
       }
     });
   }
 
-  // Video/Correo/Reunión penalties (per client)
+  // Video/Correo/Reunión penalties (no hecho = pierde todo; hecho tarde = pierde 75%, le queda 25%)
   const vidTotal = clients.length;
   const vidAreaLabel = vidTipo === 'Reunion' ? 'Reunion' : 'Correo';
   if (vidTotal > 0) {
-    const ptsPerClient = Math.round(20 / vidTotal * 10) / 10;
+    const ptsPerClient = 20 / vidTotal;
     clients.forEach(c => {
       const v = d.video[c.nombre];
-      if (!v || !v.done) {
-        penalties.push({ pts: ptsPerClient, area: vidAreaLabel, detail: c.nombre, color: '#8b5cf6' });
+      const ok = v && v.done && fechaATiempo(v.fecha, portalCutoff);
+      if (!ok) {
+        const tarde = v && v.done;
+        const pts = Math.round((tarde ? ptsPerClient * 0.75 : ptsPerClient) * 10) / 10;
+        penalties.push({ pts: pts, area: vidAreaLabel, detail: c.nombre + (tarde ? ' (tarde · queda 25%)' : ''), color: '#8b5cf6' });
       }
     });
   }
@@ -2110,19 +2204,19 @@ function renderCkContent() {
 // Resumen KPI del mes (3 tarjetas) — agrega el KPI real sobre las contadoras visibles.
 // Una contadora ve el suyo; admin (varias) ve el agregado de todas.
 function ckKpiResumen(contadoras, mes) {
-  var digA = 0, admT = 0, resD = 0, resT = 0, vidD = 0, vidT = 0;
+  var digA = 0, digEff = 0, admT = 0, cargaT = 0, resD = 0, resEff = 0, resT = 0, vidD = 0, vidEff = 0, vidT = 0;
   (contadoras || []).forEach(function(c) {
     if (!c || c === 'Sin asignar') return;
     var s = calcScoresForContadora(c, mes);
-    digA += s.digActual; admT += s.admTotal;
-    resD += s.resDone; resT += s.resTotal;
-    vidD += s.vidDone; vidT += s.vidTotal;
+    digA += s.digActual; digEff += s.digEffective; admT += s.admTotal; cargaT += s.cargaTotal;
+    resD += s.resDone; resEff += (s.resOnTime + s.resLate * 0.25); resT += s.resTotal;
+    vidD += s.vidDone; vidEff += (s.vidOnTime + s.vidLate * 0.25); vidT += s.vidTotal;
   });
   return {
-    digPct: admT > 0 ? Math.round(digA / admT * 100) : 0,
-    resPct: resT > 0 ? Math.round(resD / resT * 100) : 0,
-    vidPct: vidT > 0 ? Math.round(vidD / vidT * 100) : 0,
-    digActual: digA, admTotal: admT, resDone: resD, resTotal: resT, vidDone: vidD, vidTotal: vidT
+    digPct: cargaT > 0 ? Math.round(digEff / cargaT * 100) : 0,
+    resPct: resT > 0 ? Math.round(resEff / resT * 100) : 0,
+    vidPct: vidT > 0 ? Math.round(vidEff / vidT * 100) : 0,
+    digActual: digA, admTotal: admT, cargaTotal: cargaT, resDone: resD, resTotal: resT, vidDone: vidD, vidTotal: vidT
   };
 }
 function ckKpiCardHTML(label, pct, sub) {
@@ -2191,7 +2285,7 @@ function renderCkClientList(el) {
     : ('KPI general · todas · ' + MESES_FULL[mesIdx]);
   html += '<div style="font-size:0.82rem;font-weight:700;color:var(--navy);margin-bottom:10px">' + ckKpiTitulo + '</div>';
   html += '<div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin-bottom:18px">';
-  html += ckKpiCardHTML('Facturas', ckKpi.digPct, ckKpi.digActual + ' de ' + ckKpi.admTotal + ' tx digitadas');
+  html += ckKpiCardHTML('Facturas', ckKpi.digPct, ckKpi.digActual + ' digitadas de ' + ckKpi.cargaTotal + ' cargadas');
   html += ckKpiCardHTML('Resúmenes', ckKpi.resPct, ckKpi.resDone + ' de ' + ckKpi.resTotal + ' clientes');
   html += ckKpiCardHTML('Video / Reunión', ckKpi.vidPct, ckKpi.vidDone + ' de ' + ckKpi.vidTotal + ' clientes');
   html += '</div>';
@@ -2487,6 +2581,15 @@ function renderKpiSelector(el) {
 
 // ==================== KPI DETAIL VIEW ====================
 
+// Colapsar/expandir una sección de componente (sin re-render, vía DOM)
+function kpiToggleComp(key) {
+  kpiCompOpen[key] = !kpiCompOpen[key];
+  const body = document.getElementById('comp-body-' + key);
+  const chev = document.getElementById('comp-chev-' + key);
+  if (body) body.style.display = kpiCompOpen[key] ? '' : 'none';
+  if (chev) chev.textContent = kpiCompOpen[key] ? '▾' : '▸';
+}
+
 function renderKPIDetail(el) {
   const c = kpiContadora;
   const mes = kpiMes;
@@ -2508,13 +2611,38 @@ function renderKPIDetail(el) {
     return;
   }
 
-  const digPct = scores.admTotal > 0 ? Math.min(100, Math.round(scores.digActual / scores.admTotal * 100)) : 0;
-  const resPct = scores.resTotal > 0 ? Math.round(scores.resDone / scores.resTotal * 100) : 0;
-  const vidPct = scores.vidTotal > 0 ? Math.round(scores.vidDone / scores.vidTotal * 100) : 0;
+  const digPct = scores.cargaTotal > 0 ? Math.min(100, Math.round(scores.digEffective / scores.cargaTotal * 100)) : 0;
+  const resPct = Math.round(scores.resScore * 10);  // % efectivo (con el 25% de los tardíos)
+  const vidPct = Math.round(scores.vidScore * 10);
+
+  // ── Fechas límite y tooltips de "por qué bajó" ──
+  const { digCutoff, portalCutoff } = mesCutoffs(mes);
+  const fmtDL = d => d.getDate() + ' de ' + MESES_FULL[d.getMonth()].toLowerCase();
+  const digDLstr = fmtDL(digCutoff);        // ej. "5 de junio"
+  const portalDLstr = fmtDL(portalCutoff);  // ej. "31 de mayo"
+  const mesNombre = MESES_FULL[mesIdx].toLowerCase();
+  const digMissing = Math.max(0, scores.cargaTotal - scores.digActual);
+  const digTip = 'Digitadas ' + scores.digActual + ' de ' + scores.cargaTotal + ' cargadas.'
+    + (scores.digLate > 0 ? ' ' + scores.digLate + ' digitada(s) después del ' + digDLstr + ' → valen 75%.' : '')
+    + (digMissing > 0 ? ' ' + digMissing + ' sin digitar.' : '')
+    + (scores.digLate === 0 && digMissing === 0 ? ' Todo a tiempo.' : '');
+  const resMissing = Math.max(0, scores.resTotal - scores.resOnTime - scores.resLate);
+  const resTip = scores.resOnTime + ' a tiempo de ' + scores.resTotal + ' clientes.'
+    + (scores.resLate > 0 ? ' ' + scores.resLate + ' reporte(s) llenado(s) después del ' + portalDLstr + ' → valen 25%.' : '')
+    + (resMissing > 0 ? ' ' + resMissing + ' sin llenar.' : '')
+    + (scores.resLate === 0 && resMissing === 0 ? ' Todo a tiempo.' : '');
+  const vidMissing = Math.max(0, scores.vidTotal - scores.vidOnTime - scores.vidLate);
+  const vidTip = scores.vidOnTime + ' a tiempo de ' + scores.vidTotal + ' clientes.'
+    + (scores.vidLate > 0 ? ' ' + scores.vidLate + ' enviado(s) después del ' + portalDLstr + ' → valen 25%.' : '')
+    + (vidMissing > 0 ? ' ' + vidMissing + ' sin hacer.' : '')
+    + (scores.vidLate === 0 && vidMissing === 0 ? ' Todo a tiempo.' : '');
 
   const penalties = calcPenalties(c, mes);
   const totalLost = 100 - total;
   let html = '';
+
+  // ── Nombre de la contadora (para admin que ve todas y se pierde) ──
+  html += '<div class="kpi-detail-name"><span class="kpi-detail-avatar" style="background:' + col + '">' + esc((c || '?').slice(0,2).toUpperCase()) + '</span><span>' + esc(c) + ' · <span style="font-weight:600;color:var(--muted)">KPI de ' + MESES_FULL[mesIdx] + '</span></span></div>';
 
   // ── Score overview (invertido: empieza en 100, baja) ──
   html += '<div class="score-overview">';
@@ -2528,9 +2656,9 @@ function renderKPIDetail(el) {
   const digLost = Math.round((10 - scores.digScore) * 5);
   const resLost = Math.round((10 - scores.resScore) * 3);
   const vidLost = Math.round((10 - scores.vidScore) * 2);
-  html += '<div class="score-row"><span class="score-row-label">Digitacion (50%)</span><div class="score-row-bar" style="background:' + col + '20"><div class="score-row-fill" style="width:' + (scores.digScore * 10) + '%;background:' + col + '"></div></div><span class="score-row-pts">' + (digLost > 0 ? '<span style="color:#ef4444">-' + digLost + '</span>' : '50') + ' pts</span></div>';
-  html += '<div class="score-row"><span class="score-row-label">Llenado Portal (30%)</span><div class="score-row-bar" style="background:' + col + '20"><div class="score-row-fill" style="width:' + (scores.resScore * 10) + '%;background:' + col + '"></div></div><span class="score-row-pts">' + (resLost > 0 ? '<span style="color:#ef4444">-' + resLost + '</span>' : '30') + ' pts</span></div>';
-  html += '<div class="score-row"><span class="score-row-label">' + (vidTipo === 'Reunion' ? 'Reunion' : 'Correo') + ' (20%)</span><div class="score-row-bar" style="background:' + col + '20"><div class="score-row-fill" style="width:' + (scores.vidScore * 10) + '%;background:' + col + '"></div></div><span class="score-row-pts">' + (vidLost > 0 ? '<span style="color:#ef4444">-' + vidLost + '</span>' : '20') + ' pts</span></div>';
+  html += '<div class="score-row"><span class="score-row-label">Digitacion (50%)</span><div class="score-row-bar" style="background:' + col + '20"><div class="score-row-fill" style="width:' + (scores.digScore * 10) + '%;background:' + col + '"></div></div><span class="score-row-pts" title="' + esc(digTip) + '">' + (digLost > 0 ? '<span style="color:#ef4444">-' + digLost + '</span>' : '50') + ' pts</span></div>';
+  html += '<div class="score-row"><span class="score-row-label">Llenado Portal (30%)</span><div class="score-row-bar" style="background:' + col + '20"><div class="score-row-fill" style="width:' + (scores.resScore * 10) + '%;background:' + col + '"></div></div><span class="score-row-pts" title="' + esc(resTip) + '">' + (resLost > 0 ? '<span style="color:#ef4444">-' + resLost + '</span>' : '30') + ' pts</span></div>';
+  html += '<div class="score-row"><span class="score-row-label">' + (vidTipo === 'Reunion' ? 'Reunion' : 'Correo') + ' (20%)</span><div class="score-row-bar" style="background:' + col + '20"><div class="score-row-fill" style="width:' + (scores.vidScore * 10) + '%;background:' + col + '"></div></div><span class="score-row-pts" title="' + esc(vidTip) + '">' + (vidLost > 0 ? '<span style="color:#ef4444">-' + vidLost + '</span>' : '20') + ' pts</span></div>';
   html += '<div class="escala-mini">';
   const scoreParaEscala = bono.avgProjected;
   KPI_ESCALA.forEach(e => {
@@ -2539,6 +2667,18 @@ function renderKPIDetail(el) {
     html += '<div class="escala-item ' + (active ? 'active' : '') + '" style="' + (active ? 'border-color:' + e.color + ';border-width:2px;background:' + e.bg : '') + '"><div class="escala-range" style="color:' + e.color + '">' + e.min + '-' + e.max + '</div><div class="escala-name" style="color:' + e.color + '">' + e.label + '</div><div style="font-size:9px;color:' + e.color + ';margin-top:1px;opacity:0.8">' + e.bonoPct + '%</div><div style="font-size:11px;color:' + e.color + ';font-weight:800;margin-top:3px">' + formatMoney(montoNivel) + '</div></div>';
   });
   html += '</div></div></div>';
+
+  // Helpers de secciones colapsables (cabecera con fecha límite + apertura del body)
+  const mesAnt = (mesIdx > 0 ? MESES_FULL[mesIdx - 1] : MESES_FULL[11]).toLowerCase();
+  const compHead = (key, num, title, instr, dlDate, pill) => {
+    const open = kpiCompOpen[key];
+    return '<div class="comp-header comp-header-click" onclick="kpiToggleComp(\'' + key + '\')">'
+      + '<div class="comp-header-left"><span class="comp-chev" id="comp-chev-' + key + '">' + (open ? '▾' : '▸') + '</span>'
+      + '<div class="comp-num" style="background:' + col + '">' + num + '</div>'
+      + '<div><div class="comp-title">' + title + '</div><div class="comp-instr">' + instr + '</div></div></div>'
+      + '<div class="comp-header-right"><div class="comp-dl">Fecha límite: <b>' + dlDate + '</b></div>' + pill + '</div></div>';
+  };
+  const compBodyOpen = (key) => '<div class="comp-body" id="comp-body-' + key + '"' + (kpiCompOpen[key] ? '' : ' style="display:none"') + '>';
 
   // ── Bono trimestral (narrativa invertida) ──
   html += '<div class="bono-card"><div class="bono-header"><div class="bono-icon">💰</div><div class="bono-header-text"><h3>Bono ' + q.label + ' ' + ANIO + '</h3><span>Cierre: ' + q.cierre + ' · Promedio de ' + bono.monthScores.filter(s => s !== null).length + ' mes(es)</span></div></div>';
@@ -2565,16 +2705,37 @@ function renderKPIDetail(el) {
   html += '<div class="bono-item"><div class="bono-item-label">Vas a cobrar</div><div class="bono-item-value" style="color:' + (bono.bonoReal > 0 ? '#6ee7b7' : '#fca5a5') + '">' + formatMoney(bono.bonoReal) + '</div><div class="bono-item-sub">' + bono.escala.label + '</div></div>';
   html += '</div>';
 
-  // ── Log de deducciones ──
-  html += '<div class="penalty-log"><div class="penalty-log-title">Deducciones este mes (' + MESES_FULL[mesIdx] + ')</div>';
-  if (penalties.length === 0) {
-    html += '<div class="penalty-none">Sin deducciones. Tienes los 100 puntos completos.</div>';
-  } else {
-    penalties.forEach(function(p) {
-      html += '<div class="penalty-row"><span class="penalty-pts">-' + p.pts + '</span><span class="penalty-area">' + p.area + '</span><span class="penalty-detail">' + p.detail + '</span></div>';
-    });
+  // ── Log dividido: izquierda = facturas a tiempo / excelencia; derecha = deducciones explicadas ──
+  const cgT = scores.cargaTotal;
+  const onTime = Math.max(0, scores.digActual - scores.digLate);
+  const r1 = (x) => Math.round(x * 10) / 10;                 // redondeo a 1 decimal
+  const ptsOf = (n) => cgT > 0 ? r1(50 * n / cgT) : 0;       // puntos (de 50) que valen n facturas
+  const missing = Math.max(0, cgT - scores.digActual);
+  const excel = [], ded = [];
+  // Digitación a tiempo (excelencia): facturas digitadas dentro del mes y sus puntos
+  if (onTime > 0) excel.push({ pts: '+' + ptsOf(onTime), area: 'Digitación a tiempo', detail: onTime + ' de ' + cgT + ' facturas dentro del mes' });
+  if (resLost <= 0) excel.push({ pts: '+30', area: 'Llenado del portal', detail: '30/30 pts ✓' });
+  if (vidLost <= 0) excel.push({ pts: '+20', area: (vidTipo === 'Reunion' ? 'Reunión mensual' : 'Correo mensual'), detail: '20/20 pts ✓' });
+  // Digitación tarde (deducción explicada: valían X pts, valen 75%)
+  if (scores.digLate > 0) {
+    const full = ptsOf(scores.digLate), eff = ptsOf(0.75 * scores.digLate);
+    ded.push({ pts: '-' + r1(full - eff), area: 'Digitación tarde', detail: scores.digLate + ' fuera de fecha · valían ' + full + ' pts, valen ' + eff + ' pts (75%)' });
   }
+  // Cargadas sin digitar (deducción)
+  if (missing > 0) ded.push({ pts: '-' + ptsOf(missing), area: 'Sin digitar', detail: missing + ' facturas cargadas sin digitar' });
+  // Portal + Correo (de calcPenalties, sin la fila de Digitación que ya manejamos arriba)
+  penalties.filter(function(p){ return p.area !== 'Digitacion'; }).forEach(function(p){ ded.push({ pts: '-' + p.pts, area: p.area, detail: p.detail }); });
+
+  html += '<div class="penalty-log"><div class="ded-split">';
+  html += '<div class="ded-col"><div class="penalty-log-title" style="color:#6ee7b7;opacity:0.9">⭐ Puntos en excelencia</div>';
+  if (excel.length === 0) { html += '<div class="penalty-none">Aún ningún punto al 100%.</div>'; }
+  else { excel.forEach(function(e){ html += '<div class="excel-row"><span class="excel-pts">' + e.pts + '</span><span class="penalty-area">' + e.area + '</span><span class="penalty-detail">' + e.detail + '</span></div>'; }); }
   html += '</div>';
+  html += '<div class="ded-divider"></div>';
+  html += '<div class="ded-col"><div class="penalty-log-title" style="color:#fca5a5;opacity:0.9">Deducciones de este mes (' + MESES_FULL[mesIdx] + ')</div>';
+  if (ded.length === 0) { html += '<div class="penalty-none">Sin deducciones. ¡100 puntos completos!</div>'; }
+  else { ded.forEach(function(p){ html += '<div class="penalty-row"><span class="penalty-pts">' + p.pts + '</span><span class="penalty-area">' + p.area + '</span><span class="penalty-detail">' + p.detail + '</span></div>'; }); }
+  html += '</div></div></div>';
 
   // ── Mensaje del bono ──
   if (bono.bonoReal > 0 && totalLost > 0) {
@@ -2587,9 +2748,9 @@ function renderKPIDetail(el) {
   html += '</div>';
 
   // ── 1. Digitacion ──
-  html += '<div class="comp-card"><div class="comp-header"><div class="comp-header-left"><div class="comp-num" style="background:' + col + '">1</div><div><div class="comp-title">Digitacion de transacciones · ' + MESES_FULL[mesIdx] + '</div><div class="comp-weight">Peso: 50% · Maximo: 50 puntos</div></div></div>';
-  html += '<span class="comp-score-pill" style="background:' + escala.bg + ';color:' + col + '">' + Math.round(scores.digScore * 5) + '/50 pts' + (digLost > 0 ? ' <span style="color:#ef4444;font-size:0.75rem">(-' + digLost + ')</span>' : '') + '</span></div>';
-  html += '<div class="comp-body">';
+  const digPill = '<span class="comp-score-pill" style="background:' + escala.bg + ';color:' + col + '">' + Math.round(scores.digScore * 5) + '/50 pts' + (digLost > 0 ? ' <span style="color:#ef4444;font-size:0.75rem">(-' + digLost + ')</span>' : '') + '</span>';
+  html += '<div class="comp-card">' + compHead('dig', 1, 'Digitación de transacciones', 'Facturas del mes de <b>' + mesNombre + '</b>', digDLstr, digPill);
+  html += compBodyOpen('dig');
 
   // Calculate carga total for stats
   let cargaTotal = 0;
@@ -2717,6 +2878,30 @@ function renderKPIDetail(el) {
   html += '<td style="font-weight:700">' + grandContratado + '</td>';
   html += '<td style="font-weight:700;color:' + getBarColor(grandPctContratado) + '">' + grandPctContratado + '%</td>';
   html += '</tr>';
+
+  // ── Fila de PUNTOS por semana (de los 50) — para ver en qué semana se ganaron ──
+  const weekEff = [0,0,0,0,0,0];
+  clients.forEach(cl => {
+    if (isMvException(c, cl.nombre)) return;
+    const weeks = entry.datos.digitacion[cl.nombre] || emptyWeeks();
+    weeks.forEach((w, i) => {
+      if (i >= 6) return;
+      const dg = getWeekQty(w);
+      if (dg <= 0) return;
+      weekEff[i] += (i < 5) ? dg : dg * 0.75;   // S1-S5 a tiempo; "Fuera" (i=5) tarde (75%)
+    });
+  });
+  const ptsSemana = (i) => cargaTotal > 0 ? Math.round(50 * weekEff[i] / cargaTotal * 10) / 10 : 0;
+  html += '<tr class="dig-pts-row"><td style="font-weight:700;font-size:0.72rem">Puntos (de 50)</td>';
+  for (let ti = 0; ti < 5; ti++) {
+    const p = ptsSemana(ti);
+    html += '<td style="font-weight:700;font-size:0.74rem;color:' + (p > 0 ? 'var(--green)' : 'var(--light)') + '">' + (p > 0 ? '+' + p : '0') + '</td>';
+  }
+  const pFuera = ptsSemana(5);
+  html += '<td style="background:#fdf8f0;font-weight:700;font-size:0.74rem;color:' + (pFuera > 0 ? 'var(--amber)' : 'var(--light)') + '">' + (pFuera > 0 ? '+' + pFuera : '0') + '</td>';
+  html += '<td style="font-weight:800;font-size:0.78rem;color:' + getBarColor(digPct) + '">' + Math.round(scores.digScore * 5) + '/50</td>';
+  html += '<td></td><td></td><td></td></tr>';
+
   html += '</tbody></table></div>';
 
   html += '<div style="display:flex;align-items:center;gap:8px;margin-top:10px"><span style="font-size:12px;color:var(--muted)">Avance:</span><div class="progress-bar" style="flex:1"><div class="progress-fill" style="width:' + digPct + '%;background:' + getBarColor(digPct) + '"></div></div><span style="font-size:12px;font-weight:700;color:' + getBarColor(digPct) + '">' + digPct + '%</span></div>';
@@ -2724,12 +2909,21 @@ function renderKPIDetail(el) {
 
   // ── 2. Llenado del Portal de Clientes ──
   const mesAnteriorLabel = mesIdx > 0 ? MESES_FULL[mesIdx - 1] : MESES_FULL[11];
-  html += '<div class="comp-card"><div class="comp-header"><div class="comp-header-left"><div class="comp-num" style="background:' + col + '">2</div><div><div class="comp-title">Llenado del Portal de Clientes · ' + mesAnteriorLabel + '</div><div class="comp-weight">Peso: 30% · Maximo: 30 puntos · Limite: dia 30 de ' + MESES_FULL[mesIdx] + '</div></div></div>';
-  html += '<span class="comp-score-pill" style="background:' + escala.bg + ';color:' + col + '">' + Math.round(scores.resScore * 3) + '/30 pts' + (resLost > 0 ? ' <span style="color:#ef4444;font-size:0.75rem">(-' + resLost + ')</span>' : '') + '</span></div>';
-  html += '<div class="comp-body">';
+  const resPill = '<span class="comp-score-pill" style="background:' + escala.bg + ';color:' + col + '">' + Math.round(scores.resScore * 3) + '/30 pts' + (resLost > 0 ? ' <span style="color:#ef4444;font-size:0.75rem">(-' + resLost + ')</span>' : '') + '</span>';
+  html += '<div class="comp-card">' + compHead('res', 2, 'Llenado del Portal de Clientes', 'Para el mes de <b>' + mesAnt + '</b>', portalDLstr, resPill);
+  html += compBodyOpen('res');
   html += '<div class="res-progress"><div class="res-count">' + scores.resDone + ' de ' + scores.resTotal + ' clientes</div><div class="progress-bar" style="flex:1"><div class="progress-fill" style="width:' + resPct + '%;background:' + getBarColor(resPct) + '"></div></div><span style="font-size:12px;font-weight:700;color:' + getBarColor(resPct) + '">' + resPct + '%</span></div>';
 
-  html += '<table class="client-table"><tr><th>Cliente</th><th style="width:60px">Tx</th><th style="width:120px">Entregado?</th><th style="width:100px">Fecha</th><th style="width:120px">Link</th></tr>';
+  // Puntos que suma cada cliente: a tiempo = completo; tarde = 25%; sin hacer = 0.
+  const ptsCell = (item, total, max) => {
+    const per = total > 0 ? max / total : 0;
+    let p, color;
+    if (item.done && fechaATiempo(item.fecha, portalCutoff)) { p = per; color = 'var(--green)'; }
+    else if (item.done) { p = per * 0.25; color = 'var(--amber)'; }
+    else { p = 0; color = 'var(--light)'; }
+    return '<td style="font-weight:700;color:' + color + ';white-space:nowrap" title="Puntos que suma este cliente">' + (p > 0 ? '+' + (Math.round(p * 10) / 10) : '0') + '</td>';
+  };
+  html += '<table class="client-table"><tr><th>Cliente</th><th style="width:60px">Tx</th><th style="width:120px">Entregado?</th><th style="width:100px">Fecha</th><th style="width:120px">Link</th><th style="width:70px">Puntos</th></tr>';
   clients.forEach(cl => {
     const r = entry.datos.resumenes[cl.nombre] || { done: false, fecha: '', link: '' };
     const cln = cl.nombre.replace(/'/g, "\\'");
@@ -2751,22 +2945,22 @@ function renderKPIDetail(el) {
     } else {
       html += r.done ? '<span style="color:var(--green);font-weight:600">Si</span>' : '<span style="color:var(--light)">No</span>';
     }
-    html += '</td><td style="font-size:0.78rem">' + fechaDisplay + '</td><td>' + linkHtml + '</td></tr>';
+    html += '</td><td style="font-size:0.78rem">' + fechaDisplay + '</td><td>' + linkHtml + '</td>' + ptsCell(r, scores.resTotal, 30) + '</tr>';
   });
   html += '</table></div></div>';
 
   // ── 3. Video / Reunion / Correo ──
   const vidLabel = vidTipo === 'Reunion' ? 'Reunion con clientes' : 'Correo mensual a clientes';
-  html += '<div class="comp-card"><div class="comp-header"><div class="comp-header-left"><div class="comp-num" style="background:' + col + '">3</div><div><div class="comp-title">' + vidLabel + ' · ' + mesAnteriorLabel + '</div><div class="comp-weight">Peso: 20% · Maximo: 20 puntos · Limite: dia 30 de ' + MESES_FULL[mesIdx] + '</div></div></div>';
-  html += '<span class="comp-score-pill" style="background:' + escala.bg + ';color:' + col + '">' + Math.round(scores.vidScore * 2) + '/20 pts' + (vidLost > 0 ? ' <span style="color:#ef4444;font-size:0.75rem">(-' + vidLost + ')</span>' : '') + '</span></div>';
-  html += '<div class="comp-body">';
+  const vidPill = '<span class="comp-score-pill" style="background:' + escala.bg + ';color:' + col + '">' + Math.round(scores.vidScore * 2) + '/20 pts' + (vidLost > 0 ? ' <span style="color:#ef4444;font-size:0.75rem">(-' + vidLost + ')</span>' : '') + '</span>';
+  html += '<div class="comp-card">' + compHead('vid', 3, vidLabel, (vidTipo === 'Reunion' ? 'Reunión mensual' : 'Correo mensual') + ' para el mes de <b>' + mesAnt + '</b>', portalDLstr, vidPill);
+  html += compBodyOpen('vid');
 
   html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px"><div style="background:#f8fafc;border-radius:8px;padding:10px"><div style="font-size:10px;text-transform:uppercase;color:var(--light);letter-spacing:0.3px">Ciclo trimestral</div><div style="font-size:14px;font-weight:700;margin-top:2px">' + getQuarterInfo(mes).label + '</div></div><div style="background:#f8fafc;border-radius:8px;padding:10px"><div style="font-size:10px;text-transform:uppercase;color:var(--light);letter-spacing:0.3px">Tipo requerido: ' + vidTipo + '</div></div></div>';
 
   html += '<div class="res-progress"><div class="res-count">' + scores.vidDone + ' de ' + scores.vidTotal + ' clientes</div><div class="progress-bar" style="flex:1"><div class="progress-fill" style="width:' + vidPct + '%;background:' + getBarColor(vidPct) + '"></div></div><span style="font-size:12px;font-weight:700;color:' + getBarColor(vidPct) + '">' + vidPct + '%</span></div>';
 
   const isCorreoMonth = vidTipo !== 'Reunion';
-  html += '<table class="client-table"><tr><th>Cliente</th><th style="width:60px">Tx</th><th style="width:120px">' + (isCorreoMonth ? 'Correo enviado?' : 'Se realizo?') + '</th><th style="width:100px">Fecha</th><th style="width:120px">Link</th>' + (isCorreoMonth ? '<th style="width:80px">Correo</th>' : '') + '</tr>';
+  html += '<table class="client-table"><tr><th>Cliente</th><th style="width:60px">Tx</th><th style="width:120px">' + (isCorreoMonth ? 'Correo enviado?' : 'Se realizo?') + '</th><th style="width:100px">Fecha</th><th style="width:120px">Link</th><th style="width:70px">Puntos</th>' + (isCorreoMonth ? '<th style="width:80px">Correo</th>' : '') + '</tr>';
   clients.forEach(cl => {
     const vd = entry.datos.video[cl.nombre] || { done: false, fecha: '', link: '' };
     const vcln = cl.nombre.replace(/'/g, "\\'");
@@ -2788,7 +2982,7 @@ function renderKPIDetail(el) {
     } else {
       html += vd.done ? '<span style="color:var(--green);font-weight:600">Si</span>' : '<span style="color:var(--light)">No</span>';
     }
-    html += '</td><td style="font-size:0.78rem">' + fechaDisplay + '</td><td>' + linkHtml + '</td>';
+    html += '</td><td style="font-size:0.78rem">' + fechaDisplay + '</td><td>' + linkHtml + '</td>' + ptsCell(vd, scores.vidTotal, 20);
     if (isCorreoMonth) {
       html += '<td><button style="font-size:10px;padding:4px 8px;border:1px solid var(--blue);border-radius:6px;background:white;color:var(--blue);cursor:pointer;font-weight:600;white-space:nowrap" onclick="verTplCorreo(\'' + vcln + '\')">Ver template</button></td>';
     }
@@ -2983,7 +3177,7 @@ function renderKpiReporte(el) {
   // ════════════════════════════════════════════════════════════
   var limiteLabel = limiteDay + ' ' + MESES_LABEL[mesIdx].toLowerCase();
   var mesPresLabel = MESES_FULL[mesIdx > 0 ? mesIdx - 1 : 11];
-  var resPctTotal = scores.resTotal > 0 ? Math.round(scores.resDone / scores.resTotal * 100) : 0;
+  var resPctTotal = Math.round(scores.resScore * 10);  // % efectivo (con el 25% de los tardíos)
 
   html += '<div class="rpt-wrap">';
   html += '<div style="display:flex;justify-content:space-between;align-items:center;padding:16px 20px 0">';
@@ -3028,7 +3222,7 @@ function renderKpiReporte(el) {
   // BLOQUE 3: CORREO / REUNION (20 pts)
   // ════════════════════════════════════════════════════════════
   var vidLabel = vidTipo === 'Reunion' ? 'Reuniones con clientes' : 'Correo mensual a clientes';
-  var vidPctTotal = scores.vidTotal > 0 ? Math.round(scores.vidDone / scores.vidTotal * 100) : 0;
+  var vidPctTotal = Math.round(scores.vidScore * 10);  // % efectivo (con el 25% de los tardíos)
 
   html += '<div class="rpt-wrap">';
   html += '<div style="display:flex;justify-content:space-between;align-items:center;padding:16px 20px 0">';
@@ -3391,10 +3585,10 @@ async function showApp() {
   // Load all data
   await Promise.all([loadAsignaciones(), loadChecklistData(), loadDetalle(), loadNotasContadora()]);
 
-  // Set initial states
-  kpiQuarter = getCurrentQuarter();
-  const qObj = QUARTERS[kpiQuarter - 1];
-  kpiMes = qObj.meses[0];
+  // Set initial states — abrir en el MES EN PRESENTACIÓN (getCurrentMonth: hasta el 22 = mes anterior)
+  const presIdx = MESES.indexOf(getCurrentMonth());
+  kpiQuarter = Math.floor(presIdx / 3) + 1;   // el trimestre que contiene ese mes
+  kpiMes = MESES[presIdx];
 
   // Checklist: auto-filter contadora a su nombre si no tiene edicion de checklist
   if (!tengoPermiso('contabilidad', 'checklist', 'edicion')) {

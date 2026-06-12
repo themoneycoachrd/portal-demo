@@ -237,17 +237,24 @@ var MODULOS = [
     { id:'roas', label:'ROAS' },
     { id:'pipeline', label:'Pipeline' },
     { id:'movimiento', label:'Movimiento' },
-    { id:'checklist', label:'Checklist' }
+    { id:'checklist', label:'Checklist' },
+    { id:'tracker', label:'Tracker' }
+  ]},
+  { id:'tareas', label:'Tareas', screens:[
+    { id:'workflows', label:'Workflows' },
+    { id:'tablero', label:'Tareas Kanban' }
   ]},
   { id:'contabilidad', label:'Contabilidad', screens:[
     { id:'checklist', label:'Checklist' },
     { id:'kpi', label:'KPI' }
   ]},
   { id:'impuestos', label:'Impuestos', screens:[
+    { id:'resumen', label:'Resumen' },
     { id:'checklist', label:'Checklist' },
     { id:'kpi', label:'KPI' }
   ]},
   { id:'implementaciones', label:'Implementaciones', screens:[
+    { id:'resumen', label:'Resumen' },
     { id:'checklist-fe', label:'Checklist FE' },
     { id:'checklist-adm', label:'Checklist Adm' }
   ]},
@@ -260,13 +267,19 @@ var MODULOS = [
     { id:'presentacion-mensual', label:'Presentación mensual' }
   ]},
   { id:'personal', label:'Personal', screens:[
+    { id:'organigrama', label:'Organigrama' },
+    { id:'directorio', label:'Directorio' },
     { id:'wow-board', label:'Wow Board' },
     { id:'dar-puntos', label:'Dar puntos' },
-    { id:'pagar-bono', label:'Pagar bono' }
+    { id:'pagar-bono', label:'Pagar bono' },
+    { id:'historial', label:'Historial' },
+    { id:'retroalimentacion', label:'Retroalimentación' },
+    { id:'casos', label:'Casos Iguala' }
   ]},
   { id:'configuracion', label:'Configuración', screens:[
     { id:'grupos', label:'Grupos' },
-    { id:'usuarios', label:'Usuarios' }
+    { id:'usuarios', label:'Usuarios' },
+    { id:'maestras', label:'Maestras' }
   ]}
 ];
 
@@ -592,7 +605,7 @@ function renderUsuariosTab() {
     html += '<div class="invite-row">';
     html += '<div class="invite-field"><label>Correo *</label><input type="email" id="invite-email" placeholder="correo@accountone.do"></div>';
     html += '<div class="invite-field"><label>Nombre</label><input type="text" id="invite-nombre" placeholder="Nombre completo"></div>';
-    html += '<div class="invite-field"><label>Rol</label><select id="invite-role"><option value="admin">Admin</option><option value="comercial">Comercial</option><option value="contadores">Contadores</option><option value="impuestos">Impuestos</option><option value="implementaciones">Implementaciones</option><option value="marketing">Marketing</option><option value="cobros">Facturación y Cobros</option></select></div>';
+    html += '<div class="invite-field"><label>Grupo / Rol</label><select id="invite-role">' + allGrupos.map(function(g){ return '<option value="' + g.id + '">' + g.nombre + '</option>'; }).join('') + '</select></div>';
     html += '<button class="invite-btn" id="invite-btn" onclick="handleInviteUser()">Enviar invitación</button>';
     html += '</div>';
     html += '<div class="invite-msg" id="invite-msg"></div>';
@@ -648,6 +661,13 @@ function renderUsuariosTab() {
       var buf = editUserBuffer[user.id];
 
       html += '<div class="card-detail-inner">';
+      // Nombre editable (admin)
+      html += '<div class="section-label">Nombre</div>';
+      html += '<div style="display:flex;gap:8px;align-items:flex-end;margin-bottom:16px">';
+      html += '<div style="flex:1"><input type="text" id="name-' + user.id + '" value="' + (user.nombre || '').replace(/"/g, '&quot;') + '" placeholder="Nombre completo" style="width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:10px;font-size:0.85rem;font-family:inherit;background:#fafbfc"></div>';
+      html += '<button class="btn btn-primary" style="height:38px;white-space:nowrap" onclick="handleSetName(\'' + user.id + '\')">Guardar nombre</button>';
+      html += '</div>';
+      html += '<div class="invite-msg" id="name-msg-' + user.id + '"></div>';
       html += '<div class="section-label">Grupos asignados</div>';
 
       allGrupos.forEach(function(grupo, gi) {
@@ -879,7 +899,7 @@ function handleResetUser(userId) {
 async function handleInviteUser() {
   var email = document.getElementById('invite-email').value.trim();
   var nombre = document.getElementById('invite-nombre').value.trim();
-  var role = document.getElementById('invite-role').value;
+  var grupoId = document.getElementById('invite-role').value;   // el dropdown ahora son grupos
   var msgEl = document.getElementById('invite-msg');
   var btn = document.getElementById('invite-btn');
 
@@ -888,6 +908,12 @@ async function handleInviteUser() {
     msgEl.style.color = 'var(--red)';
     return;
   }
+
+  // Grupo elegido → rol para profiles.rol/RLS (mapeo de los conocidos; custom = slug del nombre)
+  var grupoSel = allGrupos.find(function(g){ return String(g.id) === String(grupoId); });
+  var GRUPO_ROLE = { 'Admin':'admin', 'Comercial':'comercial', 'Contadores':'contadores', 'Impuestos':'impuestos', 'Implementaciones':'implementaciones', 'Marketing':'marketing', 'Facturación y Cobros':'cobros', 'Cobros':'cobros' };
+  var slugRol = function(s){ return (s||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^a-z0-9]+/g,'_').replace(/^_|_$/g,''); };
+  var role = grupoSel ? (GRUPO_ROLE[grupoSel.nombre] || slugRol(grupoSel.nombre)) : 'contadora';
 
   btn.disabled = true; btn.textContent = 'Enviando...';
   msgEl.textContent = '';
@@ -914,14 +940,9 @@ async function handleInviteUser() {
     return;
   }
 
-  // Success — asignar al grupo correspondiente
-  var ROLE_GRUPO = { admin: 'Admin', comercial: 'Comercial', contadores: 'Contadores', impuestos: 'Impuestos', implementaciones: 'Implementaciones', marketing: 'Marketing', cobros: 'Facturación y Cobros' };
-  var grupoNombre = ROLE_GRUPO[role];
-  if (data && data.user_id && grupoNombre) {
-    var grupo = allGrupos.find(function(g) { return g.nombre === grupoNombre; });
-    if (grupo) {
-      await sb.from('usuario_grupos').upsert({ user_id: data.user_id, grupo_id: grupo.id }, { onConflict: 'user_id,grupo_id' });
-    }
+  // Success — asignar al grupo elegido en el dropdown
+  if (data && data.user_id && grupoSel) {
+    await sb.from('usuario_grupos').upsert({ user_id: data.user_id, grupo_id: grupoSel.id }, { onConflict: 'user_id,grupo_id' });
   }
 
   document.getElementById('invite-email').value = '';
@@ -932,6 +953,21 @@ async function handleInviteUser() {
   // Reload users
   allUsers = await loadUsers();
   allAssignments = await loadAssignments();
+  renderApp();
+}
+
+// ==================== SET NAME ====================
+async function handleSetName(userId) {
+  var input = document.getElementById('name-' + userId);
+  var msgEl = document.getElementById('name-msg-' + userId);
+  var nombre = input ? input.value.trim() : '';
+  if (!nombre) { if (msgEl) { msgEl.textContent = 'El nombre no puede estar vacío.'; msgEl.style.color = 'var(--red)'; } return; }
+  var res = await sb.rpc('set_user_name', { p_user_id: userId, p_nombre: nombre });
+  if (res.error) { if (msgEl) { msgEl.textContent = 'Error: ' + res.error.message; msgEl.style.color = 'var(--red)'; } return; }
+  if (res.data && res.data.error) { if (msgEl) { msgEl.textContent = res.data.error; msgEl.style.color = 'var(--red)'; } return; }
+  var u = allUsers.find(function(x){ return x.id === userId; });
+  if (u) u.nombre = nombre;
+  usrShowToast('Nombre actualizado');
   renderApp();
 }
 
