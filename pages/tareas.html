@@ -445,6 +445,24 @@ select{font-family:inherit}
 .tl-chk-badge{font-size:10.5px;font-weight:700;color:var(--fg-mute);background:#eef1f6;border-radius:6px;padding:1px 6px}
 .tl-chk-badge.tl-chk-done{color:#15803d;background:#dcfce7}
 .lm-lbl{display:block;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--fg-mute);font-weight:700;margin:10px 0 4px}
+/* PROTOTIPO · Tareas Checklist */
+.tc-pills{display:flex;gap:10px;flex-wrap:wrap;margin:4px 0 16px}
+.tc-pill{display:flex;align-items:center;gap:8px;padding:8px 14px;border:1px solid var(--line);border-radius:10px;background:#fff;cursor:pointer;font-family:inherit;color:var(--fg)}
+.tc-pill:hover{border-color:var(--pc)}
+.tc-pill.is-on{border-color:var(--pc);box-shadow:inset 0 0 0 1px var(--pc)}
+.tc-pill-n{font-size:18px;font-weight:800;color:var(--pc);line-height:1}
+.tc-pill-l{font-size:12px;font-weight:600}
+.tc-table-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:12px}
+.tc-table{width:100%;border-collapse:collapse;font-size:13px}
+.tc-table th{text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--fg-mute);font-weight:700;padding:9px 14px;border-bottom:2px solid var(--line);background:#fafbfc}
+.tc-table td{padding:9px 14px;border-bottom:1px solid var(--line)}
+.tc-row{cursor:pointer}
+.tc-row:hover td{background:#f6f8fb}
+.tc-cli{font-weight:700;color:var(--display)}
+.tc-imp{font-size:11px;font-weight:700;background:#eef2f7;padding:2px 8px;border-radius:5px}
+.tc-mut{color:var(--fg-mute)}
+.tc-late{color:#dc2626;font-weight:700}
+.tc-empty{text-align:center;padding:40px;color:var(--fg-mute);font-size:14px}
 .lm-area,.lm-sel{width:100%;border:1px solid var(--line);border-radius:8px;padding:8px 10px;font-size:13px;font-family:inherit;color:var(--fg);background:#fff}
 .lm-area:focus,.lm-sel:focus{outline:none;border-color:var(--accent)}
 .lm-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px 14px}
@@ -509,9 +527,11 @@ let CLIENTES=[];
 let CONTAB_DATA={}, IMP_MAP={}, COMENTS={}, ESTADO={};
 let USER={id:null,nombre:'',rol:'',equipo:'contab'};
 let DB_OK=false;
-let SUB='wf', TAX=null, VIEW='kanban', SEL=null, VISTA='', GROUPBY='impuesto', PERSONA='';
+let SUB='checklist', TAX=null, VIEW='kanban', SEL=null, VISTA='', GROUPBY='impuesto', PERSONA=''; // PROTOTIPO: arranca en Tareas Checklist; Workflows oculto (código intacto)
 // M4 · Tareas libres
-let LIBRE_COLS=[], LIBRE_TASKS=[], LIBRE_FILTRO='todas', LIBRE_PERSONA='', LIBRE_SEL=null, LIBRE_DRAG=null, LIBRE_COLDRAG=null, LIBRE_DRAFT=null, LIBRE_COMENTS={}, LIBRE_EDIT_ID=null;
+let LIBRE_COLS=[], LIBRE_TASKS=[], LIBRE_FILTRO='mias', LIBRE_PERSONA='', LIBRE_SEL=null, LIBRE_DRAG=null, LIBRE_COLDRAG=null, LIBRE_DRAFT=null, LIBRE_COMENTS={}, LIBRE_EDIT_ID=null; // PROTOTIPO: arranca en "Mis tareas"
+let TCFILTRO='atrasado'; // PROTOTIPO: pestaña Tareas Checklist — pill activo (atrasado/vencen_hoy/sin_actividad/en_curso)
+let TC_CONTADORA=''; // Filtro por contadora (solo admin); '' = todas
 let NOTIFS=[], NOTIF_OPEN=false;
 let LIBRE_ETIQUETAS=[];
 const ETQ_COLORS=['#1B87B8','#047857','#b45309','#c2410c','#b91c1c','#6d28d9','#28368D','#0891b2','#475569','#be185d'];
@@ -580,8 +600,8 @@ async function loadAll(){
   try{const {data,error}=await sb.from('clientes').select('nombre,contadora_contabilidad,contadora_impuestos,responsabilidad_contabilidad,activo');if(!error&&data&&data.length){CLIENTES=data.filter(c=>c.activo!==false&&c.responsabilidad_contabilidad===true).map(c=>({nombre:c.nombre,contadora:c.contadora_contabilidad||'Sin asignar',contadoraImp:c.contadora_impuestos||'',respContab:true})).sort((a,b)=>a.nombre.localeCompare(b.nombre));}}catch(e){}
   if(!CLIENTES.length) CLIENTES=SEED_CLIENTES.slice();
   // Equipo desde la maestra (nombres reales + activo) — no hardcodeado
-  try{const {data}=await sb.from('equipo').select('nombre,rol_portal').eq('activo',true);if(data&&data.length){
-    const cont=[...new Set(data.filter(e=>e.rol_portal==='contadora').map(e=>e.nombre).filter(Boolean))].sort((a,b)=>a.localeCompare(b));
+  try{const {data}=await sb.from('equipo').select('nombre,rol_portal,excluida_contadoras').eq('activo',true);if(data&&data.length){
+    const cont=[...new Set(data.filter(e=>e.rol_portal==='contadora'&&e.excluida_contadoras!==true).map(e=>e.nombre).filter(Boolean))].sort((a,b)=>a.localeCompare(b));
     const ana=[...new Set(data.filter(e=>e.rol_portal==='analista').map(e=>e.nombre).filter(Boolean))].sort((a,b)=>a.localeCompare(b));
     if(cont.length)EQ_CONTADORAS=cont; if(ana.length)EQ_ANALISTAS=ana;
     EQ_TODOS=[...new Set(data.map(e=>e.nombre).filter(Boolean))].sort((a,b)=>a.localeCompare(b));
@@ -605,7 +625,7 @@ function puedeMarcar(cli,origen){
   if(origen==='impuestos')return esImpuestos();
   return false;
 }
-function tareaFecha(cli,wfId,tk){if(tk.checklist_origen==='contadores'){const d=CONTAB_DATA[contadoraDe(cli)+'_'+cli+'_'+MES];if(!d)return null;const it=d.datos&&d.datos[tk.tarea_id];return(it&&it.done===true)?(it.fecha||'✓'):null;}else{const r=IMP_MAP[cli+'||'+MES+'||'+wfId];if(!r)return null;const it=r.datos&&r.datos[tk.tarea_id];return(it&&it.done===true)?(it.fecha||'✓'):null;}}
+function tareaFecha(cli,wfId,tk){if(tk.checklist_origen==='contadores'){const d=CONTAB_DATA[contadoraDe(cli)+'_'+cli+'_'+MES];if(!d)return null;const it=d.datos&&d.datos[tk.tarea_id];return(it&&(it.done===true||it.done==='na'))?(it.fecha||'✓'):null;}else{const r=IMP_MAP[cli+'||'+MES+'||'+wfId];if(!r)return null;const it=r.datos&&r.datos[tk.tarea_id];return(it&&(it.done===true||it.done==='na'))?(it.fecha||'✓'):null;}}
 function tareaPor(cli,wfId,tk){const d=tk.checklist_origen==='contadores'?CONTAB_DATA[contadoraDe(cli)+'_'+cli+'_'+MES]:IMP_MAP[cli+'||'+MES+'||'+wfId];const it=d&&d.datos&&d.datos[tk.tarea_id];return(it&&it.por)||'';}
 // El PAGO manda: si la tarea de pago final está hecha, el trabajo cuenta como
 // completado aunque queden tareas sin marcar (ya se pagó — no hay nada más que hacer).
@@ -623,8 +643,8 @@ function render(){
   const td=document.getElementById('topdate');
   if(td){const d=new Date();td.textContent=d.toLocaleDateString('es-DO',{weekday:'long',day:'numeric',month:'long',year:'numeric'}).replace(/^\w/,c=>c.toUpperCase());}
 
-  // Subtabs
-  const subs=[['wf','Workflows'],['libre','Tareas Kanban']];
+  // Subtabs — PROTOTIPO: Workflows oculto; Tablero (Kanban libre) + Tareas Checklist (tabla consolidada)
+  const subs=[['checklist','Tareas Checklist'],['libre','Mis tareas']];
   document.getElementById('subtabs').innerHTML=subs.map(([k,l])=>'<button onclick="SUB=\''+k+'\';SEL=null;closePanel();render()" class="sub-tab'+(SUB===k?' is-active':'')+'">'+l+'</button>').join('');
 
   const nb=document.getElementById('navbar');
@@ -649,6 +669,18 @@ function render(){
     if(VIEW==='lista') renderLista();
     else if(VIEW==='gantt') renderGantt();
     else renderKanban();
+  }else if(SUB==='checklist'){
+    // Contadoras/analistas SOLO ven lo suyo (sin toggle). Admin no tiene clientes propios:
+    // en vez de "Mis clientes", un dropdown para filtrar por contadora.
+    if(USER.rol!=='admin') FILTRO='mio';
+    let h='<div class="ctrl-right">';
+    if(USER.rol==='admin'){
+      const _co=p=>'<option value="'+attrEsc(p)+'"'+(TC_CONTADORA===p?' selected':'')+'>'+escHtml(p)+'</option>';
+      h+='<label class="ctrl-label">Contadora:</label><select onchange="TC_CONTADORA=this.value;render()" class="mo-select'+(TC_CONTADORA?' mo-select-on':'')+'"><option value="">Todas</option>'+EQ_CONTADORAS.map(_co).join('')+'</select>';
+    }
+    h+='<label class="ctrl-label">Mes:</label><select onchange="MES=this.value;render()" class="mo-select">'+MESES.map(m=>'<option'+(m===MES?' selected':'')+'>'+m+'</option>').join('')+'</select>'+notifBellHTML()+'<button onclick="refrescarDatos()" class="mo-refresh" title="Actualizar">↻</button></div>';
+    nb.innerHTML=h;
+    renderTareasChecklist();
   }else{
     let h='<div class="view-toggle"><button onclick="LIBRE_FILTRO=\'mias\';LIBRE_PERSONA=\'\';render()" class="vt-btn'+(LIBRE_FILTRO==='mias'&&!LIBRE_PERSONA?' is-active':'')+'">Mis tareas</button><button onclick="LIBRE_FILTRO=\'todas\';LIBRE_PERSONA=\'\';render()" class="vt-btn'+(LIBRE_FILTRO==='todas'&&!LIBRE_PERSONA?' is-active':'')+'">Todas</button></div>';
     const _po=n=>'<option'+(LIBRE_PERSONA===n?' selected':'')+'>'+escHtml(n)+'</option>';
@@ -1141,6 +1173,80 @@ function equipoNombres(){const base=EQ_TODOS.length?EQ_TODOS:[...EQ_CONTADORAS,.
 // "Administrativo" = todo el equipo que no es contadora ni analista (resto del equipo)
 function eqAdmin(){const ex=new Set([...EQ_CONTADORAS,...EQ_ANALISTAS].map(n=>n.toLowerCase()));return (EQ_TODOS.length?EQ_TODOS:[]).filter(n=>!ex.has(n.toLowerCase())).sort((a,b)=>a.localeCompare(b));}
 function setLibrePersona(v){LIBRE_PERSONA=v||'';if(LIBRE_PERSONA)LIBRE_FILTRO='todas';render();}
+// ════════ PROTOTIPO · Tareas Checklist (tabla consolidada por item, con pills de Insight) ════════
+function tcLastActivity(cli,wf){
+  let max=null;
+  (WF.etapas[wf]||[]).forEach(e=>{(WF.tareas[e.id]||[]).forEach(tk=>{const f=tareaFecha(cli,wf,tk);if(f&&f!=='✓'&&f>(''+max))max=f;});});
+  return max;
+}
+// ¿el cliente pertenece a esta contadora (por contadora_contabilidad)?
+function tcContadoraMatch(cli, nombre){ const a=(contadoraDe(cli)||'').trim().toLowerCase(), b=(nombre||'').trim().toLowerCase(); return !!a&&!!b&&(a===b||a.startsWith(b)||b.startsWith(a)); }
+function tcBuildRows(){
+  const rows=[];
+  if(!WF||!WF.orden)return rows;
+  // Admin: ve todo, o filtra por contadora (dropdown). Contadora/analista: SOLO lo suyo (puedeMarcar).
+  const isAdmin=(USER.rol==='admin');
+  CLIENTES.forEach(c=>{
+    const cli=c.nombre;
+    if(isAdmin && TC_CONTADORA && !tcContadoraMatch(cli, TC_CONTADORA)) return; // filtro por contadora
+    WF.orden.forEach(wf=>{
+      const vi=venceInfo(wf); if(vi.none) return;
+      const st=jobState(cli,wf); if(st.idx>=st.etapas.length) return; // workflow completo
+      const started=st.totalDone>0;
+      const last=tcLastActivity(cli,wf);
+      const staleDays=last?Math.round((hoyMid()-new Date(last+'T12:00:00'))/86400000):999;
+      (WF.etapas[wf]||[]).forEach(e=>{
+        (WF.tareas[e.id]||[]).forEach(tk=>{
+          if(tareaFecha(cli,wf,tk)) return; // ya hecha
+          if(isAdmin){
+            if(TC_CONTADORA && tk.checklist_origen!=='contadores') return; // al filtrar contadora, solo sus tareas
+          } else {
+            if(!puedeMarcar(cli,tk.checklist_origen)) return; // contadora/analista: solo lo suyo
+          }
+          let status;
+          if(vi.overdue) status='atrasado';
+          else if(vi.diff===0) status='vencen_hoy';
+          else if(!started||staleDays>3) status='sin_actividad';
+          else status='en_curso';
+          rows.push({cli,wf,wfLabel:WF.wf[wf]||wf,etapa:e.label,tarea:tk.label,vence:vi.date,status});
+        });
+      });
+    });
+  });
+  return rows;
+}
+function tcOpenRow(cli,wf){ TAX=wf; SEL=cli; renderModal(); }
+function renderTareasChecklist(){
+  const center=document.getElementById('center');
+  if(!DB_OK){center.innerHTML='<div class="kb-placeholder">Inicia sesión en el portal para ver las tareas del checklist.</div>';return;}
+  const rows=tcBuildRows();
+  const counts={atrasado:0,vencen_hoy:0,sin_actividad:0,en_curso:0};
+  rows.forEach(r=>counts[r.status]++);
+  const pills=[['atrasado','Atrasados','#dc2626'],['vencen_hoy','Vencen hoy','#d97706'],['sin_actividad','Sin actividad','#b45309'],['en_curso','En curso','#2563eb']];
+  let h='<div class="tc-pills">';
+  pills.forEach(([k,l,c])=>{h+='<button class="tc-pill'+(TCFILTRO===k?' is-on':'')+'" style="--pc:'+c+'" onclick="TCFILTRO=\''+k+'\';render()"><span class="tc-pill-n">'+counts[k]+'</span><span class="tc-pill-l">'+l+'</span></button>';});
+  h+='</div>';
+  const filtered=rows.filter(r=>r.status===TCFILTRO).sort((a,b)=>(a.vence&&b.vence)?(a.vence-b.vence):0);
+  if(!filtered.length){
+    h+='<div class="tc-empty">No hay tareas en este estado. 🎉</div>';
+  }else{
+    h+='<div class="tc-table-wrap"><table class="tc-table"><thead><tr><th>Cliente</th><th>Impuesto</th><th>Etapa</th><th>Tarea</th><th>Vence</th></tr></thead><tbody>';
+    filtered.forEach(r=>{
+      const vlabel=r.vence?fmtDia(r.vence):'—';
+      const vlate=(r.status==='atrasado'||r.status==='vencen_hoy');
+      h+='<tr class="tc-row" onclick="tcOpenRow(\''+esc(r.cli)+'\',\''+esc(r.wf)+'\')">'+
+        '<td class="tc-cli">'+escHtml(r.cli)+'</td>'+
+        '<td><span class="tc-imp">'+escHtml(r.wfLabel)+'</span></td>'+
+        '<td class="tc-mut">'+escHtml(r.etapa||'')+'</td>'+
+        '<td>'+escHtml(r.tarea||'')+'</td>'+
+        '<td class="'+(vlate?'tc-late':'tc-mut')+'">'+vlabel+'</td>'+
+        '</tr>';
+    });
+    h+='</tbody></table></div>';
+  }
+  center.innerHTML=h;
+  if(SEL)renderModal();
+}
 function tlCard(t){
   const av=(t.asignado||'').trim().slice(0,2).toUpperCase();
   const vence=t.fecha_limite?'<span class="tl-due'+(t.fecha_limite<hoyISO()?' tl-due-late':'')+'">'+fmtDiaISO(t.fecha_limite)+'</span>':'';
@@ -1216,6 +1322,11 @@ function renderLibreModal(){
     '<div class="lm-etq-row"><select id="lm-imp" class="lm-sel" onchange="addEtqSel(this)">'+optAdd+'</select><button type="button" class="lm-etq-addbtn" onclick="toggleNewEtq()">+ Crear</button></div>'+
     '<div id="lm-etq-formwrap" class="lm-etq-form" style="display:none"><input id="lm-etq-newname" class="lm-etq-input" placeholder="Nombre de la etiqueta" onkeydown="if(event.key===\'Enter\'){event.preventDefault();crearEtq();}"><div class="lm-etq-sws">'+sw+'</div><button type="button" class="lm-etq-create" onclick="crearEtq()">Crear</button></div>';
   const fieldsHtml =
+    etqSection+
+    '<div class="lm-grid">'+
+      '<div><label class="lm-lbl">Miembros</label><select id="lm-asig" class="lm-sel">'+optPersona+'</select></div>'+
+      '<div><label class="lm-lbl">Fecha límite</label><input id="lm-fecha" type="date" class="lm-sel" value="'+(t.fecha_limite||'')+'"></div>'+
+    '</div>'+
     '<label class="lm-lbl">Descripción</label>'+
     '<div class="lm-rich-tb">'+
       '<button type="button" class="lm-rich-btn" onmousedown="return false" onclick="lmFmt(\'bold\')" title="Negrita"><b>B</b></button>'+
@@ -1231,13 +1342,10 @@ function renderLibreModal(){
       ((!nuevo && t.link_basecamp)?'<a class="lm-link-open" href="'+attrEsc(t.link_basecamp)+'" target="_blank" rel="noopener" title="Visitar link">↗ Visitar link</a>':'')+
     '</div>'+
     '<div class="lm-grid">'+
-      '<div><label class="lm-lbl">Asignado a</label><select id="lm-asig" class="lm-sel">'+optPersona+'</select></div>'+
       '<div><label class="lm-lbl">Cliente</label><select id="lm-cli" class="lm-sel">'+optCli+'</select></div>'+
-      '<div><label class="lm-lbl">Fecha límite</label><input id="lm-fecha" type="date" class="lm-sel" value="'+(t.fecha_limite||'')+'"></div>'+
       '<div><label class="lm-lbl">Columna</label><select id="lm-col" class="lm-sel">'+optCol+'</select></div>'+
       '<div><label class="lm-lbl">Tipo de tarea</label><select id="lm-etq" class="lm-sel">'+optEtq+'</select></div>'+
     '</div>'+
-    etqSection+
     (nuevo?'':libreChecklistHTML(t));
   const bodyHtml = nuevo
     ? '<div class="lm-body">'+fieldsHtml+'</div>'
@@ -1401,7 +1509,8 @@ async function deleteLibreCom(cid){
 }
 // Refrescar al volver a la pestaña (otro pudo haber cambiado algo)
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&DB_OK)refrescarDatos(true);});
-loadAll().then(()=>{TAX=TAX||WF.orden[0];render();}).catch(e=>{console.error(e);WF=JSON.parse(JSON.stringify(SEED_WF));CLIENTES=SEED_CLIENTES.slice();TAX=WF.orden[0];render();});
+function tcApplyHash(){try{const m=(location.hash||'').match(/tc=([a-z_]+)/);if(m){SUB='checklist';if(['atrasado','vencen_hoy','sin_actividad','en_curso'].includes(m[1]))TCFILTRO=m[1];}}catch(e){}}
+loadAll().then(()=>{TAX=TAX||WF.orden[0];tcApplyHash();render();}).catch(e=>{console.error(e);WF=JSON.parse(JSON.stringify(SEED_WF));CLIENTES=SEED_CLIENTES.slice();TAX=WF.orden[0];render();});
 </script>
 </body>
 </html>

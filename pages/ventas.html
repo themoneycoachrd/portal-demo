@@ -292,8 +292,9 @@ tr.expanded { background: #f0f9ff; }
 .roas-table td { text-align: right; padding: 8px; border-bottom: 1px solid var(--border); }
 .roas-table td:first-child { text-align: left; font-weight: 600; }
 .roas-table tr:hover { background: #f8fafc; }
-.roas-table .editable { cursor: pointer; }
-.roas-table .editable:hover { background: #eff6ff; border-radius: 4px; }
+/* Celdas editables: fondo y borde tenue para que se vea que se pueden llenar */
+.roas-table .editable { cursor: pointer; background: #eff5ff; box-shadow: inset 0 0 0 1px #cfe0ff; border-radius: 4px; }
+.roas-table .editable:hover { background: #dde9ff; box-shadow: inset 0 0 0 1px var(--blue); }
 .roas-table input.inline-edit {
   width: 80px;
   padding: 2px 6px;
@@ -667,6 +668,7 @@ body.embed .footer { display: none !important; }
   <button class="main-tab" data-tab="movimiento" id="tab-btn-movimiento" style="display:none">Movimiento</button>
   <button class="main-tab" data-tab="checklist-com" id="tab-btn-checklist-com" style="display:none">Checklist</button>
   <button class="main-tab" data-tab="tracker" id="tab-btn-tracker" style="display:none">Tracker</button>
+  <button class="main-tab" data-tab="comisiones" id="tab-btn-comisiones" style="display:none">Comisiones</button>
 </div>
 
 <div id="tab-roas" class="container"></div>
@@ -674,6 +676,7 @@ body.embed .footer { display: none !important; }
 <div id="tab-movimiento" class="container hidden"></div>
 <div id="tab-checklist-com" class="container hidden"></div>
 <div id="tab-tracker" class="container hidden"></div>
+<div id="tab-comisiones" class="container hidden"></div>
 
 <div class="footer">Conectado a Supabase — los datos se guardan en la nube.</div>
 
@@ -1041,6 +1044,14 @@ let APP = {
   movCatFilter: null, // categoría seleccionada como filtro en Movimiento
   userRole: null,  // 'admin', 'comercial', 'contadores', etc.
   userName: '',
+  userId: null,
+  // Comisiones
+  comisionesPagos: [],      // filas de comisiones_pagos (partidas ya pagadas)
+  comisionesServicio: [],   // filas de comisiones_servicio (mes de arranque del servicio por lead)
+  comisionesPagosLoaded: false,
+  comFilterGestor: '',      // filtro por gestor (solo admin)
+  comMonth: null,           // mes seleccionado en el reporte de comisiones
+  comOcultarPagadas: false, // en el desglose del mes
   // Checklist comercial
   chkMonth: null,
   chkPersona: 'Todos',
@@ -1067,6 +1078,9 @@ function renderMainTabs() {
   // Tracker: mismo acceso que el Checklist (admin + comercial → tú y Naomi)
   const btnTrk = document.getElementById('tab-btn-tracker');
   if (btnTrk) btnTrk.style.display = tengoPermiso('comercial', 'checklist', 'consulta') ? '' : 'none';
+  // Comisiones: admin + comercial (cada gestor ve solo lo suyo; escritura solo admin)
+  const btnCom = document.getElementById('tab-btn-comisiones');
+  if (btnCom) btnCom.style.display = tengoPermiso('comercial', 'checklist', 'consulta') ? '' : 'none';
 
   document.querySelectorAll('.main-tab').forEach(tab => {
     if (tab.style.display === 'none') return;
@@ -1082,6 +1096,7 @@ function renderMainTabs() {
   document.getElementById('tab-movimiento').classList.toggle('hidden', APP.activeTab !== 'movimiento');
   document.getElementById('tab-checklist-com').classList.toggle('hidden', APP.activeTab !== 'checklist-com');
   document.getElementById('tab-tracker').classList.toggle('hidden', APP.activeTab !== 'tracker');
+  document.getElementById('tab-comisiones').classList.toggle('hidden', APP.activeTab !== 'comisiones');
 }
 
 function renderPipeline() {
@@ -2337,27 +2352,40 @@ function renderTracker() {
   const labelTd = (txt,opts) => '<td style="text-align:left'+((opts&&opts.bold)?';font-weight:700':'')+((opts&&opts.indent)?';padding-left:26px;color:var(--muted)':'')+'">'+txt+'</td>';
   const rowEdit = (label, field, fmtFn, indent) => '<tr>'+labelTd(label,{indent:indent})+weeks.map(w=>cell(w,field,fmtFn)).join('')+der(sumW(field),fmtFn)+'</tr>';
 
+  // Cierres automáticos por quincena: por la fecha de cierre del lead (del checklist comercial) o, en su defecto, la fecha demo.
+  const cierreFechaDe = (lead) => {
+    const chk = (APP.chkData||[]).find(r => r.lead_id === lead._id);
+    if (chk && chk.data && chk.data.lead_cerrado && chk.data.lead_cerrado.fecha) return chk.data.lead_cerrado.fecha;
+    return lead.demo || null;
+  };
+  const ganadosMesT = ((APP.data && APP.data.pipeline && APP.data.pipeline[mes]) ? APP.data.pipeline[mes] : []).filter(l => l.f === 'Cerrado Ganado');
+  const cierresQ = {1:0, 2:0};
+  ganadosMesT.forEach(l => { const f=cierreFechaDe(l); const dia=f?new Date(f+'T00:00:00').getDate():1; cierresQ[(dia<=15)?1:2]++; });
+  const cierresMesAuto = ganadosMesT.length;
+
   // Derivados
   const showW = (w) => { const r=trkRow(mes,w); if(!r||r.citas==null) return null; return Number(r.citas||0)-Number(r.no_show||0); };
   const totShow = sumW('citas')-sumW('no_show');
-  const pctW = (w) => { const sh=showW(w); if(sh==null||sh<=0) return null; const r=trkRow(mes,w); return Number(r.cierres||0)/sh*100; };
-  const crecW = (w) => { const r=trkRow(mes,w); if(!r||r.seguidores==null) return null; const prev=trkPrevSeguidores(mes,w); if(prev==null) return null; return r.seguidores - prev; };
-  const anyCrec = weeks.some(w=>crecW(w)!=null);
-  const totCrec = weeks.reduce((s,w)=>{ const c=crecW(w); return s+(c!=null?c:0); },0);
+  const pctW = (w) => { const sh=showW(w); if(sh==null||sh<=0) return null; return cierresQ[w]/sh*100; };
   const cpCitaW = (w) => { const r=trkRow(mes,w); if(!r||!r.citas) return null; return Number(r.inv_citas||0)/Number(r.citas); };
-  const cpSegW = (w) => { const c=crecW(w); if(c==null||c<=0) return null; const r=trkRow(mes,w); return Number(r.inv_awareness||0)/c; };
   const cpRegW = (w) => { const r=trkRow(mes,w); if(!r||!r.webinar_reg) return null; return Number(r.inv_webinar||0)/Number(r.webinar_reg); };
   const invW = (w) => { const r=trkRow(mes,w); if(!r) return 0; return Number(r.inv_awareness||0)+Number(r.inv_citas||0)+(hayWeb?Number(r.inv_webinar||0):0); };
 
   // Resumen
   const totInv = sumW('inv_awareness')+sumW('inv_citas')+(hayWeb?sumW('inv_webinar'):0);
-  const totCierres = sumW('cierres');
-  let curSeg=null; weeks.forEach(w=>{ const r=trkRow(mes,w); if(r&&r.seguidores!=null) curSeg=r.seguidores; });
-  // Seguidores nuevos = la RESTA de la quincena 2 menos la quincena 1 (decisión Félix).
-  const segQ1 = (trkRow(mes,1)&&trkRow(mes,1).seguidores!=null)?Number(trkRow(mes,1).seguidores):null;
-  const segQ2 = (trkRow(mes,2)&&trkRow(mes,2).seguidores!=null)?Number(trkRow(mes,2).seguidores):null;
-  const nuevosMes = (segQ1!=null && segQ2!=null) ? (segQ2 - segQ1) : null;
-  const cpSeg = (nuevosMes!=null && nuevosMes>0) ? sumW('inv_awareness')/nuevosMes : null;
+  // Seguidores: cada quincena tiene inicio y fin. `seguidores` = fin; `seguidores_inicio` = inicio.
+  // El inicio de Q2 hala el fin de Q1 (y el de Q1 hala el fin del mes anterior), editable.
+  const finW = (w) => { const r=trkRow(mes,w); return (r&&r.seguidores!=null)?Number(r.seguidores):null; };
+  const inicioRawW = (w) => { const r=trkRow(mes,w); return (r&&r.seguidores_inicio!=null)?Number(r.seguidores_inicio):null; };
+  const inicioEffW = (w) => { const raw=inicioRawW(w); if(raw!=null) return raw; return (w===1) ? trkPrevSeguidores(mes,1) : finW(1); };
+  const nuevosW = (w) => { const f=finW(w), i=inicioEffW(w); return (f!=null&&i!=null)?(f-i):null; };
+  // Costo por seguidor por quincena = inversión awareness de la quincena / seguidores nuevos de la quincena
+  const cpSegW = (w) => { const n=nuevosW(w); if(n==null||n<=0) return null; const r=trkRow(mes,w); return Number(r.inv_awareness||0)/n; };
+  const inicioPeriodo = inicioEffW(1);
+  let finPeriodo=null; weeks.forEach(w=>{ const f=finW(w); if(f!=null) finPeriodo=f; });
+  const hayNuevos = weeks.some(w=>nuevosW(w)!=null);
+  const nuevosPeriodo = weeks.reduce((s,w)=>{ const n=nuevosW(w); return s+(n!=null?n:0); }, 0);
+  const cpSeg = (hayNuevos && nuevosPeriodo>0) ? sumW('inv_awareness')/nuevosPeriodo : null;
 
   let html = '';
   html += '<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:10px">';
@@ -2370,15 +2398,16 @@ function renderTracker() {
 
   // ── Resumen (cards) ──
   // Venta del mes = neto (con descuentos) de los leads Cerrado Ganado del mes seleccionado.
-  const leadsMes = (APP.data && APP.data.pipeline && APP.data.pipeline[mes]) ? APP.data.pipeline[mes] : [];
-  const ventaMes = leadsMes.filter(l => l.f === 'Cerrado Ganado').reduce((s,l) => s + leadVendido(l, true), 0);
+  const ventaMes = ganadosMesT.reduce((s,l) => s + leadVendido(l, true), 0);
+  const cierresMes = cierresMesAuto;
   const card=(lbl,val,cls)=>'<div class="stat-card"><div class="label">'+lbl+'</div><div class="value '+(cls||'')+'">'+val+'</div></div>';
   html += '<div class="stats-grid" style="grid-template-columns:repeat(auto-fit,minmax(150px,1fr));margin:14px 0">';
   html += card('Venta del mes', fmtMoneyInt(ventaMes), 'green');
   html += card('Total invertido', fmtMoneyInt(totInv), 'navy');
-  html += card('Cierres', fmtInt(totCierres), 'green');
-  html += card('Total seguidores', curSeg!=null?fmtInt(curSeg):'—', 'navy');
-  html += card('Seguidores nuevos', nuevosMes!=null?('+'+fmtInt(nuevosMes)):'—', 'green');
+  html += card('Cierres', fmtInt(cierresMes), 'green');
+  html += card('Seguidores inicio', inicioPeriodo!=null?fmtInt(inicioPeriodo):'—', 'navy');
+  html += card('Seguidores fin', finPeriodo!=null?fmtInt(finPeriodo):'—', 'navy');
+  html += card('Seguidores nuevos', hayNuevos?((nuevosPeriodo>=0?'+':'')+fmtInt(nuevosPeriodo)):'—', 'green');
   html += card('Costo/Seguidor', cpSeg!=null?fmtCost(cpSeg):'—', 'amber');
   html += '</div>';
 
@@ -2395,19 +2424,41 @@ function renderTracker() {
     html += rowEdit('Inversión Awareness','inv_awareness',fmtMoneyInt,true);
     html += rowEdit('Inversión Citas','inv_citas',fmtMoneyInt,true);
     if (hayWeb) html += rowEdit('Inversión Webinar','inv_webinar',fmtMoneyInt,true);
+    // Resultados de eficiencia (calculados): awareness → costo/seguidor; citas → costo/lead
+    const cpLeadTot = sumW('citas')>0 ? sumW('inv_citas')/sumW('citas') : null;
+    html += '<tr>'+labelTd('$ Costo por seguidor',{indent:true})+der(cpSegW(1),fmtCost)+der(cpSegW(2),fmtCost)+der(cpSeg,fmtCost)+'</tr>';
+    html += '<tr>'+labelTd('$ Costo por lead',{indent:true})+der(cpCitaW(1),fmtCost)+der(cpCitaW(2),fmtCost)+der(cpLeadTot,fmtCost)+'</tr>';
   }
 
   // ── 2) Seguidores (header = seguidores actuales) ──
   // Total de Seguidores = los nuevos (resta Q2−Q1), no el snapshot repetido.
-  const segCells = weeks.map(w=>copyCell(w,'seguidores',fmtInt)).join('')+der(nuevosMes, n=>(n>=0?'+':'')+fmtInt(n));
-  const segHdr = ' Seguidores' + (curSeg!=null?' — '+fmtInt(curSeg)+' total':'') + (nuevosMes!=null?' · <span style="color:var(--green)">+'+fmtInt(nuevosMes)+' nuevos</span>':'');
+  // Celda de "inicio" editable: si no se ha tecleado, muestra (en gris) el valor halado del fin anterior.
+  const inicioCell = (w) => {
+    const editing = APP.trkEditing && APP.trkEditing.semana===w && APP.trkEditing.field==='seguidores_inicio';
+    const raw = inicioRawW(w), eff = inicioEffW(w);
+    if (editing) {
+      const v = raw!=null ? raw : (eff!=null ? eff : '');
+      return '<td><input class="inline-edit trk-input" type="number" step="any" data-trk-week="'+w+'" data-trk-field="seguidores_inicio" value="'+v+'" autofocus></td>';
+    }
+    let disp;
+    if (raw!=null) disp = fmtInt(raw);
+    else if (eff!=null) disp = '<span style="color:var(--muted)" title="Halado del fin de la quincena anterior — clic para cambiar">'+fmtInt(eff)+'</span>';
+    else disp = '<span style="color:var(--muted)">—</span>';
+    return '<td class="editable trk-edit-cell" data-trk-week="'+w+'" data-trk-field="seguidores_inicio">'+disp+'</td>';
+  };
+  const segCells = der(inicioPeriodo,fmtInt)+der(finPeriodo,fmtInt)+der(hayNuevos?nuevosPeriodo:null, n=>(n>=0?'+':'')+fmtInt(n));
+  const segHdr = ' Seguidores' +
+    ((inicioPeriodo!=null||finPeriodo!=null)?' — '+(inicioPeriodo!=null?fmtInt(inicioPeriodo):'?')+' → '+(finPeriodo!=null?fmtInt(finPeriodo):'?'):'') +
+    (hayNuevos?' · <span style="color:var(--green)">'+(nuevosPeriodo>=0?'+':'')+fmtInt(nuevosPeriodo)+' nuevos</span>':'');
   html += '<tr class="trk-group" data-trk-group="seguidores" style="cursor:pointer"><td style="text-align:left;font-weight:700">'+(APP.trkExpand.seguidores?'▾':'▸')+segHdr+'</td>'+segCells+'</tr>';
   if (APP.trkExpand.seguidores) {
-    html += rowEdit('Seguidores total','seguidores',fmtInt,true);
-    // Seguidores nuevos = Q2 − Q1 (en el total)
-    html += '<tr>'+labelTd('Seguidores nuevos',{indent:true})+der(null,fmtInt)+der(nuevosMes,fmtInt)+der(nuevosMes,fmtInt)+'</tr>';
+    // Inicio editable por quincena (Q2 hala el fin de Q1); Fin editable por quincena
+    html += '<tr>'+labelTd('Seguidores inicio',{indent:true})+inicioCell(1)+inicioCell(2)+der(inicioPeriodo,fmtInt)+'</tr>';
+    html += '<tr>'+labelTd('Seguidores fin del período',{indent:true})+cell(1,'seguidores',fmtInt)+cell(2,'seguidores',fmtInt)+der(finPeriodo,fmtInt)+'</tr>';
+    // Nuevos por quincena = fin − inicio; total = suma del período
+    html += '<tr>'+labelTd('Seguidores nuevos',{indent:true})+der(nuevosW(1), n=>(n>=0?'+':'')+fmtInt(n))+der(nuevosW(2), n=>(n>=0?'+':'')+fmtInt(n))+der(hayNuevos?nuevosPeriodo:null, n=>(n>=0?'+':'')+fmtInt(n))+'</tr>';
     html += '<tr>'+labelTd('Inversión Awareness',{indent:true})+weeks.map(w=>copyCell(w,'inv_awareness',fmtMoneyInt)).join('')+der(sumW('inv_awareness'),fmtMoneyInt)+'</tr>';
-    html += '<tr>'+labelTd('$ Costo/Seguidor',{indent:true})+der(null,fmtCost)+der(null,fmtCost)+der(cpSeg,fmtCost)+'</tr>';
+    html += '<tr>'+labelTd('$ Costo/Seguidor',{indent:true})+der(cpSegW(1),fmtCost)+der(cpSegW(2),fmtCost)+der(cpSeg,fmtCost)+'</tr>';
   }
 
   // ── 3) Citas (header = cantidad de citas) ──
@@ -2418,9 +2469,10 @@ function renderTracker() {
     html += '<tr>'+labelTd('Inversión Citas',{indent:true})+weeks.map(w=>copyCell(w,'inv_citas',fmtMoneyInt)).join('')+der(sumW('inv_citas'),fmtMoneyInt)+'</tr>';
     html += rowEdit('No show','no_show',fmtInt,true);
     html += '<tr>'+labelTd('Show',{indent:true})+weeks.map(w=>der(showW(w),fmtInt)).join('')+der(totShow,fmtInt)+'</tr>';
-    html += rowEdit('Cierres','cierres',fmtInt,true);
-    html += '<tr>'+labelTd('% Cierre',{indent:true})+weeks.map(w=>der(pctW(w),fmtPctInt)).join('')+der(totShow>0?sumW('cierres')/totShow*100:null,fmtPctInt)+'</tr>';
-    html += '<tr>'+labelTd('$ Costo/Cita',{indent:true})+weeks.map(w=>der(cpCitaW(w),fmtCost)).join('')+der(sumW('citas')>0?sumW('inv_citas')/sumW('citas'):null,fmtCost)+'</tr>';
+    // Cierres: automáticos por la fecha del cierre (no editable), para que cuadren con el pipeline
+    html += '<tr>'+labelTd('Cierres',{indent:true})+der(cierresQ[1],fmtInt)+der(cierresQ[2],fmtInt)+der(cierresMesAuto,fmtInt)+'</tr>';
+    html += '<tr>'+labelTd('% Cierre',{indent:true})+weeks.map(w=>der(pctW(w),fmtPctInt)).join('')+der(totShow>0?cierresMesAuto/totShow*100:null,fmtPctInt)+'</tr>';
+    html += '<tr>'+labelTd('$ Costo por lead',{indent:true})+weeks.map(w=>der(cpCitaW(w),fmtCost)).join('')+der(sumW('citas')>0?sumW('inv_citas')/sumW('citas'):null,fmtCost)+'</tr>';
   }
 
   html += '</tbody></table></div>';
@@ -2473,6 +2525,388 @@ async function trkSaveWebinar(mes, val) {
   if (error) { APP.trkMeta[mes] = !val; alert('No se pudo guardar.'); renderTracker(); }
 }
 
+// ==================== COMISIONES ====================
+var COMISION_PCT = 0.15;
+
+// Capitalizar nombre de mes
+function comCap(s) { return s ? s.charAt(0).toUpperCase() + s.slice(1) : ''; }
+
+// Todos los cierres (Cerrado Ganado) de gestores comerciales (resp definido y != Felix)
+function comCierresGestores() {
+  var out = [];
+  MONTHS.forEach(function(m) {
+    (APP.data.pipeline[m] || []).forEach(function(l) {
+      if (l.f !== 'Cerrado Ganado') return;
+      var gestor = (l.resp || '').trim();
+      if (!gestor || gestor === 'Felix') return;
+      // Base de implementación (Impl + FE netos, sin Servicio ni Software).
+      var base = comBaseLead(l);
+      // Incluir el cierre si tiene CUALQUIER monto comisionable (implementación o servicio).
+      if (base <= 0 && comServBase(l) <= 0) return;
+      out.push({ lead: l, gestor: gestor, mes: m, mesIdx: MONTHS.indexOf(m), base: base, comisionTotal: base * COMISION_PCT });
+    });
+  });
+  return out;
+}
+
+// Día 5 del mes (cierreIdx + partida): cierra junio -> P1 = 5 jul, P2 = 5 ago
+function comPartidaVence(mesIdx, partida) {
+  var idx = mesIdx + partida;
+  var anio = ANIO + Math.floor(idx / 12);
+  return new Date(anio, idx % 12, 5);
+}
+function comFmtFecha(d) {
+  return d.getDate() + ' ' + MONTHS[d.getMonth()].slice(0, 3) + ' ' + d.getFullYear();
+}
+function comPagoDe(leadId, partida) {
+  return (APP.comisionesPagos || []).find(function(p) { return p.lead_id === leadId && p.partida === partida; });
+}
+function comLeadById(id) {
+  for (var i = 0; i < MONTHS.length; i++) {
+    var arr = APP.data.pipeline[MONTHS[i]] || [];
+    for (var j = 0; j < arr.length; j++) { if (arr[j]._id === id) return arr[j]; }
+  }
+  return null;
+}
+
+async function loadComisionesPagos() {
+  var res = await Promise.all([
+    sb.from('comisiones_pagos').select('*'),
+    sb.from('comisiones_servicio').select('*')
+  ]);
+  if (res[0].error) { console.error('Error cargando comisiones_pagos:', res[0].error); APP.comisionesPagos = []; }
+  else APP.comisionesPagos = res[0].data || [];
+  if (res[1].error) { console.error('Error cargando comisiones_servicio:', res[1].error); APP.comisionesServicio = []; }
+  else APP.comisionesServicio = res[1].data || [];
+  APP.comisionesPagosLoaded = true;
+}
+function comServicioDe(leadId) {
+  return (APP.comisionesServicio || []).find(function(s) { return s.lead_id === leadId; });
+}
+// Base de servicio de un lead: 1 mes de Servicio, neto de su descuento
+function comServBase(l) {
+  var ds = (l.desc_serv != null ? l.desc_serv : 0) / 100;
+  return (l.serv || 0) * (1 - ds);
+}
+// Selector del mes de arranque del servicio (para la partida 3)
+function comServSelect(leadId, sel) {
+  var st = 'padding:4px 8px;border:1px solid var(--border);border-radius:6px;font-size:0.78rem;font-family:inherit;background:white';
+  var s = '<select onchange="programarServicioComision(' + leadId + ', this.value)" style="' + st + '">';
+  s += '<option value="">— mes de arranque —</option>';
+  MONTHS.forEach(function(m) { s += '<option value="' + m + '"' + (sel === m ? ' selected' : '') + '>' + comCap(m) + '</option>'; });
+  s += '</select>';
+  return s;
+}
+// Programar (o cambiar) el mes en que arranca el servicio de un lead
+async function programarServicioComision(leadId, mes) {
+  if (!mes) { // limpiar
+    await sb.from('comisiones_servicio').delete().eq('lead_id', leadId);
+    APP.comisionesServicio = (APP.comisionesServicio || []).filter(function(s) { return s.lead_id !== leadId; });
+    renderComisiones();
+    return;
+  }
+  var lead = comLeadById(leadId);
+  var cierreIdx = lead ? MONTHS.indexOf(comLeadMes(leadId)) : -1;
+  var mesIdx = MONTHS.indexOf(mes);
+  // Si el mes de servicio es anterior o igual al de cierre, es del año siguiente
+  var anio = (cierreIdx >= 0 && mesIdx <= cierreIdx) ? ANIO + 1 : ANIO;
+  var fila = { lead_id: leadId, mes: mes, anio: anio, marcado_por: APP.userId, updated_at: new Date().toISOString() };
+  var { error } = await sb.from('comisiones_servicio').upsert(fila, { onConflict: 'lead_id' });
+  if (error) { alert('No se pudo programar el servicio: ' + error.message); return; }
+  var ex = comServicioDe(leadId);
+  if (ex) { ex.mes = mes; ex.anio = anio; }
+  else APP.comisionesServicio.push(fila);
+  renderComisiones();
+}
+// Mes (bucket) del lead en el pipeline
+function comLeadMes(leadId) {
+  for (var i = 0; i < MONTHS.length; i++) {
+    var arr = APP.data.pipeline[MONTHS[i]] || [];
+    for (var j = 0; j < arr.length; j++) { if (arr[j]._id === leadId) return MONTHS[i]; }
+  }
+  return null;
+}
+
+// Base comisionable de un lead: solo Implementación + FE (netos), sin Servicio ni Software
+function comBaseLead(l) {
+  var di = (l.desc_impl != null ? l.desc_impl : 0) / 100;
+  var df = (l.desc_fe != null ? l.desc_fe : 0) / 100;
+  return (l.impl || 0) * (1 - di) + (l.fe || 0) * (1 - df);
+}
+
+async function marcarComisionPagada(leadId, partida) {
+  var lead = comLeadById(leadId);
+  if (!lead) return;
+  // Partidas 1 y 2 = mitad de la comisión de implementación; partida 3 = comisión del servicio (1 mes)
+  var monto = (partida === 3) ? (comServBase(lead) * COMISION_PCT) : (comBaseLead(lead) * COMISION_PCT / 2);
+  var hoy = new Date().toISOString().split('T')[0];
+  var fila = { lead_id: leadId, partida: partida, pagada: true, fecha_pago: hoy, monto: monto, gestor: (lead.resp || '').trim(), marcado_por: APP.userId, updated_at: new Date().toISOString() };
+  var { error } = await sb.from('comisiones_pagos').upsert(fila, { onConflict: 'lead_id,partida' });
+  if (error) { alert('No se pudo guardar el pago: ' + error.message); return; }
+  var ex = comPagoDe(leadId, partida);
+  if (ex) { ex.pagada = true; ex.fecha_pago = hoy; ex.monto = monto; }
+  else APP.comisionesPagos.push(fila);
+  renderComisiones();
+}
+
+async function quitarComisionPago(leadId, partida) {
+  if (!confirm('¿Marcar esta partida como NO pagada?')) return;
+  var { error } = await sb.from('comisiones_pagos').delete().eq('lead_id', leadId).eq('partida', partida);
+  if (error) { alert('No se pudo deshacer: ' + error.message); return; }
+  APP.comisionesPagos = (APP.comisionesPagos || []).filter(function(p) { return !(p.lead_id === leadId && p.partida === partida); });
+  renderComisiones();
+}
+
+function comFilterChange(field, value) {
+  if (field === 'gestor') APP.comFilterGestor = value;
+  renderComisiones();
+}
+function comSetMonth(m) { APP.comMonth = m; renderComisiones(); }
+function comToggleOcultar() { APP.comOcultarPagadas = !APP.comOcultarPagadas; renderComisiones(); }
+
+// Construir todas las partidas (impl 1, impl 2, servicio) a partir de una lista de cierres
+function comBuildPartidas(cierres, hoy) {
+  var filas = [];
+  cierres.forEach(function(c) {
+    var cliente = c.lead.n || c.lead.e || '(sin nombre)';
+    // Partidas 1 y 2 (implementación) solo si hay base de implementación
+    if (c.base > 0) [1, 2].forEach(function(partida) {
+      var vence = comPartidaVence(c.mesIdx, partida);
+      var pago = comPagoDe(c.lead._id, partida);
+      var pagada = !!(pago && pago.pagada);
+      filas.push({
+        leadId: c.lead._id, cliente: cliente, gestor: c.gestor, mes: c.mes, tipo: 'impl',
+        base: c.base, partida: partida, label: partida + ' de 2 · Implementación',
+        monto: c.comisionTotal / 2, vence: vence, programado: true,
+        pagada: pagada, fechaPago: pago ? pago.fecha_pago : null,
+        vencida: !pagada && vence < hoy
+      });
+    });
+    var servBase = comServBase(c.lead);
+    if (servBase > 0) {
+      var sm = comServicioDe(c.lead._id);
+      var venceServ = null, programado = false;
+      if (sm) {
+        programado = true;
+        var idx = MONTHS.indexOf(sm.mes) + 1;
+        venceServ = new Date(sm.anio + Math.floor(idx / 12), idx % 12, 5);
+      }
+      var pagoS = comPagoDe(c.lead._id, 3);
+      var pagadaS = !!(pagoS && pagoS.pagada);
+      filas.push({
+        leadId: c.lead._id, cliente: cliente, gestor: c.gestor, mes: c.mes, tipo: 'serv',
+        base: servBase, partida: 3, label: 'Servicio (1 mes)',
+        monto: servBase * COMISION_PCT, vence: venceServ, programado: programado,
+        mesServicio: sm ? sm.mes : '',
+        pagada: pagadaS, fechaPago: pagoS ? pagoS.fecha_pago : null,
+        vencida: programado && !pagadaS && venceServ < hoy
+      });
+    }
+  });
+  return filas;
+}
+
+async function renderComisiones() {
+  var cont = document.getElementById('tab-comisiones');
+  if (!APP.comisionesPagosLoaded) {
+    cont.innerHTML = '<div style="padding:40px;text-align:center;color:var(--muted)">Cargando comisiones…</div>';
+    await loadComisionesPagos();
+  }
+
+  var isAdmin = APP.userRole === 'admin';
+  var hoy = new Date(); hoy.setHours(0, 0, 0, 0);
+
+  // Todos los cierres de gestores; lista de gestores para el filtro (admin)
+  var todos = comCierresGestores();
+  var gestores = [];
+  todos.forEach(function(c) { if (gestores.indexOf(c.gestor) < 0) gestores.push(c.gestor); });
+  gestores.sort();
+
+  // Alcance: admin ve todos (o filtra por gestor); no-admin solo lo suyo
+  var miGestor = isAdmin ? '' : chkDetectResponsable();
+  var fg = isAdmin ? APP.comFilterGestor : miGestor;
+  var cierres = fg ? todos.filter(function(c) { return c.gestor === fg; }) : todos;
+
+  var filas = comBuildPartidas(cierres, hoy);
+
+  // Agregados por mes (del año ANIO)
+  var vendidoMes = {}, aCobrarMes = {}, cobradoMes = {};
+  MONTHS.forEach(function(m) { vendidoMes[m] = 0; aCobrarMes[m] = 0; cobradoMes[m] = 0; });
+  cierres.forEach(function(c) { vendidoMes[c.mes] += leadVendido(c.lead, false); });
+  filas.forEach(function(f) {
+    if (f.vence && f.vence.getFullYear() === ANIO) {
+      var vm = MONTHS[f.vence.getMonth()];
+      aCobrarMes[vm] += f.monto;
+      if (f.pagada) cobradoMes[vm] += f.monto;
+    }
+  });
+
+  // Mes seleccionado
+  if (!APP.comMonth) APP.comMonth = APP.currentMonth;
+  var selMes = APP.comMonth;
+  var vendidoSel = vendidoMes[selMes], comGenSel = vendidoSel * COMISION_PCT;
+  var selMesIdx = MONTHS.indexOf(selMes);
+  var aCobrarSel = aCobrarMes[selMes];
+  // Pendiente por cobrar en próximos meses = partidas sin pagar que vencen DESPUÉS del mes seleccionado
+  var pendProx = filas.filter(function(f) {
+    if (f.pagada || !f.vence) return false;
+    if (f.vence.getFullYear() > ANIO) return true;
+    return f.vence.getFullYear() === ANIO && f.vence.getMonth() > selMesIdx;
+  }).reduce(function(s, f) { return s + f.monto; }, 0);
+
+  var h = '';
+  h += '<div style="margin-bottom:14px">';
+  h += '<h2 style="font-size:1.05rem;margin:0 0 2px;color:var(--navy)">Comisiones' + (isAdmin ? '' : ' — ' + esc(miGestor)) + '</h2>';
+  h += '<p style="margin:0;color:var(--muted);font-size:0.82rem">Comisión 15%. Implementación (Impl + FE): 2 partidas; Servicio: 1 partida. Elige un mes para ver lo vendido y lo que se cobra.</p>';
+  h += '</div>';
+
+  // Filtro de gestor (solo admin)
+  if (isAdmin) {
+    var selStyle = 'padding:6px 10px;border:1px solid var(--border);border-radius:8px;font-size:0.82rem;font-family:inherit;background:white';
+    h += '<div style="margin-bottom:12px"><select onchange="comFilterChange(\'gestor\', this.value)" style="' + selStyle + '"><option value="">Todos los gestores</option>';
+    gestores.forEach(function(g) { h += '<option value="' + esc(g) + '"' + (fg === g ? ' selected' : '') + '>' + esc(g) + '</option>'; });
+    h += '</select></div>';
+  }
+
+  // Pills de meses (cada uno muestra lo que se cobra ese mes)
+  h += '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:18px">';
+  MONTHS.forEach(function(m) {
+    var activo = m === selMes;
+    var hayAlgo = vendidoMes[m] > 0 || aCobrarMes[m] > 0;
+    var bg = activo ? 'var(--navy)' : 'white';
+    var col = activo ? 'white' : (hayAlgo ? 'var(--text)' : 'var(--muted)');
+    var bd = activo ? 'var(--navy)' : 'var(--border)';
+    h += '<button onclick="comSetMonth(\'' + m + '\')" style="border:1px solid ' + bd + ';background:' + bg + ';color:' + col + ';border-radius:10px;padding:7px 11px;cursor:pointer;font-family:inherit;text-align:center;min-width:62px">';
+    h += '<div style="font-size:0.72rem;font-weight:700;text-transform:capitalize">' + m.slice(0, 3) + '</div>';
+    h += '<div style="font-size:0.7rem;opacity:' + (hayAlgo ? '1' : '0.55') + ';margin-top:1px">' + (aCobrarMes[m] > 0 ? fmtCurrency(aCobrarMes[m]) : '—') + '</div>';
+    h += '</button>';
+  });
+  h += '</div>';
+
+  // KPI cards del mes seleccionado
+  h += '<div class="stats-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:8px">';
+  h += '<div class="stat-card"><div class="label">Vendido en ' + comCap(selMes) + '</div><div class="value navy">' + fmtCurrency(vendidoSel) + '</div><div style="font-size:0.62rem;color:var(--muted);margin-top:2px">genera comisión (sin software)</div></div>';
+  h += '<div class="stat-card"><div class="label">Comisión generada</div><div class="value blue">' + fmtCurrency(comGenSel) + '</div><div style="font-size:0.62rem;color:var(--muted);margin-top:2px">15% de lo vendido</div></div>';
+  h += '<div class="stat-card"><div class="label">A cobrar en ' + comCap(selMes) + '</div><div class="value navy">' + fmtCurrency(aCobrarSel) + '</div><div style="font-size:0.62rem;color:var(--muted);margin-top:2px">vence este mes</div></div>';
+  h += '<div class="stat-card"><div class="label">Pendiente próximos meses</div><div class="value ' + (pendProx > 0 ? 'amber' : 'green') + '">' + fmtCurrency(pendProx) + '</div><div style="font-size:0.62rem;color:var(--muted);margin-top:2px">vence después de ' + comCap(selMes) + '</div></div>';
+  h += '</div>';
+
+  // Desglose: lo que se cobra en el mes
+  var desglose = filas.filter(function(f) { return f.vence && f.vence.getFullYear() === ANIO && MONTHS[f.vence.getMonth()] === selMes; });
+  if (APP.comOcultarPagadas) desglose = desglose.filter(function(f) { return !f.pagada; });
+  desglose.sort(function(a, b) { return a.vence - b.vence; });
+
+  h += '<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin:22px 0 8px">';
+  h += '<h3 style="font-size:0.92rem;margin:0;color:var(--navy)">A cobrar en ' + comCap(selMes) + '</h3>';
+  h += '<label style="font-size:0.78rem;color:var(--muted);cursor:pointer;display:flex;align-items:center;gap:5px"><input type="checkbox"' + (APP.comOcultarPagadas ? ' checked' : '') + ' onchange="comToggleOcultar()"> Ocultar pagadas</label>';
+  h += '</div>';
+
+  if (desglose.length === 0) {
+    h += '<div style="text-align:center;padding:28px;color:var(--muted);font-size:0.88rem;border:1px dashed var(--border);border-radius:10px">No hay comisiones a cobrar en ' + comCap(selMes) + '.</div>';
+  } else {
+    h += '<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:0.83rem">';
+    h += '<thead><tr>';
+    var cols = ['Cliente'];
+    if (isAdmin && !fg) cols.push('Gestor');
+    cols = cols.concat(['Partida', 'Monto', 'Vence', 'Estado']);
+    cols.forEach(function(th) {
+      var align = (th === 'Monto') ? 'right' : 'left';
+      h += '<th style="text-align:' + align + ';padding:8px 10px;font-size:0.68rem;text-transform:uppercase;letter-spacing:0.5px;color:var(--muted);border-bottom:2px solid var(--border);font-weight:600">' + th + '</th>';
+    });
+    h += '</tr></thead><tbody>';
+    desglose.forEach(function(f) {
+      h += '<tr style="border-bottom:1px solid #f1f5f9">';
+      h += '<td style="padding:9px 10px">' + esc(f.cliente) + '</td>';
+      if (isAdmin && !fg) h += '<td style="padding:9px 10px;color:var(--muted);white-space:nowrap">' + esc(f.gestor) + '</td>';
+      h += '<td style="padding:9px 10px;white-space:nowrap">' + f.label + '<span style="color:var(--muted)"> · cerró ' + comCap(f.mes) + '</span></td>';
+      h += '<td style="padding:9px 10px;text-align:right;font-weight:700">' + fmtCurrency(f.monto) + '</td>';
+      h += '<td style="padding:9px 10px;white-space:nowrap;color:' + (f.vencida ? 'var(--red)' : 'var(--text)') + '">' + comFmtFecha(f.vence) + '</td>';
+      h += '<td style="padding:9px 10px;white-space:nowrap">';
+      if (f.pagada) {
+        var fp = f.fechaPago ? new Date(f.fechaPago + 'T00:00:00').toLocaleDateString('es-DO', { day: '2-digit', month: 'short' }) : '';
+        h += '<span style="color:var(--green);font-weight:600;font-size:0.78rem">✓ Pagada' + (fp ? ' ' + fp : '') + '</span>';
+        if (isAdmin) h += ' <button onclick="quitarComisionPago(' + f.leadId + ',' + f.partida + ')" title="Deshacer" style="border:none;background:none;color:var(--muted);cursor:pointer;font-size:0.72rem;text-decoration:underline">deshacer</button>';
+      } else if (isAdmin) {
+        h += '<button onclick="marcarComisionPagada(' + f.leadId + ',' + f.partida + ')" style="padding:4px 10px;border:1px solid var(--green);border-radius:6px;background:white;color:var(--green);font-size:0.76rem;font-weight:600;cursor:pointer">Marcar pagada</button>';
+      } else {
+        h += '<span style="color:var(--amber);font-weight:600;font-size:0.78rem">Pendiente</span>';
+      }
+      h += '</td></tr>';
+    });
+    h += '</tbody></table></div>';
+  }
+
+  // Cierres del mes (de dónde viene lo vendido)
+  var cierresMes = cierres.filter(function(c) { return c.mes === selMes; });
+  if (cierresMes.length) {
+    h += '<h3 style="font-size:0.92rem;margin:22px 0 8px;color:var(--navy)">Cierres de ' + comCap(selMes) + '</h3>';
+    h += '<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:0.83rem">';
+    h += '<thead><tr>';
+    var cc = ['Cliente']; if (isAdmin && !fg) cc.push('Gestor'); cc = cc.concat(['Vendido', 'Comisión total']);
+    cc.forEach(function(th) {
+      var align = (th === 'Vendido' || th === 'Comisión total') ? 'right' : 'left';
+      h += '<th style="text-align:' + align + ';padding:8px 10px;font-size:0.68rem;text-transform:uppercase;letter-spacing:0.5px;color:var(--muted);border-bottom:2px solid var(--border);font-weight:600">' + th + '</th>';
+    });
+    h += '</tr></thead><tbody>';
+    cierresMes.forEach(function(c) {
+      var vend = leadVendido(c.lead, false);
+      h += '<tr style="border-bottom:1px solid #f1f5f9">';
+      h += '<td style="padding:9px 10px">' + esc(c.lead.n || c.lead.e || '(sin nombre)') + '</td>';
+      if (isAdmin && !fg) h += '<td style="padding:9px 10px;color:var(--muted);white-space:nowrap">' + esc(c.gestor) + '</td>';
+      h += '<td style="padding:9px 10px;text-align:right">' + fmtCurrency(vend) + '</td>';
+      h += '<td style="padding:9px 10px;text-align:right;font-weight:700">' + fmtCurrency(vend * COMISION_PCT) + '</td>';
+      h += '</tr>';
+    });
+    h += '</tbody></table></div>';
+  }
+
+  // Comparativo por mes (vendido vs a cobrar)
+  var mesesAct = MONTHS.filter(function(m) { return vendidoMes[m] > 0 || aCobrarMes[m] > 0; });
+  if (mesesAct.length) {
+    h += '<h3 style="font-size:0.92rem;margin:22px 0 8px;color:var(--navy)">Comparativo por mes</h3>';
+    h += '<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:0.83rem">';
+    h += '<thead><tr>';
+    ['Mes', 'Vendido', 'Comisión generada', 'A cobrar', 'Cobrado'].forEach(function(th, i) {
+      h += '<th style="text-align:' + (i === 0 ? 'left' : 'right') + ';padding:8px 10px;font-size:0.68rem;text-transform:uppercase;letter-spacing:0.5px;color:var(--muted);border-bottom:2px solid var(--border);font-weight:600">' + th + '</th>';
+    });
+    h += '</tr></thead><tbody>';
+    mesesAct.forEach(function(m) {
+      var sel = m === selMes;
+      h += '<tr style="border-bottom:1px solid #f1f5f9;cursor:pointer;' + (sel ? 'background:#f0f6ff' : '') + '" onclick="comSetMonth(\'' + m + '\')">';
+      h += '<td style="padding:9px 10px;font-weight:' + (sel ? '700' : '600') + ';color:var(--navy);text-transform:capitalize">' + m + '</td>';
+      h += '<td style="padding:9px 10px;text-align:right">' + fmtCurrency(vendidoMes[m]) + '</td>';
+      h += '<td style="padding:9px 10px;text-align:right;color:var(--blue)">' + fmtCurrency(vendidoMes[m] * COMISION_PCT) + '</td>';
+      h += '<td style="padding:9px 10px;text-align:right;font-weight:600">' + fmtCurrency(aCobrarMes[m]) + '</td>';
+      h += '<td style="padding:9px 10px;text-align:right;color:var(--green)">' + fmtCurrency(cobradoMes[m]) + '</td>';
+      h += '</tr>';
+    });
+    h += '</tbody></table></div>';
+  }
+
+  // Servicios por programar (solo admin) — cierres con servicio sin mes de arranque
+  if (isAdmin) {
+    var sinProg = cierres.filter(function(c) { return comServBase(c.lead) > 0 && !comServicioDe(c.lead._id); });
+    if (sinProg.length) {
+      h += '<h3 style="font-size:0.92rem;margin:22px 0 8px;color:var(--navy)">Servicios por programar (' + sinProg.length + ')</h3>';
+      h += '<p style="margin:0 0 8px;color:var(--muted);font-size:0.78rem">Marca el mes en que arranca el servicio para que su comisión entre al calendario de cobro.</p>';
+      h += '<div class="card" style="padding:0">';
+      sinProg.forEach(function(c, i) {
+        h += '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 14px;' + (i ? 'border-top:1px solid #f1f5f9' : '') + '">';
+        h += '<div><b>' + esc(c.lead.n || c.lead.e || '(sin nombre)') + '</b><span style="color:var(--muted);font-size:0.78rem"> · ' + esc(c.gestor) + ' · cerró ' + comCap(c.mes) + ' · comisión ' + fmtCurrency(comServBase(c.lead) * COMISION_PCT) + '</span></div>';
+        h += comServSelect(c.lead._id, '');
+        h += '</div>';
+      });
+      h += '</div>';
+    }
+  }
+
+  if (todos.length === 0) {
+    h += '<div style="text-align:center;padding:40px;color:var(--muted);font-size:0.9rem">Aún no hay cierres de gestores comerciales para comisionar.</div>';
+  }
+
+  cont.innerHTML = h;
+}
+
 function renderApp() {
   if (APP.activeTab === 'pipeline') {
     renderPipeline();
@@ -2482,6 +2916,8 @@ function renderApp() {
     renderChecklistComercial();
   } else if (APP.activeTab === 'tracker') {
     renderTracker();
+  } else if (APP.activeTab === 'comisiones') {
+    renderComisiones();
   } else {
     renderROAS();
   }
@@ -2538,6 +2974,7 @@ async function loadUserProfile() {
     .eq('id', user.id)
     .single();
 
+  APP.userId = user.id;
   if (profile) {
     APP.userRole = profile.rol;
     APP.userName = profile.nombre || user.email;
