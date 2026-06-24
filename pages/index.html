@@ -334,6 +334,27 @@ body {
 
 /* ─── Welcome / Home view ─── */
 .home-view { padding: 32px; flex: 1; }
+.ins-tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-bottom: 8px; }
+.ins-tile { background: #fff; border: 1px solid var(--border); border-radius: 12px; padding: 16px 18px; }
+.ins-tile-head { display: flex; align-items: center; gap: 6px; font-size: 0.78rem; font-weight: 600; margin-bottom: 10px; }
+.ins-tile-head svg { width: 15px; height: 15px; stroke: currentColor; fill: none; stroke-width: 2; flex-shrink: 0; }
+.ins-tile-num { font-size: 1.9rem; font-weight: 700; line-height: 1; }
+.ins-tile-num small { font-size: 0.72rem; font-weight: 500; color: var(--muted); }
+/* ─── Insights: resumen de equipo ─── */
+.ins-card { background: #fff; border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
+.ins-row { display: flex; align-items: center; gap: 12px; padding: 11px 16px; border-bottom: 1px solid var(--border); }
+.ins-row:last-child { border-bottom: none; }
+.ins-avatar { width: 28px; height: 28px; border-radius: 50%; background: var(--blue-light); color: var(--blue); display: flex; align-items: center; justify-content: center; font-size: 0.72rem; font-weight: 700; flex-shrink: 0; }
+.ins-bar { flex: 1.4; background: var(--bg); border-radius: 6px; height: 8px; overflow: hidden; }
+.ins-bar > div { height: 100%; }
+.ins-sec-head { display: flex; align-items: center; gap: 7px; font-size: 0.82rem; font-weight: 700; color: var(--navy); margin: 24px 0 10px; }
+.ins-sec-head svg { width: 16px; height: 16px; stroke: currentColor; fill: none; stroke-width: 2; }
+.ins-sec-head:first-child { margin-top: 0; }
+.ins-grouplabel { font-size: 0.68rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; padding: 6px 16px; }
+.ins-task { display: flex; align-items: center; gap: 10px; padding: 10px 16px; border-bottom: 1px solid var(--border); font-size: 0.85rem; cursor: pointer; }
+.ins-task:last-child { border-bottom: none; }
+.ins-task:hover { background: var(--bg); }
+.ins-chip { font-size: 0.7rem; background: var(--blue-light); color: var(--blue); padding: 2px 9px; border-radius: 20px; font-weight: 600; white-space: nowrap; }
 
 .welcome-banner {
   background: var(--navy);
@@ -977,8 +998,8 @@ async function loadDashboardData() {
   };
 }
 
-function renderDashboard(d) {
-  var el = document.getElementById('dashboard-kpis');
+function renderDashboard(d, targetId) {
+  var el = document.getElementById(targetId || 'dashboard-kpis');
 
   function fmt(n) { return n.toLocaleString(); }
   function fmtCurr(n) { return 'US$ ' + Math.round(n).toLocaleString(); }
@@ -1098,6 +1119,623 @@ function toggleSidebar() {
   }
 })();
 
+// ==================== INSIGHTS (panel de inicio por rol) ====================
+function insEsc(s){ return (s==null?'':String(s)).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function insFirstName(n){ return (n||'').trim().split(/\s+/)[0]||''; }
+function isContadoraRole(){ return userRole === 'contadores'; }
+var INSIGHTS_CONTADORAS = [];
+
+// ── Motor de estado de workflows (replicado de tareas.html para el worklist) ──
+var MESES_WF = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+var CAL_DGII_INS={0:{ir3:{m:1,d:10},ir17:{m:1,d:10},anticipo:{m:1,d:16},itbis:{m:1,d:20}},1:{ir3:{m:2,d:10},ir17:{m:2,d:10},anticipo:{m:2,d:16},itbis:{m:2,d:20}},2:{ir3:{m:3,d:10},ir17:{m:3,d:10},anticipo:{m:3,d:15},itbis:{m:3,d:20}},3:{ir3:{m:4,d:8},ir17:{m:4,d:8},anticipo:{m:4,d:15},itbis:{m:4,d:20}},4:{ir3:{m:5,d:10},ir17:{m:5,d:10},anticipo:{m:5,d:15},itbis:{m:5,d:22}},5:{ir3:{m:6,d:10},ir17:{m:6,d:10},anticipo:{m:6,d:15},itbis:{m:6,d:20}},6:{ir3:{m:7,d:10},ir17:{m:7,d:10},anticipo:{m:7,d:15},itbis:{m:7,d:20}},7:{ir3:{m:8,d:10},ir17:{m:8,d:10},anticipo:{m:8,d:15},itbis:{m:8,d:21}},8:{ir3:{m:9,d:9},ir17:{m:9,d:9},anticipo:{m:9,d:15},itbis:{m:9,d:20}},9:{ir3:{m:10,d:10},ir17:{m:10,d:10},anticipo:{m:10,d:15},itbis:{m:10,d:20}},10:{ir3:{m:11,d:10},ir17:{m:11,d:10},anticipo:{m:11,d:15},itbis:{m:11,d:21}},11:{ir3:{m:0,d:11},ir17:{m:0,d:11},anticipo:{m:0,d:15},itbis:{m:0,d:20}}};
+var CAL_TSS_INS={0:{m:1,d:4},1:{m:2,d:4},2:{m:3,d:6},3:{m:4,d:6},4:{m:5,d:3},5:{m:6,d:3},6:{m:7,d:5},7:{m:8,d:3},8:{m:9,d:5},9:{m:10,d:4},10:{m:11,d:3},11:{m:0,d:7}};
+var CALKEY_INS={'IR-3':'ir3','IR-17':'ir17','Anticipo':'anticipo','ITBIS':'itbis'};
+var PAGO_FINAL_INS=['pagado','anticipo_pagado'];
+var WF_INS=null, CONTAB_INS={}, IMP_INS={}, ESTADO_INS={}, CLIENTES_INS=[], MES_INS=null, ANIO_INS=null, WF_INS_LOADED=false;
+var INS_SEL=null;            // {mes,anio} si el usuario eligió un mes en el dropdown; null = mes automático por fecha
+var INS_VIEW={preview:null}; // nombre de la contadora si admin está viendo su panel (preview)
+
+async function loadWorkflowState(){
+  if(INS_SEL){ MES_INS=INS_SEL.mes; ANIO_INS=INS_SEL.anio; }
+  else { var d=new Date(); MES_INS=MESES_WF[d.getMonth()]; ANIO_INS=d.getFullYear(); } // mes CALENDARIO actual (no el de la declaración)
+  try{
+    var wfR=await sb.from('wf_workflows').select('*').order('orden');
+    var etR=await sb.from('wf_etapas').select('*').order('orden');
+    var tkR=await sb.from('wf_etapa_tareas').select('*').order('orden');
+    WF_INS={orden:[],wf:{},etapas:{},tareas:{}};
+    (wfR.data||[]).forEach(function(w){ WF_INS.orden.push(w.id); WF_INS.wf[w.id]=w.label; WF_INS.etapas[w.id]=[]; });
+    (etR.data||[]).forEach(function(e){ (WF_INS.etapas[e.workflow_id]=WF_INS.etapas[e.workflow_id]||[]).push(e); WF_INS.tareas[e.id]=[]; });
+    (tkR.data||[]).forEach(function(tk){ (WF_INS.tareas[tk.etapa_id]=WF_INS.tareas[tk.etapa_id]||[]).push(tk); });
+    if(!WF_INS.orden.length) WF_INS=null;
+  }catch(e){ WF_INS=null; }
+  try{ var c=await sb.from('checklist_contadores').select('contadora,cliente,mes,datos').eq('anio',ANIO_INS).eq('mes',MES_INS); CONTAB_INS={}; (c.data||[]).forEach(function(r){ CONTAB_INS[r.contadora+'_'+r.cliente+'_'+r.mes]={datos:r.datos||{}}; }); }catch(e){ CONTAB_INS={}; }
+  try{ var im=await sb.from('impuestos_checklist').select('cliente,mes,impuesto,datos').eq('anio',ANIO_INS).eq('mes',MES_INS); IMP_INS={}; (im.data||[]).forEach(function(r){ IMP_INS[r.cliente+'||'+r.mes+'||'+r.impuesto]={datos:r.datos||{}}; }); }catch(e){ IMP_INS={}; }
+  try{ var es=await sb.from('workflow_estado').select('*').eq('anio',ANIO_INS).eq('mes',MES_INS); ESTADO_INS={}; (es.data||[]).forEach(function(r){ ESTADO_INS[r.cliente+'||'+r.mes+'||'+r.anio+'||'+r.impuesto]=r.status; }); }catch(e){ ESTADO_INS={}; }
+  try{ var cl=await sb.from('clientes').select('nombre,contadora_contabilidad,contadora_impuestos,responsabilidad_contabilidad,activo,inicio_responsabilidad_fiscal');
+    var _miAct=MESES_WF.indexOf(MES_INS), _primerDiaMes=new Date(ANIO_INS,_miAct,1);
+    CLIENTES_INS=(cl.data||[]).filter(function(x){return x.activo!==false&&x.responsabilidad_contabilidad===true;})
+      // Solo clientes con responsabilidad fiscal ya iniciada en el mes seleccionado (sin fecha = siempre activo)
+      .filter(function(x){ if(!x.inicio_responsabilidad_fiscal) return true; return _primerDiaMes>=new Date(x.inicio_responsabilidad_fiscal+'T00:00:00'); })
+      .map(function(x){return {nombre:x.nombre,contadora:x.contadora_contabilidad||'Sin asignar',contadoraImp:x.contadora_impuestos||''};}); }catch(e){ CLIENTES_INS=[]; }
+  WF_INS_LOADED=true;
+}
+function insContadoraDe(cli){ var c=(CLIENTES_INS||[]).find(function(x){return x.nombre===cli;}); return c?c.contadora:'Sin asignar'; }
+function insTareaHecha(cli,wfId,tk){
+  // N/A ('na') cuenta como hecha (no aplica = bien). Solo false = pendiente.
+  if(tk.checklist_origen==='contadores'){ var d=CONTAB_INS[insContadoraDe(cli)+'_'+cli+'_'+MES_INS]; if(!d)return false; var it=d.datos&&d.datos[tk.tarea_id]; return !!(it&&(it.done===true||it.done==='na')); }
+  var r=IMP_INS[cli+'||'+MES_INS+'||'+wfId]; if(!r)return false; var it2=r.datos&&r.datos[tk.tarea_id]; return !!(it2&&(it2.done===true||it2.done==='na'));
+}
+function insJobCompleto(cli,wfId){
+  var etapas=(WF_INS&&WF_INS.etapas[wfId])||[]; var pagado=false, allDone=true, any=false;
+  etapas.forEach(function(e){ ((WF_INS.tareas[e.id])||[]).forEach(function(tk){ any=true; var done=insTareaHecha(cli,wfId,tk); if(done){ if(PAGO_FINAL_INS.indexOf(tk.tarea_id)>=0)pagado=true; } else { allDone=false; } }); });
+  if(!any) return false;
+  return pagado||allDone;
+}
+function insVenceInfo(wf){
+  var mi=MESES_WF.indexOf(MES_INS); var due=null;
+  if(wf==='TSS')due=CAL_TSS_INS[mi]; else if(CALKEY_INS[wf]&&CAL_DGII_INS[mi])due=CAL_DGII_INS[mi][CALKEY_INS[wf]];
+  if(!due)return{date:null,overdue:false,soon:false,none:true};
+  var dy=due.m<mi?ANIO_INS+1:ANIO_INS; var date=new Date(dy,due.m,due.d);
+  var now=new Date(); var hoy=new Date(now.getFullYear(),now.getMonth(),now.getDate());
+  var diff=Math.round((date-hoy)/86400000);
+  return{date:date,diff:diff,overdue:diff<0,soon:diff>=0&&diff<=3,none:false};
+}
+function insMatchPersona(nombre,p){ if(!nombre)return false; var n=(''+nombre).trim().toLowerCase(),q=(''+(p||'')).trim().toLowerCase(); if(!n||!q)return false; return n===q||q.startsWith(n+' ')||n.startsWith(q+' ')||q.startsWith(n)||n.startsWith(q); }
+function insPersonaTiene(c,p){ return insMatchPersona(c.contadora,p)||insMatchPersona(c.contadoraImp,p); }
+function computeWorklist(nombre){
+  var items=[]; if(!WF_INS) return items;
+  (CLIENTES_INS||[]).filter(function(c){ return insPersonaTiene(c,nombre); }).forEach(function(c){
+    WF_INS.orden.forEach(function(wf){
+      var vi=insVenceInfo(wf); if(vi.none) return;
+      if(insJobCompleto(c.nombre,wf)) return;
+      var stat=ESTADO_INS[c.nombre+'||'+MES_INS+'||'+ANIO_INS+'||'+wf];
+      var tipo=null, sev=0;
+      if(vi.overdue){ tipo='atrasado'; sev=4; }
+      else if(stat==='bloqueado'){ tipo='bloqueado'; sev=3; }
+      else if(stat==='esperando'){ tipo='esperando'; sev=2; }
+      else if(vi.soon){ tipo='vence'; sev=1; }
+      if(tipo) items.push({ cliente:c.nombre, wf:wf, tipo:tipo, sev:sev, vi:vi });
+    });
+  });
+  items.sort(function(a,b){ return b.sev-a.sev; });
+  return items;
+}
+function insFmtDia(d){ return d? d.toLocaleDateString('es-DO',{day:'numeric',month:'short'}) : ''; }
+function insTareaFechaVal(cli,wfId,tk){
+  var src = tk.checklist_origen==='contadores' ? (CONTAB_INS[insContadoraDe(cli)+'_'+cli+'_'+MES_INS]) : (IMP_INS[cli+'||'+MES_INS+'||'+wfId]);
+  if(!src) return null; var it=src.datos&&src.datos[tk.tarea_id]; return (it&&it.done===true)?(it.fecha||null):null;
+}
+function insLastActivity(cli,wfId){
+  var etapas=(WF_INS&&WF_INS.etapas[wfId])||[]; var maxF=null;
+  etapas.forEach(function(e){ ((WF_INS.tareas[e.id])||[]).forEach(function(tk){ var f=insTareaFechaVal(cli,wfId,tk); if(f && f>(''+maxF)) maxF=f; }); });
+  return maxF;
+}
+// Tiles de Workflows: Vencen hoy · Sin actividad +3 días · Atrasados · En curso
+// Cuenta ITEMS del checklist por estado (igual que la pestaña Tareas Checklist), filtrado por rol.
+// persona = contadora → solo SUS tareas (contadores-origen de sus clientes). null = admin → todo.
+function computeWorkflowStats(persona){
+  var s={vencenHoy:0,sinActividad:0,atrasados:0,enCurso:0}; if(!WF_INS) return s;
+  var hoy=new Date(); hoy=new Date(hoy.getFullYear(),hoy.getMonth(),hoy.getDate());
+  (CLIENTES_INS||[]).forEach(function(c){
+    var cli=c.nombre;
+    var mineContab = !persona || insMatchPersona(c.contadora, persona);
+    WF_INS.orden.forEach(function(wf){
+      var vi=insVenceInfo(wf); if(vi.none) return;
+      if(insJobCompleto(cli,wf)) return;
+      var started=false, last=null;
+      (WF_INS.etapas[wf]||[]).forEach(function(e){ ((WF_INS.tareas[e.id])||[]).forEach(function(tk){ if(insTareaHecha(cli,wf,tk)){ started=true; var f=insTareaFechaVal(cli,wf,tk); if(f&&f>(''+last))last=f; } }); });
+      var laDays = last ? Math.round((hoy - new Date(last+'T12:00:00'))/86400000) : 999;
+      (WF_INS.etapas[wf]||[]).forEach(function(e){ ((WF_INS.tareas[e.id])||[]).forEach(function(tk){
+        if(insTareaHecha(cli,wf,tk)) return; // hecha
+        if(persona){ // contadora: solo tareas de contadora de SUS clientes (no impuestos)
+          if(tk.checklist_origen!=='contadores') return;
+          if(!mineContab) return;
+        }
+        if(vi.overdue) s.atrasados++;
+        else if(vi.diff===0) s.vencenHoy++;
+        else if(!started||laDays>3) s.sinActividad++;
+        else s.enCurso++;
+      }); });
+    });
+  });
+  return s;
+}
+// Lista de tareas pendientes del checklist (mismo cálculo y filtro que los tiles / Tareas Checklist)
+function insMisTareasChecklist(persona){
+  var rows=[]; if(!WF_INS) return rows;
+  var hoy=new Date(); hoy=new Date(hoy.getFullYear(),hoy.getMonth(),hoy.getDate());
+  (CLIENTES_INS||[]).forEach(function(c){
+    var cli=c.nombre;
+    var mineContab = !persona || insMatchPersona(c.contadora, persona);
+    WF_INS.orden.forEach(function(wf){
+      var vi=insVenceInfo(wf); if(vi.none) return;
+      if(insJobCompleto(cli,wf)) return;
+      var started=false,last=null;
+      (WF_INS.etapas[wf]||[]).forEach(function(e){ ((WF_INS.tareas[e.id])||[]).forEach(function(tk){ if(insTareaHecha(cli,wf,tk)){ started=true; var f=insTareaFechaVal(cli,wf,tk); if(f&&f>(''+last))last=f; } }); });
+      var laDays=last?Math.round((hoy-new Date(last+'T12:00:00'))/86400000):999;
+      (WF_INS.etapas[wf]||[]).forEach(function(e){ ((WF_INS.tareas[e.id])||[]).forEach(function(tk){
+        if(insTareaHecha(cli,wf,tk)) return;
+        if(persona){ if(tk.checklist_origen!=='contadores') return; if(!mineContab) return; }
+        var status;
+        if(vi.overdue) status='atrasado';
+        else if(vi.diff===0) status='vencen_hoy';
+        else if(!started||laDays>3) status='sin_actividad';
+        else status='en_curso';
+        rows.push({cli:cli, wf:wf, wfLabel:(WF_INS.wf[wf]||wf), etapa:e.label, tarea:tk.label, tareaId:tk.tarea_id, origen:tk.checklist_origen, vence:vi.date, status:status});
+      }); });
+    });
+  });
+  var sev={atrasado:0,vencen_hoy:1,sin_actividad:2,en_curso:3};
+  rows.sort(function(a,b){ if(sev[a.status]!==sev[b.status]) return sev[a.status]-sev[b.status]; return (a.vence&&b.vence)?(a.vence-b.vence):0; });
+  return rows;
+}
+var INS_STLBL={atrasado:['Atrasado','var(--red)'],vencen_hoy:['Vence hoy','#d97706'],sin_actividad:['Sin actividad','#b45309'],en_curso:['En curso','var(--blue)']};
+// Resumen de equipo: por contadora, # de clientes que requieren acción
+function computeTeamSummary(){
+  return (INSIGHTS_CONTADORAS||[]).map(function(n){
+    var wl=computeWorklist(n);
+    return { nombre:n, total:wl.length, urgentes:wl.filter(function(x){return x.tipo==='atrasado'||x.tipo==='bloqueado';}).length };
+  }).sort(function(a,b){ return b.total-a.total; });
+}
+var ADMIN_TASK_MEMBER = '';
+function setAdminTaskMember(v){ ADMIN_TASK_MEMBER=v; renderHomeContent(); }
+// Íconos inline estilo lucide (stroke=currentColor), igual que el resto del portal
+var INS_ICONS = {
+  clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+  zzz: '<path d="M4 7h7l-7 10h7"/><path d="M14 4h6l-6 8h6"/>',
+  alert: '<path d="M12 3 2 20h20L12 3z"/><path d="M12 10v4"/><path d="M12 17h.01"/>',
+  activity: '<path d="M3 12h4l3 8 4-16 3 8h4"/>',
+  users: '<circle cx="9" cy="8" r="3"/><path d="M3 20c0-3 3-5 6-5s6 2 6 5"/><path d="M16 6a3 3 0 0 1 0 6"/><path d="M21 20c0-2-1.5-3.5-3.5-4.2"/>',
+  check: '<rect x="4" y="4" width="16" height="16" rx="3"/><path d="M9 12l2 2 4-4"/>',
+  circle: '<circle cx="12" cy="12" r="8"/>'
+};
+function insIco(name, cls){ return '<svg viewBox="0 0 24 24"'+(cls?(' class="'+cls+'"'):'')+'>'+(INS_ICONS[name]||'')+'</svg>'; }
+function insInitials(nombre){ var p=(nombre||'').trim().split(/\s+/); return ((p[0]||'')[0]||'').toUpperCase()+((p[1]||'')[0]||'').toUpperCase(); }
+function insTileHTML(num, label, sub, color, ico, onclick){
+  color = color || 'var(--navy)';
+  var attrs = onclick ? (' onclick="'+onclick+'" style="cursor:pointer"') : '';
+  return '<div class="ins-tile"'+attrs+'><div class="ins-tile-head" style="color:'+color+'">'+insIco(ico||'circle')+insEsc(label)+'</div>'+
+    '<div class="ins-tile-num" style="color:'+color+'">'+num+(sub?(' <small>'+insEsc(sub)+'</small>'):'')+'</div></div>';
+}
+// Estado de un workflow para un cliente (para la tabla de la contadora)
+function insWorkflowEstado(cli, wf){
+  var vi=insVenceInfo(wf); if(vi.none) return null;
+  if(insJobCompleto(cli,wf)) return {t:'Completado', c:'var(--green)'};
+  var stat=ESTADO_INS[cli+'||'+MES_INS+'||'+ANIO_INS+'||'+wf];
+  if(vi.overdue) return {t:'Atrasado', c:'var(--red)'};
+  if(stat==='bloqueado') return {t:'Bloqueado', c:'var(--red)'};
+  if(stat==='esperando') return {t:'Esperando', c:'var(--amber)'};
+  if(vi.soon) return {t:'Vence pronto', c:'var(--amber)'};
+  var started=false; (WF_INS.etapas[wf]||[]).forEach(function(e){ ((WF_INS.tareas[e.id])||[]).forEach(function(tk){ if(insTareaHecha(cli,wf,tk)) started=true; }); });
+  return started ? {t:'En curso', c:'var(--blue)'} : {t:'Pendiente', c:'var(--muted)'};
+}
+// Avance del checklist de contabilidad de un cliente (tareas de origen 'contadores', sin duplicar)
+function insContabProgress(cli){
+  if(!WF_INS) return null;
+  var seen={}, total=0, done=0;
+  (WF_INS.orden||[]).forEach(function(wf){
+    (WF_INS.etapas[wf]||[]).forEach(function(e){
+      ((WF_INS.tareas[e.id])||[]).forEach(function(tk){
+        if(tk.checklist_origen!=='contadores') return;
+        if(seen[tk.tarea_id]) return; seen[tk.tarea_id]=1;
+        total++; if(insTareaHecha(cli,wf,tk)) done++;
+      });
+    });
+  });
+  return total ? {pct:Math.round(done/total*100), done:done, total:total} : null;
+}
+// Responsabilidades fiscales en orden fijo (TSS, IR-3, IR-17, Anticipo, ITBIS)
+var INS_FISCAL_ORDER=['TSS','IR-3','IR-17','Anticipo','ITBIS'];
+function insFiscalWfId(name){ if(!WF_INS) return null; return (WF_INS.orden||[]).find(function(id){ return id===name || (WF_INS.wf[id]||'').toLowerCase()===name.toLowerCase(); })||null; }
+// Estado de la parte de la CONTADORA de un impuesto para un cliente: done / overdue / pending / na
+function insImpuestoEstado(cli, wf){
+  if(!WF_INS) return 'na';
+  var vi=insVenceInfo(wf); if(vi.none) return 'na';
+  var total=0, done=0;
+  (WF_INS.etapas[wf]||[]).forEach(function(e){ ((WF_INS.tareas[e.id])||[]).forEach(function(tk){ if(tk.checklist_origen!=='contadores') return; total++; if(insTareaHecha(cli,wf,tk)) done++; }); });
+  if(total===0) return 'na';
+  if(done>=total) return 'done';
+  if(vi.overdue) return 'overdue';
+  return 'pending';
+}
+// Fecha en que empezó el trabajo del impuesto para un cliente (primera tarea hecha)
+function insInicioTarea(cli, wf){
+  if(!WF_INS||!wf) return null;
+  var min=null;
+  (WF_INS.etapas[wf]||[]).forEach(function(e){ ((WF_INS.tareas[e.id])||[]).forEach(function(tk){ var f=insTareaFechaVal(cli,wf,tk); if(f && (min===null || f<min)) min=f; }); });
+  return min;
+}
+function insFiscalDot(estado){
+  if(estado==='done') return '<span title="Hecho" style="color:var(--green);font-weight:700">✓</span>';
+  if(estado==='overdue') return '<span title="Atrasado" style="display:inline-block;width:9px;height:9px;border-radius:50%;background:var(--red)"></span>';
+  if(estado==='pending') return '<span title="Pendiente" style="display:inline-block;width:9px;height:9px;border-radius:50%;background:#f59e0b"></span>';
+  return '<span title="N/A" style="color:var(--muted)">·</span>';
+}
+// Agregados de equipo (admin)
+function insTeamEval(kdList){
+  var dig=0,carga=0,resD=0,resT=0,vidD=0,vidT=0;
+  (kdList||[]).forEach(function(row){
+    var d=row.datos||{};
+    if(d.digitacion){ Object.keys(d.digitacion).forEach(function(cli){ var wk=d.digitacion[cli]; if(Array.isArray(wk)) wk.forEach(function(w){ dig+=(w&&w.dig)||0; carga+=(w&&w.carga)||0; }); }); }
+    if(d.resumenes){ Object.keys(d.resumenes).forEach(function(k){ resT++; if(d.resumenes[k]&&d.resumenes[k].done) resD++; }); }
+    if(d.video){ Object.keys(d.video).forEach(function(k){ vidT++; if(d.video[k]&&d.video[k].done) vidD++; }); }
+  });
+  return {dig:dig,carga:carga,digPct:carga>0?Math.min(100,Math.round(dig/carga*100)):null,resD:resD,resT:resT,resPct:resT>0?Math.round(resD/resT*100):null,vidD:vidD,vidT:vidT,vidPct:vidT>0?Math.round(vidD/vidT*100):null};
+}
+function insContadoraProgress(nombre){
+  var total=0,done=0;
+  (CLIENTES_INS||[]).filter(function(c){ return insMatchPersona(c.contadora, nombre); }).forEach(function(c){
+    var p=insContabProgress(c.nombre); if(p){ total+=p.total; done+=p.done; }
+  });
+  return total?{pct:Math.round(done/total*100),done:done,total:total}:null;
+}
+function previewContadoraIdx(i){ previewContadora(INSIGHTS_CONTADORAS[i]); }
+// Estado de un impuesto para TODOS los clientes de una contadora:
+// todas listas → done(verde); algunas no → pending(amarillo); más de la mitad no → overdue(rojo)
+function insTeamImpuestoEstado(nombre, wf){
+  var cls = (CLIENTES_INS||[]).filter(function(c){ return insMatchPersona(c.contadora, nombre); });
+  var total=0, notReady=0;
+  cls.forEach(function(c){ var e=insImpuestoEstado(c.nombre, wf); if(e==='na') return; total++; if(e!=='done') notReady++; });
+  if(total===0) return 'na';
+  if(notReady===0) return 'done';
+  if(notReady > total/2) return 'overdue';
+  return 'pending';
+}
+
+async function loadContadorasList(){
+  try{ var r = await sb.from('equipo').select('nombre, apellido, excluida_contadoras').eq('rol_portal','contadora').eq('activo', true).order('nombre');
+    INSIGHTS_CONTADORAS = (r.data||[]).filter(function(e){ return e.excluida_contadoras !== true; }).map(function(e){ return (e.nombre + (e.apellido?(' '+e.apellido):'')).trim(); }); }catch(e){ INSIGHTS_CONTADORAS=[]; }
+}
+
+async function loadInsights(nombre){
+  var fn = insFirstName(nombre);
+  var tareas=[], menciones=[];
+  try{ var t = await sb.from('tl_tareas').select('id,titulo,asignado,fecha_limite,cliente').eq('asignado', nombre);
+    tareas = (t.data||[]).sort(function(a,b){ return (a.fecha_limite||'9999')<(b.fecha_limite||'9999')?-1:1; }); }catch(e){}
+  try{ var m = await sb.from('notificaciones').select('*').eq('leido', false).ilike('destinatario', fn).order('created_at',{ascending:false}).limit(10); menciones = m.data||[]; }catch(e){}
+  if(!WF_INS_LOADED){ try{ await loadWorkflowState(); }catch(e){} }
+  var worklist = computeWorklist(nombre);
+  // KPI del mes en presentación: scores guardados + detalle (para conteos)
+  var kpi=null, kpiDet=null;
+  try{ var ks=await sb.from('kpi_scores').select('*').eq('anio',ANIO_INS).eq('mes',MES_INS); kpi=(ks.data||[]).find(function(r){ return insMatchPersona(r.contadora, nombre); })||null; }catch(e){}
+  try{ var kd=await sb.from('kpi_detalle').select('contadora,datos').eq('anio',ANIO_INS).eq('mes',MES_INS); var dr=(kd.data||[]).find(function(r){ return insMatchPersona(r.contadora, nombre); }); kpiDet=dr?dr.datos:null; }catch(e){}
+  return { tareas: tareas, menciones: menciones, worklist: worklist, kpi: kpi, kpiDet: kpiDet };
+}
+
+async function renderHomeContent(){
+  // Registro rol → Insight: cada rol aterriza en su propio inicio.
+  //  contadores → panel personal | admin → dashboard de equipo | resto → inicio genérico (placeholder hasta tener panel propio)
+  if (isContadoraRole()) {
+    var data = await loadInsights(userName);
+    renderInsights(userName, data, false);
+    return;
+  }
+  if (userRole !== 'admin') { await renderGenericInsight(); return; } // impuestos / comercial / implementaciones
+  // Admin: dashboard espejo del de las contadoras, pero a nivel EQUIPO
+  renderWelcome();
+  await loadContadorasList();
+  if(!WF_INS_LOADED){ try{ await loadWorkflowState(); }catch(e){} }
+  // Evaluación del equipo (sumatoria) + KPI promedio + menciones del admin
+  var kdAll=[]; try{ var kdr=await sb.from('kpi_detalle').select('contadora,datos').eq('anio',ANIO_INS).eq('mes',MES_INS); kdAll=kdr.data||[]; }catch(e){}
+  var ksAll=[]; try{ var ksr=await sb.from('kpi_scores').select('total').eq('anio',ANIO_INS).eq('mes',MES_INS); ksAll=ksr.data||[]; }catch(e){}
+  var menc=0; try{ var mm=await sb.from('notificaciones').select('id').eq('leido',false).ilike('destinatario',insFirstName(userName)); menc=(mm.data||[]).length; }catch(e){}
+  var teamEval=insTeamEval(kdAll);
+  var teamKpi = ksAll.length?Math.round(ksAll.reduce(function(s,x){return s+(x.total||0);},0)/ksAll.length):null;
+  var mesLbl=(MES_INS||''); mesLbl=mesLbl.charAt(0).toUpperCase()+mesLbl.slice(1);
+  var _cc = function(v){ if(v==null) return 'var(--muted)'; return v>=100?'var(--green)':v>=80?'var(--navy)':v>=50?'var(--amber)':'var(--red)'; };
+  var _pp = function(v){ return v==null?'—':(v+'%'); };
+
+  var h = insMonthSelector();
+
+  // ── Estatus del equipo: 4 workflows + 5 eval (sumatoria del equipo) ──
+  var ws = computeWorkflowStats(null);
+  var estBody = '<div class="ins-tiles" style="margin-bottom:10px">'+
+    insTileHTML(ws.vencenHoy,'Vencen hoy','', ws.vencenHoy>0?'var(--amber)':'var(--navy)','clock',"openModule('tareas',false,'#tc=vencen_hoy')")+
+    insTileHTML(ws.sinActividad,'Sin actividad','+3 días', ws.sinActividad>0?'var(--amber)':'var(--navy)','zzz',"openModule('tareas',false,'#tc=sin_actividad')")+
+    insTileHTML(ws.atrasados,'Atrasados','', ws.atrasados>0?'var(--red)':'var(--navy)','alert',"openModule('tareas',false,'#tc=atrasado')")+
+    insTileHTML(ws.enCurso,'En curso','','var(--blue)','activity',"openModule('tareas',false,'#tc=en_curso')")+
+    '</div>'+
+    '<div class="ins-tiles" style="grid-template-columns:repeat(auto-fit,minmax(135px,1fr))">'+
+    insTileHTML(_pp(teamEval.digPct),'Digitación', (teamEval.carga>0?(teamEval.dig+'/'+teamEval.carga):''), _cc(teamEval.digPct),'activity')+
+    insTileHTML(_pp(teamEval.resPct),'Resúmenes', (teamEval.resT?(teamEval.resD+' de '+teamEval.resT):''), _cc(teamEval.resPct),'check')+
+    insTileHTML(_pp(teamEval.vidPct),'Correos / Reuniones', (teamEval.vidT?(teamEval.vidD+' de '+teamEval.vidT):''), _cc(teamEval.vidPct),'users')+
+    insTileHTML(teamKpi!=null?(teamKpi+'%'):'—','KPI equipo','promedio',_cc(teamKpi),'activity')+
+    insTileHTML(menc,'Menciones','sin leer', menc>0?'var(--amber)':'var(--green)','circle')+
+    '</div>';
+  h += insSec('estatus', '📊 Estatus del equipo — '+insEsc(mesLbl), estBody);
+
+  // ── Resumen del equipo: contadoras (con clientes) + 5 impuestos a nivel equipo + progreso. Sin scroller (equipo completo). Clic → su panel. ──
+  var _tfmap = {}; INS_FISCAL_ORDER.forEach(function(nm){ _tfmap[nm]=insFiscalWfId(nm); });
+  var _tth = function(txt,align){ return '<th style="text-align:'+(align||'left')+';padding:7px 6px;font-size:0.6rem;text-transform:uppercase;letter-spacing:0.3px;color:var(--muted);border-bottom:2px solid var(--border,#e5e7eb)">'+txt+'</th>'; };
+  var resBody = '<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:0.82rem">';
+  resBody += '<thead><tr>'+_tth('Contadora')+INS_FISCAL_ORDER.map(function(nm){return _tth(nm,'center');}).join('')+_tth('Progreso')+_tth('%','right')+'</tr></thead><tbody>';
+  (INSIGHTS_CONTADORAS||[]).forEach(function(n, idx){
+    var p=insContadoraProgress(n); if(!p) return; // sin clientes → fuera (excluye contadoras "fantasma")
+    var pct=p.pct;
+    var dots = INS_FISCAL_ORDER.map(function(nm){ var wf=_tfmap[nm]; return '<td style="padding:8px 4px;text-align:center">'+insFiscalDot(wf?insTeamImpuestoEstado(n,wf):'na')+'</td>'; }).join('');
+    resBody += '<tr onclick="previewContadoraIdx('+idx+')" style="cursor:pointer;border-bottom:1px solid #f1f5f9">'+
+      '<td style="padding:8px 9px;font-weight:600;color:var(--navy);white-space:nowrap"><span class="ins-avatar" style="display:inline-flex;vertical-align:middle;margin-right:8px">'+insEsc(insInitials(n))+'</span>'+insEsc(n)+'</td>'+
+      dots+
+      '<td style="padding:8px 9px"><div class="ins-bar" style="max-width:150px"><div style="width:'+pct+'%;background:'+(pct>=100?'var(--green)':'var(--blue)')+'"></div></div></td>'+
+      '<td style="padding:8px 9px;text-align:right;font-weight:700;color:'+(pct>=100?'var(--green)':'var(--navy)')+'">'+pct+'%</td>'+
+    '</tr>';
+  });
+  resBody += '</tbody></table></div>';
+  h += insSec('teamres', '👥 Resumen del equipo', resBody);
+
+  // ── Tareas del equipo: 5 más atrasadas (checklist) ──
+  var allRows = insMisTareasChecklist(null);
+  var atras = allRows.filter(function(r){ return r.status==='atrasado'; }).slice(0,5);
+  var tareasBody;
+  if(!atras.length){ tareasBody='<div class="ins-card" style="padding:16px;color:var(--muted);font-size:0.85rem">No hay tareas atrasadas. 🎉</div>'; }
+  else {
+    tareasBody = '<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:0.8rem"><thead><tr>'+
+      ['Cliente','Contadora','Impuesto','Tarea','Vence'].map(function(th){ return '<th style="text-align:left;padding:7px 9px;font-size:0.62rem;text-transform:uppercase;letter-spacing:0.3px;color:var(--muted);border-bottom:2px solid var(--border,#e5e7eb)">'+th+'</th>'; }).join('')+'</tr></thead><tbody>';
+    atras.forEach(function(r){
+      var v=r.vence?insFmtDia(r.vence):'—';
+      var cont = (r.origen==='contadores') ? insContadoraDe(r.cli) : '';
+      tareasBody += '<tr onclick="openModule(\'tareas\',false,\'#tc=atrasado\')" style="cursor:pointer;border-bottom:1px solid #f1f5f9">'+
+        '<td style="padding:8px 9px;font-weight:600;color:var(--navy);white-space:nowrap">'+insEsc(r.cli)+'</td>'+
+        '<td style="padding:8px 9px;color:var(--muted);white-space:nowrap">'+insEsc(cont)+'</td>'+
+        '<td style="padding:8px 9px"><span style="font-size:0.66rem;font-weight:700;background:#eef2f7;padding:2px 7px;border-radius:5px">'+insEsc(r.wfLabel)+'</span></td>'+
+        '<td style="padding:8px 9px">'+insEsc(r.tarea||'')+'</td>'+
+        '<td style="padding:8px 9px;white-space:nowrap;color:var(--red);font-weight:600">'+v+'</td>'+
+      '</tr>';
+    });
+    tareasBody += '</tbody></table></div>';
+  }
+  h += insSec('teamtareas', '📋 Tareas del equipo — 5 más atrasadas', tareasBody);
+
+  // ── Negocio (colapsable) ──
+  h += insSec('negocio', '📈 Negocio', '<div id="biz-dash"><div class="dash-loading">Cargando…</div></div>');
+
+  var dk = document.getElementById('dashboard-kpis');
+  if (dk) dk.innerHTML = h;
+  try{ var dashData = await loadDashboardData(); renderDashboard(dashData, 'biz-dash'); }
+  catch(e){ console.error('Error cargando dashboard de negocio:', e); var bz=document.getElementById('biz-dash'); if(bz) bz.innerHTML='<div class="dash-loading">Error cargando datos de negocio.</div>'; }
+}
+
+// Inicio genérico para roles sin panel propio aún (impuestos, comercial, implementaciones).
+// Muestra lo universal: tareas asignadas, vencimientos y menciones. Se reemplaza por un panel a medida cuando se diseñe el de cada rol.
+async function renderGenericInsight(){
+  INS_VIEW.preview = null;
+  renderWelcome();
+  var nombre = userName, fn = insFirstName(nombre);
+  var hoy = new Date().toISOString().split('T')[0];
+  var tareas = [], menciones = [];
+  try{ var t = await sb.from('tl_tareas').select('id,titulo,asignado,fecha_limite,cliente').eq('asignado', nombre);
+    tareas = (t.data||[]).sort(function(a,b){ return (a.fecha_limite||'9999')<(b.fecha_limite||'9999')?-1:1; }); }catch(e){}
+  try{ var m = await sb.from('notificaciones').select('*').eq('leido',false).ilike('destinatario',fn).order('created_at',{ascending:false}).limit(10); menciones = m.data||[]; }catch(e){}
+  var vencidas = tareas.filter(function(t){ return t.fecha_limite && t.fecha_limite < hoy; });
+  var proximas = tareas.filter(function(t){ return !t.fecha_limite || t.fecha_limite >= hoy; });
+
+  var h = '';
+  h += '<div class="ins-sec-head">'+insIco('activity')+'Mi inicio</div>';
+  h += '<div class="ins-tiles" style="margin-bottom:16px">'+
+    insTileHTML(vencidas.length,'Tareas atrasadas','', vencidas.length>0?'var(--red)':'var(--green)','alert',"openModule('tareas')")+
+    insTileHTML(proximas.length,'Tareas pendientes','', proximas.length>0?'var(--blue)':'var(--navy)','check',"openModule('tareas')")+
+    insTileHTML(menciones.length,'Menciones','sin leer', menciones.length>0?'var(--amber)':'var(--green)','circle')+
+    '</div>';
+
+  // Mis tareas
+  var tBody;
+  if(!tareas.length){ tBody='<div class="ins-card" style="padding:16px;color:var(--muted);font-size:0.85rem">No tienes tareas asignadas. 🎉</div>'; }
+  else {
+    var fila = function(t,danger){ var fecha = t.fecha_limite ? new Date(t.fecha_limite+'T00:00:00').toLocaleDateString('es-DO',{day:'2-digit',month:'short'}) : '';
+      return '<div class="ins-task" onclick="openModule(\'tareas\')">'+
+        '<span style="color:var(--muted);display:flex">'+insIco('circle')+'</span>'+
+        '<span style="flex:1">'+insEsc(t.titulo||'(sin título)')+(t.cliente?(' <span style="color:var(--muted);font-size:0.78rem">· '+insEsc(t.cliente)+'</span>'):'')+'</span>'+
+        (fecha?('<span style="font-size:0.76rem;white-space:nowrap;color:'+(danger?'var(--red)':'var(--muted)')+'">'+fecha+'</span>'):'')+'</div>'; };
+    tBody = '<div class="ins-card">';
+    if(vencidas.length){ tBody+='<div class="ins-grouplabel" style="color:var(--red);background:var(--amber-light)">Atrasadas ('+vencidas.length+')</div>'; vencidas.slice(0,15).forEach(function(t){ tBody+=fila(t,true); }); }
+    if(proximas.length){ tBody+='<div class="ins-grouplabel" style="color:var(--muted);background:var(--bg)">Próximas ('+proximas.length+')</div>'; proximas.slice(0,15).forEach(function(t){ tBody+=fila(t,false); }); }
+    tBody += '</div>';
+  }
+  h += insSec('gtareas','📋 Mis tareas', tBody);
+
+  // Menciones
+  var mBody;
+  if(!menciones.length){ mBody='<div class="ins-card" style="padding:16px;color:var(--muted);font-size:0.85rem">Sin menciones nuevas.</div>'; }
+  else {
+    mBody = '<div class="ins-card">'+menciones.map(function(n){
+      return '<div class="ins-task"><span style="color:var(--amber);display:flex">'+insIco('circle')+'</span>'+
+        '<span style="flex:1"><b>'+insEsc(n.autor_nombre||'Alguien')+'</b> te mencionó'+(n.tarea_titulo?(' en <b>'+insEsc(n.tarea_titulo)+'</b>'):'')+(n.texto?(': <span style="color:var(--muted)">'+insEsc(String(n.texto).slice(0,80))+'</span>'):'')+'</span></div>';
+    }).join('')+'</div>';
+  }
+  h += insSec('gmenc','🔔 Menciones', mBody);
+
+  h += '<div style="margin-top:14px;font-size:0.78rem;color:var(--muted);font-style:italic">Tu panel a medida está en camino. Por ahora ves tus tareas y menciones.</div>';
+
+  document.getElementById('dashboard-kpis').innerHTML = h;
+}
+
+function renderTasksToDo(allTasks){
+  var hoy=new Date().toISOString().split('T')[0];
+  var personas=[...new Set((allTasks||[]).map(function(t){return t.asignado;}).filter(Boolean))].sort();
+  var tasks=(allTasks||[]).filter(function(t){ return !ADMIN_TASK_MEMBER || t.asignado===ADMIN_TASK_MEMBER; });
+  var atrasadas=tasks.filter(function(t){return t.fecha_limite && t.fecha_limite<hoy;}).sort(function(a,b){return a.fecha_limite<b.fecha_limite?-1:1;});
+  var proximas=tasks.filter(function(t){return !t.fecha_limite || t.fecha_limite>=hoy;}).sort(function(a,b){return (a.fecha_limite||'9999')<(b.fecha_limite||'9999')?-1:1;});
+  var h='<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">'+
+    '<div class="ins-sec-head" style="margin-bottom:0">'+insIco('check')+'Tareas del equipo</div>'+
+    '<select onchange="setAdminTaskMember(this.value)" style="padding:6px 10px;border:1px solid var(--border);border-radius:8px;font-family:inherit;font-size:0.8rem;color:var(--text)"><option value="">Todo el equipo</option>'+
+    personas.map(function(p){return '<option'+(ADMIN_TASK_MEMBER===p?' selected':'')+'>'+insEsc(p)+'</option>';}).join('')+'</select></div>';
+  function fila(t, danger){
+    var fecha = t.fecha_limite ? new Date(t.fecha_limite+'T00:00:00').toLocaleDateString('es-DO',{day:'2-digit',month:'short'}) : '';
+    return '<div class="ins-task" onclick="openModule(\'tareas\')">'+
+      '<span style="color:var(--muted);display:flex">'+insIco('circle')+'</span>'+
+      '<span style="flex:1">'+insEsc(t.titulo||'(sin título)')+(t.cliente?(' <span style="color:var(--muted);font-size:0.78rem">· '+insEsc(t.cliente)+'</span>'):'')+'</span>'+
+      (t.asignado?('<span class="ins-chip">'+insEsc(t.asignado)+'</span>'):'')+
+      (fecha?('<span style="font-size:0.76rem;white-space:nowrap;color:'+(danger?'var(--red)':'var(--muted)')+'">'+fecha+'</span>'):'')+'</div>';
+  }
+  if(!atrasadas.length && !proximas.length){
+    h+='<div class="ins-card" style="padding:16px;color:var(--muted);font-size:0.85rem">No hay tareas pendientes.</div>';
+    return h;
+  }
+  h+='<div class="ins-card">';
+  if(atrasadas.length){ h+='<div class="ins-grouplabel" style="color:var(--red);background:var(--amber-light)">Atrasadas ('+atrasadas.length+')</div>'; atrasadas.slice(0,15).forEach(function(t){ h+=fila(t,true); }); }
+  if(proximas.length){ h+='<div class="ins-grouplabel" style="color:var(--muted);background:var(--bg)">Próximas ('+proximas.length+')</div>'; proximas.slice(0,15).forEach(function(t){ h+=fila(t,false); }); }
+  h+='</div>';
+  return h;
+}
+
+async function previewContadora(nombre){
+  if (!nombre) { renderHomeContent(); return; }
+  var data = await loadInsights(nombre);
+  renderInsights(nombre, data, true);
+}
+
+// Sección colapsable (dropdown) para el panel de la contadora
+function insSec(id, title, body){
+  return '<h3 class="dash-section-title" style="cursor:pointer;user-select:none" onclick="insToggleCollap(\''+id+'\')"><span id="arr-'+id+'" style="display:inline-block;width:14px;color:var(--muted);font-size:0.8rem">▾</span> '+title+'</h3><div id="sec-'+id+'">'+body+'</div>';
+}
+function insToggleCollap(id){ var b=document.getElementById('sec-'+id), a=document.getElementById('arr-'+id); if(!b)return; var hid=b.style.display==='none'; b.style.display=hid?'':'none'; if(a)a.textContent=hid?'▾':'▸'; }
+
+// Dropdown de meses (Enero → mes actual del año en curso). Permite mirar cómo cerró un mes pasado.
+function insMonthSelector(){
+  var d=new Date(); var maxM=d.getMonth(), yr=d.getFullYear();
+  var cur=MES_INS||MESES_WF[maxM];
+  var opts='';
+  for(var i=0;i<=maxM;i++){ var nm=MESES_WF[i]; var lbl=nm.charAt(0).toUpperCase()+nm.slice(1);
+    opts+='<option value="'+nm+'"'+(nm===cur?' selected':'')+'>'+lbl+' '+yr+'</option>'; }
+  return '<div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;flex-wrap:wrap">'+
+    '<span style="font-size:0.7rem;text-transform:uppercase;letter-spacing:0.4px;color:var(--muted);font-weight:700">Mes</span>'+
+    '<select onchange="insChangeMonth(this.value)" style="padding:6px 12px;border:1px solid var(--border,#e5e7eb);border-radius:8px;font-family:inherit;font-size:0.85rem;color:var(--text);font-weight:600;background:#fff;cursor:pointer">'+opts+'</select>'+
+  '</div>';
+}
+function insChangeMonth(val){
+  if(!val) return;
+  INS_SEL={ mes: val, anio: new Date().getFullYear() };
+  WF_INS_LOADED=false; // forzar recarga de los datos del mes elegido
+  if(INS_VIEW.preview){ previewContadora(INS_VIEW.preview); }
+  else { renderHomeContent(); }
+}
+
+function renderInsights(nombre, data, isPreview){
+  var firstName = insFirstName(nombre) || 'Contadora';
+  var hoy = new Date().toISOString().split('T')[0];
+  var tareas = data.tareas||[], menciones = data.menciones||[], worklist = data.worklist||[];
+  var vencidas = tareas.filter(function(t){ return t.fecha_limite && t.fecha_limite < hoy; }).length;
+  var urgentes = worklist.filter(function(it){ return it.tipo==='atrasado'||it.tipo==='bloqueado'; }).length;
+
+  document.getElementById('welcome-banner').innerHTML =
+    (isPreview ? '<div style="margin-bottom:8px"><button onclick="previewContadora(\'\')" style="border:1px solid var(--border,#e5e7eb);background:#fff;border-radius:8px;padding:6px 12px;font-size:0.8rem;cursor:pointer">← Volver a mi dashboard</button></div>' : '') +
+    '<h2>' + (isPreview ? ('Panel de ' + insEsc(firstName)) : (getGreeting() + ', ' + insEsc(firstName))) + '</h2>' +
+    '<p>' + formatToday() + '</p>';
+
+  INS_VIEW.preview = isPreview ? nombre : null; // si admin ve el panel de una contadora, el cambio de mes se queda aquí
+  var h = insMonthSelector();
+
+  // ── Estatus: workflows (4 arriba) + evaluación (5 abajo) en una sola sección ──
+  var ws = computeWorkflowStats(nombre);
+  var _kd = data.kpiDet||{};
+  // Completitud SIN penalidad (el % puro). El KPI/bono se quedan como están (no se tocan).
+  var _dig=0,_carga=0;
+  if(_kd.digitacion){ Object.keys(_kd.digitacion).forEach(function(cli){ var wk=_kd.digitacion[cli]; if(Array.isArray(wk)) wk.forEach(function(w){ _dig+=(w&&w.dig)||0; _carga+=(w&&w.carga)||0; }); }); }
+  var _digPct = _carga>0 ? Math.min(100,Math.round(_dig/_carga*100)) : null;
+  var _doneOf = function(o){ if(!o) return {pct:null,txt:''}; var ks=Object.keys(o); if(!ks.length) return {pct:null,txt:''}; var d=ks.filter(function(x){return o[x]&&o[x].done;}).length; return {pct:Math.round(d/ks.length*100), txt:d+' de '+ks.length}; };
+  var _res=_doneOf(_kd.resumenes), _cor=_doneOf(_kd.video);
+  var _cc = function(v){ if(v==null) return 'var(--muted)'; return v>=100?'var(--green)':v>=80?'var(--navy)':v>=50?'var(--amber)':'var(--red)'; };
+  var _pp = function(v){ return v==null?'—':(v+'%'); };
+  var _kpiNum = (data.kpi && data.kpi.total!=null) ? (Math.round(data.kpi.total)+'%') : 'Ver';
+
+  h += '<div class="ins-sec-head">'+insIco('activity')+'Estatus</div>';
+  h += '<div class="ins-tiles" style="margin-bottom:10px">'+
+    insTileHTML(ws.vencenHoy,'Vencen hoy','', ws.vencenHoy>0?'var(--amber)':'var(--navy)','clock',"openModule('tareas',false,'#tc=vencen_hoy')")+
+    insTileHTML(ws.sinActividad,'Sin actividad','+3 días', ws.sinActividad>0?'var(--amber)':'var(--navy)','zzz',"openModule('tareas',false,'#tc=sin_actividad')")+
+    insTileHTML(ws.atrasados,'Atrasados','', ws.atrasados>0?'var(--red)':'var(--navy)','alert',"openModule('tareas',false,'#tc=atrasado')")+
+    insTileHTML(ws.enCurso,'En curso','','var(--blue)','activity',"openModule('tareas',false,'#tc=en_curso')")+
+    '</div>';
+  h += '<div class="ins-tiles" style="grid-template-columns:repeat(auto-fit,minmax(135px,1fr))">'+
+    insTileHTML(_pp(_digPct),'Digitación', (_carga>0?(_dig+'/'+_carga):''), _cc(_digPct),'activity',"openModule('contabilidad',false,'#kpi')")+
+    insTileHTML(_pp(_res.pct),'Resúmenes', _res.txt, _cc(_res.pct),'check',"openModule('contabilidad',false,'#kpi')")+
+    insTileHTML(_pp(_cor.pct),'Correos / Reuniones', _cor.txt, _cc(_cor.pct),'users',"openModule('contabilidad',false,'#kpi')")+
+    insTileHTML(_kpiNum,'Mi KPI','ver detalle','var(--blue)','activity',"openModule('contabilidad',false,'#kpi')")+
+    insTileHTML(menciones.length,'Menciones','sin leer', menciones.length>0?'var(--amber)':'var(--green)','circle')+
+    '</div>';
+
+  // ── Resumen de clientes (tabla colapsable: nombre + % del mes en presentación) ──
+  var misCli = (CLIENTES_INS||[]).filter(function(c){ return insMatchPersona(c.contadora, nombre); });
+  var mesLbl = (MES_INS||''); mesLbl = mesLbl.charAt(0).toUpperCase()+mesLbl.slice(1);
+  var resumenBody;
+  if (!misCli.length) {
+    resumenBody = '<div class="ins-card" style="padding:16px;color:var(--muted);font-size:0.85rem">No tienes clientes asignados.</div>';
+  } else {
+    var _fmap = {}; INS_FISCAL_ORDER.forEach(function(nm){ _fmap[nm]=insFiscalWfId(nm); });
+    var _hth = function(txt,align){ return '<th style="position:sticky;top:0;background:#fff;z-index:1;text-align:'+(align||'left')+';padding:7px 6px;font-size:0.6rem;text-transform:uppercase;letter-spacing:0.3px;color:var(--muted);border-bottom:2px solid var(--border,#e5e7eb)">'+txt+'</th>'; };
+    resumenBody = '<div style="max-height:235px;overflow-y:auto"><table style="width:100%;border-collapse:collapse;font-size:0.8rem">';
+    resumenBody += '<thead><tr>'+_hth('Cliente')+INS_FISCAL_ORDER.map(function(nm){return _hth(nm,'center');}).join('')+_hth('Progreso')+_hth('%','right')+'</tr></thead><tbody>';
+    misCli.forEach(function(c){
+      var p=insContabProgress(c.nombre); var pct=p?p.pct:0;
+      var dots = INS_FISCAL_ORDER.map(function(nm){ var wf=_fmap[nm]; return '<td style="padding:8px 4px;text-align:center">'+insFiscalDot(wf?insImpuestoEstado(c.nombre,wf):'na')+'</td>'; }).join('');
+      resumenBody += '<tr onclick="openModule(\'contabilidad\',false,\'#ck='+encodeURIComponent(c.nombre)+'\')" style="cursor:pointer;border-bottom:1px solid #f1f5f9">'+
+        '<td style="padding:8px 9px;font-weight:600;color:var(--navy);white-space:nowrap">'+insEsc(c.nombre)+'</td>'+
+        dots+
+        '<td style="padding:8px 9px"><div class="ins-bar" style="max-width:150px"><div style="width:'+pct+'%;background:'+(pct>=100?'var(--green)':'var(--blue)')+'"></div></div></td>'+
+        '<td style="padding:8px 9px;text-align:right;font-weight:700;color:'+(pct>=100?'var(--green)':'var(--navy)')+'">'+pct+'%</td>'+
+      '</tr>';
+    });
+    resumenBody += '</tbody></table></div>';
+  }
+  h += insSec('resumen', '👥 Resumen de clientes — '+insEsc(mesLbl), resumenBody);
+
+  // ── Checklist pendientes (tabla colapsable: ~5 visibles + scroll, con Inicio) ──
+  var pend = insMisTareasChecklist(nombre);
+  var pendBody;
+  if (!pend.length) {
+    pendBody = '<div class="ins-card" style="padding:16px;color:var(--muted);font-size:0.85rem">No tienes tareas pendientes. 🎉</div>';
+  } else {
+    var _pth = function(txt){ return '<th style="position:sticky;top:0;background:#fff;z-index:1;text-align:left;padding:7px 9px;font-size:0.62rem;text-transform:uppercase;letter-spacing:0.3px;color:var(--muted);border-bottom:2px solid var(--border,#e5e7eb)">'+txt+'</th>'; };
+    pendBody = '<div style="max-height:240px;overflow-y:auto"><table style="width:100%;border-collapse:collapse;font-size:0.8rem">';
+    pendBody += '<thead><tr>'+['Cliente','Impuesto','Tarea','Inicio','Vence','Estado'].map(_pth).join('')+'</tr></thead><tbody>';
+    pend.forEach(function(r){
+      var lbl=INS_STLBL[r.status]||['',''];
+      var v=r.vence?insFmtDia(r.vence):'—';
+      var ini=insInicioTarea(r.cli, r.wf); var iniStr = ini ? new Date(ini+'T00:00:00').toLocaleDateString('es-DO',{day:'2-digit',month:'short'}) : '—';
+      var vlate=(r.status==='atrasado'||r.status==='vencen_hoy');
+      var _lnk = '#ckitem='+encodeURIComponent(r.cli)+'~'+encodeURIComponent(r.tareaId||'')+'~'+encodeURIComponent(MES_INS||'');
+      pendBody += '<tr onclick="openModule(\'contabilidad\',false,\''+_lnk+'\')" style="cursor:pointer;border-bottom:1px solid #f1f5f9">'+
+        '<td style="padding:8px 9px;font-weight:600;color:var(--navy);white-space:nowrap">'+insEsc(r.cli)+'</td>'+
+        '<td style="padding:8px 9px"><span style="font-size:0.66rem;font-weight:700;background:#eef2f7;padding:2px 7px;border-radius:5px">'+insEsc(r.wfLabel)+'</span></td>'+
+        '<td style="padding:8px 9px">'+insEsc(r.tarea||'')+'</td>'+
+        '<td style="padding:8px 9px;white-space:nowrap;color:var(--muted)">'+iniStr+'</td>'+
+        '<td style="padding:8px 9px;white-space:nowrap;color:'+(vlate?'var(--red)':'var(--muted)')+'">'+v+'</td>'+
+        '<td style="padding:8px 9px;white-space:nowrap;font-weight:600;color:'+lbl[1]+'">'+lbl[0]+'</td>'+
+      '</tr>';
+    });
+    pendBody += '</tbody></table></div>';
+  }
+  h += insSec('pend', '📋 Checklist pendientes'+(pend.length?(' ('+pend.length+')'):''), pendBody);
+
+  // ── Menciones (colapsable) ──
+  if (menciones.length) {
+    var mencBody = '<div style="display:flex;flex-direction:column;gap:6px">';
+    menciones.forEach(function(n){
+      mencBody += '<div onclick="openModule(\'tareas\')" style="cursor:pointer;background:#fff;border:1px solid var(--border,#e5e7eb);border-radius:10px;padding:10px 14px;font-size:0.85rem">'+
+        '<b>' + insEsc(n.autor_nombre||'Alguien') + '</b> te mencionó' + (n.tarea_titulo?(' en <b>'+insEsc(n.tarea_titulo)+'</b>'):'') + (n.texto?(': <span style="color:var(--muted)">'+insEsc(String(n.texto).slice(0,80))+'</span>'):'') + '</div>';
+    });
+    mencBody += '</div>';
+    h += insSec('menc', '🔔 Te mencionaron ('+menciones.length+')', mencBody);
+  }
+
+  // ── Mis tareas (colapsable) ──
+  var tareasBody;
+  if (!tareas.length) { tareasBody = '<div style="color:var(--muted);font-size:0.85rem">No tienes tareas asignadas.</div>'; }
+  else {
+    tareasBody = '<div style="display:flex;flex-direction:column;gap:6px">';
+    tareas.forEach(function(t){
+      var late = t.fecha_limite && t.fecha_limite < hoy;
+      var fecha = t.fecha_limite ? new Date(t.fecha_limite+'T00:00:00').toLocaleDateString('es-DO',{day:'2-digit',month:'short'}) : '';
+      tareasBody += '<div onclick="openModule(\'tareas\')" style="cursor:pointer;display:flex;justify-content:space-between;align-items:center;gap:10px;background:#fff;border:1px solid var(--border,#e5e7eb);border-radius:10px;padding:10px 14px;font-size:0.85rem">'+
+        '<span><b>' + insEsc(t.titulo||'(sin título)') + '</b>' + (t.cliente?(' <span style="color:var(--muted);font-size:0.8rem">· '+insEsc(t.cliente)+'</span>'):'') + '</span>'+
+        (fecha?('<span style="font-size:0.78rem;font-weight:700;white-space:nowrap;color:'+(late?'#ef4444':'var(--muted)')+'">'+fecha+'</span>'):'') + '</div>';
+    });
+    tareasBody += '</div>';
+  }
+  h += insSec('mistareas', '✅ Mis tareas', tareasBody);
+
+  document.getElementById('dashboard-kpis').innerHTML = h;
+}
+
 async function goHome(skipHash) {
   // Si el rol tiene módulo de inicio, ir a ese módulo
   var homeModule = ROLE_HOME_MODULE[userRole];
@@ -1114,11 +1752,8 @@ async function goHome(skipHash) {
   document.title = 'Account One — Portal Interno';
   renderSidebar();
 
-  // Refrescar dashboard
-  try {
-    var dashData = await loadDashboardData();
-    renderDashboard(dashData);
-  } catch(e) { console.error('Error refrescando dashboard:', e); }
+  // Inicio por rol (Insights de contadora o dashboard de admin)
+  try { await renderHomeContent(); } catch(e) { console.error('Error refrescando inicio:', e); }
 }
 
 function openSection(sectionId, skipHash) {
@@ -1156,7 +1791,7 @@ function openSection(sectionId, skipHash) {
   renderSidebar();
 }
 
-function openModule(moduleId, skipHash) {
+function openModule(moduleId, skipHash, extra) {
   const m = findModule(moduleId);
   if (!m || !m.active) return;
 
@@ -1169,7 +1804,7 @@ function openModule(moduleId, skipHash) {
   if (!skipHash) history.replaceState(null, '', '#' + moduleId);
   hideAllViews();
   document.getElementById('module-view').classList.add('active');
-  document.getElementById('module-iframe').src = m.href + '?embed=1';
+  document.getElementById('module-iframe').src = m.href + '?embed=1' + (extra || '');
   renderSidebar();
   // Actualizar título del browser tab
   document.title = m.title + ' — Account One';
@@ -1489,13 +2124,11 @@ function pickRole(role) {
   showApp();
 }
 
-// Mapa de rol → módulo de inicio
-var ROLE_HOME_MODULE = {
-  contadores: 'contabilidad',
-  impuestos: 'impuestos',
-  implementaciones: 'implementaciones',
-  comercial: 'comercial'
-};
+// Mapa de rol → módulo de inicio.
+// Vacío a propósito: todos los roles aterrizan en su Insights de inicio (renderHomeContent),
+// y los que aún no tienen panel propio caen en el inicio genérico (renderGenericInsight).
+// Cada quien sigue llegando a su módulo de trabajo desde el menú lateral.
+var ROLE_HOME_MODULE = {};
 
 async function showApp() {
   document.getElementById('login-screen').style.display = 'none';
@@ -1519,15 +2152,9 @@ async function showApp() {
     if (homeModule) {
       openModule(homeModule);
     } else {
-      // Admin: mostrar dashboard
-      renderWelcome();
-      try {
-        var dashData = await loadDashboardData();
-        renderDashboard(dashData);
-      } catch(e) {
-        console.error('Error cargando dashboard:', e);
-        document.getElementById('dashboard-kpis').innerHTML = '<div class="dash-loading">Error cargando datos.</div>';
-      }
+      // Inicio por rol: Insights de contadora o dashboard de admin
+      try { await renderHomeContent(); }
+      catch(e) { console.error('Error cargando inicio:', e); document.getElementById('dashboard-kpis').innerHTML = '<div class="dash-loading">Error cargando datos.</div>'; }
     }
   }
 }

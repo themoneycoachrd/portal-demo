@@ -186,6 +186,63 @@ body { font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-se
 .nota-modal-btns button { padding:8px 16px; border-radius:8px; font-size:12px; font-weight:600; cursor:pointer; font-family:inherit; border:1px solid var(--border); }
 .nota-modal-btns .btn-cancel { background:white; color:var(--muted); }
 .nota-modal-btns .btn-save { background:var(--blue); color:white; border-color:var(--blue); }
+/* PROTOTIPO: comentarios por item del checklist */
+.ck-item-link { cursor:pointer; }
+.ck-item-link:hover { color:var(--blue); }
+.ck-coment-list { max-height:240px; overflow-y:auto; margin:10px 0; display:flex; flex-direction:column; gap:8px; }
+.ck-coment { background:#f8fafc; border:1px solid var(--border); border-radius:8px; padding:8px 10px; font-size:12.5px; line-height:1.4; }
+.ck-coment-head { display:flex; justify-content:space-between; gap:8px; font-size:11px; color:var(--muted); margin-bottom:3px; }
+.ck-coment-origen { font-weight:700; }
+.ck-coment-origen.contabilidad { color:var(--blue); }
+.ck-coment-origen.impuestos { color:#d97706; }
+.ck-coment-empty { color:var(--muted); font-size:12px; text-align:center; padding:16px; }
+.ck-proto-badge { display:inline-block; font-size:9px; font-weight:700; background:#fef3c7; color:#92400e; padding:1px 6px; border-radius:4px; vertical-align:middle; margin-left:6px; letter-spacing:0.5px; }
+.ck-coment-icon { font-size:11px; color:var(--light); margin-left:5px; }
+/* PROTOTIPO: tarjeta tipo Trello para un item del checklist */
+.ck-card-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:5000; display:flex; align-items:flex-start; justify-content:center; padding:30px 16px; overflow-y:auto; }
+.ck-card { background:#fff; border-radius:14px; width:100%; max-width:900px; box-shadow:0 16px 50px rgba(0,0,0,0.25); }
+.ck-card-head { display:flex; align-items:flex-start; gap:10px; padding:18px 22px 4px; }
+.ck-card-head h3 { font-size:16px; font-weight:700; margin:0; flex:1; }
+.ck-card-close { border:none; background:none; font-size:24px; line-height:1; cursor:pointer; color:var(--muted); }
+.ck-card-sub { padding:0 22px 12px; font-size:12px; color:var(--muted); }
+.ck-card-body { display:grid; grid-template-columns:1.6fr 1fr; gap:20px; padding:0 22px 22px; }
+@media(max-width:760px){ .ck-card-body{ grid-template-columns:1fr; } }
+.ck-card-actions { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:12px; }
+.ck-card-actions button { display:flex; align-items:center; gap:5px; padding:6px 11px; border:1px solid var(--border); border-radius:7px; background:#f8fafc; font-size:12px; font-weight:600; color:var(--muted); cursor:pointer; font-family:inherit; }
+.ck-card-actions button:hover { background:#eef2f7; color:var(--text); }
+.ck-card-chips { display:flex; flex-wrap:wrap; gap:6px; margin-bottom:16px; }
+.ck-chip { font-size:11px; font-weight:700; color:#fff; padding:3px 9px; border-radius:5px; display:inline-flex; align-items:center; gap:6px; }
+.ck-chip .x { cursor:pointer; opacity:0.85; }
+.ck-chip-mem { background:var(--navy); }
+.ck-chip-fecha { background:#0f766e; }
+.ck-card-section { margin-bottom:18px; }
+.ck-card-section > label { display:block; font-size:11px; font-weight:700; color:var(--muted); margin-bottom:6px; text-transform:uppercase; letter-spacing:0.4px; }
+.ck-desc-toolbar { display:flex; gap:4px; margin-bottom:4px; }
+.ck-desc-toolbar button { border:1px solid var(--border); background:#fff; border-radius:5px; width:28px; height:26px; cursor:pointer; font-size:12px; }
+.ck-rich { min-height:64px; border:1px solid var(--border); border-radius:8px; padding:8px 10px; font-size:13px; line-height:1.5; }
+.ck-rich:focus { outline:none; border-color:var(--blue); }
+.ck-sub-prog { height:6px; background:#eef2f7; border-radius:4px; overflow:hidden; margin-bottom:8px; }
+.ck-sub-prog > div { height:100%; background:var(--green); }
+.ck-sub-item { display:flex; align-items:center; gap:8px; padding:4px 0; font-size:13px; }
+.ck-sub-item .x { margin-left:auto; color:var(--light); cursor:pointer; font-size:15px; }
+.ck-sub-item.done span.t { text-decoration:line-through; color:var(--muted); }
+.ck-sub-add { display:flex; gap:6px; margin-top:6px; }
+.ck-sub-add input { flex:1; border:1px solid var(--border); border-radius:7px; padding:6px 9px; font-size:13px; font-family:inherit; }
+.ck-pop { position:fixed; z-index:6000; background:#fff; border:1px solid var(--border); border-radius:10px; box-shadow:0 8px 28px rgba(0,0,0,0.18); padding:10px; width:248px; max-height:300px; overflow-y:auto; }
+.ck-pop h4 { font-size:12px; font-weight:700; margin:0 0 8px; }
+.ck-pop-opt { display:flex; align-items:center; gap:8px; padding:6px 7px; border-radius:6px; cursor:pointer; font-size:12.5px; }
+.ck-pop-opt:hover { background:#f1f5f9; }
+.ck-pop-color { width:24px; height:16px; border-radius:4px; flex-shrink:0; }
+.ck-pop-create { display:flex; gap:6px; margin-top:8px; border-top:1px solid var(--border); padding-top:8px; }
+.ck-pop-create input { flex:1; border:1px solid var(--border); border-radius:6px; padding:5px 8px; font-size:12px; font-family:inherit; }
+.ck-side-title { display:block; font-size:11px; font-weight:700; color:var(--muted); margin-bottom:8px; text-transform:uppercase; letter-spacing:0.4px; }
+/* PROTOTIPO: Kanban del checklist */
+.ck-kanban { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; }
+@media(max-width:720px){ .ck-kanban{ grid-template-columns:1fr; } }
+.ck-kanban-col { background:#f6f8fa; border:1px solid var(--border); border-radius:10px; padding:10px; min-height:130px; }
+.ck-kanban-col h4 { font-size:12px; font-weight:700; margin:0 0 10px; display:flex; align-items:center; justify-content:space-between; }
+.ck-kanban-card { background:#fff; border:1px solid var(--border); border-radius:8px; padding:9px 10px; margin-bottom:8px; cursor:pointer; box-shadow:0 1px 2px rgba(0,0,0,0.04); }
+.ck-kanban-card:hover { border-color:var(--blue); }
 
 /* ─── Selector de contadora (KPI) ─── */
 .selector-screen { text-align:center; padding:40px 20px; }
@@ -1015,7 +1072,8 @@ let ckMes = getCurrentMonth();
 let ckContadora = 'Todas';
 let ckCliente = null;
 let ckClienteContadora = null;
-let ckViewMode = 'table'; // 'table' or 'cards'
+let ckViewMode = 'table'; // 'table' or 'cards' (lista de clientes)
+let ckDetailView = 'tabla'; // PROTOTIPO: 'tabla' o 'kanban' (checklist de un cliente)
 
 // KPI state
 let kpiSubTab = 'detalle';
@@ -2426,6 +2484,18 @@ function renderCkDetail(el) {
   html += '<div class="pr-pct" style="color:' + barColor + '">' + prog.pct + '%</div>';
   html += '</div>';
 
+  // PROTOTIPO: toggle Tabla | Kanban
+  const _tblIco = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>';
+  const _kanIco = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="6" height="18"/><rect x="10" y="3" width="6" height="12"/><rect x="17" y="3" width="6" height="9"/></svg>';
+  html += '<div class="view-toggle-row"><div class="view-toggle">'
+    + '<button class="view-toggle-btn' + (ckDetailView === 'tabla' ? ' active' : '') + '" onclick="ckToggleDetailView(\'tabla\')">' + _tblIco + ' Tabla</button>'
+    + '<button class="view-toggle-btn' + (ckDetailView === 'kanban' ? ' active' : '') + '" onclick="ckToggleDetailView(\'kanban\')">' + _kanIco + ' Kanban</button>'
+    + '</div></div>';
+
+  if (ckDetailView === 'kanban') {
+    html += ckKanbanHTML(contadora, cliente, mes, entry, editable);
+  } else {
+
   // Table
   html += '<div style="overflow-x:auto">';
   html += '<table class="check-table"><thead><tr>';
@@ -2458,7 +2528,7 @@ function renderCkDetail(el) {
 
     html += '<tr class="' + rowClass + '">';
     html += '<td style="color:var(--light);font-size:11px">' + item.n + '</td>';
-    html += '<td style="font-weight:600;font-size:0.8rem">' + item.label + '</td>';
+    html += '<td style="font-weight:600;font-size:0.8rem"><span class="ck-item-link" title="Ver histórico de la tarea" onclick="openItemModal(\'' + esc(contadora) + '\',\'' + esc(cliente) + '\',\'' + mes + '\',\'' + item.id + '\',\'' + esc(item.label) + '\')">' + item.label + '<span class="ck-coment-icon">&#128172;</span></span></td>';
     html += '<td><span class="tipo-badge ' + item.tipoCss + '">' + item.impuesto + '</span></td>';
     html += '<td class="center" style="font-size:11px;color:var(--muted)">' + firmaStr + '</td>';
     html += '<td class="center" style="font-size:11px;color:var(--muted)">' + limiteStr + '</td>';
@@ -2489,7 +2559,69 @@ function renderCkDetail(el) {
     html += '</div>';
   }
 
+  } // fin vista Tabla
+
   el.innerHTML = html;
+}
+
+// ─── PROTOTIPO: Kanban del checklist (columnas Pendiente / En progreso / Completado) ───
+function ckToggleDetailView(mode) { ckDetailView = mode; renderCkContent(); }
+function ckItemEstado(d) {
+  if (d && (d.done === true || d.done === 'na')) return 'completado';
+  if (d && d.card && (d.card.estado_kanban === 'en_progreso' || d.card.estado_kanban === 'pendiente')) return d.card.estado_kanban;
+  const c = d && d.card;
+  const activity = (d && d.nota) || (c && ((c.subchecklist && c.subchecklist.length) || c.descripcion || c.fecha_card || (c.etiquetas && c.etiquetas.length) || (c.miembros && c.miembros.length)));
+  return activity ? 'en_progreso' : 'pendiente';
+}
+function ckKanCardHTML(contadora, cliente, mes, item, d, editable) {
+  const c = d.card || {};
+  let chips = '';
+  (c.etiquetas || []).forEach(function(n) { chips += '<span style="display:inline-block;width:26px;height:6px;border-radius:3px;background:' + ckColorOf(n) + ';margin-right:3px"></span>'; });
+  let extra = '';
+  if (c.subchecklist && c.subchecklist.length) { const dn = c.subchecklist.filter(x => x.done).length; extra += '<span style="font-size:10px;color:var(--muted)">&#9745; ' + dn + '/' + c.subchecklist.length + '</span> '; }
+  if (c.fecha_card) extra += '<span style="font-size:10px;color:#0f766e;font-weight:600">&#128197; ' + esc(c.fecha_card) + '</span> ';
+  if (c.miembros && c.miembros.length) extra += '<span style="font-size:10px;color:var(--navy);font-weight:600">&#128100; ' + c.miembros.length + '</span>';
+  return '<div class="ck-kanban-card" draggable="' + (editable ? 'true' : 'false') + '" ondragstart="ckKanDragStart(event,\'' + item.id + '\')" onclick="openItemModal(\'' + esc(contadora) + '\',\'' + esc(cliente) + '\',\'' + mes + '\',\'' + item.id + '\',\'' + esc(item.label) + '\')">'
+    + (chips ? ('<div style="margin-bottom:5px">' + chips + '</div>') : '')
+    + '<div style="font-size:12px;font-weight:600;line-height:1.3">' + esc(item.label) + '</div>'
+    + '<div style="margin-top:5px;display:flex;align-items:center;justify-content:space-between;gap:6px"><span class="tipo-badge ' + item.tipoCss + '" style="font-size:9px">' + item.impuesto + '</span><span>' + extra + '</span></div>'
+    + '</div>';
+}
+function ckKanbanHTML(contadora, cliente, mes, entry, editable) {
+  const cols = [
+    { key: 'pendiente', label: 'Pendiente', color: '#94a3b8' },
+    { key: 'en_progreso', label: 'En progreso', color: '#d97706' },
+    { key: 'completado', label: 'Completado', color: '#16a34a' }
+  ];
+  const buckets = { pendiente: [], en_progreso: [], completado: [] };
+  ITEMS.forEach(function(item) { const d = entry.datos[item.id] || { done: false }; buckets[ckItemEstado(d)].push(item); });
+  let h = '<div class="ck-kanban">';
+  cols.forEach(function(col) {
+    h += '<div class="ck-kanban-col" ondragover="ckKanOver(event)" ondrop="ckKanDrop(event,\'' + col.key + '\')">';
+    h += '<h4><span><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:' + col.color + ';margin-right:6px"></span>' + col.label + '</span><span style="color:var(--light)">' + buckets[col.key].length + '</span></h4>';
+    buckets[col.key].forEach(function(item) { const d = entry.datos[item.id] || {}; h += ckKanCardHTML(contadora, cliente, mes, item, d, editable); });
+    h += '</div>';
+  });
+  h += '</div>';
+  if (editable) h += '<div style="font-size:11px;color:var(--muted);margin-top:8px">Arrastra las tarjetas entre columnas. Soltar en "Completado" marca la tarea como hecha.</div>';
+  return h;
+}
+let ckKanDragId = null;
+function ckKanDragStart(e, id) { ckKanDragId = id; try { e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', id); } catch (x) {} }
+function ckKanOver(e) { e.preventDefault(); try { e.dataTransfer.dropEffect = 'move'; } catch (x) {} }
+async function ckKanDrop(e, estado) {
+  e.preventDefault();
+  let id = ckKanDragId; try { if (!id) id = e.dataTransfer.getData('text/plain'); } catch (x) {}
+  ckKanDragId = null; if (id) await ckKanbanMove(id, estado);
+}
+async function ckKanbanMove(itemId, estado) {
+  const e = getCheckData(ckClienteContadora, ckCliente, ckMes);
+  if (!e.datos[itemId]) e.datos[itemId] = { done: false, fecha: '', nota: '' };
+  const d = e.datos[itemId];
+  if (estado === 'completado') { d.done = true; if (!d.fecha) d.fecha = todayStr(); }
+  else { d.done = false; if (!d.card) d.card = { descripcion: '', subchecklist: [], etiquetas: [], miembros: [], fecha_card: '' }; d.card.estado_kanban = estado; }
+  await saveChecklist(ckClienteContadora, ckCliente, ckMes);
+  renderCkContent();
 }
 
 // ==================== KPI RENDERING ====================
@@ -3399,6 +3531,177 @@ async function saveNota() {
   renderCkContent();
 }
 
+// ─── PROTOTIPO: tarjeta tipo Trello para un item del checklist ───
+let itemModalCtx = null;
+let CARD_ETIQUETAS = null, CARD_MIEMBROS = null;
+
+async function ckLoadCatalogs() {
+  if (CARD_ETIQUETAS === null) {
+    try { const r = await sb.from('tl_etiquetas').select('nombre,color').order('orden', { ascending: true }); CARD_ETIQUETAS = r.data || []; } catch (e) { CARD_ETIQUETAS = []; }
+  }
+  if (CARD_MIEMBROS === null) {
+    try { const r = await sb.from('equipo').select('nombre,color').eq('activo', true).order('nombre'); CARD_MIEMBROS = (r.data || []).filter(x => x.nombre); } catch (e) { CARD_MIEMBROS = []; }
+  }
+}
+function ckCard() {
+  const e = getCheckData(itemModalCtx.contadora, itemModalCtx.cliente, itemModalCtx.mes);
+  if (!e.datos[itemModalCtx.itemId]) e.datos[itemModalCtx.itemId] = { done: false, fecha: '', nota: '' };
+  const it = e.datos[itemModalCtx.itemId];
+  if (!it.card) it.card = { descripcion: '', subchecklist: [], etiquetas: [], miembros: [], fecha_card: '' };
+  return it.card;
+}
+async function ckCardSave() { await saveChecklist(itemModalCtx.contadora, itemModalCtx.cliente, itemModalCtx.mes); }
+function ckColorOf(nombre) { const e = (CARD_ETIQUETAS || []).find(x => x.nombre === nombre); return e ? e.color : '#475569'; }
+
+async function openItemModal(contadora, cliente, mes, itemId, label) {
+  itemModalCtx = { contadora, cliente, mes, itemId, label };
+  await ckLoadCatalogs();
+  const ov = document.createElement('div');
+  ov.className = 'ck-card-overlay'; ov.id = 'item-overlay';
+  ov.onclick = function(e) { if (e.target === ov) closeItemModal(); };
+  ov.innerHTML =
+    '<div class="ck-card">'
+    + '<div class="ck-card-head"><h3>' + esc(label) + '<span class="ck-proto-badge">PROTOTIPO</span></h3><button class="ck-card-close" onclick="closeItemModal()">&times;</button></div>'
+    + '<div class="ck-card-sub">' + esc(cliente) + ' · ' + esc(mes) + ' · tarjeta de la tarea</div>'
+    + '<div class="ck-card-body">'
+    +   '<div class="ck-card-main">'
+    +     '<div class="ck-card-actions">'
+    +       '<button onclick="ckOpenPop(\'etiquetas\',this)">&#127991; Etiquetas</button>'
+    +       '<button onclick="ckOpenPop(\'miembros\',this)">&#128100; Miembros</button>'
+    +       '<button onclick="ckOpenPop(\'fecha\',this)">&#128197; Fechas</button>'
+    +     '</div>'
+    +     '<div class="ck-card-chips" id="ck-card-chips"></div>'
+    +     '<div class="ck-card-section"><label>Descripción</label>'
+    +       '<div class="ck-desc-toolbar"><button onmousedown="event.preventDefault()" onclick="document.execCommand(\'bold\')"><b>B</b></button><button onmousedown="event.preventDefault()" onclick="document.execCommand(\'italic\')"><i>i</i></button><button onmousedown="event.preventDefault()" onclick="document.execCommand(\'insertUnorderedList\')">&#8226;</button></div>'
+    +       '<div class="ck-rich" id="ck-card-desc" contenteditable="true"></div>'
+    +       '<div style="margin-top:6px"><button class="btn-save" style="padding:6px 14px;border:none;border-radius:7px;background:var(--blue);color:#fff;font-size:12px;font-weight:600;cursor:pointer" onclick="ckSaveDesc(this)">Guardar descripción</button></div>'
+    +     '</div>'
+    +     '<div class="ck-card-section"><label>Checklist</label><div id="ck-card-sub"></div></div>'
+    +   '</div>'
+    +   '<div class="ck-card-side">'
+    +     '<label class="ck-side-title">Comentarios y Actividad</label>'
+    +     '<textarea id="ck-coment-input" placeholder="Escribe un comentario..." style="width:100%;height:60px;border:1px solid var(--border);border-radius:8px;padding:8px;font-size:13px;font-family:inherit;resize:vertical;box-sizing:border-box"></textarea>'
+    +     '<div style="text-align:right;margin:6px 0"><button class="btn-save" style="padding:6px 14px;border:none;border-radius:7px;background:var(--blue);color:#fff;font-size:12px;font-weight:600;cursor:pointer" onclick="addItemComment()">Comentar</button></div>'
+    +     '<div class="ck-coment-list" id="ck-coment-list"><div class="ck-coment-empty">Cargando…</div></div>'
+    +   '</div>'
+    + '</div></div>';
+  document.body.appendChild(ov);
+  document.getElementById('ck-card-desc').innerHTML = ckCard().descripcion || '';
+  ckRenderChips(); ckRenderSub(); loadItemComentarios();
+}
+function closeItemModal() {
+  ckClosePop();
+  const el = document.getElementById('item-overlay'); if (el) el.remove();
+  itemModalCtx = null;
+}
+
+// ── Chips (etiquetas + miembros + fecha) ──
+function ckRenderChips() {
+  const el = document.getElementById('ck-card-chips'); if (!el) return;
+  const c = ckCard(); let h = '';
+  (c.etiquetas || []).forEach(function(n, i) { h += '<span class="ck-chip" style="background:' + ckColorOf(n) + '">' + esc(n) + '<span class="x" onclick="ckRemoveEtiqueta(' + i + ')">&times;</span></span>'; });
+  (c.miembros || []).forEach(function(m, i) { h += '<span class="ck-chip ck-chip-mem">' + esc(m) + '<span class="x" onclick="ckRemoveMiembro(' + i + ')">&times;</span></span>'; });
+  if (c.fecha_card) { h += '<span class="ck-chip ck-chip-fecha">&#128197; ' + esc(c.fecha_card) + '<span class="x" onclick="ckSetFecha(\'\')">&times;</span></span>'; }
+  el.innerHTML = h || '<span style="font-size:12px;color:var(--light)">Sin etiquetas, miembros ni fecha</span>';
+}
+function ckRemoveEtiqueta(idx) { ckCard().etiquetas.splice(idx, 1); ckCardSave(); ckRenderChips(); }
+function ckRemoveMiembro(idx) { ckCard().miembros.splice(idx, 1); ckCardSave(); ckRenderChips(); }
+function ckSetFecha(v) { ckCard().fecha_card = v || ''; ckCardSave(); ckRenderChips(); }
+
+// ── Popovers ──
+let ckPopEl = null;
+function ckClosePop() { if (ckPopEl) { ckPopEl.remove(); ckPopEl = null; document.removeEventListener('click', ckPopOutside, true); } }
+function ckPopOutside(e) { if (ckPopEl && !ckPopEl.contains(e.target) && !(e.target.closest && e.target.closest('.ck-card-actions button'))) ckClosePop(); }
+function ckOpenPop(type, btn) {
+  ckClosePop();
+  const p = document.createElement('div'); p.className = 'ck-pop'; ckPopEl = p;
+  const r = btn.getBoundingClientRect();
+  p.style.left = Math.min(r.left, window.innerWidth - 260) + 'px';
+  p.style.top = (r.bottom + 6) + 'px';
+  document.body.appendChild(p);
+  if (type === 'etiquetas') ckRenderPopEtiquetas();
+  else if (type === 'miembros') ckRenderPopMiembros();
+  else ckRenderPopFecha();
+  setTimeout(function() { document.addEventListener('click', ckPopOutside, true); }, 0);
+}
+function ckRenderPopEtiquetas() {
+  if (!ckPopEl) return; const c = ckCard(); let h = '<h4>Etiquetas</h4>';
+  (CARD_ETIQUETAS || []).forEach(function(e, i) { const on = c.etiquetas.indexOf(e.nombre) >= 0; h += '<div class="ck-pop-opt" onclick="ckToggleEtiquetaCat(' + i + ')"><span class="ck-pop-color" style="background:' + e.color + '"></span><span style="flex:1">' + esc(e.nombre) + '</span>' + (on ? '&#10003;' : '') + '</div>'; });
+  h += '<div class="ck-pop-create"><input id="ck-new-etq" placeholder="Nueva etiqueta" onkeydown="if(event.key===\'Enter\')ckCreateEtiqueta()"><button onclick="ckCreateEtiqueta()" style="border:1px solid var(--border);background:#f8fafc;border-radius:6px;padding:5px 10px;cursor:pointer;font-weight:700">+</button></div>';
+  ckPopEl.innerHTML = h;
+}
+function ckToggleEtiquetaCat(i) { const n = CARD_ETIQUETAS[i].nombre; const c = ckCard(); const k = c.etiquetas.indexOf(n); if (k >= 0) c.etiquetas.splice(k, 1); else c.etiquetas.push(n); ckCardSave(); ckRenderChips(); ckRenderPopEtiquetas(); }
+async function ckCreateEtiqueta() {
+  const inp = document.getElementById('ck-new-etq'); const n = (inp.value || '').trim(); if (!n) return;
+  const colors = ['#2563eb', '#16a34a', '#d97706', '#dc2626', '#7c3aed', '#0f766e'];
+  const color = colors[(CARD_ETIQUETAS.length) % colors.length];
+  const { error } = await sb.from('tl_etiquetas').insert({ nombre: n, color: color });
+  if (error) { alert('No se pudo crear la etiqueta: ' + error.message); return; }
+  CARD_ETIQUETAS.push({ nombre: n, color: color });
+  const c = ckCard(); if (c.etiquetas.indexOf(n) < 0) c.etiquetas.push(n);
+  await ckCardSave(); ckRenderChips(); ckRenderPopEtiquetas();
+}
+function ckRenderPopMiembros() {
+  if (!ckPopEl) return; const c = ckCard(); let h = '<h4>Miembros</h4>';
+  (CARD_MIEMBROS || []).forEach(function(m, i) { const on = c.miembros.indexOf(m.nombre) >= 0; h += '<div class="ck-pop-opt" onclick="ckToggleMiembroCat(' + i + ')"><span class="ck-pop-color" style="width:18px;height:18px;border-radius:50%;background:' + (m.color || '#475569') + '"></span><span style="flex:1">' + esc(m.nombre) + '</span>' + (on ? '&#10003;' : '') + '</div>'; });
+  if (!(CARD_MIEMBROS || []).length) h += '<div class="ck-coment-empty">Sin miembros en el equipo.</div>';
+  ckPopEl.innerHTML = h;
+}
+function ckToggleMiembroCat(i) { const n = CARD_MIEMBROS[i].nombre; const c = ckCard(); const k = c.miembros.indexOf(n); if (k >= 0) c.miembros.splice(k, 1); else c.miembros.push(n); ckCardSave(); ckRenderChips(); ckRenderPopMiembros(); }
+function ckRenderPopFecha() {
+  if (!ckPopEl) return; const c = ckCard();
+  ckPopEl.innerHTML = '<h4>Fecha límite</h4><input type="date" value="' + (c.fecha_card || '') + '" onchange="ckSetFecha(this.value)" style="width:100%;border:1px solid var(--border);border-radius:6px;padding:6px;font-family:inherit;box-sizing:border-box">';
+}
+
+// ── Sub-checklist ──
+function ckRenderSub() {
+  const el = document.getElementById('ck-card-sub'); if (!el) return;
+  const c = ckCard(); const items = c.subchecklist || [];
+  const done = items.filter(x => x.done).length; const pct = items.length ? Math.round(done / items.length * 100) : 0;
+  let h = '';
+  if (items.length) h += '<div class="ck-sub-prog"><div style="width:' + pct + '%"></div></div>';
+  items.forEach(function(it, i) { h += '<div class="ck-sub-item' + (it.done ? ' done' : '') + '"><input type="checkbox" ' + (it.done ? 'checked' : '') + ' onclick="ckToggleSub(' + i + ')"><span class="t" style="flex:1">' + esc(it.texto) + '</span><span class="x" onclick="ckDelSub(' + i + ')">&times;</span></div>'; });
+  h += '<div class="ck-sub-add"><input id="ck-sub-input" placeholder="Agregar sub-tarea" onkeydown="if(event.key===\'Enter\')ckAddSub()"><button onclick="ckAddSub()" style="border:1px solid var(--border);background:#f8fafc;border-radius:7px;padding:6px 11px;font-size:12px;font-weight:600;cursor:pointer">Agregar</button></div>';
+  el.innerHTML = h;
+}
+function ckAddSub() { const inp = document.getElementById('ck-sub-input'); const t = (inp.value || '').trim(); if (!t) return; ckCard().subchecklist.push({ id: Date.now() + '' + Math.floor(Math.random() * 1000), texto: t, done: false }); ckCardSave(); ckRenderSub(); }
+function ckToggleSub(i) { const c = ckCard(); c.subchecklist[i].done = !c.subchecklist[i].done; ckCardSave(); ckRenderSub(); }
+function ckDelSub(i) { ckCard().subchecklist.splice(i, 1); ckCardSave(); ckRenderSub(); }
+function ckSaveDesc(btn) { ckCard().descripcion = document.getElementById('ck-card-desc').innerHTML; ckCardSave(); if (btn) { const o = btn.textContent; btn.textContent = 'Guardado ✓'; setTimeout(function() { btn.textContent = o; }, 1200); } }
+async function loadItemComentarios() {
+  if (!itemModalCtx) return;
+  const list = document.getElementById('ck-coment-list'); if (!list) return;
+  let rows = [];
+  try {
+    const r = await sb.from('checklist_comentarios').select('*')
+      .eq('cliente', itemModalCtx.cliente).eq('mes', itemModalCtx.mes).eq('item_id', itemModalCtx.itemId)
+      .order('created_at', { ascending: true });
+    if (r.error) throw r.error;
+    rows = r.data || [];
+  } catch (e) {
+    list.innerHTML = '<div class="ck-coment-empty">No se pudo cargar. ¿Corriste el SQL del prototipo (checklist-comentarios-setup.sql)?</div>';
+    return;
+  }
+  if (!rows.length) { list.innerHTML = '<div class="ck-coment-empty">Sin comentarios todavía.</div>'; return; }
+  list.innerHTML = rows.map(function(c) {
+    const fecha = c.created_at ? new Date(c.created_at).toLocaleString('es-DO', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : '';
+    const org = (c.origen || '').toLowerCase();
+    return '<div class="ck-coment"><div class="ck-coment-head"><span class="ck-coment-origen ' + esc(org) + '">' + esc(c.autor || 'Alguien') + (c.origen ? (' · ' + esc(c.origen)) : '') + '</span><span>' + esc(fecha) + '</span></div>' + esc(c.texto || '') + '</div>';
+  }).join('');
+  list.scrollTop = list.scrollHeight;
+}
+async function addItemComment() {
+  if (!itemModalCtx) return;
+  const inp = document.getElementById('ck-coment-input');
+  const txt = (inp.value || '').trim();
+  if (!txt) return;
+  const fila = { cliente: itemModalCtx.cliente, mes: itemModalCtx.mes, anio: ANIO, item_id: itemModalCtx.itemId, origen: 'contabilidad', autor: userName || '', autor_id: currentUserId || null, texto: txt };
+  const { error } = await sb.from('checklist_comentarios').insert(fila);
+  if (error) { alert('No se pudo guardar: ' + error.message); return; }
+  inp.value = '';
+  loadItemComentarios();
+}
+
 // ==================== KPI EVENT HANDLERS ====================
 
 function handleDigConfirm(clientName, weekIdx) {
@@ -3590,8 +3893,9 @@ async function showApp() {
   kpiQuarter = Math.floor(presIdx / 3) + 1;   // el trimestre que contiene ese mes
   kpiMes = MESES[presIdx];
 
-  // Checklist: auto-filter contadora a su nombre si no tiene edicion de checklist
-  if (!tengoPermiso('contabilidad', 'checklist', 'edicion')) {
+  // Checklist: si el usuario ES una contadora, arrancar filtrado en SUS clientes
+  // (antes solo se auto-filtraba a quien no tenía edición; ahora siempre, menos clics).
+  {
     const contadoras = getContadoraNames();
     contadoras.forEach(c => { if (userName.includes(c)) ckContadora = c; });
   }
@@ -3602,7 +3906,49 @@ async function showApp() {
     if (match) kpiContadora = match.nombre;
   }
 
+  // Deep-links desde el inicio (Insights):
+  //  #kpi → pestaña KPI;  #ck=<cliente> → checklist del cliente en Kanban;
+  //  #ckitem=<cliente>~<itemId>~<mes> → checklist del cliente y abrir el modal de esa tarea
+  var _openItemAfter = null;
+  try {
+    var _hash = location.hash || '';
+    if (/(^|#)kpi/.test(_hash)) mainTab = 'kpi';
+    var _mit = _hash.match(/ckitem=([^&]+)/);
+    if (_mit) {
+      var _ps = _mit[1].split('~');
+      var _icli = decodeURIComponent(_ps[0] || ''), _iid = decodeURIComponent(_ps[1] || ''), _imes = decodeURIComponent(_ps[2] || '');
+      var _irow = (CLIENTES_CONTAB || []).find(function (c) { return c.nombre === _icli; });
+      if (_irow && _iid) {
+        mainTab = 'checklist';
+        ckClienteContadora = _irow.contadora_contabilidad || ckContadora;
+        ckCliente = _icli;
+        if (MESES.indexOf(_imes) >= 0) ckMes = _imes;
+        ckDetailView = 'kanban';
+        _openItemAfter = { contadora: ckClienteContadora, cliente: _icli, itemId: _iid };
+      }
+    } else {
+      var _mck = _hash.match(/ck=([^&]+)/);
+      if (_mck) {
+        var _cli = decodeURIComponent(_mck[1]);
+        var _row = (CLIENTES_CONTAB || []).find(function (c) { return c.nombre === _cli; });
+        if (_row) {
+          mainTab = 'checklist';
+          ckClienteContadora = _row.contadora_contabilidad || ckContadora;
+          ckCliente = _cli;
+          ckDetailView = 'kanban';
+        }
+      }
+    }
+  } catch (e) {}
+
   renderAll();
+
+  if (_openItemAfter) {
+    try {
+      var _it = ITEMS.find(function (i) { return i.id === _openItemAfter.itemId; });
+      if (_it && typeof openItemModal === 'function') openItemModal(_openItemAfter.contadora, _openItemAfter.cliente, ckMes, _openItemAfter.itemId, _it.label);
+    } catch (e) {}
+  }
 }
 
 async function init() {

@@ -369,7 +369,7 @@ body.embed #app-wrapper { display: block !important; }
     <button class="main-tab" data-tab="directorio" onclick="switchTab('directorio')">Directorio</button>
     <button class="main-tab active" data-tab="tablero" onclick="switchTab('tablero')">Wow Board</button>
     <button class="main-tab" data-tab="historial" onclick="switchTab('historial')">Historial</button>
-    <button class="main-tab" data-tab="retro" onclick="switchTab('retro')">Retroalimentación</button>
+    <button class="main-tab" data-tab="retro" onclick="switchTab('retro')">Quejas Clientes</button>
     <button class="main-tab" data-tab="casos" id="tab-btn-casos" onclick="switchTab('casos')" style="display:none">Casos Iguala</button>
   </div>
 
@@ -465,7 +465,11 @@ body.embed #app-wrapper { display: block !important; }
       </select>
     </div>
     <div class="field">
-      <label>Descripción</label>
+      <label>Comunicación del cliente <span style="font-weight:400;color:var(--muted)">(opcional)</span></label>
+      <div id="retro-comunicacion-editor" class="retro-quill"></div>
+    </div>
+    <div class="field">
+      <label>Descripción del caso</label>
       <div id="retro-descripcion-editor" class="retro-quill"></div>
     </div>
     <div class="field">
@@ -592,7 +596,7 @@ var APP = {
   wowData: [],      // registros de wow_points
   payTarget: null,   // empleado (nombre) para modal de pago
   retroData: [],     // registros de retroalimentacion
-  retroFilter: { empleado: '', tipo: '', severidad: '', estado: '' },
+  retroFilter: { empleado: '', tipo: '', severidad: '', estado: '', desde: '', hasta: '' },
   casosData: []      // casos_rrhh (solo admin/cobros)
 };
 
@@ -1187,6 +1191,8 @@ function renderRetro() {
     if (f.tipo && r.tipo !== f.tipo) return false;
     if (f.severidad && r.severidad !== f.severidad) return false;
     if (f.estado && r.estado !== f.estado) return false;
+    if (f.desde && (!r.fecha_incidente || r.fecha_incidente < f.desde)) return false;
+    if (f.hasta && (!r.fecha_incidente || r.fecha_incidente > f.hasta)) return false;
     return true;
   });
 
@@ -1249,11 +1255,16 @@ function renderRetro() {
   h += '<option value="cerrado"' + (f.estado === 'cerrado' ? ' selected' : '') + '>Cerrado</option>';
   h += '</select>';
 
+  // Filtro de fecha (rango sobre fecha del incidente)
+  h += '<input type="date" value="' + (f.desde || '') + '" onchange="retroFilterChange(\'desde\', this.value)" title="Desde" style="padding:6px 10px;border:1px solid var(--border);border-radius:8px;font-size:0.8rem;font-family:inherit;background:white">';
+  h += '<input type="date" value="' + (f.hasta || '') + '" onchange="retroFilterChange(\'hasta\', this.value)" title="Hasta" style="padding:6px 10px;border:1px solid var(--border);border-radius:8px;font-size:0.8rem;font-family:inherit;background:white">';
+  if (f.desde || f.hasta) {
+    h += '<button onclick="retroFilterChange(\'desde\',\'\');retroFilterChange(\'hasta\',\'\')" title="Limpiar fechas" style="padding:6px 10px;border:1px solid var(--border);border-radius:8px;font-size:0.8rem;background:white;cursor:pointer;color:var(--muted)">&times; fechas</button>';
+  }
+
   h += '</div>';
 
-  if (isAdmin) {
-    h += '<button class="btn-modal" style="padding:8px 16px;font-size:0.82rem" onclick="openRetroModal()">+ Registrar caso</button>';
-  }
+  h += '<button class="btn-modal" style="padding:8px 16px;font-size:0.82rem" onclick="openRetroModal()">+ Registrar caso</button>';
   h += '</div>';
 
   // Tabla
@@ -1318,7 +1329,10 @@ function verRetroCaso(id) {
   m += '<div><div style="color:var(--muted);font-size:0.7rem;text-transform:uppercase;margin-bottom:2px">Cliente</div>' + esc(r.cliente_nombre || '—') + '</div>';
   m += '<div><div style="color:var(--muted);font-size:0.7rem;text-transform:uppercase;margin-bottom:2px">Fecha</div>' + fecha + '</div>';
   m += '</div>';
-  m += '<div style="padding:8px 24px"><div style="color:var(--muted);font-size:0.7rem;text-transform:uppercase;margin-bottom:6px">Descripción</div><div class="retro-read-body" style="line-height:1.6">' + (r.descripcion ? renderRetroBody(r.descripcion) : '—') + '</div></div>';
+  if (r.comunicacion_cliente && retroPlain(r.comunicacion_cliente)) {
+    m += '<div style="padding:8px 24px"><div style="color:var(--muted);font-size:0.7rem;text-transform:uppercase;margin-bottom:6px">Comunicación del cliente</div><div class="retro-read-body" style="line-height:1.6;background:#f8fafc;border:1px solid var(--border);border-radius:8px;padding:12px">' + renderRetroBody(r.comunicacion_cliente) + '</div></div>';
+  }
+  m += '<div style="padding:8px 24px"><div style="color:var(--muted);font-size:0.7rem;text-transform:uppercase;margin-bottom:6px">Descripción del caso</div><div class="retro-read-body" style="line-height:1.6">' + (r.descripcion ? renderRetroBody(r.descripcion) : '—') + '</div></div>';
   m += '<div style="padding:8px 24px 24px"><div style="color:var(--muted);font-size:0.7rem;text-transform:uppercase;margin-bottom:6px">Acción tomada</div><div class="retro-read-body" style="line-height:1.6;background:#f8fafc;border:1px solid var(--border);border-radius:8px;padding:12px">' + (r.accion_tomada ? renderRetroBody(r.accion_tomada) : 'Sin acción registrada.') + '</div></div>';
   m += '</div></div>';
   document.body.insertAdjacentHTML('beforeend', m);
@@ -1330,10 +1344,11 @@ function retroFilterChange(field, value) {
 }
 
 // ── Editores Quill para descripción y acción ──
-var retroQuillDesc = null, retroQuillAccion = null;
+var retroQuillDesc = null, retroQuillAccion = null, retroQuillComunic = null;
 function initRetroEditors() {
   if (typeof Quill === 'undefined') return;
   var tb = [['bold', 'italic'], [{ list: 'bullet' }, { list: 'ordered' }], ['clean']];
+  if (!retroQuillComunic) retroQuillComunic = new Quill('#retro-comunicacion-editor', { theme: 'snow', placeholder: 'Lo que comunicó el cliente (puedes pegar el mensaje)', modules: { toolbar: tb } });
   if (!retroQuillDesc) retroQuillDesc = new Quill('#retro-descripcion-editor', { theme: 'snow', placeholder: '¿Qué pasó?', modules: { toolbar: tb } });
   if (!retroQuillAccion) retroQuillAccion = new Quill('#retro-accion-editor', { theme: 'snow', placeholder: '¿Qué se hizo al respecto?', modules: { toolbar: tb } });
 }
@@ -1370,6 +1385,7 @@ function openRetroModal(id) {
       document.getElementById('retro-cliente').value = caso.cliente_nombre || '';
       document.getElementById('retro-fecha').value = caso.fecha_incidente || '';
       document.getElementById('retro-severidad').value = caso.severidad;
+      retroEditorSet(retroQuillComunic, caso.comunicacion_cliente || '');
       retroEditorSet(retroQuillDesc, caso.descripcion);
       retroEditorSet(retroQuillAccion, caso.accion_tomada || '');
       document.getElementById('retro-estado').value = caso.estado;
@@ -1379,6 +1395,7 @@ function openRetroModal(id) {
     document.getElementById('retro-cliente').value = '';
     document.getElementById('retro-fecha').value = new Date().toISOString().split('T')[0];
     document.getElementById('retro-severidad').value = 'baja';
+    retroEditorSet(retroQuillComunic, '');
     retroEditorSet(retroQuillDesc, '');
     retroEditorSet(retroQuillAccion, '');
     document.getElementById('retro-estado').value = 'abierto';
@@ -1403,6 +1420,7 @@ async function saveRetroCase() {
     cliente_nombre: document.getElementById('retro-cliente').value.trim() || null,
     fecha_incidente: document.getElementById('retro-fecha').value || null,
     severidad: document.getElementById('retro-severidad').value,
+    comunicacion_cliente: retroEditorHTML(retroQuillComunic) || null,
     descripcion: retroEditorHTML(retroQuillDesc),
     accion_tomada: retroEditorHTML(retroQuillAccion) || null,
     estado: document.getElementById('retro-estado').value,
