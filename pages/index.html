@@ -718,6 +718,17 @@ const MENU = [
     desc: 'Proceso de impuestos de cada cliente como Kanban cross-team, y tareas libres del equipo.'
   },
   {
+    id: 'tickets',
+    title: 'Tickets',
+    navDesc: 'Solicitudes importantes de clientes',
+    icon: '🎫',
+    iconBg: '#fff7ed',
+    roles: ['admin', 'comercial', 'contadores', 'impuestos', 'implementaciones'],
+    href: 'tickets.html',
+    active: true,
+    desc: 'Solicitudes importantes de clientes, con dueño, fecha comprometida, hitos y seguimiento.'
+  },
+  {
     id: 'contabilidad',
     title: 'Contabilidad',
     navDesc: 'Cierres y estados financieros',
@@ -1127,6 +1138,8 @@ var INSIGHTS_CONTADORAS = [];
 
 // ── Motor de estado de workflows (replicado de tareas.html para el worklist) ──
 var MESES_WF = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+// Mes que se está presentando = el mes calendario ANTERIOR (en julio se trabaja/presenta junio). Es el default del inicio.
+function mesPresentacion(){ var d=new Date(); var mi=d.getMonth()-1; if(mi<0)mi=11; return MESES_WF[mi]; }
 var CAL_DGII_INS={0:{ir3:{m:1,d:10},ir17:{m:1,d:10},anticipo:{m:1,d:16},itbis:{m:1,d:20}},1:{ir3:{m:2,d:10},ir17:{m:2,d:10},anticipo:{m:2,d:16},itbis:{m:2,d:20}},2:{ir3:{m:3,d:10},ir17:{m:3,d:10},anticipo:{m:3,d:15},itbis:{m:3,d:20}},3:{ir3:{m:4,d:8},ir17:{m:4,d:8},anticipo:{m:4,d:15},itbis:{m:4,d:20}},4:{ir3:{m:5,d:10},ir17:{m:5,d:10},anticipo:{m:5,d:15},itbis:{m:5,d:22}},5:{ir3:{m:6,d:10},ir17:{m:6,d:10},anticipo:{m:6,d:15},itbis:{m:6,d:20}},6:{ir3:{m:7,d:10},ir17:{m:7,d:10},anticipo:{m:7,d:15},itbis:{m:7,d:20}},7:{ir3:{m:8,d:10},ir17:{m:8,d:10},anticipo:{m:8,d:15},itbis:{m:8,d:21}},8:{ir3:{m:9,d:9},ir17:{m:9,d:9},anticipo:{m:9,d:15},itbis:{m:9,d:20}},9:{ir3:{m:10,d:10},ir17:{m:10,d:10},anticipo:{m:10,d:15},itbis:{m:10,d:20}},10:{ir3:{m:11,d:10},ir17:{m:11,d:10},anticipo:{m:11,d:15},itbis:{m:11,d:21}},11:{ir3:{m:0,d:11},ir17:{m:0,d:11},anticipo:{m:0,d:15},itbis:{m:0,d:20}}};
 var CAL_TSS_INS={0:{m:1,d:4},1:{m:2,d:4},2:{m:3,d:6},3:{m:4,d:6},4:{m:5,d:3},5:{m:6,d:3},6:{m:7,d:5},7:{m:8,d:3},8:{m:9,d:5},9:{m:10,d:4},10:{m:11,d:3},11:{m:0,d:7}};
 var CALKEY_INS={'IR-3':'ir3','IR-17':'ir17','Anticipo':'anticipo','ITBIS':'itbis'};
@@ -1137,7 +1150,7 @@ var INS_VIEW={preview:null}; // nombre de la contadora si admin está viendo su 
 
 async function loadWorkflowState(){
   if(INS_SEL){ MES_INS=INS_SEL.mes; ANIO_INS=INS_SEL.anio; }
-  else { var d=new Date(); MES_INS=MESES_WF[d.getMonth()]; ANIO_INS=d.getFullYear(); } // mes CALENDARIO actual (no el de la declaración)
+  else { var d=new Date(); var mi=d.getMonth()-1, y=d.getFullYear(); if(mi<0){mi=11;y-=1;} MES_INS=MESES_WF[mi]; ANIO_INS=y; } // mes que se presenta = mes anterior al calendario
   try{
     var wfR=await sb.from('wf_workflows').select('*').order('orden');
     var etR=await sb.from('wf_etapas').select('*').order('orden');
@@ -1402,6 +1415,385 @@ async function loadInsights(nombre){
   return { tareas: tareas, menciones: menciones, worklist: worklist, kpi: kpi, kpiDet: kpiDet };
 }
 
+// ══════════════════════════════════════════════════════════════
+//  DASHBOARD ESTRATÉGICO — inicio de admin (Nivel 1: metas + 5 sistemas + proyectos)
+//  Fulfillment (Sistema 4) abre el dashboard de equipo (renderFulfillmentDetail).
+// ══════════════════════════════════════════════════════════════
+var DASH_VIEW='general';
+var DASH_MES=null; // mes seleccionado en la vista general (null = mes calendario actual)
+var DASH_SISTEMAS=[
+  {id:'leads',num:1,nombre:'Sistema de captación de leads',icon:'🎯',iconBg:'#eff6ff',
+    fuentes:'Módulo Comercial del portal · Meta Ads manual (costo)',
+    kpis:[{label:'Leads del mes',meta:'5+'},{label:'Leads buenos',meta:'—'},{label:'Cotizado',meta:'US$'},{label:'Costo por lead',meta:'manual'},{label:'Costo adquisición',meta:'manual'}]},
+  {id:'ventas',num:2,nombre:'Sistema de ventas',icon:'📈',iconBg:'#eef2ff',
+    fuentes:'Módulo Comercial del portal (pipeline, mensual)',
+    kpis:[{label:'Cotizaciones',meta:'—'},{label:'Cierres',meta:'—'},{label:'Tasa de cierre',meta:'> 30%'},{label:'Ciclo de venta',meta:'< 21 días'},{label:'Vendido',meta:'US$'}]},
+  {id:'onboarding',num:3,nombre:'Sistema de onboarding a clientes',icon:'🚀',iconBg:'#f5f3ff',
+    fuentes:'Checklists de implementación del portal · encuesta manual',
+    kpis:[{label:'Días a 1er entregable',meta:'< 15'},{label:'En onboarding',meta:'Dato puntual'},{label:'Checklist completo',meta:'> 80%'},{label:'Satisfacción',meta:'Positivo'}]},
+  {id:'fulfillment',num:4,nombre:'Sistema de fulfillment de servicio',icon:'✅',iconBg:'#ecfdf5',
+    fuentes:'Portal (checklist, KPI) · tickets pendientes (Epic 9)',
+    kpis:[{label:'Fiscal a tiempo',meta:'> 95%'},{label:'Reportes en plazo',meta:'100%'},{label:'Sin respuesta > 48h',meta:'0'},{label:'Clientes activos',meta:'→ 50'}]},
+  {id:'talento',num:5,nombre:'Sistema de captación de talento',icon:'👥',iconBg:'#fef2f2',
+    fuentes:'Manual (formulario del portal)',
+    kpis:[{label:'Posiciones cubiertas',meta:'Todas'},{label:'Días para llenar',meta:'< 45'},{label:'Candidatos / posición',meta:'3+'},{label:'Rotación (6 meses)',meta:'0 salidas'}]}
+];
+function dashKpiLabels(sid){ var s=DASH_SISTEMAS.find(function(x){return x.id===sid;}); return s?s.kpis.map(function(k){return k.label;}):[]; }
+// Valor real donde ya se puede; si no, muestra la meta con punto gris (medición viene en 8.2–8.5)
+function dashKpiValue(sid,label,meta){
+  var GRIS='var(--muted)',V='var(--green)',A='var(--amber)',R='var(--red)',P=DASH_PREVIEW;
+  if(sid==='fulfillment'&&label==='Clientes activos'){ var r=P.recurrentes; return {val:(r!=null?r:'—')+' → 50', dot:(r==null?GRIS:(r>=50?V:A))}; }
+  if(sid==='leads'){
+    if(label==='Leads del mes'&&P.leadsMes!=null){ var l=P.leadsMes; return {val:String(l), dot:(l>=5?V:(l>=2?A:R))}; }
+    if(label==='Leads buenos'&&P.leadsBuenos!=null){ var lb=P.leadsBuenos, rt=P.leadsMes?lb/P.leadsMes:0; return {val:String(lb), dot:(rt>=0.7?V:(rt>=0.5?A:R))}; }
+    if(label==='Cotizado'&&P.cotizadoMes!=null){ return {val:'US$ '+dashFmt(P.cotizadoMes), dot:GRIS}; }
+    return {val:'—', dot:GRIS}; // costo por lead / CAC → manual
+  }
+  if(sid==='ventas'){
+    if(label==='Cotizaciones'&&P.leadsBuenos!=null){ return {val:String(P.leadsBuenos), dot:GRIS}; }
+    if(label==='Cierres'&&P.cierresMes!=null){ var g=P.cierresMes; return {val:String(g), dot:(g>0?V:GRIS)}; }
+    if(label==='Tasa de cierre'&&P.tasaCierre!=null){ var t=P.tasaCierre; return {val:t+'%', dot:(t>=30?V:(t>=15?A:R))}; }
+    if(label==='Ciclo de venta'){ return {val:'N/D', dot:GRIS}; }
+    if(label==='Vendido'&&P.vendidoMes!=null){ return {val:'US$ '+dashFmt(P.vendidoMes), dot:GRIS}; }
+    return {val:meta, dot:GRIS};
+  }
+  return {val:meta, dot:GRIS};
+}
+var DASH_ESTADOS=['Planificado','En curso','Completado','Pausado'];
+var DASH_ESTADO_COLOR={'Planificado':'var(--muted)','En curso':'var(--green)','Completado':'var(--amber)','Pausado':'var(--red)'};
+var META_FE_ACTUAL=44, META_FE_OBJETIVO=250, META_REC_OBJETIVO=50;
+var DASH_PROYECTOS=[], DASH_PROJ_OK=false, DASH_PREVIEW={};
+var DASH_CK=[], DASH_CO=[]; // estado temporal del checklist y comentarios del proyecto abierto en el modal
+
+async function loadDashData(){
+  DASH_PREVIEW={}; DASH_PROJ_OK=false; DASH_PROYECTOS=[];
+  try{ var c=await sb.from('clientes').select('id',{count:'exact',head:true}).eq('activo',true); DASH_PREVIEW.recurrentes=c.count; }catch(e){}
+  var mesA=DASH_MES||mesPresentacion(); var yrA=new Date().getFullYear();
+  try{ var lr=await sb.from('leads').select('funnel,impl,fe,serv,soft,desc_impl,desc_fe,desc_serv,desc_soft').eq('anio',yrA).eq('mes',mesA); var lds=lr.data||[];
+    var ns=0,na=0,gan=[],per=0; lds.forEach(function(l){ if(l.funnel==='No Show')ns++; else if(l.funnel==='No Aplica')na++; if(l.funnel==='Cerrado Ganado')gan.push(l); else if(l.funnel==='Cerrado Perdido')per++; });
+    var incS=(MESES_WF.indexOf(mesA)>=2);
+    DASH_PREVIEW.leadsMes=lds.length;
+    DASH_PREVIEW.leadsBuenos=lds.length-ns-na;
+    DASH_PREVIEW.cierresMes=gan.length;
+    DASH_PREVIEW.cotizadoMes=lds.reduce(function(s,l){return s+dashLeadTotal(l);},0);
+    DASH_PREVIEW.vendidoMes=gan.reduce(function(s,l){return s+dashLeadVendido(l,incS);},0);
+    DASH_PREVIEW.tasaCierre=(gan.length+per)>0?Math.round(gan.length/(gan.length+per)*100):null;
+  }catch(e){}
+  try{ var p=await sb.from('dashboard_proyectos').select('*').order('created_at',{ascending:false}); if(!p.error){ DASH_PROJ_OK=true; DASH_PROYECTOS=p.data||[]; } }catch(e){}
+}
+
+async function renderStrategicDashboard(){
+  DASH_VIEW='general';
+  renderWelcome();
+  await loadDashData();
+  var h=dashMonthSelector();
+  h+='<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px;margin-bottom:18px">'+
+     dashMetaBar('Clientes recurrentes', DASH_PREVIEW.recurrentes, META_REC_OBJETIVO, '')+
+     dashMetaBar('Clientes FE / Software', META_FE_ACTUAL, META_FE_OBJETIVO, 'manual')+'</div>';
+  DASH_SISTEMAS.forEach(function(s){ h+=dashSysCard(s); });
+  h+=dashFooter();
+  h+='<div class="ins-sec-head" style="display:flex;align-items:center;justify-content:space-between">'+
+     '<span style="display:flex;align-items:center;gap:6px">'+insIco('check')+'Resumen de proyectos</span>'+
+     '<button onclick="dashOpenProj()" style="border:none;background:var(--navy);color:#fff;border-radius:8px;padding:6px 12px;font-size:0.8rem;font-weight:600;cursor:pointer">+ Agregar proyecto</button></div>';
+  h+='<div id="dash-proyectos">'+dashResumenHTML()+'</div>';
+  var dk=document.getElementById('dashboard-kpis'); if(dk) dk.innerHTML=h;
+}
+
+function dashMetaBar(label,actual,meta,nota){
+  var a=(actual!=null)?actual:'—';
+  var pct=(actual!=null)?Math.min(100,Math.round(actual/meta*100)):0;
+  return '<div class="ins-card" style="padding:16px">'+
+    '<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:7px"><span style="font-weight:700;color:var(--navy);font-size:0.9rem">'+label+'</span>'+
+    '<span style="font-size:0.75rem;color:var(--muted)">'+a+' / '+meta+(nota?(' · '+nota):'')+'</span></div>'+
+    '<div class="ins-bar"><div style="width:'+pct+'%;background:'+(pct>=100?'var(--green)':'var(--blue)')+'"></div></div>'+
+    '<div style="font-size:0.7rem;color:var(--muted);margin-top:5px">'+pct+'%</div></div>';
+}
+
+function dashCardPreview(sid){
+  if(sid==='fulfillment') return DASH_PREVIEW.recurrentes!=null?(DASH_PREVIEW.recurrentes+' clientes activos'):'—';
+  if(sid==='leads') return DASH_PREVIEW.leadsMes!=null?(DASH_PREVIEW.leadsMes+' leads este mes'):'—';
+  if(sid==='ventas') return DASH_PREVIEW.pipeline!=null?(DASH_PREVIEW.pipeline+' en pipeline'):'—';
+  return 'Datos en próxima tajada';
+}
+
+function dashSysCard(s){
+  var n=DASH_PROYECTOS.filter(function(p){return p.sistema===s.id&&p.estado!=='Completado';}).length;
+  var tiles=s.kpis.map(function(k){
+    var rv=dashKpiValue(s.id,k.label,k.meta);
+    return '<div style="background:#f6f8fb;border-radius:10px;padding:11px 12px">'+
+      '<div style="font-size:0.6rem;text-transform:uppercase;letter-spacing:0.4px;color:var(--muted);font-weight:700;margin-bottom:5px">'+k.label+'</div>'+
+      '<div style="display:flex;align-items:center;gap:7px;font-weight:700;color:var(--navy);font-size:0.95rem">'+rv.val+'<span style="width:9px;height:9px;border-radius:50%;background:'+rv.dot+';display:inline-block"></span></div></div>';
+  }).join('');
+  return '<div class="ins-card" onclick="dashOpenSystem(\''+s.id+'\')" style="padding:18px;cursor:pointer;margin-bottom:14px">'+
+    '<div style="display:flex;align-items:center;gap:11px;margin-bottom:13px">'+
+      '<span style="width:34px;height:34px;border-radius:9px;background:'+s.iconBg+';display:flex;align-items:center;justify-content:center;font-size:1.05rem">'+s.icon+'</span>'+
+      '<span style="font-weight:800;color:var(--navy);font-size:1rem">'+s.num+'. '+s.nombre+'</span>'+
+      '<span style="margin-left:auto;width:12px;height:12px;border-radius:50%;background:var(--muted)" title="Semáforo real en próximas tajadas"></span></div>'+
+    '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:9px;margin-bottom:12px">'+tiles+'</div>'+
+    '<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;border-top:1px solid #eef1f5;padding-top:10px">'+
+      '<span style="font-size:0.72rem;color:var(--muted)">Fuentes: '+s.fuentes+'</span>'+
+      '<button onclick="event.stopPropagation();dashScrollProj(\''+s.id+'\')" style="border:none;background:none;color:var(--blue);font-size:0.74rem;font-weight:600;cursor:pointer;padding:0">'+(n>0?(n+' proyecto'+(n>1?'s':'')+' ▸'):'Sin proyectos ▸')+'</button></div>'+
+  '</div>';
+}
+function dashFooter(){
+  return '<div class="ins-card" style="padding:14px 16px;background:#f6f8fb;font-size:0.76rem;color:var(--muted);line-height:1.5;margin-bottom:24px">'+
+    '<div><b style="color:var(--navy)">Regla del semáforo:</b> el color de cada sistema lo dicta su peor KPI. Si 3 están en verde y 1 en rojo, el sistema está en rojo.</div>'+
+    '<div style="margin-top:5px"><b style="color:var(--navy)">Automatizable hoy:</b> módulo Comercial, Fulfillment, clientes. <b style="color:var(--navy)">Manual por ahora:</b> costo por lead, onboarding (satisfacción), talento, tickets.</div></div>';
+}
+
+function dashFmt(n){ n=Math.round(n||0); return n.toString().replace(/\B(?=(\d{3})+(?!\d))/g,','); }
+function dashLeadTotal(l){ return (parseFloat(l.impl)||0)+(parseFloat(l.fe)||0)+(parseFloat(l.serv)||0)+(parseFloat(l.soft)||0); }
+function dashLeadVendido(l,includeSoft){ var di=(l.desc_impl!=null?l.desc_impl:0)/100,df=(l.desc_fe!=null?l.desc_fe:0)/100,ds=(l.desc_serv!=null?l.desc_serv:0)/100,dw=(l.desc_soft!=null?l.desc_soft:0)/100; var t=(parseFloat(l.impl)||0)*(1-di)+(parseFloat(l.fe)||0)*(1-df)+(parseFloat(l.serv)||0)*(1-ds); if(includeSoft) t+=(parseFloat(l.soft)||0)*(1-dw); return t; }
+function dashMonthSelector(){
+  var maxM=new Date().getMonth(), yr=new Date().getFullYear(); var cur=DASH_MES||mesPresentacion();
+  var opts=''; for(var i=0;i<=maxM;i++){ var nm=MESES_WF[i]; var lb=nm.charAt(0).toUpperCase()+nm.slice(1); opts+='<option value="'+nm+'"'+(nm===cur?' selected':'')+'>'+lb+' '+yr+'</option>'; }
+  return '<div style="display:flex;align-items:center;gap:8px;margin-bottom:16px"><span style="font-size:0.7rem;text-transform:uppercase;letter-spacing:0.4px;color:var(--muted);font-weight:700">Mes</span><select onchange="dashSetMes(this.value)" style="padding:6px 12px;border:1px solid var(--border,#e5e7eb);border-radius:8px;font-family:inherit;font-size:0.85rem;font-weight:600;background:#fff;cursor:pointer">'+opts+'</select></div>';
+}
+function dashSetMes(mes){ DASH_MES=mes; renderStrategicDashboard(); }
+// Vista detallada del Sistema de Ventas: dropdown de mes + 5 KPIs reales desde `leads`.
+async function dashVentasDetail(mes){
+  DASH_VIEW='ventas';
+  var yr=new Date().getFullYear(), maxM=new Date().getMonth();
+  var cur=mes||DASH_MES||mesPresentacion();
+  var opts=''; for(var i=0;i<=maxM;i++){ var nm=MESES_WF[i]; var lb=nm.charAt(0).toUpperCase()+nm.slice(1); opts+='<option value="'+nm+'"'+(nm===cur?' selected':'')+'>'+lb+' '+yr+'</option>'; }
+  var head=dashBackBtn()+'<div class="ins-sec-head" style="margin-bottom:10px">📈 Sistema de ventas</div>'+
+    '<div style="display:flex;align-items:center;gap:8px;margin-bottom:16px"><span style="font-size:0.7rem;text-transform:uppercase;letter-spacing:0.4px;color:var(--muted);font-weight:700">Mes</span>'+
+    '<select onchange="dashVentasDetail(this.value)" style="padding:6px 12px;border:1px solid var(--border,#e5e7eb);border-radius:8px;font-family:inherit;font-size:0.85rem;font-weight:600;background:#fff;cursor:pointer">'+opts+'</select></div>';
+  var dk=document.getElementById('dashboard-kpis'); if(dk) dk.innerHTML=head+'<div style="padding:20px;color:var(--muted);font-size:0.85rem">Cargando '+insEsc(cur)+'…</div>';
+  var leads=[]; try{ var r=await sb.from('leads').select('funnel,impl,fe,serv,soft,desc_impl,desc_fe,desc_serv,desc_soft,nombre,empresa').eq('anio',yr).eq('mes',cur); leads=r.data||[]; }catch(e){}
+  var includeSoft=(MESES_WF.indexOf(cur)>=2); // software cuenta desde marzo, igual que el módulo Comercial
+  var ganados=leads.filter(function(l){ return l.funnel==='Cerrado Ganado'; });
+  var perdidos=leads.filter(function(l){ return l.funnel==='Cerrado Perdido'; }).length;
+  var noShow=leads.filter(function(l){ return l.funnel==='No Show'; }).length;
+  var noAplica=leads.filter(function(l){ return l.funnel==='No Aplica'; }).length;
+  var leadsBuenos=leads.length-noShow-noAplica;
+  var vendido=ganados.reduce(function(s,l){ return s+dashLeadVendido(l,includeSoft); },0);
+  var tasa=(ganados.length+perdidos)>0?Math.round(ganados.length/(ganados.length+perdidos)*100):null;
+  var tile=function(label,val,sub,color){ return '<div class="ins-card" style="padding:14px"><div style="font-size:0.6rem;text-transform:uppercase;letter-spacing:0.4px;color:var(--muted);font-weight:700;margin-bottom:6px">'+label+'</div>'+
+    '<div style="font-weight:800;color:'+(color||'var(--navy)')+';font-size:1.2rem;line-height:1.1">'+val+'</div>'+(sub?('<div style="font-size:0.7rem;color:var(--muted);margin-top:3px">'+sub+'</div>'):'')+'</div>'; };
+  var tiles='<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:20px">'+
+    tile('Cotizaciones', leadsBuenos, leads.length+' leads − '+noShow+' no show − '+noAplica+' N/A','var(--navy)')+
+    tile('Cierres', ganados.length, 'cerrados ganados', ganados.length>0?'var(--green)':'var(--navy)')+
+    tile('Tasa de cierre', (tasa!=null?(tasa+'%'):'N/D'), 'ganados vs perdidos','var(--navy)')+
+    tile('Ciclo de venta', 'N/D', 'requiere fechas de lead','var(--muted)')+
+    tile('Vendido', 'US$ '+dashFmt(vendido), 'neto de descuentos','var(--green)')+
+  '</div>';
+  var tabla;
+  if(ganados.length){
+    tabla='<div class="ins-sec-head" style="font-size:0.9rem">Cierres de '+insEsc(cur)+'</div><div class="ins-card" style="padding:4px 6px;overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:0.85rem"><thead><tr>'+
+      '<th style="text-align:left;padding:7px 9px;font-size:0.6rem;text-transform:uppercase;color:var(--muted);border-bottom:2px solid var(--border,#e5e7eb)">Cliente</th>'+
+      '<th style="text-align:right;padding:7px 9px;font-size:0.6rem;text-transform:uppercase;color:var(--muted);border-bottom:2px solid var(--border,#e5e7eb)">Vendido</th></tr></thead><tbody>'+
+      ganados.map(function(l){ return '<tr style="border-bottom:1px solid #f1f5f9"><td style="padding:8px 9px;font-weight:600;color:var(--navy)">'+insEsc(l.empresa||l.nombre||'—')+'</td><td style="padding:8px 9px;text-align:right;font-weight:700;color:var(--green)">US$ '+dashFmt(dashLeadVendido(l,includeSoft))+'</td></tr>'; }).join('')+
+      '</tbody></table></div>';
+  } else {
+    tabla='<div class="ins-card" style="padding:16px;color:var(--muted);font-size:0.85rem">Sin cierres registrados en '+insEsc(cur)+'.</div>';
+  }
+  var note='<div style="font-size:0.72rem;color:var(--muted);margin-top:14px"><b>Cotizaciones</b> = leads buenos (total − no show − no aplica). <b>Vendido</b> = cierres netos de descuentos (software desde marzo). El <b>ciclo de venta real</b> necesita fechas por lead que hoy no se guardan.</div>';
+  if(dk) dk.innerHTML=head+tiles+tabla+note;
+}
+// Vista detallada del Sistema de Captación de Leads: dropdown de mes + KPIs reales + embudo por etapa.
+async function dashLeadsDetail(mes){
+  DASH_VIEW='leads';
+  var yr=new Date().getFullYear(), maxM=new Date().getMonth();
+  var cur=mes||DASH_MES||mesPresentacion();
+  var opts=''; for(var i=0;i<=maxM;i++){ var nm=MESES_WF[i]; var lb=nm.charAt(0).toUpperCase()+nm.slice(1); opts+='<option value="'+nm+'"'+(nm===cur?' selected':'')+'>'+lb+' '+yr+'</option>'; }
+  var head=dashBackBtn()+'<div class="ins-sec-head" style="margin-bottom:10px">🎯 Sistema de captación de leads</div>'+
+    '<div style="display:flex;align-items:center;gap:8px;margin-bottom:16px"><span style="font-size:0.7rem;text-transform:uppercase;letter-spacing:0.4px;color:var(--muted);font-weight:700">Mes</span>'+
+    '<select onchange="dashLeadsDetail(this.value)" style="padding:6px 12px;border:1px solid var(--border,#e5e7eb);border-radius:8px;font-family:inherit;font-size:0.85rem;font-weight:600;background:#fff;cursor:pointer">'+opts+'</select></div>';
+  var dk=document.getElementById('dashboard-kpis'); if(dk) dk.innerHTML=head+'<div style="padding:20px;color:var(--muted);font-size:0.85rem">Cargando '+insEsc(cur)+'…</div>';
+  var leads=[]; try{ var r=await sb.from('leads').select('funnel,impl,fe,serv,soft,nombre,empresa').eq('anio',yr).eq('mes',cur); leads=r.data||[]; }catch(e){}
+  var total=leads.length;
+  var STAGES=['Esperando Demo','Esperando Cotización','Cotización Enviada','Seguimiento','Cerrado Ganado','Cerrado Perdido','No Show','No Aplica'];
+  var conteo={}; STAGES.forEach(function(s){ conteo[s]=0; }); leads.forEach(function(l){ if(conteo[l.funnel]!=null) conteo[l.funnel]++; });
+  var noShow=conteo['No Show']||0, noAplica=conteo['No Aplica']||0;
+  var leadsBuenos=total-noShow-noAplica;
+  var cotizado=leads.reduce(function(s,l){ return s+dashLeadTotal(l); },0);
+  var rt=total?leadsBuenos/total:0;
+  var tile=function(label,val,sub,color){ return '<div class="ins-card" style="padding:14px"><div style="font-size:0.6rem;text-transform:uppercase;letter-spacing:0.4px;color:var(--muted);font-weight:700;margin-bottom:6px">'+label+'</div>'+
+    '<div style="font-weight:800;color:'+(color||'var(--navy)')+';font-size:1.2rem;line-height:1.1">'+val+'</div>'+(sub?('<div style="font-size:0.7rem;color:var(--muted);margin-top:3px">'+sub+'</div>'):'')+'</div>'; };
+  var tiles='<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:20px">'+
+    tile('Leads del mes', total, 'entraron en '+insEsc(cur), total>=5?'var(--green)':(total>=2?'var(--amber)':'var(--red)'))+
+    tile('Leads buenos', leadsBuenos, total+' − '+noShow+' no show − '+noAplica+' N/A', rt>=0.7?'var(--green)':(rt>=0.5?'var(--amber)':'var(--red)'))+
+    tile('Cotizado', 'US$ '+dashFmt(cotizado), 'todo lo cotizado del mes','var(--blue)')+
+    tile('Costo por lead', '—', 'manual (Meta Ads)','var(--muted)')+
+    tile('Costo adquisición', '—', 'manual (inversión ÷ cierres)','var(--muted)')+
+  '</div>';
+  var maxC=Math.max.apply(null,STAGES.map(function(s){ return conteo[s]||0; }).concat([1]));
+  var barra=STAGES.filter(function(s){ return (conteo[s]||0)>0; }).map(function(s){
+    var c=conteo[s]||0, w=Math.round(c/maxC*100);
+    return '<div style="display:flex;align-items:center;gap:10px;margin-bottom:6px"><span style="width:150px;font-size:0.76rem;color:var(--navy);flex-shrink:0">'+insEsc(s)+'</span>'+
+      '<div style="flex:1;background:#f1f5f9;border-radius:6px;overflow:hidden;height:18px"><div style="width:'+w+'%;height:100%;background:var(--blue)"></div></div>'+
+      '<span style="width:30px;text-align:right;font-weight:700;color:var(--navy);font-size:0.8rem">'+c+'</span></div>';
+  }).join('');
+  var bd=total?('<div class="ins-sec-head" style="font-size:0.9rem">Leads por etapa — '+insEsc(cur)+'</div><div class="ins-card" style="padding:16px">'+barra+'</div>'):'<div class="ins-card" style="padding:16px;color:var(--muted);font-size:0.85rem">Sin leads en '+insEsc(cur)+'.</div>';
+  var note='<div style="font-size:0.72rem;color:var(--muted);margin-top:14px"><b>Leads buenos</b> = total − no show − no aplica. <b>Costo por lead</b> y <b>costo de adquisición de cliente</b> van manuales (Meta Ads / inversión no conectada).</div>';
+  if(dk) dk.innerHTML=head+tiles+bd+note;
+}
+function dashBackBtn(){
+  return '<button onclick="renderStrategicDashboard()" style="border:1px solid var(--border,#e5e7eb);background:#fff;border-radius:8px;padding:6px 12px;font-size:0.8rem;cursor:pointer;margin-bottom:14px">← Volver a vista general</button>';
+}
+
+function dashOpenSystem(sid){
+  if(sid==='fulfillment'){ renderFulfillmentDetail(); return; }
+  if(sid==='ventas'){ dashVentasDetail(); return; }
+  if(sid==='leads'){ dashLeadsDetail(); return; }
+  DASH_VIEW=sid;
+  var s=DASH_SISTEMAS.find(function(x){return x.id===sid;});
+  var h=dashBackBtn()+'<div class="ins-sec-head">'+s.icon+' '+s.nombre+'</div>'+
+    '<div class="ins-card" style="padding:20px;color:var(--muted);font-size:0.9rem">Los KPIs y la vista detallada de este sistema llegan en la próxima tajada. Por ahora, sus proyectos:</div>'+
+    '<div style="margin-top:14px">'+dashProyectosHTML(sid)+'</div>';
+  var dk=document.getElementById('dashboard-kpis'); if(dk) dk.innerHTML=h;
+}
+
+function dashScrollProj(sid){ var el=document.getElementById('dash-proj-'+sid)||document.getElementById('dash-proyectos'); if(el){ el.scrollIntoView({behavior:'smooth',block:'start'}); } }
+
+function dashBadges(p){
+  var ck=Array.isArray(p.checklist)?p.checklist:[]; var co=Array.isArray(p.comentarios)?p.comentarios:[];
+  if(!ck.length&&!co.length) return '';
+  var b='<div style="margin-top:6px;display:flex;gap:6px">';
+  if(ck.length) b+='<span style="font-size:0.66rem;color:var(--muted);background:#f1f5f9;border-radius:5px;padding:1px 6px">☑ '+ck.filter(function(x){return x.done;}).length+'/'+ck.length+'</span>';
+  if(co.length) b+='<span style="font-size:0.66rem;color:var(--muted);background:#f1f5f9;border-radius:5px;padding:1px 6px">💬 '+co.length+'</span>';
+  return b+'</div>';
+}
+// Resumen estratégico de proyectos: qué sistema afecta cada uno, qué indicador mueve y cómo.
+// Marca los sistemas sin ningún proyecto corriendo (para no perder foco de ninguna área).
+function dashResumenHTML(){
+  if(!DASH_PROJ_OK) return '<div class="ins-card" style="padding:16px;background:var(--amber-light);color:var(--amber);font-size:0.85rem">Falta crear la tabla. Corre <code>db/dashboard-proyectos-setup.sql</code> en Supabase y recarga.</div>';
+  if(!DASH_PROYECTOS.length) return '<div class="ins-card" style="padding:18px;color:var(--muted);font-size:0.85rem;text-align:center">Aún no hay proyectos. Agrega el primero con el botón de arriba.</div>';
+  var sisIndex={}; DASH_SISTEMAS.forEach(function(s,i){ sisIndex[s.id]=i; });
+  var lista=DASH_PROYECTOS.slice().sort(function(a,b){ return (sisIndex[a.sistema]==null?9:sisIndex[a.sistema])-(sisIndex[b.sistema]==null?9:sisIndex[b.sistema]); });
+  var activos=DASH_PROYECTOS.filter(function(p){ return p.estado!=='Completado'; });
+  var conProj={}; activos.forEach(function(p){ conProj[p.sistema]=true; });
+  var sinProj=DASH_SISTEMAS.filter(function(s){ return !conProj[s.id]; });
+  var nSis=DASH_SISTEMAS.length-sinProj.length;
+  var overview='<div style="font-size:0.83rem;color:var(--muted);margin-bottom:12px">Estás moviendo <b style="color:var(--navy)">'+activos.length+'</b> proyecto'+(activos.length===1?'':'s')+' en <b style="color:var(--navy)">'+nSis+' de 5</b> sistemas.'+
+    (sinProj.length?('<br><span style="color:var(--amber);font-weight:600">⚠ Sin proyectos activos: '+sinProj.map(function(s){ return insEsc(s.nombre); }).join(' · ')+'</span>'):'')+'</div>';
+  var th=function(t,al){ return '<th style="text-align:'+(al||'left')+';padding:7px 9px;font-size:0.6rem;text-transform:uppercase;letter-spacing:0.3px;color:var(--muted);border-bottom:2px solid var(--border,#e5e7eb)">'+t+'</th>'; };
+  var rows=lista.map(function(p){
+    var s=DASH_SISTEMAS.find(function(x){ return x.id===p.sistema; })||{icon:'',nombre:p.sistema};
+    var col=DASH_ESTADO_COLOR[p.estado]||'var(--muted)';
+    return '<tr onclick="dashOpenProj(\''+p.id+'\')" style="cursor:pointer;border-bottom:1px solid #f1f5f9">'+
+      '<td style="padding:9px;font-weight:700;color:var(--navy)">'+insEsc(p.nombre)+'</td>'+
+      '<td style="padding:9px;white-space:nowrap;color:var(--muted)">'+s.icon+' '+insEsc(s.nombre)+'</td>'+
+      '<td style="padding:9px">'+(p.kpi_impactado?('<span style="font-size:0.68rem;font-weight:700;background:#eef2f7;padding:2px 7px;border-radius:5px;white-space:nowrap">'+insEsc(p.kpi_impactado)+'</span>'):'<span style="color:var(--muted)">—</span>')+'</td>'+
+      '<td style="padding:9px;color:var(--navy);font-size:0.82rem">'+(p.objetivo?insEsc(p.objetivo):'<span style="color:var(--muted)">—</span>')+'</td>'+
+      '<td style="padding:9px;white-space:nowrap"><span style="display:inline-flex;align-items:center;gap:5px;font-size:0.72rem;font-weight:700;color:var(--navy)"><span style="width:8px;height:8px;border-radius:50%;background:'+col+'"></span>'+insEsc(p.estado)+'</span></td>'+
+    '</tr>';
+  }).join('');
+  return overview+'<div class="ins-card" style="padding:4px 6px;overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:0.85rem"><thead><tr>'+
+    th('Proyecto')+th('Sistema (área)')+th('Indicador que mueve')+th('Cómo lo mejora')+th('Estado')+'</tr></thead><tbody>'+rows+'</tbody></table></div>';
+}
+function dashProyectosHTML(filtSid){
+  if(!DASH_PROJ_OK) return '<div class="ins-card" style="padding:16px;background:var(--amber-light);color:var(--amber);font-size:0.85rem">Falta crear la tabla. Corre <code>db/dashboard-proyectos-setup.sql</code> en Supabase y recarga.</div>';
+  var lista=filtSid?DASH_PROYECTOS.filter(function(p){return p.sistema===filtSid;}):DASH_PROYECTOS;
+  if(!lista.length) return '<div class="ins-card" style="padding:18px;color:var(--muted);font-size:0.85rem;text-align:center">Aún no hay proyectos. Agrega el primero con el botón de arriba.</div>';
+  var sistemas=filtSid?DASH_SISTEMAS.filter(function(x){return x.id===filtSid;}):DASH_SISTEMAS;
+  var html='';
+  sistemas.forEach(function(s){
+    var items=DASH_PROYECTOS.filter(function(p){return p.sistema===s.id;});
+    if(!items.length) return;
+    html+='<div id="dash-proj-'+s.id+'" style="margin-bottom:18px"><div style="font-size:0.66rem;text-transform:uppercase;letter-spacing:0.3px;color:var(--muted);font-weight:700;margin-bottom:8px">'+s.icon+' '+s.nombre+'</div>'+
+      '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:10px">';
+    items.forEach(function(p){
+      html+='<div class="ins-card" style="padding:14px">'+
+        '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px"><span style="font-size:0.72rem;font-weight:700;display:flex;align-items:center;gap:6px"><span style="width:9px;height:9px;border-radius:50%;background:'+(DASH_ESTADO_COLOR[p.estado]||'var(--muted)')+';display:inline-block"></span>'+insEsc(p.estado)+'</span>'+
+        '<button onclick="dashOpenProj(\''+p.id+'\')" style="border:none;background:none;color:var(--muted);font-size:0.72rem;cursor:pointer">Editar</button></div>'+
+        '<div style="font-weight:700;color:var(--navy);font-size:0.86rem;margin-bottom:3px">'+insEsc(p.nombre)+'</div>'+
+        (p.objetivo?('<div style="font-size:0.76rem;color:var(--muted);margin-bottom:3px">'+insEsc(p.objetivo)+'</div>'):'')+
+        '<div style="font-size:0.7rem;color:var(--muted)">'+(p.fecha_inicio?('Inicio: '+insEsc(p.fecha_inicio)):'')+(p.fecha_fin_est?(' · Est. fin: '+insEsc(p.fecha_fin_est)):'')+(p.kpi_impactado?(' · KPI: '+insEsc(p.kpi_impactado)):'')+'</div>'+
+        dashBadges(p)+
+        (p.notas?('<div style="font-size:0.7rem;color:var(--muted);font-style:italic;margin-top:3px">'+insEsc(p.notas)+'</div>'):'')+'</div>';
+    });
+    html+='</div></div>';
+  });
+  return html;
+}
+
+function dashOpenProj(id,sysPre){
+  var p=id?DASH_PROYECTOS.find(function(x){return x.id===id;}):null;
+  DASH_CK=(p&&Array.isArray(p.checklist))?p.checklist.map(function(x){return {texto:x.texto,done:!!x.done};}):[];
+  DASH_CO=(p&&Array.isArray(p.comentarios))?p.comentarios.map(function(x){return {texto:x.texto,autor:x.autor,fecha:x.fecha};}):[];
+  var sysOpts=DASH_SISTEMAS.map(function(s){return '<option value="'+s.id+'"'+(((p&&p.sistema===s.id)||(!p&&sysPre===s.id))?' selected':'')+'>'+s.icon+' '+s.nombre+'</option>';}).join('');
+  var estOpts=DASH_ESTADOS.map(function(e){return '<option'+(((p&&p.estado===e)||(!p&&e==='Planificado'))?' selected':'')+'>'+e+'</option>';}).join('');
+  var kSid=p?p.sistema:(sysPre||DASH_SISTEMAS[0].id);
+  var kpiOpts='<option value="">—</option>'+dashKpiLabels(kSid).map(function(k){return '<option'+(p&&p.kpi_impactado===k?' selected':'')+'>'+insEsc(k)+'</option>';}).join('');
+  var fld=function(l,inner){return '<div><label style="display:block;font-size:0.7rem;font-weight:700;color:var(--muted);margin-bottom:3px">'+l+'</label>'+inner+'</div>';};
+  var lbl=function(t){return '<div style="font-size:0.66rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.4px;margin-bottom:8px">'+t+'</div>';};
+  var inp='width:100%;border:1px solid var(--border,#e5e7eb);border-radius:8px;padding:7px 9px;font-family:inherit;font-size:0.85rem;box-sizing:border-box';
+  var m=document.createElement('div'); m.id='dash-modal';
+  m.setAttribute('style','position:fixed;inset:0;background:rgba(15,23,42,.45);display:flex;align-items:center;justify-content:center;z-index:1000');
+  m.onclick=function(ev){ if(ev.target===m) dashCloseModal(); };
+  m.innerHTML='<div style="background:#fff;border-radius:16px;width:94%;max-width:840px;padding:22px;max-height:92vh;overflow:auto">'+
+    '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px"><h3 style="margin:0;color:var(--navy);font-size:1.05rem">'+(p?insEsc(p.nombre||'Editar proyecto'):'Nuevo proyecto')+'</h3><button onclick="dashCloseModal()" style="border:none;background:none;font-size:1.4rem;color:var(--muted);cursor:pointer;line-height:1">×</button></div>'+
+    '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:22px">'+
+      '<div style="display:flex;flex-direction:column;gap:11px">'+
+        fld('Nombre','<input id="dpf-nombre" style="'+inp+'" value="'+insEsc(p?p.nombre:'')+'">')+
+        '<div style="display:grid;grid-template-columns:1fr 1fr;gap:11px">'+fld('Sistema','<select id="dpf-sistema" style="'+inp+'" onchange="dashRefreshKpi()">'+sysOpts+'</select>')+fld('Estado','<select id="dpf-estado" style="'+inp+'">'+estOpts+'</select>')+'</div>'+
+        fld('Objetivo','<input id="dpf-objetivo" style="'+inp+'" value="'+insEsc(p?p.objetivo:'')+'">')+
+        '<div style="display:grid;grid-template-columns:1fr 1fr;gap:11px">'+fld('Fecha inicio','<input type="date" id="dpf-inicio" style="'+inp+'" value="'+insEsc(p?p.fecha_inicio:'')+'">')+fld('Fecha estimada fin','<input type="date" id="dpf-fin" style="'+inp+'" value="'+insEsc(p?p.fecha_fin_est:'')+'">')+'</div>'+
+        fld('KPI impactado','<select id="dpf-kpi" style="'+inp+'">'+kpiOpts+'</select>')+
+        fld('Notas','<textarea id="dpf-notas" rows="2" style="'+inp+'">'+insEsc(p?p.notas:'')+'</textarea>')+
+        '<div style="border-top:1px solid #eef1f5;padding-top:12px">'+lbl('Checklist')+
+          '<div id="dash-ck-list" style="margin-bottom:8px"></div>'+
+          '<div style="display:flex;gap:6px"><input id="dash-ck-input" placeholder="Agregar ítem…" onkeydown="if(event.key===\'Enter\'){event.preventDefault();dashAddCk();}" style="'+inp+';flex:1"><button onclick="dashAddCk()" style="border:none;background:#eef2ff;color:var(--blue);border-radius:8px;padding:0 14px;font-weight:800;font-size:1rem;cursor:pointer">+</button></div>'+
+        '</div>'+
+      '</div>'+
+      '<div>'+lbl('Comentarios')+
+        '<div style="display:flex;flex-direction:column;gap:6px;margin-bottom:12px"><textarea id="dash-co-input" rows="2" placeholder="Escribe un comentario…" style="'+inp+';resize:vertical"></textarea><button onclick="dashAddCo()" style="align-self:flex-end;border:none;background:var(--navy);color:#fff;border-radius:8px;padding:6px 14px;font-size:0.82rem;font-weight:600;cursor:pointer">Agregar</button></div>'+
+        '<div id="dash-co-list"></div>'+
+      '</div>'+
+    '</div>'+
+    '<div style="display:flex;justify-content:space-between;align-items:center;margin-top:18px;border-top:1px solid #eef1f5;padding-top:14px">'+
+      (p?'<button onclick="dashDelProj(\''+p.id+'\')" style="border:none;background:none;color:var(--red);font-size:0.78rem;cursor:pointer">Eliminar</button>':'<span></span>')+
+      '<div style="display:flex;gap:8px"><button onclick="dashCloseModal()" style="border:1px solid var(--border,#e5e7eb);background:#fff;border-radius:8px;padding:7px 12px;font-size:0.85rem;cursor:pointer">Cancelar</button>'+
+      '<button onclick="dashSaveProj(\''+(p?p.id:'')+'\')" style="border:none;background:var(--navy);color:#fff;border-radius:8px;padding:7px 16px;font-size:0.85rem;font-weight:600;cursor:pointer">Guardar</button></div></div></div>';
+  document.body.appendChild(m);
+  dashRenderCk(); dashRenderCo();
+}
+function dashRenderCk(){
+  var el=document.getElementById('dash-ck-list'); if(!el) return;
+  if(!DASH_CK.length){ el.innerHTML='<div style="font-size:0.78rem;color:var(--muted)">Sin ítems todavía.</div>'; return; }
+  var done=DASH_CK.filter(function(i){return i.done;}).length;
+  el.innerHTML='<div style="font-size:0.68rem;color:var(--muted);margin-bottom:6px">'+done+'/'+DASH_CK.length+' completados</div>'+
+    DASH_CK.map(function(it,i){ return '<div style="display:flex;align-items:center;gap:8px;padding:3px 0">'+
+      '<input type="checkbox" '+(it.done?'checked':'')+' onchange="dashToggleCk('+i+')" style="cursor:pointer">'+
+      '<span style="flex:1;font-size:0.83rem;'+(it.done?'text-decoration:line-through;color:var(--muted)':'color:var(--navy)')+'">'+insEsc(it.texto)+'</span>'+
+      '<button onclick="dashDelCk('+i+')" style="border:none;background:none;color:var(--muted);cursor:pointer;font-size:1rem;line-height:1">×</button></div>'; }).join('');
+}
+function dashAddCk(){ var el=document.getElementById('dash-ck-input'); var t=(el.value||'').trim(); if(!t) return; DASH_CK.push({texto:t,done:false}); el.value=''; dashRenderCk(); }
+function dashToggleCk(i){ if(DASH_CK[i]) DASH_CK[i].done=!DASH_CK[i].done; dashRenderCk(); }
+function dashDelCk(i){ DASH_CK.splice(i,1); dashRenderCk(); }
+function dashRenderCo(){
+  var el=document.getElementById('dash-co-list'); if(!el) return;
+  if(!DASH_CO.length){ el.innerHTML='<div style="font-size:0.78rem;color:var(--muted)">Sin comentarios.</div>'; return; }
+  el.innerHTML=DASH_CO.map(function(c,i){ return '<div style="background:#f6f8fb;border-radius:8px;padding:8px 10px;margin-bottom:7px">'+
+    '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:2px"><span style="font-size:0.68rem;font-weight:700;color:var(--navy)">'+insEsc(c.autor||'—')+'</span>'+
+    '<span style="display:flex;align-items:center;gap:6px"><span style="font-size:0.66rem;color:var(--muted)">'+insEsc(c.fecha||'')+'</span><button onclick="dashDelCo('+i+')" style="border:none;background:none;color:var(--muted);cursor:pointer;font-size:0.9rem;line-height:1">×</button></span></div>'+
+    '<div style="font-size:0.82rem;color:var(--navy);white-space:pre-wrap">'+insEsc(c.texto)+'</div></div>'; }).join('');
+}
+function dashAddCo(){ var el=document.getElementById('dash-co-input'); var t=(el.value||'').trim(); if(!t) return; var d=new Date(); var f=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); DASH_CO.unshift({texto:t,autor:((userName||'').split(' ')[0]||'Admin'),fecha:f}); el.value=''; dashRenderCo(); }
+function dashDelCo(i){ DASH_CO.splice(i,1); dashRenderCo(); }
+function dashRefreshKpi(){ var sid=document.getElementById('dpf-sistema').value; document.getElementById('dpf-kpi').innerHTML='<option value="">—</option>'+dashKpiLabels(sid).map(function(k){return '<option>'+insEsc(k)+'</option>';}).join(''); }
+function dashCloseModal(){ var m=document.getElementById('dash-modal'); if(m) m.remove(); }
+async function dashSaveProj(id){
+  var g=function(x){var el=document.getElementById(x);return el?el.value:'';};
+  var row={ nombre:(g('dpf-nombre')||'').trim(), sistema:g('dpf-sistema'), objetivo:g('dpf-objetivo')||null, estado:g('dpf-estado'), fecha_inicio:g('dpf-inicio')||null, fecha_fin_est:g('dpf-fin')||null, kpi_impactado:g('dpf-kpi')||null, notas:g('dpf-notas')||null, checklist:DASH_CK, comentarios:DASH_CO };
+  if(!row.nombre){ alert('Ponle un nombre al proyecto'); return; }
+  try{ var res=id?await sb.from('dashboard_proyectos').update(row).eq('id',id):await sb.from('dashboard_proyectos').insert(row);
+    if(res.error){ alert('Error al guardar: '+res.error.message); return; } }catch(e){ alert('Error al guardar'); return; }
+  dashCloseModal(); await dashReload();
+}
+async function dashDelProj(id){
+  if(!confirm('¿Eliminar este proyecto?')) return;
+  try{ var res=await sb.from('dashboard_proyectos').delete().eq('id',id); if(res.error){ alert('Error al eliminar'); return; } }catch(e){ alert('Error al eliminar'); return; }
+  dashCloseModal(); await dashReload();
+}
+async function dashReload(){
+  if(DASH_VIEW==='fulfillment'){ renderFulfillmentDetail(); }
+  else if(DASH_VIEW && DASH_VIEW!=='general'){ await loadDashData(); dashOpenSystem(DASH_VIEW); }
+  else { renderStrategicDashboard(); }
+}
+
 async function renderHomeContent(){
   // Registro rol → Insight: cada rol aterriza en su propio inicio.
   //  contadores → panel personal | admin → dashboard de equipo | resto → inicio genérico (placeholder hasta tener panel propio)
@@ -1411,7 +1803,14 @@ async function renderHomeContent(){
     return;
   }
   if (userRole !== 'admin') { await renderGenericInsight(); return; } // impuestos / comercial / implementaciones
-  // Admin: dashboard espejo del de las contadoras, pero a nivel EQUIPO
+  // Admin: el inicio ES el Dashboard Estratégico (Nivel 1). El dashboard de equipo vive en Fulfillment.
+  await renderStrategicDashboard();
+}
+
+// Fulfillment (Sistema 4): el dashboard de equipo que hasta ahora era el inicio de admin.
+// Se abre desde la tarjeta de Fulfillment del Dashboard Estratégico.
+async function renderFulfillmentDetail(){
+  DASH_VIEW = 'fulfillment';
   renderWelcome();
   await loadContadorasList();
   if(!WF_INS_LOADED){ try{ await loadWorkflowState(); }catch(e){} }
@@ -1425,7 +1824,7 @@ async function renderHomeContent(){
   var _cc = function(v){ if(v==null) return 'var(--muted)'; return v>=100?'var(--green)':v>=80?'var(--navy)':v>=50?'var(--amber)':'var(--red)'; };
   var _pp = function(v){ return v==null?'—':(v+'%'); };
 
-  var h = insMonthSelector();
+  var h = dashBackBtn() + '<div class="ins-sec-head" style="margin-bottom:12px">✅ Sistema de fulfillment de servicio — equipo</div>' + insMonthSelector();
 
   // ── Estatus del equipo: 4 workflows + 5 eval (sumatoria del equipo) ──
   var ws = computeWorkflowStats(null);
@@ -1607,6 +2006,7 @@ function insChangeMonth(val){
   INS_SEL={ mes: val, anio: new Date().getFullYear() };
   WF_INS_LOADED=false; // forzar recarga de los datos del mes elegido
   if(INS_VIEW.preview){ previewContadora(INS_VIEW.preview); }
+  else if(DASH_VIEW==='fulfillment'){ renderFulfillmentDetail(); }
   else { renderHomeContent(); }
 }
 

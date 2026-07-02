@@ -527,7 +527,7 @@ let CLIENTES=[];
 let CONTAB_DATA={}, IMP_MAP={}, COMENTS={}, ESTADO={};
 let USER={id:null,nombre:'',rol:'',equipo:'contab'};
 let DB_OK=false;
-let SUB='checklist', TAX=null, VIEW='kanban', SEL=null, VISTA='', GROUPBY='impuesto', PERSONA=''; // PROTOTIPO: arranca en Tareas Checklist; Workflows oculto (código intacto)
+let SUB='libre', TAX=null, VIEW='kanban', SEL=null, VISTA='', GROUPBY='impuesto', PERSONA=''; // arranca en Mis tareas; Workflows oculto (código intacto)
 // M4 · Tareas libres
 let LIBRE_COLS=[], LIBRE_TASKS=[], LIBRE_FILTRO='mias', LIBRE_PERSONA='', LIBRE_SEL=null, LIBRE_DRAG=null, LIBRE_COLDRAG=null, LIBRE_DRAFT=null, LIBRE_COMENTS={}, LIBRE_EDIT_ID=null; // PROTOTIPO: arranca en "Mis tareas"
 let TCFILTRO='atrasado'; // PROTOTIPO: pestaña Tareas Checklist — pill activo (atrasado/vencen_hoy/sin_actividad/en_curso)
@@ -644,7 +644,7 @@ function render(){
   if(td){const d=new Date();td.textContent=d.toLocaleDateString('es-DO',{weekday:'long',day:'numeric',month:'long',year:'numeric'}).replace(/^\w/,c=>c.toUpperCase());}
 
   // Subtabs — PROTOTIPO: Workflows oculto; Tablero (Kanban libre) + Tareas Checklist (tabla consolidada)
-  const subs=[['checklist','Tareas Checklist'],['libre','Mis tareas']];
+  const subs=[['libre','Mis tareas'],['checklist','Tareas Checklist']];
   document.getElementById('subtabs').innerHTML=subs.map(([k,l])=>'<button onclick="SUB=\''+k+'\';SEL=null;closePanel();render()" class="sub-tab'+(SUB===k?' is-active':'')+'">'+l+'</button>').join('');
 
   const nb=document.getElementById('navbar');
