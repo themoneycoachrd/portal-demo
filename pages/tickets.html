@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tickets — Account One</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root{ --navy:#28368D; --blue:#25AAE1; --green:#059669; --red:#cf2127; --amber:#d97706; --purple:#6b59c7;
+    --bg:#f6f8fa; --card:#fff; --border:#e4e7eb; --text:#2A2B2D; --muted:#6b7280; --light:#9ca3af; --ao-line-soft:#eef0f3; }
+  *{ box-sizing:border-box; }
+  body{ margin:0; background:var(--bg); color:var(--text); font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; }
+  .tk-wrap{ max-width:1200px; margin:0 auto; padding:20px 24px; }
+  .tk-filters{ display:flex; flex-wrap:wrap; align-items:center; gap:8px; margin-bottom:16px; }
+  .f-inp{ border:1px solid var(--border); border-radius:8px; padding:7px 10px; font-family:inherit; font-size:0.85rem; background:#fff; color:var(--text); }
+  .tk-list{ background:var(--card); border:1px solid var(--ao-line-soft); border-radius:12px; box-shadow:0 1px 2px rgba(40,54,141,0.04); overflow:hidden; }
+  table.tk{ width:100%; border-collapse:collapse; font-size:0.85rem; }
+  .tk th{ text-align:left; padding:10px 14px; font-size:0.62rem; font-weight:700; text-transform:uppercase; letter-spacing:0.08em; color:var(--muted); background:#fafbfc; border-bottom:1px solid var(--ao-line-soft); }
+  .tk td{ padding:11px 14px; border-bottom:1px solid var(--ao-line-soft); }
+  .tk tbody tr{ cursor:pointer; }
+  .tk tbody tr:hover td{ background:#fafbfc; }
+  .badge{ display:inline-block; font-size:0.64rem; font-weight:600; padding:3px 10px; border-radius:999px; color:#fff; white-space:nowrap; letter-spacing:0.02em; }
+  .empty{ color:var(--muted); font-size:0.88rem; background:var(--card); border:1px solid var(--ao-line-soft); border-radius:12px; padding:40px; text-align:center; }
+  .tk-pills{ display:grid; grid-template-columns:repeat(5,1fr); gap:12px; margin-bottom:18px; }
+  @media (max-width:760px){ .tk-pills{ grid-template-columns:repeat(2,1fr); } }
+  .tk-pill{ background:#fff; border:1px solid var(--ao-line-soft); border-radius:12px; box-shadow:0 1px 2px rgba(40,54,141,0.04); padding:14px 16px; cursor:pointer; transition:.12s; }
+  .tk-pill:hover{ border-color:#c9d2dc; box-shadow:0 3px 10px rgba(40,54,141,0.07); }
+  .tk-pill.active{ border-color:var(--navy); box-shadow:0 0 0 2px rgba(40,54,141,.12); }
+  .tk-pill .stat-value{ font-size:1.5rem; line-height:1.1; }
+  .tk-pill .stat-label{ font-size:0.62rem; text-transform:uppercase; letter-spacing:0.08em; color:var(--muted); font-weight:600; margin-top:5px; }
+  /* modal */
+  .tk-modal-bg{ position:fixed; inset:0; background:rgba(31,38,48,.45); display:flex; align-items:center; justify-content:center; z-index:1000; padding:16px; }
+  .tk-modal{ background:#fff; border-radius:16px; width:100%; max-width:860px; max-height:92vh; overflow:auto; padding:24px; }
+  .lbl{ display:block; font-size:0.64rem; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:0.06em; margin-bottom:4px; }
+  .inp{ width:100%; border:1px solid var(--border); border-radius:8px; padding:8px 10px; font-family:inherit; font-size:0.85rem; box-sizing:border-box; background:#fff; color:var(--text); }
+  .inp:focus{ border-color:var(--blue); box-shadow:0 0 0 3px rgba(37,170,225,0.18); outline:none; }
+  .grid2{ display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+  .btn{ border:1px solid var(--border); background:#fff; border-radius:8px; padding:8px 14px; font-size:0.85rem; font-weight:600; cursor:pointer; font-family:inherit; color:var(--muted); transition:.12s; }
+  .btn:hover{ background:#f3f6f9; color:var(--text); }
+  .btn-primary{ background:var(--blue); border-color:var(--blue); color:#fff; }
+  .btn-primary:hover{ background:#1B87B8; border-color:#1B87B8; color:#fff; }
+  .btn-navy{ background:var(--navy); border-color:var(--navy); color:#fff; }
+  .btn-navy:hover{ background:#202c75; color:#fff; }
+  .btn-close{ border:1px solid var(--green); color:var(--green); background:#fff; }
+  .col-fields{ display:flex; flex-direction:column; gap:12px; }
+</style>
+<link rel="stylesheet" href="assets/theme.css">
+<script src="assets/theme.js" defer></script>
+</head>
+<body>
+  <div class="mod-header">
+    <div>
+      <div class="mod-header-eye">Tickets</div>
+      <h1 class="mod-header-title">Tickets</h1>
+      <p class="mod-header-sub">Solicitudes importantes de clientes, con dueño, fecha comprometida y seguimiento.</p>
+    </div>
+    <div class="mod-header-actions">
+      <button class="mod-header-btn primary" onclick="openTicket()">+ Nuevo ticket</button>
+    </div>
+  </div>
+
+  <div class="tk-wrap">
+    <div id="pills" class="tk-pills"></div>
+    <div id="filtros" class="tk-filters"></div>
+    <div id="lista"></div>
+  </div>
+<div id="modal"></div>
+
+<script>
+const SUPABASE_URL='https://ouetusstqvpyjeycfdio.supabase.co';
+const SUPABASE_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im91ZXR1c3N0cXZweWpleWNmZGlvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY2NDcwNzksImV4cCI6MjA5MjIyMzA3OX0.Bsys947JLGEuf3zdBF2GPFdbJVJtaZdC4YEmyBU5Bow';
+const sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
+
+const PRIORIDADES=['Urgente','Alta','Media','Baja'];
+const ESTADOS=['Abierto','En progreso','Esperando cliente','Resuelto','Cerrado','Reabierto'];
+const CATEGORIAS=['Contabilidad','Impuestos','Sistema','Cliente','Otro'];
+const PRIO_COLOR={'Urgente':'var(--red)','Alta':'var(--amber)','Media':'var(--blue)','Baja':'#9ca3af'};
+const ESTADO_COLOR={'Abierto':'var(--blue)','En progreso':'var(--amber)','Esperando cliente':'var(--purple)','Resuelto':'var(--green)','Cerrado':'#9ca3af','Reabierto':'var(--red)'};
+
+let TICKETS=[], EQUIPO=[], CLIENTES=[], DB_OK=false;
+let ME={nombre:'',rol:''};
+let F_ESTADO='', F_PRIO='', F_MIOS=false, F_CLIENTE='', F_ESPECIAL='';
+
+function esc(s){ return (s==null?'':String(s)).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];}); }
+// Escapa y convierte links http/https en enlaces clickeables (abren en pestaña nueva).
+function linkify(s){ return esc(s).replace(/(https?:\/\/[^\s<]+)/g,function(u){ return '<a href="'+u+'" target="_blank" rel="noopener" style="color:var(--blue);text-decoration:underline;word-break:break-all">'+u+'</a>'; }); }
+// Formato de lectura: viñetas (líneas que empiezan con - * •) + links clickeables + saltos de línea.
+function fmtRich(s){
+  if(!s||!String(s).trim()) return '<span style="color:var(--light)">—</span>';
+  var lines=String(s).split(/\r?\n/), html='', inList=false;
+  lines.forEach(function(ln){
+    var mt=ln.match(/^\s*[-*•]\s+(.*)$/);
+    if(mt){ if(!inList){ html+='<ul style="margin:4px 0;padding-left:20px">'; inList=true; } html+='<li style="margin:3px 0">'+linkify(mt[1])+'</li>'; }
+    else { if(inList){ html+='</ul>'; inList=false; } if(ln.trim()==='') html+='<div style="height:8px"></div>'; else html+='<div>'+linkify(ln)+'</div>'; }
+  });
+  if(inList) html+='</ul>';
+  return html;
+}
+function hoy(){ var d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+function fmtFecha(f){ if(!f) return '—'; try{ return new Date(f+'T00:00:00').toLocaleDateString('es-DO',{day:'2-digit',month:'short'}); }catch(e){ return f; } }
+
+async function loadMe(){
+  try{ var u=await sb.auth.getUser(); var usr=u&&u.data?u.data.user:null; if(!usr) return;
+    ME.nombre=(usr.email||'').split('@')[0];
+    var p=await sb.from('profiles').select('nombre,rol').eq('id',usr.id).single();
+    if(p.data){ if(p.data.nombre) ME.nombre=p.data.nombre; ME.rol=p.data.rol||''; }
+  }catch(e){}
+}
+
+async function load(){
+  await loadMe();
+  try{ var eq=await sb.from('equipo').select('nombre,apellido,activo'); EQUIPO=(eq.data||[]).filter(function(x){return x.activo!==false;}).map(function(x){return (x.nombre+(x.apellido?(' '+x.apellido):'')).trim();}).filter(Boolean).sort(); }catch(e){ EQUIPO=[]; }
+  try{ var cl=await sb.from('clientes').select('nombre,activo'); CLIENTES=(cl.data||[]).filter(function(x){return x.activo!==false;}).map(function(x){return x.nombre;}).filter(Boolean).sort(); }catch(e){ CLIENTES=[]; }
+  try{ var t=await sb.from('tickets').select('*').order('created_at',{ascending:false}); if(!t.error){ DB_OK=true; TICKETS=t.data||[]; } }catch(e){}
+  render();
+}
+
+function render(){ renderPills(); renderFiltros(); renderLista(); }
+
+function renderFiltros(){
+  var sel=function(id,val,arr,label){ return '<select onchange="setF(\''+id+'\',this.value)" class="f-inp">'+
+    '<option value="">'+label+'</option>'+arr.map(function(o){return '<option'+(val===o?' selected':'')+'>'+esc(o)+'</option>';}).join('')+'</select>'; };
+  document.getElementById('filtros').innerHTML=
+    sel('estado',F_ESTADO,ESTADOS,'Todos los estados')+
+    sel('prio',F_PRIO,PRIORIDADES,'Toda prioridad')+
+    '<input class="f-inp" placeholder="Buscar cliente…" value="'+esc(F_CLIENTE)+'" oninput="setF(\'cliente\',this.value)">'+
+    '<label style="display:flex;align-items:center;gap:6px;font-size:0.82rem;color:var(--muted);margin-left:4px"><input type="checkbox" '+(F_MIOS?'checked':'')+' onchange="setF(\'mios\',this.checked)"> Solo míos</label>';
+}
+function setF(k,v){ if(k==='estado')F_ESTADO=v; else if(k==='prio')F_PRIO=v; else if(k==='cliente')F_CLIENTE=v; else if(k==='mios')F_MIOS=v; else if(k==='especial')F_ESPECIAL=(F_ESPECIAL===v?'':v); renderPills(); renderLista(); }
+
+function esMio(t){ var n=ME.nombre||''; return [t.resp_principal,t.resp_contabilidad,t.resp_impuestos,t.supervisor].some(function(r){ return r&&n&&(r===n||r.indexOf(n)>=0||n.indexOf(r)>=0); }); }
+function diasHasta(f){ if(!f) return null; var a=new Date(f+'T00:00:00'), b=new Date(hoy()+'T00:00:00'); return Math.round((a-b)/86400000); }
+// Métricas de un buen sistema de tickets: backlog, en atraso, sin 1ra respuesta, por vencer, resueltos.
+function esEspecial(t,key){
+  var abierto=(t.estado!=='Cerrado'&&t.estado!=='Resuelto');
+  if(key==='abiertos') return abierto;
+  if(key==='resueltos') return !abierto;
+  if(key==='atraso') return abierto && t.fecha_comprometida && t.fecha_comprometida < hoy();
+  if(key==='sin_respuesta') return t.estado==='Abierto' && t.created_at && (new Date(t.created_at).getTime() < Date.now()-86400000);
+  if(key==='por_vencer'){ if(!abierto) return false; var d=diasHasta(t.fecha_comprometida); return d!==null && d>=0 && d<=2; }
+  return true;
+}
+function renderPills(){
+  var el=document.getElementById('pills'); if(!el) return;
+  if(!DB_OK){ el.innerHTML=''; return; }
+  var defs=[
+    {key:'abiertos', label:'Abiertos', color:'var(--navy)'},
+    {key:'atraso', label:'En atraso', color:'var(--red)'},
+    {key:'sin_respuesta', label:'Sin respuesta +24h', color:'var(--amber)'},
+    {key:'por_vencer', label:'Por vencer (≤2 días)', color:'var(--blue)'},
+    {key:'resueltos', label:'Resueltos', color:'var(--green)'}
+  ];
+  el.innerHTML=defs.map(function(d){
+    var n=TICKETS.filter(function(t){ return esEspecial(t,d.key); }).length;
+    return '<div class="tk-pill'+(F_ESPECIAL===d.key?' active':'')+'" onclick="setF(\'especial\',\''+d.key+'\')"><div class="stat-value" style="color:'+d.color+'">'+n+'</div><div class="stat-label">'+d.label+'</div></div>';
+  }).join('');
+}
+
+function renderLista(){
+  var cont=document.getElementById('lista');
+  if(!DB_OK){ cont.innerHTML='<div class="empty" style="background:#fffbeb;border-color:#fde68a;color:#92400e">Falta crear las tablas. Corre <code>db/tickets-setup.sql</code> en Supabase y recarga. (O abre con sesión iniciada.)</div>'; return; }
+  var lista=TICKETS.filter(function(t){
+    if(F_ESTADO&&t.estado!==F_ESTADO) return false;
+    if(F_PRIO&&t.prioridad!==F_PRIO) return false;
+    if(F_CLIENTE&&(t.cliente||'').toLowerCase().indexOf(F_CLIENTE.toLowerCase())<0) return false;
+    if(F_MIOS&&!esMio(t)) return false;
+    if(F_ESPECIAL&&!esEspecial(t,F_ESPECIAL)) return false;
+    return true;
+  });
+  if(!lista.length){ cont.innerHTML='<div class="empty">No hay tickets con esos filtros.</div>'; return; }
+  var rows=lista.map(function(t){
+    var cerrado=(t.estado==='Cerrado'||t.estado==='Resuelto');
+    var vencido=t.fecha_comprometida&&!cerrado&&t.fecha_comprometida<hoy();
+    return '<tr onclick="openTicket(\''+t.id+'\')">'+
+      '<td><div style="font-weight:700;color:var(--navy)">'+esc(t.titulo)+'</div><div style="font-size:0.76rem;color:var(--light)">'+esc(t.cliente||'—')+'</div></td>'+
+      '<td><span class="badge" style="background:'+(PRIO_COLOR[t.prioridad]||'#9ca3af')+'">'+esc(t.prioridad||'—')+'</span></td>'+
+      '<td><span class="badge" style="background:'+(ESTADO_COLOR[t.estado]||'#9ca3af')+'">'+esc(t.estado||'—')+'</span></td>'+
+      '<td style="color:var(--muted);white-space:nowrap">'+esc(t.resp_principal||'Sin asignar')+'</td>'+
+      '<td style="white-space:nowrap;color:var(--muted)">'+fmtFecha(t.fecha_inicio)+'</td>'+
+      '<td style="white-space:nowrap;'+(vencido?'color:var(--red);font-weight:700':'color:var(--muted)')+'">'+fmtFecha(t.fecha_comprometida)+(vencido?' ⚠':'')+'</td>'+
+      '<td style="text-align:right;white-space:nowrap"><button onclick="event.stopPropagation();readTicket(\''+t.id+'\')" class="btn" style="padding:5px 11px;font-size:0.76rem;border-color:var(--blue);color:var(--blue);margin-right:6px">📖 Leer</button><button onclick="event.stopPropagation();openTicket(\''+t.id+'\')" class="btn" style="padding:5px 11px;font-size:0.76rem">✏️ Editar</button></td>'+
+    '</tr>';
+  }).join('');
+  cont.innerHTML='<div class="tk-list"><table class="tk"><thead><tr>'+
+    '<th>Ticket</th><th>Prioridad</th><th>Estado</th><th>Responsable</th><th>Inicio</th><th>Comprometida</th><th></th></tr></thead><tbody>'+rows+'</tbody></table></div>';
+}
+
+// ── Modal crear/editar ──
+async function openTicket(id){
+  var t=id?TICKETS.find(function(x){return x.id===id;}):null;
+  var hitos=[], coms=[];
+  if(t){ try{ var h=await sb.from('ticket_hitos').select('*').eq('ticket_id',t.id).order('created_at'); hitos=h.data||[]; }catch(e){}
+         try{ var c=await sb.from('ticket_comentarios').select('*').eq('ticket_id',t.id).order('created_at'); coms=c.data||[]; }catch(e){} }
+  var opt=function(arr,v){ return '<option value="">— Sin asignar</option>'+arr.map(function(o){return '<option'+(v===o?' selected':'')+'>'+esc(o)+'</option>';}).join(''); };
+  var optReq=function(arr,v){ return arr.map(function(o){return '<option'+(v===o?' selected':'')+'>'+esc(o)+'</option>';}).join(''); };
+  var cliOpts='<option value="">— Sin cliente</option>'+CLIENTES.map(function(c){return '<option'+(t&&t.cliente===c?' selected':'')+'>'+esc(c)+'</option>';}).join('');
+  var m=document.createElement('div'); m.id='tk-modal'; m.className='tk-modal-bg';
+  m.onclick=function(ev){ if(ev.target===m) closeModal(); };
+  var hitosHTML=t?renderHitos(hitos):'<div style="font-size:0.8rem;color:var(--light)">Guarda el ticket para agregar hitos.</div>';
+  var comsHTML=t?renderComs(coms):'<div style="font-size:0.8rem;color:var(--light)">Guarda el ticket para comentar.</div>';
+  var fld=function(l,inner){ return '<div><label class="lbl">'+l+'</label>'+inner+'</div>'; };
+  m.innerHTML='<div class="tk-modal">'+
+    '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px"><h3 style="margin:0;color:var(--navy);font-size:1.15rem;font-weight:700">'+(t?'Ticket':'Nuevo ticket')+'</h3><button onclick="closeModal()" style="border:none;background:none;font-size:1.5rem;color:var(--light);cursor:pointer;line-height:1">&times;</button></div>'+
+    '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:24px">'+
+      '<div class="col-fields">'+
+        fld('Título','<input id="tk-titulo" class="inp" value="'+esc(t?t.titulo:'')+'">')+
+        fld('Situación presentada','<textarea id="tk-situacion" rows="3" class="inp" placeholder="Usa «- » al inicio de línea para viñetas. Los links se vuelven clickeables.">'+esc(t?t.situacion:'')+'</textarea>')+
+        fld('Resultado esperado','<textarea id="tk-resultado" rows="3" class="inp" placeholder="Usa «- » para viñetas.">'+esc(t?t.resultado_esperado:'')+'</textarea>')+
+        '<div class="grid2">'+fld('Cliente','<select id="tk-cliente" class="inp">'+cliOpts+'</select>')+fld('Categoría','<select id="tk-categoria" class="inp">'+optReq(CATEGORIAS,t?t.categoria:'Otro')+'</select>')+'</div>'+
+        '<div class="grid2">'+fld('Prioridad','<select id="tk-prioridad" class="inp">'+optReq(PRIORIDADES,t?t.prioridad:'Media')+'</select>')+fld('Estado','<select id="tk-estado" class="inp">'+optReq(ESTADOS,t?t.estado:'Abierto')+'</select>')+'</div>'+
+        '<div class="grid2">'+fld('Responsable principal','<select id="tk-principal" class="inp">'+opt(EQUIPO,t?t.resp_principal:'')+'</select>')+fld('Supervisor','<select id="tk-supervisor" class="inp">'+opt(EQUIPO,t?t.supervisor:'')+'</select>')+'</div>'+
+        '<div class="grid2">'+fld('Resp. contabilidad','<select id="tk-contab" class="inp">'+opt(EQUIPO,t?t.resp_contabilidad:'')+'</select>')+fld('Resp. impuestos','<select id="tk-impuestos" class="inp">'+opt(EQUIPO,t?t.resp_impuestos:'')+'</select>')+'</div>'+
+        '<div class="grid2">'+fld('Fecha inicio','<input type="date" id="tk-inicio" class="inp" value="'+esc(t?t.fecha_inicio:hoy())+'">')+fld('Fecha comprometida *','<input type="date" id="tk-comprometida" class="inp" value="'+esc(t?t.fecha_comprometida:'')+'">')+'</div>'+
+      '</div>'+
+      '<div style="display:flex;flex-direction:column;gap:20px">'+
+        '<div><label class="lbl">Hitos</label><div id="tk-hitos">'+hitosHTML+'</div>'+
+          (t?('<div style="display:flex;gap:6px;margin-top:8px"><input id="tk-hito-input" class="inp" placeholder="Agregar hito…" onkeydown="if(event.key===\'Enter\'){event.preventDefault();addHito(\''+t.id+'\');}"><button onclick="addHito(\''+t.id+'\')" class="btn btn-primary" style="padding:0 14px;font-size:1.1rem">+</button></div>'):'')+
+        '</div>'+
+        '<div><label class="lbl">Comentarios</label><div id="tk-coms">'+comsHTML+'</div>'+
+          (t?('<div style="display:flex;flex-direction:column;gap:6px;margin-top:8px"><textarea id="tk-com-input" rows="2" class="inp" placeholder="Escribe un comentario…"></textarea><button onclick="addCom(\''+t.id+'\')" class="btn btn-navy" style="align-self:flex-end">Comentar</button></div>'):'')+
+        '</div>'+
+      '</div>'+
+    '</div>'+
+    '<div style="display:flex;align-items:center;justify-content:space-between;margin-top:22px;padding-top:16px;border-top:1px solid var(--ao-line-soft)">'+
+      (t?'<button onclick="delTicket(\''+t.id+'\')" style="border:none;background:none;color:var(--red);font-size:0.8rem;cursor:pointer">Eliminar</button>':'<span></span>')+
+      '<div style="display:flex;gap:8px">'+
+        (t&&t.estado!=='Cerrado'?'<button onclick="cerrarTicket(\''+t.id+'\')" class="btn btn-close">Cerrar ticket</button>':'')+
+        '<button onclick="closeModal()" class="btn">Cancelar</button>'+
+        '<button onclick="saveTicket(\''+(t?t.id:'')+'\')" class="btn btn-navy">Guardar</button>'+
+      '</div>'+
+    '</div></div>';
+  document.getElementById('modal').appendChild(m);
+}
+function renderHitos(hitos){
+  if(!hitos.length) return '<div style="font-size:0.8rem;color:var(--light)">Sin hitos todavía.</div>';
+  return hitos.map(function(h){
+    var f=h.created_at?new Date(h.created_at).toLocaleDateString('es-DO',{day:'2-digit',month:'short'}):'';
+    return '<div style="display:flex;gap:8px;font-size:0.85rem;padding:3px 0"><span style="color:var(--blue)">•</span><div><span style="color:var(--navy)">'+linkify(h.texto)+'</span> <span style="font-size:0.68rem;color:var(--light)">'+esc(h.autor||'')+' · '+f+'</span></div></div>';
+  }).join('');
+}
+function renderComs(coms){
+  if(!coms.length) return '<div style="font-size:0.8rem;color:var(--light)">Sin comentarios.</div>';
+  return coms.map(function(c){
+    var f=c.created_at?new Date(c.created_at).toLocaleDateString('es-DO',{day:'2-digit',month:'short'}):'';
+    return '<div style="background:#f6f8fa;border-radius:8px;padding:9px 11px;margin-bottom:7px"><div style="display:flex;justify-content:space-between"><span style="font-size:0.68rem;font-weight:700;color:var(--navy)">'+esc(c.autor||'—')+'</span><span style="font-size:0.64rem;color:var(--light)">'+f+'</span></div><div style="font-size:0.85rem;color:var(--text);white-space:pre-wrap">'+linkify(c.texto)+'</div></div>';
+  }).join('');
+}
+function closeModal(){ var m=document.getElementById('tk-modal'); if(m) m.remove(); }
+
+// Vista limpia de solo lectura — para que el cliente o cualquiera del equipo lea el ticket organizado.
+async function readTicket(id){
+  var t=TICKETS.find(function(x){return x.id===id;}); if(!t) return;
+  var hitos=[], coms=[];
+  try{ var h=await sb.from('ticket_hitos').select('*').eq('ticket_id',id).order('created_at'); hitos=h.data||[]; }catch(e){}
+  try{ var c=await sb.from('ticket_comentarios').select('*').eq('ticket_id',id).order('created_at'); coms=c.data||[]; }catch(e){}
+  var cerrado=(t.estado==='Cerrado'||t.estado==='Resuelto');
+  var vencido=t.fecha_comprometida&&!cerrado&&t.fecha_comprometida<hoy();
+  var badge=function(txt,color){ return '<span class="badge" style="background:'+color+'">'+esc(txt)+'</span>'; };
+  var block=function(label,val){ return '<div style="margin-bottom:16px"><div class="lbl" style="margin-bottom:6px">'+label+'</div><div style="font-size:0.9rem;color:var(--text);line-height:1.55">'+fmtRich(val)+'</div></div>'; };
+  var resp=function(label,val){ return '<div><div class="lbl">'+label+'</div><div style="font-size:0.86rem;font-weight:600;color:'+(val?'var(--navy)':'var(--light)')+'">'+esc(val||'Sin asignar')+'</div></div>'; };
+  var fecha=function(label,val,color){ return '<div><div class="lbl">'+label+'</div><div style="font-size:0.86rem;font-weight:600;color:'+(color||'var(--text)')+'">'+val+'</div></div>'; };
+  var sep='border-top:1px solid var(--ao-line-soft);padding-top:16px;margin-bottom:16px';
+  var m=document.createElement('div'); m.id='tk-modal'; m.className='tk-modal-bg';
+  m.onclick=function(ev){ if(ev.target===m) closeModal(); };
+  m.innerHTML='<div class="tk-modal" style="max-width:720px">'+
+    '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:8px">'+
+      '<div style="display:flex;gap:6px;flex-wrap:wrap">'+badge(t.prioridad||'—',PRIO_COLOR[t.prioridad]||'#9ca3af')+badge(t.estado||'—',ESTADO_COLOR[t.estado]||'#9ca3af')+(t.categoria?'<span class="badge" style="background:#eef0f3;color:var(--muted)">'+esc(t.categoria)+'</span>':'')+'</div>'+
+      '<button onclick="closeModal()" style="border:none;background:none;font-size:1.5rem;color:var(--light);cursor:pointer;line-height:1">&times;</button>'+
+    '</div>'+
+    '<h2 style="margin:0 0 2px;color:var(--navy);font-size:1.35rem;font-weight:700;line-height:1.2">'+esc(t.titulo)+'</h2>'+
+    '<div style="font-size:0.85rem;color:var(--muted);margin-bottom:20px">'+esc(t.cliente||'Sin cliente')+'</div>'+
+    block('Situación presentada', t.situacion)+
+    block('Resultado esperado', t.resultado_esperado)+
+    '<div style="'+sep+'"><div class="lbl" style="margin-bottom:10px">Responsables</div><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px">'+
+      resp('Principal',t.resp_principal)+resp('Contabilidad',t.resp_contabilidad)+resp('Impuestos',t.resp_impuestos)+resp('Supervisor',t.supervisor)+'</div></div>'+
+    '<div style="'+sep+'"><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:12px">'+
+      fecha('Inicio',fmtFecha(t.fecha_inicio))+fecha('Comprometida',fmtFecha(t.fecha_comprometida)+(vencido?' ⚠':''),vencido?'var(--red)':'var(--text)')+(t.fecha_cierre?fecha('Cerrado',fmtFecha(t.fecha_cierre),'var(--green)'):'')+'</div></div>'+
+    '<div style="'+sep+'"><div class="lbl" style="margin-bottom:8px">Hitos</div>'+renderHitos(hitos)+'</div>'+
+    '<div style="border-top:1px solid var(--ao-line-soft);padding-top:16px"><div class="lbl" style="margin-bottom:8px">Comentarios</div>'+renderComs(coms)+'</div>'+
+    '<div style="display:flex;justify-content:flex-end;gap:8px;margin-top:20px;padding-top:16px;border-top:1px solid var(--ao-line-soft)">'+
+      '<button onclick="closeModal();openTicket(\''+t.id+'\')" class="btn">✏️ Editar</button>'+
+      '<button onclick="closeModal()" class="btn btn-navy">Cerrar</button>'+
+    '</div></div>';
+  document.getElementById('modal').appendChild(m);
+}
+
+async function addHito(tid){
+  var el=document.getElementById('tk-hito-input'); var tx=(el.value||'').trim(); if(!tx) return;
+  try{ var r=await sb.from('ticket_hitos').insert({ticket_id:tid,texto:tx,autor:ME.nombre}); if(r.error){alert('Error: '+r.error.message);return;} }catch(e){ alert('Error al agregar hito'); return; }
+  el.value='';
+  try{ var h=await sb.from('ticket_hitos').select('*').eq('ticket_id',tid).order('created_at'); document.getElementById('tk-hitos').innerHTML=renderHitos(h.data||[]); }catch(e){}
+}
+async function addCom(tid){
+  var el=document.getElementById('tk-com-input'); var tx=(el.value||'').trim(); if(!tx) return;
+  try{ var r=await sb.from('ticket_comentarios').insert({ticket_id:tid,texto:tx,autor:ME.nombre}); if(r.error){alert('Error: '+r.error.message);return;} }catch(e){ alert('Error al comentar'); return; }
+  el.value='';
+  try{ var c=await sb.from('ticket_comentarios').select('*').eq('ticket_id',tid).order('created_at'); document.getElementById('tk-coms').innerHTML=renderComs(c.data||[]); }catch(e){}
+}
+
+function tkFields(){
+  var g=function(id){ var el=document.getElementById(id); return el?el.value:''; };
+  return { titulo:(g('tk-titulo')||'').trim(), situacion:g('tk-situacion')||null, resultado_esperado:g('tk-resultado')||null,
+    cliente:g('tk-cliente')||null, categoria:g('tk-categoria'), prioridad:g('tk-prioridad'), estado:g('tk-estado'),
+    resp_principal:g('tk-principal')||null, supervisor:g('tk-supervisor')||null, resp_contabilidad:g('tk-contab')||null, resp_impuestos:g('tk-impuestos')||null,
+    fecha_inicio:g('tk-inicio')||null, fecha_comprometida:g('tk-comprometida')||null };
+}
+async function saveTicket(id){
+  var row=tkFields();
+  if(!row.titulo){ alert('Ponle un título al ticket'); return; }
+  if(!row.fecha_comprometida){ alert('La fecha comprometida es obligatoria — ningún ticket queda sin fecha.'); return; }
+  try{
+    if(id){ var r=await sb.from('tickets').update(row).eq('id',id); if(r.error){alert('Error: '+r.error.message);return;} }
+    else { row.creado_por=ME.nombre; var ins=await sb.from('tickets').insert(row).select('id').single(); if(ins.error){alert('Error: '+ins.error.message);return;} id=ins.data&&ins.data.id; }
+  }catch(e){ alert('Error al guardar'); return; }
+  closeModal(); await load();
+}
+async function cerrarTicket(id){
+  if(!confirm('¿Cerrar este ticket?')) return;
+  try{ var r=await sb.from('tickets').update({estado:'Cerrado',fecha_cierre:hoy()}).eq('id',id); if(r.error){alert('Error: '+r.error.message);return;} }catch(e){ alert('Error al cerrar'); return; }
+  closeModal(); await load();
+}
+async function delTicket(id){
+  if(!confirm('¿Eliminar este ticket? Se borran también sus hitos y comentarios.')) return;
+  try{ var r=await sb.from('tickets').delete().eq('id',id); if(r.error){alert('Error: '+r.error.message);return;} }catch(e){ alert('Error al eliminar'); return; }
+  closeModal(); await load();
+}
+
+load();
+</script>
+</body>
+</html>

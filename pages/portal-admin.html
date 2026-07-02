@@ -585,7 +585,7 @@ var allClientes = [];
 var allPortalData = [];
 var selectedContadora = 'Todas';
 var portalViewMode = 'table';
-var selectedMainTab = 'checklist';
+var selectedMainTab = 'calendario';
 var selectedTab = 'dashboard';
 var selectedMes = '';
 var portalData = {};
@@ -1171,7 +1171,7 @@ function getEjecuciónCount(nombre) {
 }
 
 /* ── Calendario de entregas ── */
-var calActiveView = 'resumen';
+var calActiveView = 'mes';
 var calActiveMes = new Date().getDate() <= 20 ? Math.max(new Date().getMonth() - 1, 0) : new Date().getMonth();
 var calActivePerspective = 'cliente';
 var calActiveFilter = 'todos';
@@ -1857,9 +1857,9 @@ function portalToggleView(mode) {
 function renderMainTabs() {
   var el = document.getElementById('mainTabs');
   var h = '';
-  h += '<button class="pm-main-tab' + (selectedMainTab === 'checklist' ? ' active' : '') + '" onclick="switchMainTab(\'checklist\')">Checklist</button>';
-  h += '<button class="pm-main-tab' + (selectedMainTab === 'presentacion' ? ' active' : '') + '" onclick="switchMainTab(\'presentacion\')">Presentación Mensual</button>';
   h += '<button class="pm-main-tab' + (selectedMainTab === 'calendario' ? ' active' : '') + '" onclick="switchMainTab(\'calendario\')">Calendario</button>';
+  h += '<button class="pm-main-tab' + (selectedMainTab === 'presentacion' ? ' active' : '') + '" onclick="switchMainTab(\'presentacion\')">Presentación Mensual</button>';
+  h += '<button class="pm-main-tab' + (selectedMainTab === 'checklist' ? ' active' : '') + '" onclick="switchMainTab(\'checklist\')">Checklist</button>';
   el.innerHTML = h;
 }
 

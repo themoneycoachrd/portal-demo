@@ -468,7 +468,7 @@ var CHECKLIST = {
 var clienteNombre = '';
 var clienteToken = '';
 var clienteConfig = {};
-var selectedMainTab = 'checklist';
+var selectedMainTab = 'calendario';
 var selectedTab = 'dashboard';
 var selectedMes = '';
 var portalData = {};
@@ -1172,7 +1172,7 @@ async function pcOpenCliente(nombre, token) {
   adminShowingIndex = false;
   clienteNombre = nombre;
   clienteToken = token;
-  selectedMainTab = 'checklist';
+  selectedMainTab = 'calendario';
   selectedTab = 'dashboard';
 
   document.getElementById('clientName').textContent = nombre;
@@ -1193,7 +1193,7 @@ function pcBackToIndex() {
   clienteToken = '';
   portalData = {};
   portalFiles = {};
-  selectedMainTab = 'checklist';
+  selectedMainTab = 'calendario';
   selectedTab = 'dashboard';
   pmDetail = null;
   pmPresupuesto = null;
@@ -1213,9 +1213,9 @@ function renderMainTabs() {
   if (isAdminMode && !adminShowingIndex) {
     h += '<button class="pm-main-tab" onclick="pcBackToIndex()" style="color:var(--muted); font-size:0.82rem;">← Volver al listado</button>';
   }
-  h += '<button class="pm-main-tab' + (selectedMainTab === 'checklist' ? ' active' : '') + '" onclick="switchMainTab(\'checklist\')">Checklist</button>';
-  h += '<button class="pm-main-tab' + (selectedMainTab === 'presentacion' ? ' active' : '') + '" onclick="switchMainTab(\'presentacion\')">Presentación Mensual</button>';
   h += '<button class="pm-main-tab' + (selectedMainTab === 'calendario' ? ' active' : '') + '" onclick="switchMainTab(\'calendario\')">Calendario</button>';
+  h += '<button class="pm-main-tab' + (selectedMainTab === 'presentacion' ? ' active' : '') + '" onclick="switchMainTab(\'presentacion\')">Presentación Mensual</button>';
+  h += '<button class="pm-main-tab' + (selectedMainTab === 'checklist' ? ' active' : '') + '" onclick="switchMainTab(\'checklist\')">Checklist</button>';
   el.innerHTML = h;
 }
 
@@ -1266,7 +1266,7 @@ function switchMonth(mes) {
 }
 
 /* ── Calendario de entregas ── */
-var calActiveView = 'resumen';
+var calActiveView = 'mes';
 var calActiveMes = new Date().getDate() <= 20 ? Math.max(new Date().getMonth() - 1, 0) : new Date().getMonth();
 var calActivePerspective = 'cliente';
 var calActiveFilter = 'todos';
