@@ -669,6 +669,7 @@ body.embed .footer { display: none !important; }
   <button class="main-tab" data-tab="checklist-com" id="tab-btn-checklist-com" style="display:none">Checklist</button>
   <button class="main-tab" data-tab="tracker" id="tab-btn-tracker" style="display:none">Tracker</button>
   <button class="main-tab" data-tab="comisiones" id="tab-btn-comisiones" style="display:none">Comisiones</button>
+  <button class="main-tab" data-tab="seguimiento" id="tab-btn-seguimiento" style="display:none">Seguimiento</button>
 </div>
 
 <div id="tab-roas" class="container"></div>
@@ -677,6 +678,7 @@ body.embed .footer { display: none !important; }
 <div id="tab-checklist-com" class="container hidden"></div>
 <div id="tab-tracker" class="container hidden"></div>
 <div id="tab-comisiones" class="container hidden"></div>
+<div id="tab-seguimiento" class="container hidden"></div>
 
 <div class="footer">Conectado a Supabase — los datos se guardan en la nube.</div>
 
@@ -1081,6 +1083,9 @@ function renderMainTabs() {
   // Comisiones: admin + comercial (cada gestor ve solo lo suyo; escritura solo admin)
   const btnCom = document.getElementById('tab-btn-comisiones');
   if (btnCom) btnCom.style.display = tengoPermiso('comercial', 'checklist', 'consulta') ? '' : 'none';
+  // Seguimiento: mismo acceso que Checklist/Tracker (admin + equipo comercial)
+  const btnSeg = document.getElementById('tab-btn-seguimiento');
+  if (btnSeg) btnSeg.style.display = tengoPermiso('comercial', 'checklist', 'consulta') ? '' : 'none';
 
   document.querySelectorAll('.main-tab').forEach(tab => {
     if (tab.style.display === 'none') return;
@@ -1097,6 +1102,7 @@ function renderMainTabs() {
   document.getElementById('tab-checklist-com').classList.toggle('hidden', APP.activeTab !== 'checklist-com');
   document.getElementById('tab-tracker').classList.toggle('hidden', APP.activeTab !== 'tracker');
   document.getElementById('tab-comisiones').classList.toggle('hidden', APP.activeTab !== 'comisiones');
+  document.getElementById('tab-seguimiento').classList.toggle('hidden', APP.activeTab !== 'seguimiento');
 }
 
 function renderPipeline() {
@@ -1304,6 +1310,7 @@ function renderEditRow(lead, idx) {
       <button class="btn btn-primary" data-action="save" data-idx="${idx}">Guardar</button>
       <button class="btn btn-danger" data-action="delete" data-idx="${idx}">Eliminar</button>
       <button class="btn btn-ghost" data-action="cancel">Cancelar</button>
+      ${lead._id ? `<button class="btn btn-ghost" onclick="segToggleFollow(${lead._id}, event)" title="Agregar a la cola de Seguimiento">${segIsFollowing(lead._id) ? '★ Siguiendo' : '☆ Seguir'}</button>` : ''}
     </div>
   </td></tr>`;
 }
@@ -2907,6 +2914,190 @@ async function renderComisiones() {
   cont.innerHTML = h;
 }
 
+// ==================== SEGUIMIENTO A LEADS (estilo HubSpot) ====================
+// Cola de seguimiento: el equipo comercial arma su lista de leads existentes con notas,
+// tareas y próxima fecha de contacto. Tablas: lead_seguimiento, lead_notas, lead_tareas.
+var SEG_ITEMS = [];        // filas de lead_seguimiento
+var SEG_NOTAS = {};        // { lead_id: [notas...] }
+var SEG_TAREAS = {};       // { lead_id: [tareas...] }
+var SEG_FILTER = 'todos';  // todos | mios | contactar
+var SEG_PICKER = false;
+var SEG_PICK_Q = '';
+var SEG_OPEN = null;       // lead_id abierto en el panel
+var SEG_ESTADOS = ['activo','ganado','perdido','pausado'];
+var SEG_ESTADO_COLOR = { activo:'var(--blue)', ganado:'var(--green)', perdido:'var(--red)', pausado:'var(--muted)' };
+
+function segHoy(){ var d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+function segFmtFecha(f){ if(!f) return '—'; try{ return new Date(f+'T00:00:00').toLocaleDateString('es-DO',{day:'2-digit',month:'short'}); }catch(e){ return f; } }
+function segEsc(s){ return esc(s==null?'':String(s)); }
+function segLinkify(s){ return segEsc(s).replace(/(https?:\/\/[^\s<]+)/g,function(u){ return '<a href="'+u+'" target="_blank" rel="noopener" style="color:var(--blue);text-decoration:underline">'+u+'</a>'; }); }
+function segIsFollowing(id){ return SEG_ITEMS.some(function(x){ return Number(x.lead_id)===Number(id); }); }
+function segItem(id){ return SEG_ITEMS.find(function(x){ return Number(x.lead_id)===Number(id); }); }
+function segLeadInfo(id){ var d=APP.data?APP.data.pipeline:{}; for(var m in d){ var arr=d[m]||[]; for(var i=0;i<arr.length;i++){ if(Number(arr[i]._id)===Number(id)) return arr[i]; } } return null; }
+
+async function loadSegItems(){ try{ var s=await sb.from('lead_seguimiento').select('*'); SEG_ITEMS=s.data||[]; }catch(e){ SEG_ITEMS=[]; } }
+async function loadSegAllActivity(){
+  SEG_NOTAS={}; SEG_TAREAS={};
+  var ids=SEG_ITEMS.map(function(x){ return x.lead_id; });
+  if(!ids.length) return;
+  try{ var n=await sb.from('lead_notas').select('*').in('lead_id',ids).order('created_at',{ascending:false}); (n.data||[]).forEach(function(r){ (SEG_NOTAS[r.lead_id]=SEG_NOTAS[r.lead_id]||[]).push(r); }); }catch(e){}
+  try{ var t=await sb.from('lead_tareas').select('*').in('lead_id',ids).order('created_at'); (t.data||[]).forEach(function(r){ (SEG_TAREAS[r.lead_id]=SEG_TAREAS[r.lead_id]||[]).push(r); }); }catch(e){}
+}
+async function loadSegDetail(id){
+  SEG_NOTAS[id]=[]; SEG_TAREAS[id]=[];
+  try{ var n=await sb.from('lead_notas').select('*').eq('lead_id',id).order('created_at',{ascending:false}); SEG_NOTAS[id]=n.data||[]; }catch(e){}
+  try{ var t=await sb.from('lead_tareas').select('*').eq('lead_id',id).order('created_at'); SEG_TAREAS[id]=t.data||[]; }catch(e){}
+}
+
+async function renderSeguimiento(){
+  var container=document.getElementById('tab-seguimiento');
+  container.innerHTML='<div class="container" style="padding:20px;color:var(--muted)">Cargando seguimiento…</div>';
+  await loadSegItems();
+  await loadSegAllActivity();
+  segRender();
+}
+function segRender(){
+  var container=document.getElementById('tab-seguimiento');
+  var hoy=segHoy();
+  var rows=SEG_ITEMS.map(function(s){
+    var L=segLeadInfo(s.lead_id);
+    var tareas=SEG_TAREAS[s.lead_id]||[]; var pend=tareas.filter(function(t){ return !t.done; }).length;
+    var notas=SEG_NOTAS[s.lead_id]||[];
+    return { s:s, L:L, pend:pend, totalT:tareas.length, ultimaNota:(notas.length?notas[0]:null) };
+  });
+  if(SEG_FILTER==='mios'){ var me=APP.userName||''; rows=rows.filter(function(r){ var rp=r.s.responsable||''; return rp && me && (rp===me || me.indexOf(rp)>=0 || rp.indexOf(me)>=0); }); }
+  else if(SEG_FILTER==='contactar'){ rows=rows.filter(function(r){ return r.s.estado==='activo' && r.s.proxima_fecha && r.s.proxima_fecha<=hoy; }); }
+  rows.sort(function(a,b){
+    var ac=(a.s.estado==='ganado'||a.s.estado==='perdido'), bc=(b.s.estado==='ganado'||b.s.estado==='perdido');
+    if(ac!==bc) return ac?1:-1;
+    var af=a.s.proxima_fecha||'9999-99', bf=b.s.proxima_fecha||'9999-99';
+    return af<bf?-1:(af>bf?1:0);
+  });
+  var totalPend=SEG_ITEMS.filter(function(s){ return s.estado==='activo'&&s.proxima_fecha&&s.proxima_fecha<=hoy; }).length;
+  var html='<div class="container">';
+  html+='<div style="display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:16px;flex-wrap:wrap">'+
+    '<div><div style="font-weight:700;color:var(--navy);font-size:1.05rem">Seguimiento a leads</div><div style="font-size:0.8rem;color:var(--muted)">Tu cola de contacto: notas, tareas y próximo seguimiento.</div></div>'+
+    '<button class="btn btn-primary" onclick="segTogglePicker()">+ Agregar lead</button></div>';
+  html+='<div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap">'+
+    segPill('todos','Todos',SEG_ITEMS.length)+segPill('mios','Míos',null)+segPill('contactar','Por contactar hoy',totalPend)+'</div>';
+  if(SEG_PICKER) html+=segPickerHTML();
+  if(!rows.length){
+    html+='<div class="card" style="padding:24px;text-align:center;color:var(--muted)">No hay leads en tu cola'+(SEG_FILTER!=='todos'?' con ese filtro':'')+'. Usa <b>+ Agregar lead</b> o el botón <b>Seguir</b> dentro de un lead en el Pipeline.</div>';
+  } else {
+    html+='<div class="card"><div class="table-wrapper"><table><thead><tr><th>Lead</th><th>Resp</th><th>Última nota</th><th>Tareas</th><th>Próximo</th><th>Estado</th><th></th></tr></thead><tbody>';
+    rows.forEach(function(r){
+      var L=r.L; var nombre=L?(L.n||'—'):('Lead #'+r.s.lead_id); var emp=L?(L.e||L.t||''):'';
+      var venc=r.s.estado==='activo'&&r.s.proxima_fecha&&r.s.proxima_fecha<hoy;
+      var hoyEs=r.s.estado==='activo'&&r.s.proxima_fecha===hoy;
+      var fc=venc?'color:var(--red);font-weight:700':(hoyEs?'color:var(--amber);font-weight:700':'color:var(--muted)');
+      html+='<tr style="cursor:pointer" onclick="segOpen('+r.s.lead_id+')">'+
+        '<td><strong>'+segEsc(nombre)+'</strong>'+(emp?'<div style="font-size:0.74rem;color:var(--light)">'+segEsc(emp)+'</div>':'')+'</td>'+
+        '<td><span style="font-size:0.74rem;font-weight:600;color:var(--muted)">'+segEsc(r.s.responsable||'—')+'</span></td>'+
+        '<td style="max-width:220px;font-size:0.78rem;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+(r.ultimaNota?segEsc(r.ultimaNota.texto):'—')+'</td>'+
+        '<td style="font-size:0.8rem">'+(r.totalT?((r.pend?('<b style="color:var(--amber)">'+r.pend+'</b> pend / '):'')+r.totalT):'—')+'</td>'+
+        '<td style="white-space:nowrap;'+fc+'">'+segFmtFecha(r.s.proxima_fecha)+(venc?' ⚠':'')+'</td>'+
+        '<td><span style="font-size:0.66rem;font-weight:600;padding:2px 8px;border-radius:999px;color:#fff;background:'+(SEG_ESTADO_COLOR[r.s.estado]||'var(--muted)')+'">'+segEsc(r.s.estado)+'</span></td>'+
+        '<td style="text-align:right"><button onclick="event.stopPropagation();segOpen('+r.s.lead_id+')" class="btn btn-ghost" style="padding:4px 10px;font-size:0.76rem">Abrir</button></td></tr>';
+    });
+    html+='</tbody></table></div></div>';
+  }
+  html+='</div>';
+  container.innerHTML=html;
+}
+function segPill(key,label,count){ return '<button onclick="segSetFilter(\''+key+'\')" class="btn '+(SEG_FILTER===key?'btn-primary':'btn-ghost')+'" style="font-size:0.8rem">'+label+(count!=null?(' ('+count+')'):'')+'</button>'; }
+function segSetFilter(k){ SEG_FILTER=k; segRender(); }
+function segTogglePicker(){ SEG_PICKER=!SEG_PICKER; SEG_PICK_Q=''; segRender(); if(SEG_PICKER){ var el=document.getElementById('seg-pick-inp'); if(el) el.focus(); } }
+function segPickerListHTML(){
+  var q=SEG_PICK_Q.toLowerCase();
+  if(!q) return '<div style="padding:10px;color:var(--light);font-size:0.8rem">Escribe para buscar un lead…</div>';
+  var all=[]; var d=APP.data?APP.data.pipeline:{};
+  for(var m in d){ (d[m]||[]).forEach(function(l){ if(l._id && !segIsFollowing(l._id)) all.push(l); }); }
+  var matches=all.filter(function(l){ return (l.n||'').toLowerCase().indexOf(q)>=0 || (l.e||'').toLowerCase().indexOf(q)>=0; });
+  if(!matches.length) return '<div style="padding:10px;color:var(--light);font-size:0.8rem">Sin coincidencias (o ya están en tu cola).</div>';
+  return matches.slice(0,20).map(function(l){ return '<div onclick="segAddFollow('+l._id+')" style="padding:8px 10px;border-top:1px solid var(--border);cursor:pointer;display:flex;justify-content:space-between;gap:8px"><span><strong>'+segEsc(l.n)+'</strong> <span style="color:var(--light);font-size:0.78rem">'+segEsc(l.e||l.t||'')+'</span></span><span style="color:var(--blue);font-size:0.78rem;font-weight:600">+ Seguir</span></div>'; }).join('');
+}
+function segPickerHTML(){ return '<div class="card" style="margin-bottom:14px;padding:12px"><input id="seg-pick-inp" placeholder="Buscar lead por nombre o empresa…" value="'+segEsc(SEG_PICK_Q)+'" oninput="SEG_PICK_Q=this.value;segRenderPicker()" style="width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:8px;font-size:0.85rem;box-sizing:border-box"><div id="seg-pick-list" style="margin-top:6px;max-height:240px;overflow:auto">'+segPickerListHTML()+'</div></div>'; }
+function segRenderPicker(){ var el=document.getElementById('seg-pick-list'); if(el) el.innerHTML=segPickerListHTML(); }
+async function segAddFollow(id){
+  var L=segLeadInfo(id); var resp=(L&&L.resp)?L.resp:APP.userName;
+  try{ var r=await sb.from('lead_seguimiento').insert({ lead_id:id, responsable:resp, estado:'activo' }); if(r.error){ alert('Error: '+r.error.message); return; } }catch(e){ alert('No se pudo agregar.'); return; }
+  SEG_PICKER=false; await loadSegItems(); await loadSegAllActivity(); segRender(); segOpen(id);
+}
+async function segToggleFollow(id, ev){
+  if(ev) ev.stopPropagation();
+  if(segIsFollowing(id)){ if(!confirm('¿Quitar este lead de tu cola de seguimiento?')) return; try{ await sb.from('lead_seguimiento').delete().eq('lead_id',id); }catch(e){} }
+  else { var L=segLeadInfo(id); var resp=(L&&L.resp)?L.resp:APP.userName; try{ var r=await sb.from('lead_seguimiento').insert({ lead_id:id, responsable:resp, estado:'activo' }); if(r.error){ alert('Error: '+r.error.message); return; } }catch(e){ alert('No se pudo.'); return; } }
+  await loadSegItems(); renderPipeline();
+}
+async function segOpen(id){ SEG_OPEN=id; await loadSegDetail(id); segRenderModal(); }
+function segClose(){ var m=document.getElementById('seg-modal'); if(m) m.remove(); SEG_OPEN=null; if(APP.activeTab==='seguimiento') segRender(); }
+function segRenderModal(){
+  var old=document.getElementById('seg-modal'); if(old) old.remove();
+  var id=SEG_OPEN; if(id==null) return;
+  var s=segItem(id)||{ lead_id:id, estado:'activo' };
+  var L=segLeadInfo(id);
+  var notas=SEG_NOTAS[id]||[]; var tareas=SEG_TAREAS[id]||[];
+  var nombre=L?(L.n||'—'):('Lead #'+id); var emp=L?(L.e||L.t||''):'';
+  var cotizado=L?leadTotal(L):0;
+  var inp='border:1px solid var(--border);border-radius:8px;padding:8px 10px;font-family:inherit;font-size:0.85rem;box-sizing:border-box';
+  var lbl=function(x){ return '<div style="font-size:0.62rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:5px">'+x+'</div>'; };
+  var datos='<div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-bottom:6px">'+
+    (L?('<span class="badge '+badgeClass(L.f)+'">'+segEsc(L.f)+'</span>'):'')+
+    (L&&L.temp?('<span class="badge '+tempBadgeClass(L.temp)+'">'+TEMP_DISPLAY[L.temp]+'</span>'):'')+
+    (L&&L.categoria?('<span style="font-size:0.66rem;padding:2px 8px;border-radius:999px;background:#eef2ff;color:var(--blue)">'+segEsc(parseCats(L.categoria).join(', '))+'</span>'):'')+'</div>'+
+    '<div style="font-size:0.8rem;color:var(--muted);margin-bottom:16px">Cotizado: <b style="color:var(--navy)">'+fmtCurrency(cotizado)+'</b>'+(L&&L.resp?(' · Resp: <b>'+segEsc(L.resp)+'</b>'):'')+'</div>';
+  var estOpts=SEG_ESTADOS.map(function(e){ return '<option value="'+e+'"'+(s.estado===e?' selected':'')+'>'+e+'</option>'; }).join('');
+  var meta='<div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:16px">'+
+    '<div>'+lbl('Próximo seguimiento')+'<input type="date" id="seg-prox-fecha" value="'+(s.proxima_fecha||'')+'" onchange="segSaveMeta()" style="'+inp+'"></div>'+
+    '<div>'+lbl('Estado')+'<select id="seg-estado" onchange="segSaveMeta()" style="'+inp+'">'+estOpts+'</select></div></div>';
+  var tareasList=tareas.length?tareas.map(function(t){
+    return '<div style="display:flex;align-items:center;gap:8px;padding:5px 0">'+
+      '<input type="checkbox" '+(t.done?'checked':'')+' onchange="segToggleTarea('+t.id+','+(t.done?'false':'true')+')">'+
+      '<div style="flex:1;font-size:0.85rem;'+(t.done?'text-decoration:line-through;color:var(--light)':'color:var(--navy)')+'">'+segEsc(t.texto)+(t.fecha_limite?(' <span style="font-size:0.72rem;color:'+((!t.done&&t.fecha_limite<segHoy())?'var(--red)':'var(--muted)')+'">· '+segFmtFecha(t.fecha_limite)+'</span>'):'')+'</div>'+
+      '<button onclick="segDelTarea('+t.id+')" style="border:none;background:none;color:var(--light);cursor:pointer;font-size:1.1rem;line-height:1">&times;</button></div>';
+  }).join(''):'<div style="font-size:0.8rem;color:var(--light)">Sin tareas.</div>';
+  var tareasBox='<div style="border-top:1px solid var(--border);padding-top:14px;margin-bottom:16px">'+lbl('Tareas')+'<div id="seg-tareas">'+tareasList+'</div>'+
+    '<div style="display:flex;gap:6px;margin-top:8px"><input id="seg-tarea-txt" placeholder="Nueva tarea…" onkeydown="if(event.key===\'Enter\')segAddTarea()" style="'+inp+';flex:1"><input type="date" id="seg-tarea-fecha" style="'+inp+'"><button class="btn btn-primary" onclick="segAddTarea()" style="padding:6px 12px">+</button></div></div>';
+  var notasList=notas.length?notas.map(function(nt){ var f=nt.created_at?new Date(nt.created_at).toLocaleDateString('es-DO',{day:'2-digit',month:'short'}):''; return '<div style="background:#f6f8fa;border-radius:8px;padding:9px 11px;margin-bottom:7px"><div style="display:flex;justify-content:space-between"><span style="font-size:0.68rem;font-weight:700;color:var(--navy)">'+segEsc(nt.autor||'—')+'</span><span style="font-size:0.64rem;color:var(--light)">'+f+'</span></div><div style="font-size:0.85rem;color:var(--navy);white-space:pre-wrap">'+segLinkify(nt.texto)+'</div></div>'; }).join(''):'<div style="font-size:0.8rem;color:var(--light)">Sin notas todavía.</div>';
+  var notasBox='<div style="border-top:1px solid var(--border);padding-top:14px">'+lbl('Notas / seguimiento')+'<div id="seg-notas">'+notasList+'</div>'+
+    '<div style="display:flex;flex-direction:column;gap:6px;margin-top:8px"><textarea id="seg-nota-txt" rows="2" placeholder="Escribe la última nota o seguimiento…" style="'+inp+';resize:vertical"></textarea><button class="btn btn-primary" onclick="segAddNota()" style="align-self:flex-end;padding:6px 14px">Agregar nota</button></div></div>';
+  var m=document.createElement('div'); m.id='seg-modal';
+  m.setAttribute('style','position:fixed;inset:0;background:rgba(30,40,60,.45);display:flex;align-items:center;justify-content:center;z-index:3000;padding:16px');
+  m.onclick=function(ev){ if(ev.target===m) segClose(); };
+  m.innerHTML='<div style="background:#fff;border-radius:16px;width:100%;max-width:640px;max-height:92vh;overflow:auto;padding:22px">'+
+    '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px"><div><div style="font-weight:800;color:var(--navy);font-size:1.25rem">'+segEsc(nombre)+'</div>'+(emp?'<div style="font-size:0.85rem;color:var(--muted)">'+segEsc(emp)+'</div>':'')+'</div>'+
+    '<button onclick="segClose()" style="border:none;background:none;font-size:1.5rem;color:var(--light);cursor:pointer;line-height:1">&times;</button></div>'+
+    datos+meta+tareasBox+notasBox+
+    '<div style="display:flex;justify-content:space-between;margin-top:18px;padding-top:14px;border-top:1px solid var(--border)"><button class="btn btn-danger" onclick="segRemove('+id+')">Quitar de seguimiento</button><button class="btn btn-ghost" onclick="segClose()">Cerrar</button></div></div>';
+  document.body.appendChild(m);
+}
+async function segSaveMeta(){
+  var id=SEG_OPEN; if(id==null) return;
+  var fecha=document.getElementById('seg-prox-fecha').value||null;
+  var estado=document.getElementById('seg-estado').value;
+  try{ await sb.from('lead_seguimiento').update({ proxima_fecha:fecha, estado:estado, updated_at:new Date().toISOString() }).eq('lead_id',id); }catch(e){}
+  var s=segItem(id); if(s){ s.proxima_fecha=fecha; s.estado=estado; }
+}
+async function segAddTarea(){
+  var id=SEG_OPEN; var el=document.getElementById('seg-tarea-txt'); var tx=(el.value||'').trim(); if(!tx) return;
+  var fecha=document.getElementById('seg-tarea-fecha').value||null;
+  try{ var r=await sb.from('lead_tareas').insert({ lead_id:id, texto:tx, fecha_limite:fecha, autor:APP.userName }); if(r.error){ alert('Error: '+r.error.message); return; } }catch(e){ alert('No se pudo.'); return; }
+  await loadSegDetail(id); segRenderModal();
+}
+async function segToggleTarea(tid,done){ try{ await sb.from('lead_tareas').update({ done:done }).eq('id',tid); }catch(e){} await loadSegDetail(SEG_OPEN); segRenderModal(); }
+async function segDelTarea(tid){ try{ await sb.from('lead_tareas').delete().eq('id',tid); }catch(e){} await loadSegDetail(SEG_OPEN); segRenderModal(); }
+async function segAddNota(){
+  var id=SEG_OPEN; var el=document.getElementById('seg-nota-txt'); var tx=(el.value||'').trim(); if(!tx) return;
+  try{ var r=await sb.from('lead_notas').insert({ lead_id:id, texto:tx, autor:APP.userName }); if(r.error){ alert('Error: '+r.error.message); return; } }catch(e){ alert('No se pudo.'); return; }
+  await loadSegDetail(id); segRenderModal();
+}
+async function segRemove(id){
+  if(!confirm('¿Quitar este lead de tu cola de seguimiento? (sus notas y tareas quedan guardadas por si lo retomas)')) return;
+  try{ await sb.from('lead_seguimiento').delete().eq('lead_id',id); }catch(e){}
+  var m=document.getElementById('seg-modal'); if(m) m.remove(); SEG_OPEN=null;
+  await loadSegItems(); await loadSegAllActivity(); segRender();
+}
+
 function renderApp() {
   if (APP.activeTab === 'pipeline') {
     renderPipeline();
@@ -2918,6 +3109,8 @@ function renderApp() {
     renderTracker();
   } else if (APP.activeTab === 'comisiones') {
     renderComisiones();
+  } else if (APP.activeTab === 'seguimiento') {
+    renderSeguimiento();
   } else {
     renderROAS();
   }
@@ -2994,7 +3187,7 @@ function showApp() {
 }
 
 async function startApp() {
-  var [data] = await Promise.all([loadData(), loadChecklistComercial(), loadTracker()]);
+  var [data] = await Promise.all([loadData(), loadChecklistComercial(), loadTracker(), loadSegItems()]);
   APP.data = data;
   MONTHS.forEach(m => {
     if (!APP.data.pipeline[m]) APP.data.pipeline[m] = [];
