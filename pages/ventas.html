@@ -1220,7 +1220,7 @@ function renderPipeline() {
     html += '<div class="card"><div class="table-wrapper"><table>';
     html += '<thead><tr><th>#</th><th>Nombre</th><th>RNC</th><th>Empresa</th><th>Resp</th><th>Temp</th><th>Demo</th><th>Funnel</th><th>Impl</th><th>FE</th><th>Serv</th><th>Soft</th>';
     if (!isVentas) html += '<th>Cotizado</th><th>Desc%</th><th>Vendido</th>';
-    html += '<th>Notas</th><th>Categoria</th></tr></thead>';
+    html += '<th>Notas</th><th>Categoria</th><th style="text-align:center">Recordatorio</th></tr></thead>';
     html += '<tbody>';
     filtered.forEach((lead, idx) => {
       const realIdx = leads.indexOf(lead);
@@ -1248,6 +1248,7 @@ function renderPipeline() {
         <td class="currency">${isGanado ? '<strong>' + fmt(Math.round(vendido)) + '</strong>' : '-'}</td>` : ''}
         <td>${lead.notas}</td>
         <td>${renderCatBadges(lead.categoria)}</td>
+        <td style="text-align:center">${lead._id ? `<button onclick="segBell(${lead._id},event)" title="${segBellTitle(lead._id)}" style="border:1px solid var(--border);background:#fff;border-radius:8px;padding:3px 8px;cursor:pointer;font-size:0.9rem;line-height:1;${segIsScheduled(lead._id)?'':'opacity:0.5'}">🔔</button>` : ''}</td>
       </tr>`;
       if (isExpanded) {
         html += renderEditRow(lead, realIdx);
@@ -1263,7 +1264,7 @@ function renderPipeline() {
 }
 
 function renderEditRow(lead, idx) {
-  const colSpan = !tengoPermiso('comercial', 'roas', 'consulta') ? 14 : 17;
+  const colSpan = !tengoPermiso('comercial', 'roas', 'consulta') ? 15 : 18;
   return `<tr class="edit-row"><td colspan="${colSpan}">
     <div class="edit-form" style="grid-template-columns:repeat(6,1fr);">
       <div class="field"><label>Nombre</label><input type="text" data-field="n" value="${esc(lead.n)}"></div>
@@ -2920,7 +2921,8 @@ async function renderComisiones() {
 var SEG_ITEMS = [];        // filas de lead_seguimiento
 var SEG_NOTAS = {};        // { lead_id: [notas...] }
 var SEG_TAREAS = {};       // { lead_id: [tareas...] }
-var SEG_FILTER = 'todos';  // todos | mios | contactar
+var SEG_SCOPE = 'todos';   // todos | mios (alcance de la cola)
+var SEG_ESP = '';          // pill de métrica activo: vencidos|hoy|semana|sin_fecha|frio|ganado|perdido
 var SEG_PICKER = false;
 var SEG_PICK_Q = '';
 var SEG_OPEN = null;       // lead_id abierto en el panel
@@ -2956,33 +2958,60 @@ async function renderSeguimiento(){
   await loadSegAllActivity();
   segRender();
 }
+// Métricas de la cola de seguimiento (el reloj es la FECHA pactada de próximo contacto).
+function segPlusDays(d,n){ var x=new Date(d+'T00:00:00'); x.setDate(x.getDate()+n); return x.toISOString().split('T')[0]; }
+function segEsp(r,key,hoy){
+  var s=r.s, activo=(s.estado==='activo');
+  if(key==='vencidos') return activo && s.proxima_fecha && s.proxima_fecha < hoy;
+  if(key==='hoy') return activo && s.proxima_fecha === hoy;
+  if(key==='semana'){ if(!activo||!s.proxima_fecha) return false; return s.proxima_fecha > hoy && s.proxima_fecha <= segPlusDays(hoy,7); }
+  if(key==='sin_fecha') return activo && !s.proxima_fecha;
+  if(key==='frio'){ if(!activo) return false; var last=r.ultimaNota?r.ultimaNota.created_at:s.created_at; if(!last) return false; return new Date(last).getTime() < Date.now()-14*86400000; }
+  if(key==='ganado') return s.estado==='ganado';
+  if(key==='perdido') return s.estado==='perdido';
+  return true;
+}
+var SEG_PILL_DEFS=[
+  {key:'vencidos',label:'Vencidos',color:'var(--red)'},
+  {key:'hoy',label:'Para hoy',color:'var(--amber)'},
+  {key:'semana',label:'Esta semana',color:'var(--blue)'},
+  {key:'sin_fecha',label:'Sin fecha',color:'#8b5cf6'},
+  {key:'frio',label:'Sin contacto +14d',color:'var(--amber)'},
+  {key:'ganado',label:'Ganados',color:'var(--green)'},
+  {key:'perdido',label:'Perdidos',color:'var(--muted)'}
+];
 function segRender(){
   var container=document.getElementById('tab-seguimiento');
   var hoy=segHoy();
-  var rows=SEG_ITEMS.map(function(s){
+  var allRows=SEG_ITEMS.map(function(s){
     var L=segLeadInfo(s.lead_id);
     var tareas=SEG_TAREAS[s.lead_id]||[]; var pend=tareas.filter(function(t){ return !t.done; }).length;
     var notas=SEG_NOTAS[s.lead_id]||[];
     return { s:s, L:L, pend:pend, totalT:tareas.length, ultimaNota:(notas.length?notas[0]:null) };
   });
-  if(SEG_FILTER==='mios'){ var me=APP.userName||''; rows=rows.filter(function(r){ var rp=r.s.responsable||''; return rp && me && (rp===me || me.indexOf(rp)>=0 || rp.indexOf(me)>=0); }); }
-  else if(SEG_FILTER==='contactar'){ rows=rows.filter(function(r){ return r.s.estado==='activo' && r.s.proxima_fecha && r.s.proxima_fecha<=hoy; }); }
+  var _esMio=function(r){ var me=APP.userName||''; var rp=r.s.responsable||''; return rp && me && (rp===me || me.indexOf(rp)>=0 || rp.indexOf(me)>=0); };
+  var miosCount=allRows.filter(_esMio).length;
+  var scoped = SEG_SCOPE==='mios' ? allRows.filter(_esMio) : allRows;
+  var rows = SEG_ESP ? scoped.filter(function(r){ return segEsp(r,SEG_ESP,hoy); }) : scoped;
   rows.sort(function(a,b){
     var ac=(a.s.estado==='ganado'||a.s.estado==='perdido'), bc=(b.s.estado==='ganado'||b.s.estado==='perdido');
     if(ac!==bc) return ac?1:-1;
     var af=a.s.proxima_fecha||'9999-99', bf=b.s.proxima_fecha||'9999-99';
     return af<bf?-1:(af>bf?1:0);
   });
-  var totalPend=SEG_ITEMS.filter(function(s){ return s.estado==='activo'&&s.proxima_fecha&&s.proxima_fecha<=hoy; }).length;
   var html='<div class="container">';
-  html+='<div style="display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:16px;flex-wrap:wrap">'+
+  html+='<div style="display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:14px;flex-wrap:wrap">'+
     '<div><div style="font-weight:700;color:var(--navy);font-size:1.05rem">Seguimiento a leads</div><div style="font-size:0.8rem;color:var(--muted)">Tu cola de contacto: notas, tareas y próximo seguimiento.</div></div>'+
     '<button class="btn btn-primary" onclick="segTogglePicker()">+ Agregar lead</button></div>';
-  html+='<div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap">'+
-    segPill('todos','Todos',SEG_ITEMS.length)+segPill('mios','Míos',null)+segPill('contactar','Por contactar hoy',totalPend)+'</div>';
+  // Alcance (Todos / Míos)
+  html+='<div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">'+
+    segScopeBtn('todos','Todos',allRows.length)+segScopeBtn('mios','Míos',miosCount)+'</div>';
+  // Pills de métrica (clicables, cuentan dentro del alcance)
+  html+='<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(128px,1fr));gap:10px;margin-bottom:16px">'+
+    SEG_PILL_DEFS.map(function(d){ var n=scoped.filter(function(r){ return segEsp(r,d.key,hoy); }).length; return segStatPill(d,n); }).join('')+'</div>';
   if(SEG_PICKER) html+=segPickerHTML();
   if(!rows.length){
-    html+='<div class="card" style="padding:24px;text-align:center;color:var(--muted)">No hay leads en tu cola'+(SEG_FILTER!=='todos'?' con ese filtro':'')+'. Usa <b>+ Agregar lead</b> o el botón <b>Seguir</b> dentro de un lead en el Pipeline.</div>';
+    html+='<div class="card" style="padding:24px;text-align:center;color:var(--muted)">No hay leads en tu cola'+((SEG_SCOPE==='mios'||SEG_ESP)?' con ese filtro':'')+'. Usa <b>+ Agregar lead</b> o el botón <b>Seguir</b> dentro de un lead en el Pipeline.</div>';
   } else {
     html+='<div class="card"><div class="table-wrapper"><table><thead><tr><th>Lead</th><th>Resp</th><th>Última nota</th><th>Tareas</th><th>Próximo</th><th>Estado</th><th></th></tr></thead><tbody>';
     rows.forEach(function(r){
@@ -3004,8 +3033,47 @@ function segRender(){
   html+='</div>';
   container.innerHTML=html;
 }
-function segPill(key,label,count){ return '<button onclick="segSetFilter(\''+key+'\')" class="btn '+(SEG_FILTER===key?'btn-primary':'btn-ghost')+'" style="font-size:0.8rem">'+label+(count!=null?(' ('+count+')'):'')+'</button>'; }
-function segSetFilter(k){ SEG_FILTER=k; segRender(); }
+function segScopeBtn(key,label,count){ return '<button onclick="segSetScope(\''+key+'\')" class="btn '+(SEG_SCOPE===key?'btn-primary':'btn-ghost')+'" style="font-size:0.8rem">'+label+(count!=null?(' ('+count+')'):'')+'</button>'; }
+function segSetScope(k){ SEG_SCOPE=k; segRender(); }
+function segStatPill(d,n){
+  var active=SEG_ESP===d.key;
+  return '<div onclick="segSetEsp(\''+d.key+'\')" style="background:#fff;border:1px solid '+(active?'var(--navy)':'var(--border)')+';border-radius:12px;box-shadow:0 1px 2px rgba(30,58,95,0.04);padding:12px 14px;cursor:pointer">'+
+    '<div style="font-size:1.4rem;font-weight:700;line-height:1.1;color:'+d.color+'">'+n+'</div>'+
+    '<div style="font-size:0.6rem;text-transform:uppercase;letter-spacing:0.05em;color:var(--muted);font-weight:600;margin-top:4px">'+d.label+'</div></div>';
+}
+function segSetEsp(k){ SEG_ESP=(SEG_ESP===k?'':k); segRender(); }
+// Campanita del Pipeline: agendar/mover la próxima fecha de seguimiento de un lead en un clic.
+function segIsScheduled(id){ var s=segItem(id); return !!(s && s.proxima_fecha); }
+function segBellTitle(id){ var s=segItem(id); return (s && s.proxima_fecha) ? ('Próximo seguimiento: '+segFmtFecha(s.proxima_fecha)) : 'Agendar seguimiento'; }
+function segBell(leadId, ev){
+  if(ev) ev.stopPropagation();
+  var s=segItem(leadId); var cur=(s && s.proxima_fecha)?s.proxima_fecha:'';
+  var L=segLeadInfo(leadId); var nom=L?(L.n||'Lead'):'Lead';
+  var m=document.createElement('div'); m.id='seg-bell';
+  m.setAttribute('style','position:fixed;inset:0;background:rgba(30,40,60,.45);display:flex;align-items:center;justify-content:center;z-index:4000;padding:16px');
+  m.onclick=function(e){ if(e.target===m) segBellClose(); };
+  m.innerHTML='<div style="background:#fff;border-radius:14px;max-width:360px;width:100%;padding:20px">'+
+    '<div style="font-weight:700;color:var(--navy);font-size:1rem;margin-bottom:2px">Agendar seguimiento</div>'+
+    '<div style="font-size:0.82rem;color:var(--muted);margin-bottom:14px">'+segEsc(nom)+'</div>'+
+    '<div style="font-size:0.7rem;text-transform:uppercase;letter-spacing:0.3px;color:var(--muted);font-weight:700;margin-bottom:5px">Próxima fecha de contacto</div>'+
+    '<input type="date" id="seg-bell-date" value="'+cur+'" style="width:100%;padding:9px 11px;border:1px solid var(--border);border-radius:8px;font-family:inherit;font-size:0.9rem;box-sizing:border-box">'+
+    '<div style="display:flex;justify-content:flex-end;gap:8px;margin-top:16px"><button class="btn btn-ghost" onclick="segBellClose()">Cancelar</button><button class="btn btn-primary" onclick="segBellSave('+leadId+')">Guardar</button></div></div>';
+  document.body.appendChild(m);
+  setTimeout(function(){ var d=document.getElementById('seg-bell-date'); if(d) d.focus(); },40);
+}
+function segBellClose(){ var m=document.getElementById('seg-bell'); if(m) m.remove(); }
+async function segBellSave(leadId){
+  var d=document.getElementById('seg-bell-date'); var fecha=(d&&d.value)?d.value:null;
+  var existing=segItem(leadId);
+  try{
+    if(existing){ await sb.from('lead_seguimiento').update({ proxima_fecha:fecha, updated_at:new Date().toISOString() }).eq('lead_id',leadId); }
+    else { var L=segLeadInfo(leadId); var resp=(L&&L.resp)?L.resp:APP.userName; var r=await sb.from('lead_seguimiento').insert({ lead_id:leadId, responsable:resp, estado:'activo', proxima_fecha:fecha }); if(r.error){ alert('Error: '+r.error.message); return; } }
+  }catch(e){ alert('No se pudo guardar la fecha.'); return; }
+  segBellClose();
+  await loadSegItems();
+  renderPipeline();
+  if(APP.activeTab==='seguimiento'){ await loadSegAllActivity(); segRender(); }
+}
 function segTogglePicker(){ SEG_PICKER=!SEG_PICKER; SEG_PICK_Q=''; segRender(); if(SEG_PICKER){ var el=document.getElementById('seg-pick-inp'); if(el) el.focus(); } }
 function segPickerListHTML(){
   var q=SEG_PICK_Q.toLowerCase();
@@ -3206,7 +3274,21 @@ async function startApp() {
   syncRoasFromPipeline();
   renderMainTabs();
   renderApp();
+  segHandleHash();
 }
+
+// Deep-link desde el inicio del cerrador: #seg → pestaña Seguimiento; #seglead=ID → abre ese lead.
+async function segHandleHash(){
+  var hsh=(location.hash||'').replace('#','');
+  if(hsh==='seg'){ APP.activeTab='seguimiento'; renderMainTabs(); renderApp(); return; }
+  if(hsh.indexOf('seglead=')===0){
+    var id=parseInt(hsh.split('=')[1],10);
+    APP.activeTab='seguimiento'; renderMainTabs();
+    await loadSegItems(); await loadSegAllActivity(); segRender();
+    if(!isNaN(id)) segOpen(id);
+  }
+}
+window.addEventListener('hashchange', segHandleHash);
 
 // Allow login with Enter key
 document.getElementById('login-password').addEventListener('keydown', e => {

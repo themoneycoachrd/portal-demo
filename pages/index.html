@@ -1412,8 +1412,15 @@ async function loadInsights(nombre){
   var kpi=null, kpiDet=null;
   try{ var ks=await sb.from('kpi_scores').select('*').eq('anio',ANIO_INS).eq('mes',MES_INS); kpi=(ks.data||[]).find(function(r){ return insMatchPersona(r.contadora, nombre); })||null; }catch(e){}
   try{ var kd=await sb.from('kpi_detalle').select('contadora,datos').eq('anio',ANIO_INS).eq('mes',MES_INS); var dr=(kd.data||[]).find(function(r){ return insMatchPersona(r.contadora, nombre); }); kpiDet=dr?dr.datos:null; }catch(e){}
-  return { tareas: tareas, menciones: menciones, worklist: worklist, kpi: kpi, kpiDet: kpiDet };
+  // Tickets abiertos donde la contadora es responsable (principal/contab/impuestos/supervisor)
+  var tickets=[];
+  try{ var tk=await sb.from('tickets').select('*');
+    tickets=(tk.data||[]).filter(function(t){ return t.estado!=='Cerrado' && t.estado!=='Resuelto' && insTicketMio(t, nombre); })
+      .sort(function(a,b){ return (a.fecha_comprometida||'9999')<(b.fecha_comprometida||'9999')?-1:1; }); }catch(e){}
+  return { tareas: tareas, menciones: menciones, worklist: worklist, kpi: kpi, kpiDet: kpiDet, tickets: tickets };
 }
+// ¿La contadora es responsable de este ticket? (usa el mismo emparejamiento de nombres del insight)
+function insTicketMio(t, nombre){ return [t.resp_principal,t.resp_contabilidad,t.resp_impuestos,t.supervisor].some(function(r){ return r && nombre && (r===nombre || insMatchPersona(r, nombre)); }); }
 
 // ══════════════════════════════════════════════════════════════
 //  DASHBOARD ESTRATÉGICO — inicio de admin (Nivel 1: metas + 5 sistemas + proyectos)
@@ -1423,17 +1430,17 @@ var DASH_VIEW='general';
 var DASH_MES=null; // mes seleccionado en la vista general (null = mes calendario actual)
 var DASH_SISTEMAS=[
   {id:'leads',num:1,nombre:'Sistema de captación de leads',icon:'🎯',iconBg:'#eff6ff',
-    fuentes:'Módulo Comercial del portal · Meta Ads manual (costo)',
+    fuentes:'Módulo Comercial del portal (leads, cotizado, inversión)',
     kpis:[{label:'Leads del mes',meta:'5+'},{label:'Leads buenos',meta:'—'},{label:'Cotizado',meta:'US$'},{label:'Costo por lead',meta:'manual'},{label:'Costo adquisición',meta:'manual'}]},
   {id:'ventas',num:2,nombre:'Sistema de ventas',icon:'📈',iconBg:'#eef2ff',
     fuentes:'Módulo Comercial del portal (pipeline, mensual)',
-    kpis:[{label:'Cotizaciones',meta:'—'},{label:'Cierres',meta:'—'},{label:'Tasa de cierre',meta:'> 30%'},{label:'Ciclo de venta',meta:'< 21 días'},{label:'Vendido',meta:'US$'}]},
+    kpis:[{label:'Cierres',meta:'—'},{label:'Cotizado',meta:'US$'},{label:'Vendido',meta:'US$'},{label:'Tasa de cierre',meta:'—'},{label:'Valor promedio',meta:'US$'}]},
   {id:'onboarding',num:3,nombre:'Sistema de onboarding a clientes',icon:'🚀',iconBg:'#f5f3ff',
-    fuentes:'Checklists de implementación del portal · encuesta manual',
-    kpis:[{label:'Días a 1er entregable',meta:'< 15'},{label:'En onboarding',meta:'Dato puntual'},{label:'Checklist completo',meta:'> 80%'},{label:'Satisfacción',meta:'Positivo'}]},
+    fuentes:'Checklists de implementación del portal (FE + ADM)',
+    kpis:[{label:'En onboarding',meta:'Dato puntual'},{label:'Días a 1ra sesión',meta:'—'},{label:'Checklist completo',meta:'> 80%'},{label:'Satisfacción',meta:'Positivo'}]},
   {id:'fulfillment',num:4,nombre:'Sistema de fulfillment de servicio',icon:'✅',iconBg:'#ecfdf5',
     fuentes:'Portal (checklist, KPI) · tickets pendientes (Epic 9)',
-    kpis:[{label:'Fiscal a tiempo',meta:'> 95%'},{label:'Reportes en plazo',meta:'100%'},{label:'Sin respuesta > 48h',meta:'0'},{label:'Clientes activos',meta:'→ 50'}]},
+    kpis:[{label:'Fiscal a tiempo',meta:'> 95%'},{label:'Reportes en plazo',meta:'100%'},{label:'Sin respuesta > 48h',meta:'0'},{label:'Clientes activos',meta:'→ 100'}]},
   {id:'talento',num:5,nombre:'Sistema de captación de talento',icon:'👥',iconBg:'#fef2f2',
     fuentes:'Manual (formulario del portal)',
     kpis:[{label:'Posiciones cubiertas',meta:'Todas'},{label:'Días para llenar',meta:'< 45'},{label:'Candidatos / posición',meta:'3+'},{label:'Rotación (6 meses)',meta:'0 salidas'}]}
@@ -1442,26 +1449,35 @@ function dashKpiLabels(sid){ var s=DASH_SISTEMAS.find(function(x){return x.id===
 // Valor real donde ya se puede; si no, muestra la meta con punto gris (medición viene en 8.2–8.5)
 function dashKpiValue(sid,label,meta){
   var GRIS='var(--muted)',V='var(--green)',A='var(--amber)',R='var(--red)',P=DASH_PREVIEW;
-  if(sid==='fulfillment'&&label==='Clientes activos'){ var r=P.recurrentes; return {val:(r!=null?r:'—')+' → 50', dot:(r==null?GRIS:(r>=50?V:A))}; }
+  if(sid==='fulfillment'&&label==='Clientes activos'){ var r=P.recurrentes; return {val:(r!=null?r:'—')+' → 100', dot:(r==null?GRIS:(r>=100?V:A))}; }
   if(sid==='leads'){
     if(label==='Leads del mes'&&P.leadsMes!=null){ var l=P.leadsMes; return {val:String(l), dot:(l>=5?V:(l>=2?A:R))}; }
     if(label==='Leads buenos'&&P.leadsBuenos!=null){ var lb=P.leadsBuenos, rt=P.leadsMes?lb/P.leadsMes:0; return {val:String(lb), dot:(rt>=0.7?V:(rt>=0.5?A:R))}; }
     if(label==='Cotizado'&&P.cotizadoMes!=null){ return {val:'US$ '+dashFmt(P.cotizadoMes), dot:GRIS}; }
-    return {val:'—', dot:GRIS}; // costo por lead / CAC → manual
+    if(label==='Costo por lead'){ return {val:(P.ejecutado&&P.leadsMes)?('US$ '+dashFmt(P.ejecutado/P.leadsMes)):'—', dot:GRIS}; }
+    if(label==='Costo adquisición'){ return {val:(P.ejecutado&&P.cierresMes)?('US$ '+dashFmt(P.ejecutado/P.cierresMes)):'—', dot:GRIS}; }
+    return {val:'—', dot:GRIS};
   }
   if(sid==='ventas'){
-    if(label==='Cotizaciones'&&P.leadsBuenos!=null){ return {val:String(P.leadsBuenos), dot:GRIS}; }
-    if(label==='Cierres'&&P.cierresMes!=null){ var g=P.cierresMes; return {val:String(g), dot:(g>0?V:GRIS)}; }
-    if(label==='Tasa de cierre'&&P.tasaCierre!=null){ var t=P.tasaCierre; return {val:t+'%', dot:(t>=30?V:(t>=15?A:R))}; }
-    if(label==='Ciclo de venta'){ return {val:'N/D', dot:GRIS}; }
+    if(label==='Cierres'&&P.cierresMes!=null){ return {val:String(P.cierresMes), dot:GRIS}; }
+    if(label==='Cotizado'&&P.cotizadoMes!=null){ return {val:'US$ '+dashFmt(P.cotizadoMes), dot:GRIS}; }
     if(label==='Vendido'&&P.vendidoMes!=null){ return {val:'US$ '+dashFmt(P.vendidoMes), dot:GRIS}; }
+    if(label==='Tasa de cierre'&&P.tasaCierre!=null){ return {val:P.tasaCierre.toFixed(1)+'%', dot:GRIS}; }
+    if(label==='Valor promedio'){ return {val:(P.vendidoMes&&P.cierresMes)?('US$ '+dashFmt(P.vendidoMes/P.cierresMes)):'—', dot:GRIS}; }
     return {val:meta, dot:GRIS};
+  }
+  if(sid==='onboarding'){
+    if(label==='En onboarding'){ return {val:(P.onbEnCurso!=null?String(P.onbEnCurso):'—'), dot:GRIS}; }
+    if(label==='Días a 1ra sesión'){ return {val:(P.onbDias1ra!=null?(P.onbDias1ra+' días'):'—'), dot:GRIS}; }
+    if(label==='Checklist completo'){ return {val:(P.onbPct!=null?(P.onbPct+'%'):'—'), dot:GRIS}; }
+    if(label==='Satisfacción'){ return {val:(P.onbSat!=null?(P.onbSat.toFixed(1)+' / 10'):'—'), dot:GRIS}; }
+    return {val:'—', dot:GRIS};
   }
   return {val:meta, dot:GRIS};
 }
 var DASH_ESTADOS=['Planificado','En curso','Completado','Pausado'];
 var DASH_ESTADO_COLOR={'Planificado':'var(--muted)','En curso':'var(--green)','Completado':'var(--amber)','Pausado':'var(--red)'};
-var META_FE_ACTUAL=44, META_FE_OBJETIVO=250, META_REC_OBJETIVO=50;
+var META_FE_ACTUAL=44, META_FE_OBJETIVO=250, META_REC_OBJETIVO=100;
 var DASH_PROYECTOS=[], DASH_PROJ_OK=false, DASH_PREVIEW={};
 var DASH_CK=[], DASH_CO=[]; // estado temporal del checklist y comentarios del proyecto abierto en el modal
 
@@ -1477,8 +1493,10 @@ async function loadDashData(){
     DASH_PREVIEW.cierresMes=gan.length;
     DASH_PREVIEW.cotizadoMes=lds.reduce(function(s,l){return s+dashLeadTotal(l);},0);
     DASH_PREVIEW.vendidoMes=gan.reduce(function(s,l){return s+dashLeadVendido(l,incS);},0);
-    DASH_PREVIEW.tasaCierre=(gan.length+per)>0?Math.round(gan.length/(gan.length+per)*100):null;
+    DASH_PREVIEW.tasaCierre=lds.length>0?(gan.length/lds.length*100):null; // cierres / total leads, igual que el módulo Comercial
   }catch(e){}
+  try{ var rr=await sb.from('roas_mensual').select('ejecutado').eq('anio',yrA).eq('mes',mesA); if(rr.data&&rr.data.length){ DASH_PREVIEW.ejecutado=parseFloat(rr.data[0].ejecutado)||0; } }catch(e){}
+  try{ var onb=computeOnboarding(await fetchOnboardingRows()); DASH_PREVIEW.onbEnCurso=onb.enCurso; DASH_PREVIEW.onbDias1ra=onb.dias1ra; DASH_PREVIEW.onbPct=onb.pct; DASH_PREVIEW.onbSat=onb.satisfaccion; }catch(e){}
   try{ var p=await sb.from('dashboard_proyectos').select('*').order('created_at',{ascending:false}); if(!p.error){ DASH_PROJ_OK=true; DASH_PROYECTOS=p.data||[]; } }catch(e){}
 }
 
@@ -1522,13 +1540,12 @@ function dashSysCard(s){
     var rv=dashKpiValue(s.id,k.label,k.meta);
     return '<div style="background:#f6f8fb;border-radius:10px;padding:11px 12px">'+
       '<div style="font-size:0.6rem;text-transform:uppercase;letter-spacing:0.4px;color:var(--muted);font-weight:700;margin-bottom:5px">'+k.label+'</div>'+
-      '<div style="display:flex;align-items:center;gap:7px;font-weight:700;color:var(--navy);font-size:0.95rem">'+rv.val+'<span style="width:9px;height:9px;border-radius:50%;background:'+rv.dot+';display:inline-block"></span></div></div>';
+      '<div style="font-weight:700;color:var(--navy);font-size:0.95rem">'+rv.val+'</div></div>';
   }).join('');
   return '<div class="ins-card" onclick="dashOpenSystem(\''+s.id+'\')" style="padding:18px;cursor:pointer;margin-bottom:14px">'+
     '<div style="display:flex;align-items:center;gap:11px;margin-bottom:13px">'+
       '<span style="width:34px;height:34px;border-radius:9px;background:'+s.iconBg+';display:flex;align-items:center;justify-content:center;font-size:1.05rem">'+s.icon+'</span>'+
-      '<span style="font-weight:800;color:var(--navy);font-size:1rem">'+s.num+'. '+s.nombre+'</span>'+
-      '<span style="margin-left:auto;width:12px;height:12px;border-radius:50%;background:var(--muted)" title="Semáforo real en próximas tajadas"></span></div>'+
+      '<span style="font-weight:800;color:var(--navy);font-size:1rem">'+s.num+'. '+s.nombre+'</span></div>'+
     '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:9px;margin-bottom:12px">'+tiles+'</div>'+
     '<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;border-top:1px solid #eef1f5;padding-top:10px">'+
       '<span style="font-size:0.72rem;color:var(--muted)">Fuentes: '+s.fuentes+'</span>'+
@@ -1537,8 +1554,7 @@ function dashSysCard(s){
 }
 function dashFooter(){
   return '<div class="ins-card" style="padding:14px 16px;background:#f6f8fb;font-size:0.76rem;color:var(--muted);line-height:1.5;margin-bottom:24px">'+
-    '<div><b style="color:var(--navy)">Regla del semáforo:</b> el color de cada sistema lo dicta su peor KPI. Si 3 están en verde y 1 en rojo, el sistema está en rojo.</div>'+
-    '<div style="margin-top:5px"><b style="color:var(--navy)">Automatizable hoy:</b> módulo Comercial, Fulfillment, clientes. <b style="color:var(--navy)">Manual por ahora:</b> costo por lead, onboarding (satisfacción), talento, tickets.</div></div>';
+    '<div><b style="color:var(--navy)">Automatizable hoy:</b> módulo Comercial (leads, ventas, inversión), Fulfillment, clientes. <b style="color:var(--navy)">Manual por ahora:</b> onboarding (satisfacción), talento, tickets.</div></div>';
 }
 
 function dashFmt(n){ n=Math.round(n||0); return n.toString().replace(/\B(?=(\d{3})+(?!\d))/g,','); }
@@ -1568,15 +1584,16 @@ async function dashVentasDetail(mes){
   var noAplica=leads.filter(function(l){ return l.funnel==='No Aplica'; }).length;
   var leadsBuenos=leads.length-noShow-noAplica;
   var vendido=ganados.reduce(function(s,l){ return s+dashLeadVendido(l,includeSoft); },0);
-  var tasa=(ganados.length+perdidos)>0?Math.round(ganados.length/(ganados.length+perdidos)*100):null;
+  var cotizado=leads.reduce(function(s,l){ return s+dashLeadTotal(l); },0);
+  var tasa=leads.length>0?(ganados.length/leads.length*100):null; // cierres / total leads, igual que Comercial
   var tile=function(label,val,sub,color){ return '<div class="ins-card" style="padding:14px"><div style="font-size:0.6rem;text-transform:uppercase;letter-spacing:0.4px;color:var(--muted);font-weight:700;margin-bottom:6px">'+label+'</div>'+
     '<div style="font-weight:800;color:'+(color||'var(--navy)')+';font-size:1.2rem;line-height:1.1">'+val+'</div>'+(sub?('<div style="font-size:0.7rem;color:var(--muted);margin-top:3px">'+sub+'</div>'):'')+'</div>'; };
   var tiles='<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:20px">'+
-    tile('Cotizaciones', leadsBuenos, leads.length+' leads − '+noShow+' no show − '+noAplica+' N/A','var(--navy)')+
     tile('Cierres', ganados.length, 'cerrados ganados', ganados.length>0?'var(--green)':'var(--navy)')+
-    tile('Tasa de cierre', (tasa!=null?(tasa+'%'):'N/D'), 'ganados vs perdidos','var(--navy)')+
-    tile('Ciclo de venta', 'N/D', 'requiere fechas de lead','var(--muted)')+
+    tile('Cotizado', 'US$ '+dashFmt(cotizado), 'todo lo cotizado del mes','var(--blue)')+
     tile('Vendido', 'US$ '+dashFmt(vendido), 'neto de descuentos','var(--green)')+
+    tile('Tasa de cierre', (tasa!=null?(tasa.toFixed(1)+'%'):'N/D'), ganados.length+' de '+leads.length+' leads','var(--navy)')+
+    tile('Valor promedio', ganados.length?('US$ '+dashFmt(vendido/ganados.length)):'—', 'vendido ÷ cierres','var(--blue)')+
   '</div>';
   var tabla;
   if(ganados.length){
@@ -1588,46 +1605,243 @@ async function dashVentasDetail(mes){
   } else {
     tabla='<div class="ins-card" style="padding:16px;color:var(--muted);font-size:0.85rem">Sin cierres registrados en '+insEsc(cur)+'.</div>';
   }
-  var note='<div style="font-size:0.72rem;color:var(--muted);margin-top:14px"><b>Cotizaciones</b> = leads buenos (total − no show − no aplica). <b>Vendido</b> = cierres netos de descuentos (software desde marzo). El <b>ciclo de venta real</b> necesita fechas por lead que hoy no se guardan.</div>';
+  var note='<div style="font-size:0.72rem;color:var(--muted);margin-top:14px"><b>Tasa de cierre</b> = cierres ÷ total de leads del mes (igual que el módulo Comercial). <b>Cotizado</b> = todo lo cotizado; <b>Vendido</b> = cierres netos de descuentos (software desde marzo).</div>';
   if(dk) dk.innerHTML=head+tiles+tabla+note;
 }
 // Vista detallada del Sistema de Captación de Leads: dropdown de mes + KPIs reales + embudo por etapa.
+// Sistema de captación de leads (Nivel 2 del dashboard admin): misma vista que el inicio
+// de Naomi pero del EQUIPO, con selector de persona al lado del mes (Todos / Félix / Naomi).
 async function dashLeadsDetail(mes){
   DASH_VIEW='leads';
-  var yr=new Date().getFullYear(), maxM=new Date().getMonth();
-  var cur=mes||DASH_MES||mesPresentacion();
-  var opts=''; for(var i=0;i<=maxM;i++){ var nm=MESES_WF[i]; var lb=nm.charAt(0).toUpperCase()+nm.slice(1); opts+='<option value="'+nm+'"'+(nm===cur?' selected':'')+'>'+lb+' '+yr+'</option>'; }
+  if(mes){ DASH_MES=mes; }
+  var dk=document.getElementById('dashboard-kpis'); if(dk) dk.innerHTML=dashBackBtn()+'<div style="padding:20px;color:var(--muted);font-size:0.85rem">Cargando…</div>';
+  await loadDashSeg();
+  dashLeadsRender();
+}
+function dashLeadsSetPersona(v){ DASH_SEG_PERSONA=v||''; dashLeadsRender(); }
+function dashLeadsRender(){
+  var dk=document.getElementById('dashboard-kpis'); if(!dk) return;
+  var yr=(INS_SEL&&INS_SEL.anio)||new Date().getFullYear(), maxM=new Date().getMonth();
+  var cur=DASH_MES||mesPresentacion();
+  var per=DASH_SEG_PERSONA;
+  var hoy=new Date().toISOString().split('T')[0];
+  var plus=function(n){ var d=new Date(hoy+'T00:00:00'); d.setDate(d.getDate()+n); return d.toISOString().split('T')[0]; };
+  var fmtF=function(f){ return f?new Date(f+'T00:00:00').toLocaleDateString('es-DO',{day:'2-digit',month:'short'}):'Sin fecha'; };
+  var mesLbl=cur.charAt(0).toUpperCase()+cur.slice(1);
+  var mine=function(resp){ return !per || (resp||'')===per; };
+  var pset={}; DASH_SEG.leads.forEach(function(l){ if(l.responsable) pset[l.responsable]=true; }); DASH_SEG.seg.forEach(function(s){ if(s.responsable) pset[s.responsable]=true; });
+  var personas=Object.keys(pset).sort();
+  var selStyle='padding:6px 12px;border:1px solid var(--border,#e5e7eb);border-radius:8px;font-family:inherit;font-size:0.85rem;font-weight:600;background:#fff;cursor:pointer';
+  var mopts=''; for(var i=0;i<=maxM;i++){ var nm=MESES_WF[i]; var lb=nm.charAt(0).toUpperCase()+nm.slice(1); mopts+='<option value="'+nm+'"'+(nm===cur?' selected':'')+'>'+lb+' '+yr+'</option>'; }
+  var popts='<option value="">Todo el equipo</option>'; personas.forEach(function(p){ popts+='<option value="'+insEsc(p)+'"'+(per===p?' selected':'')+'>'+insEsc(p)+'</option>'; });
   var head=dashBackBtn()+'<div class="ins-sec-head" style="margin-bottom:10px">🎯 Sistema de captación de leads</div>'+
-    '<div style="display:flex;align-items:center;gap:8px;margin-bottom:16px"><span style="font-size:0.7rem;text-transform:uppercase;letter-spacing:0.4px;color:var(--muted);font-weight:700">Mes</span>'+
-    '<select onchange="dashLeadsDetail(this.value)" style="padding:6px 12px;border:1px solid var(--border,#e5e7eb);border-radius:8px;font-family:inherit;font-size:0.85rem;font-weight:600;background:#fff;cursor:pointer">'+opts+'</select></div>';
-  var dk=document.getElementById('dashboard-kpis'); if(dk) dk.innerHTML=head+'<div style="padding:20px;color:var(--muted);font-size:0.85rem">Cargando '+insEsc(cur)+'…</div>';
-  var leads=[]; try{ var r=await sb.from('leads').select('funnel,impl,fe,serv,soft,nombre,empresa').eq('anio',yr).eq('mes',cur); leads=r.data||[]; }catch(e){}
-  var total=leads.length;
-  var STAGES=['Esperando Demo','Esperando Cotización','Cotización Enviada','Seguimiento','Cerrado Ganado','Cerrado Perdido','No Show','No Aplica'];
-  var conteo={}; STAGES.forEach(function(s){ conteo[s]=0; }); leads.forEach(function(l){ if(conteo[l.funnel]!=null) conteo[l.funnel]++; });
-  var noShow=conteo['No Show']||0, noAplica=conteo['No Aplica']||0;
+    '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:16px">'+
+      '<span style="font-size:0.7rem;text-transform:uppercase;letter-spacing:0.4px;color:var(--muted);font-weight:700">Mes</span>'+
+      '<select onchange="dashLeadsDetail(this.value)" style="'+selStyle+'">'+mopts+'</select>'+
+      '<span style="font-size:0.7rem;text-transform:uppercase;letter-spacing:0.4px;color:var(--muted);font-weight:700;margin-left:8px">Ver</span>'+
+      '<select onchange="dashLeadsSetPersona(this.value)" style="'+selStyle+'">'+popts+'</select>'+
+    '</div>';
+  var h=head;
+
+  // ── Seguimiento por fecha ──
+  var srows=DASH_SEG.seg.filter(function(s){ return s.estado==='activo' && mine(s.responsable); }).map(function(s){ var n=DASH_SEG.notas[s.lead_id]||[]; return { s:s, L:DASH_SEG.leadsMap[s.lead_id], ultimaNota:(n.length?n[0]:null) }; });
+  var venc=srows.filter(function(r){ return r.s.proxima_fecha&&r.s.proxima_fecha<hoy; }).length;
+  var hoyN=srows.filter(function(r){ return r.s.proxima_fecha===hoy; }).length;
+  var sem=srows.filter(function(r){ return r.s.proxima_fecha&&r.s.proxima_fecha>hoy&&r.s.proxima_fecha<=plus(7); }).length;
+  var sinF=srows.filter(function(r){ return !r.s.proxima_fecha; }).length;
+  srows.sort(function(a,b){ var af=a.s.proxima_fecha||'9999-99', bf=b.s.proxima_fecha||'9999-99'; return af<bf?-1:(af>bf?1:0); });
+  var showResp=!per;
+  h+='<div class="ins-sec-head">'+insIco('clock')+'Seguimiento por fecha</div>';
+  h+='<div class="ins-tiles" style="margin-bottom:10px">'+
+    insTileHTML(venc,'Vencidos','', venc>0?'var(--red)':'var(--navy)','alert')+
+    insTileHTML(hoyN,'Para hoy','', hoyN>0?'var(--amber)':'var(--navy)','clock')+
+    insTileHTML(sem,'Esta semana','','var(--blue)','activity')+
+    insTileHTML(sinF,'Sin fecha','', sinF>0?'#8b5cf6':'var(--navy)','circle')+
+    '</div>';
+  var qBody;
+  if(!srows.length){ qBody='<div class="ins-card" style="padding:16px;color:var(--muted);font-size:0.85rem">No hay leads en seguimiento'+(per?(' de '+insEsc(per)):'')+'.</div>'; }
+  else {
+    var cols=['Lead']; if(showResp) cols.push('Responsable'); cols=cols.concat(['Última nota','Próximo','','']);
+    qBody='<div style="max-height:300px;overflow:auto"><table style="width:100%;border-collapse:collapse;font-size:0.8rem"><thead><tr>'+cols.map(function(t){ return '<th style="position:sticky;top:0;background:#fff;z-index:1;text-align:left;padding:7px 9px;font-size:0.62rem;text-transform:uppercase;letter-spacing:0.3px;color:var(--muted);border-bottom:2px solid var(--border,#e5e7eb)">'+t+'</th>'; }).join('')+'</tr></thead><tbody>';
+    srows.forEach(function(r){ var L=r.L; var nom=L?(L.nombre||'—'):('Lead #'+r.s.lead_id); var emp=L?(L.empresa||''):'';
+      var vc=r.s.proxima_fecha&&r.s.proxima_fecha<hoy, he=r.s.proxima_fecha===hoy;
+      var fc=vc?'color:var(--red);font-weight:700':(he?'color:var(--amber);font-weight:700':'color:var(--muted)');
+      qBody+='<tr onclick="cmlOpenLead('+r.s.lead_id+')" style="cursor:pointer;border-bottom:1px solid #f1f5f9">'+
+        '<td style="padding:8px 9px"><div style="font-weight:600;color:var(--navy)">'+insEsc(nom)+'</div>'+(emp?'<div style="font-size:0.72rem;color:var(--light)">'+insEsc(emp)+'</div>':'')+'</td>'+
+        (showResp?('<td style="padding:8px 9px;color:var(--muted);white-space:nowrap">'+insEsc(r.s.responsable||'—')+'</td>'):'')+
+        '<td style="padding:8px 9px;max-width:200px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+(r.ultimaNota?insEsc(r.ultimaNota.texto):'—')+'</td>'+
+        '<td style="padding:8px 9px;white-space:nowrap;'+fc+'">'+fmtF(r.s.proxima_fecha)+(vc?' ⚠':'')+'</td>'+
+        '<td style="padding:8px 9px;text-align:center"><button onclick="dashSegBell('+r.s.lead_id+',event)" title="Agendar próximo seguimiento" style="border:1px solid var(--border,#e5e7eb);background:#fff;border-radius:8px;padding:3px 9px;cursor:pointer;font-size:0.95rem;line-height:1">🔔</button></td>'+
+        '<td style="padding:8px 9px;text-align:right"><button onclick="event.stopPropagation();cmlOpenLead('+r.s.lead_id+')" style="border:1px solid var(--blue);color:var(--blue);background:#fff;border-radius:8px;padding:4px 10px;font-size:0.74rem;font-weight:600;cursor:pointer;font-family:inherit">Abrir</button></td></tr>';
+    });
+    qBody+='</tbody></table></div>';
+  }
+  h+=insSec('dseg','🗓️ Cola de seguimiento'+(srows.length?(' ('+srows.length+')'):''), qBody);
+
+  // ── Números (del mes; de la persona o del equipo) ──
+  var mesLeads=DASH_SEG.leads.filter(function(l){ return l.mes===cur && mine(l.responsable); });
+  var total=mesLeads.length;
+  var noShow=mesLeads.filter(function(l){ return l.funnel==='No Show'; }).length;
+  var noAplica=mesLeads.filter(function(l){ return l.funnel==='No Aplica'; }).length;
   var leadsBuenos=total-noShow-noAplica;
-  var cotizado=leads.reduce(function(s,l){ return s+dashLeadTotal(l); },0);
-  var rt=total?leadsBuenos/total:0;
+  var gan=mesLeads.filter(function(l){ return l.funnel==='Cerrado Ganado'; });
+  var cierres=gan.length;
+  var tasa=total>0?(cierres/total*100):null;
+  var incS=(MESES_WF.indexOf(cur)>=2);
+  var cotizado=mesLeads.reduce(function(s,l){ return s+dashLeadTotal(l); },0);
+  var vendido=gan.reduce(function(s,l){ return s+dashLeadVendido(l,incS); },0);
+  var ejec=(DASH_SEG.roas&&DASH_SEG.roas[cur])||0;
+  h+='<div class="ins-sec-head">'+insIco('activity')+'Números'+(per?(' de '+insEsc(per)):' del equipo')+' — '+insEsc(mesLbl)+'</div>';
+  h+='<div class="ins-tiles" style="margin-bottom:16px;grid-template-columns:repeat(4,1fr)">'+
+    insTileHTML(total,'Leads del mes','','var(--navy)','users')+
+    insTileHTML(leadsBuenos,'Leads buenos', total+' − '+noShow+' NS − '+noAplica+' N/A','var(--navy)','check')+
+    insTileHTML((ejec&&total)?('US$ '+dashFmt(ejec/total)):'—','Costo por lead', ejec?'inversión ÷ leads':'sin inversión','var(--blue)','activity')+
+    insTileHTML((ejec&&cierres)?('US$ '+dashFmt(ejec/cierres)):'—','Costo adquisición', ejec?'inversión ÷ cierres':'sin inversión','var(--blue)','activity')+
+    insTileHTML('US$ '+dashFmt(cotizado),'Cotizado','','var(--blue)','activity')+
+    insTileHTML('US$ '+dashFmt(vendido),'Vendido','','var(--green)','check')+
+    insTileHTML(cierres,'Cierres','', cierres>0?'var(--green)':'var(--navy)','check')+
+    insTileHTML(tasa!=null?tasa.toFixed(1)+'%':'—','Tasa de cierre','','var(--navy)','activity')+
+    '</div>';
+
+  // ── Calientes sin agendar ──
+  var conFecha={}; DASH_SEG.seg.forEach(function(s){ if(s.proxima_fecha) conFecha[s.lead_id]=true; });
+  var vistos={}, calientes=[];
+  DASH_SEG.leads.forEach(function(l){ if(vistos[l.id]||!mine(l.responsable)) return; var abierto=(l.funnel!=='Cerrado Ganado'&&l.funnel!=='Cerrado Perdido'&&l.funnel!=='No Aplica'&&l.funnel!=='No Show'); if(l.temperatura==='Caliente'&&abierto&&!conFecha[l.id]){ vistos[l.id]=true; calientes.push(l); } });
+  var calBody;
+  if(!calientes.length){ calBody='<div class="ins-card" style="padding:16px;color:var(--muted);font-size:0.85rem">No hay leads calientes sin agendar. 🔥</div>'; }
+  else {
+    calBody='<div style="display:flex;flex-direction:column;gap:6px">';
+    calientes.slice(0,20).forEach(function(l){ calBody+='<div style="display:flex;align-items:center;gap:10px;background:#fff;border:1px solid var(--border,#e5e7eb);border-radius:10px;padding:9px 12px">'+
+      '<div style="flex:1;min-width:0"><span style="font-weight:600;color:var(--navy)">'+insEsc(l.nombre||'—')+'</span>'+(l.empresa?(' <span style="color:var(--light);font-size:0.78rem">'+insEsc(l.empresa)+'</span>'):'')+(showResp&&l.responsable?(' <span style="color:var(--muted);font-size:0.72rem">· '+insEsc(l.responsable)+'</span>'):'')+'</div>'+
+      '<span style="font-size:0.64rem;font-weight:600;padding:2px 8px;border-radius:999px;background:#eef2ff;color:var(--blue);white-space:nowrap">'+insEsc(l.funnel||'')+'</span>'+
+      '<button onclick="dashSegBell('+l.id+',event)" title="Agendar seguimiento" style="border:1px solid var(--border,#e5e7eb);background:#fff;border-radius:8px;padding:3px 9px;cursor:pointer;font-size:0.95rem;line-height:1">🔔</button></div>'; });
+    calBody+='</div>';
+  }
+  h+=insSec('dcal','🔥 Calientes sin agendar'+(calientes.length?(' ('+calientes.length+')'):''), calBody);
+
+  dk.innerHTML=h;
+}
+
+// ── Seguimiento del equipo (cola por fecha de TODOS los leads en seguimiento) ──
+// Aparece dentro del Sistema de captación de leads del Dashboard Estratégico (admin).
+var DASH_SEG={ seg:[], notas:{}, leadsMap:{}, leads:[], roas:{} };
+var DASH_SEG_PERSONA=''; // '' = todo el equipo; si no, filtra por responsable
+async function loadDashSeg(){
+  var yr=(INS_SEL&&INS_SEL.anio)||new Date().getFullYear();
+  var leadsMap={}, allLeads=[];
+  try{ var lr=await sb.from('leads').select('*').eq('anio',yr); allLeads=lr.data||[]; allLeads.forEach(function(l){ leadsMap[l.id]=l; }); }catch(e){}
+  var seg=[], notas={};
+  try{ var sr=await sb.from('lead_seguimiento').select('*'); seg=sr.data||[]; }catch(e){}
+  var ids=seg.map(function(s){ return s.lead_id; });
+  if(ids.length){ try{ var nr=await sb.from('lead_notas').select('*').in('lead_id',ids).order('created_at',{ascending:false}); (nr.data||[]).forEach(function(r){ (notas[r.lead_id]=notas[r.lead_id]||[]).push(r); }); }catch(e){} }
+  var roas={}; try{ var roR=await sb.from('roas_mensual').select('mes,ejecutado').eq('anio',yr); (roR.data||[]).forEach(function(r){ roas[r.mes]=parseFloat(r.ejecutado)||0; }); }catch(e){}
+  DASH_SEG={ seg:seg, notas:notas, leadsMap:leadsMap, leads:allLeads, roas:roas };
+}
+function dashSegBell(leadId, ev){
+  if(ev) ev.stopPropagation();
+  var existing=DASH_SEG.seg.find(function(s){ return Number(s.lead_id)===Number(leadId); });
+  var cur=(existing&&existing.proxima_fecha)?existing.proxima_fecha:'';
+  var L=DASH_SEG.leadsMap[leadId]; var nom=L?(L.nombre||'Lead'):'Lead';
+  var m=document.createElement('div'); m.id='dash-seg-bell';
+  m.setAttribute('style','position:fixed;inset:0;background:rgba(30,40,60,.45);display:flex;align-items:center;justify-content:center;z-index:4000;padding:16px');
+  m.onclick=function(e){ if(e.target===m) dashSegBellClose(); };
+  m.innerHTML='<div style="background:#fff;border-radius:14px;max-width:360px;width:100%;padding:20px">'+
+    '<div style="font-weight:700;color:var(--navy);font-size:1rem;margin-bottom:2px">Agendar seguimiento</div>'+
+    '<div style="font-size:0.82rem;color:var(--muted);margin-bottom:14px">'+insEsc(nom)+(existing&&existing.responsable?(' · '+insEsc(existing.responsable)):'')+'</div>'+
+    '<div style="font-size:0.7rem;text-transform:uppercase;letter-spacing:0.3px;color:var(--muted);font-weight:700;margin-bottom:5px">Próxima fecha de contacto</div>'+
+    '<input type="date" id="dash-seg-bell-date" value="'+cur+'" style="width:100%;padding:9px 11px;border:1px solid var(--border,#e5e7eb);border-radius:8px;font-family:inherit;font-size:0.9rem;box-sizing:border-box">'+
+    '<div style="display:flex;justify-content:flex-end;gap:8px;margin-top:16px"><button onclick="dashSegBellClose()" style="border:1px solid var(--border,#e5e7eb);background:#fff;border-radius:8px;padding:7px 14px;cursor:pointer;font-size:0.85rem;font-family:inherit">Cancelar</button><button onclick="dashSegBellSave('+leadId+')" style="border:none;background:var(--navy);color:#fff;border-radius:8px;padding:7px 14px;cursor:pointer;font-size:0.85rem;font-weight:600;font-family:inherit">Guardar</button></div></div>';
+  document.body.appendChild(m);
+  setTimeout(function(){ var d=document.getElementById('dash-seg-bell-date'); if(d) d.focus(); },40);
+}
+function dashSegBellClose(){ var m=document.getElementById('dash-seg-bell'); if(m) m.remove(); }
+async function dashSegBellSave(leadId){
+  var d=document.getElementById('dash-seg-bell-date'); var fecha=(d&&d.value)?d.value:null;
+  var existing=DASH_SEG.seg.find(function(s){ return Number(s.lead_id)===Number(leadId); });
+  try{
+    if(existing){ await sb.from('lead_seguimiento').update({ proxima_fecha:fecha, updated_at:new Date().toISOString() }).eq('lead_id',leadId); }
+    else { var r=await sb.from('lead_seguimiento').insert({ lead_id:leadId, responsable:userName, estado:'activo', proxima_fecha:fecha }); if(r.error){ alert('Error: '+r.error.message); return; } }
+  }catch(e){ alert('No se pudo guardar la fecha.'); return; }
+  dashSegBellClose();
+  await loadDashSeg(); dashLeadsRender();
+}
+
+// ── Sistema 3: Onboarding — datos desde los checklists de implementación (FE + ADM) ──
+// Regla (definida con Félix): un cliente = un onboarding (FE y ADM se combinan). Está "en
+// onboarding" hasta la transición a contadora (proxy: checklist combinado < 100%). "Días a
+// 1ra sesión" = del inicio de impl. FE al hito "Sesión 1 impartida" (paso_5). Satisfacción
+// llega en el siguiente paso (campo de puntuación en el checklist).
+var ONB_FE_TOTAL=15, ONB_ADM_TOTAL=21; // impl_checklist_fe = 15 pasos (montaje FE); impl_checklist_adm = 21 (journey de onboarding)
+async function fetchOnboardingRows(){
+  var fe=[],adm=[],cli=[];
+  try{ var r=await sb.from('impl_checklist_fe').select('cliente,datos'); fe=r.data||[]; }catch(e){}
+  try{ var r2=await sb.from('impl_checklist_adm').select('cliente,datos'); adm=r2.data||[]; }catch(e){}
+  try{ var r3=await sb.from('clientes').select('nombre,fecha_inicio_impl_fe,fecha_fin_impl_fe,fecha_inicio_impl_adm,fecha_fin_impl_adm'); cli=r3.data||[]; }catch(e){}
+  try{ var r4=await sb.from('clientes_software').select('nombre,fecha_inicio_impl_fe,fecha_fin_impl_fe,fecha_inicio_impl_adm,fecha_fin_impl_adm'); cli=cli.concat(r4.data||[]); }catch(e){}
+  return {fe:fe,adm:adm,cli:cli};
+}
+function onbCountDone(datos){ var d=0; if(datos&&typeof datos==='object'){ Object.keys(datos).forEach(function(k){ var v=datos[k]; if(v&&(v.done===true||v.done==='na')) d++; }); } return d; }
+function computeOnboarding(rows){
+  var feMap={}, admMap={}, fechas={};
+  rows.fe.forEach(function(r){ feMap[r.cliente]=r.datos||{}; });
+  rows.adm.forEach(function(r){ admMap[r.cliente]=r.datos||{}; });
+  rows.cli.forEach(function(r){ if(r.nombre) fechas[r.nombre]=r; });
+  var nombres={}; Object.keys(feMap).forEach(function(n){nombres[n]=1;}); Object.keys(admMap).forEach(function(n){nombres[n]=1;});
+  var clientes=[], diasArr=[], satArr=[];
+  Object.keys(nombres).forEach(function(n){
+    var hasFe=feMap[n]!==undefined, hasAdm=admMap[n]!==undefined;
+    var done=0,total=0;
+    if(hasFe){ done+=onbCountDone(feMap[n]); total+=ONB_FE_TOTAL; }
+    if(hasAdm){ done+=onbCountDone(admMap[n]); total+=ONB_ADM_TOTAL; }
+    var pct=total>0?Math.round(done/total*100):0;
+    var f=fechas[n]||{};
+    var inicio=f.fecha_inicio_impl_adm||f.fecha_inicio_impl_fe||null;
+    // Días a 1ra sesión: "Sesión 1 impartida" = paso_5 del checklist de onboarding (impl_checklist_adm)
+    var d1=null;
+    if(hasAdm && f.fecha_inicio_impl_adm){ var p5=admMap[n].paso_5; if(p5&&p5.done===true&&p5.fecha){ var dd=Math.round((new Date(p5.fecha)-new Date(f.fecha_inicio_impl_adm))/86400000); if(dd>=0&&dd<400){ d1=dd; diasArr.push(dd); } } }
+    // Satisfacción (1–10): campo satisfaccion_score del checklist de onboarding (impl_checklist_adm)
+    var sat=(hasAdm && admMap[n].satisfaccion_score!=null)?Number(admMap[n].satisfaccion_score):null;
+    if(sat!=null && !isNaN(sat)) satArr.push(sat);
+    var diasDesdeInicio=inicio?Math.max(0,Math.round((Date.now()-new Date(inicio))/86400000)):null;
+    var tipo=(hasFe&&hasAdm)?'FE + ADM':(hasFe?'FE':'ADM');
+    clientes.push({cliente:n,tipo:tipo,pct:pct,enCurso:(pct<100),dias1ra:d1,diasDesdeInicio:diasDesdeInicio,satisfaccion:sat});
+  });
+  clientes.sort(function(a,b){ return a.pct-b.pct; });
+  var enCursoList=clientes.filter(function(c){return c.enCurso;});
+  var avgDias=diasArr.length?Math.round(diasArr.reduce(function(s,x){return s+x;},0)/diasArr.length):null;
+  var avgPct=enCursoList.length?Math.round(enCursoList.reduce(function(s,c){return s+c.pct;},0)/enCursoList.length):null;
+  var avgSat=satArr.length?(Math.round(satArr.reduce(function(s,x){return s+x;},0)/satArr.length*10)/10):null;
+  return {enCurso:enCursoList.length, dias1ra:avgDias, pct:avgPct, satisfaccion:avgSat, satCount:satArr.length, clientes:clientes, enCursoList:enCursoList};
+}
+async function dashOnboardingDetail(){
+  DASH_VIEW='onboarding';
+  var head=dashBackBtn()+'<div class="ins-sec-head" style="margin-bottom:14px">🚀 Sistema de onboarding a clientes</div>';
+  var dk=document.getElementById('dashboard-kpis'); if(dk) dk.innerHTML=head+'<div style="padding:20px;color:var(--muted);font-size:0.85rem">Cargando…</div>';
+  var onb=computeOnboarding(await fetchOnboardingRows());
   var tile=function(label,val,sub,color){ return '<div class="ins-card" style="padding:14px"><div style="font-size:0.6rem;text-transform:uppercase;letter-spacing:0.4px;color:var(--muted);font-weight:700;margin-bottom:6px">'+label+'</div>'+
     '<div style="font-weight:800;color:'+(color||'var(--navy)')+';font-size:1.2rem;line-height:1.1">'+val+'</div>'+(sub?('<div style="font-size:0.7rem;color:var(--muted);margin-top:3px">'+sub+'</div>'):'')+'</div>'; };
   var tiles='<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:20px">'+
-    tile('Leads del mes', total, 'entraron en '+insEsc(cur), total>=5?'var(--green)':(total>=2?'var(--amber)':'var(--red)'))+
-    tile('Leads buenos', leadsBuenos, total+' − '+noShow+' no show − '+noAplica+' N/A', rt>=0.7?'var(--green)':(rt>=0.5?'var(--amber)':'var(--red)'))+
-    tile('Cotizado', 'US$ '+dashFmt(cotizado), 'todo lo cotizado del mes','var(--blue)')+
-    tile('Costo por lead', '—', 'manual (Meta Ads)','var(--muted)')+
-    tile('Costo adquisición', '—', 'manual (inversión ÷ cierres)','var(--muted)')+
+    tile('En onboarding', onb.enCurso, 'clientes en proceso','var(--blue)')+
+    tile('Días a 1ra sesión', onb.dias1ra!=null?onb.dias1ra:'—', 'promedio desde el inicio')+
+    tile('Checklist completo', onb.pct!=null?(onb.pct+'%'):'—', 'promedio de los activos')+
+    tile('Satisfacción', onb.satisfaccion!=null?(onb.satisfaccion.toFixed(1)+' / 10'):'—', onb.satisfaccion!=null?(onb.satCount+' con puntuación'):'sin puntuaciones aún', 'var(--blue)')+
   '</div>';
-  var maxC=Math.max.apply(null,STAGES.map(function(s){ return conteo[s]||0; }).concat([1]));
-  var barra=STAGES.filter(function(s){ return (conteo[s]||0)>0; }).map(function(s){
-    var c=conteo[s]||0, w=Math.round(c/maxC*100);
-    return '<div style="display:flex;align-items:center;gap:10px;margin-bottom:6px"><span style="width:150px;font-size:0.76rem;color:var(--navy);flex-shrink:0">'+insEsc(s)+'</span>'+
-      '<div style="flex:1;background:#f1f5f9;border-radius:6px;overflow:hidden;height:18px"><div style="width:'+w+'%;height:100%;background:var(--blue)"></div></div>'+
-      '<span style="width:30px;text-align:right;font-weight:700;color:var(--navy);font-size:0.8rem">'+c+'</span></div>';
+  var barColor=function(p){ return p>=100?'var(--green)':(p>=60?'var(--blue)':(p>=30?'var(--amber)':'var(--red)')); };
+  var trs=onb.enCursoList.map(function(c){
+    return '<tr style="border-top:1px solid #eef1f5">'+
+      '<td style="padding:10px 14px;font-weight:600;color:var(--navy)">'+insEsc(c.cliente)+'</td>'+
+      '<td style="padding:10px 14px"><span style="font-size:0.64rem;font-weight:600;padding:2px 8px;border-radius:999px;background:#eef2ff;color:var(--blue)">'+c.tipo+'</span></td>'+
+      '<td style="padding:10px 14px;white-space:nowrap;color:var(--muted)">'+(c.diasDesdeInicio!=null?(c.diasDesdeInicio+' días'):'—')+'</td>'+
+      '<td style="padding:10px 14px;min-width:150px"><div style="display:flex;align-items:center;gap:8px"><div style="flex:1;background:#f1f5f9;border-radius:6px;overflow:hidden;height:8px"><div style="width:'+c.pct+'%;height:100%;background:'+barColor(c.pct)+'"></div></div><span style="font-size:0.75rem;font-weight:700;color:var(--navy)">'+c.pct+'%</span></div></td>'+
+    '</tr>';
   }).join('');
-  var bd=total?('<div class="ins-sec-head" style="font-size:0.9rem">Leads por etapa — '+insEsc(cur)+'</div><div class="ins-card" style="padding:16px">'+barra+'</div>'):'<div class="ins-card" style="padding:16px;color:var(--muted);font-size:0.85rem">Sin leads en '+insEsc(cur)+'.</div>';
-  var note='<div style="font-size:0.72rem;color:var(--muted);margin-top:14px"><b>Leads buenos</b> = total − no show − no aplica. <b>Costo por lead</b> y <b>costo de adquisición de cliente</b> van manuales (Meta Ads / inversión no conectada).</div>';
-  if(dk) dk.innerHTML=head+tiles+bd+note;
+  var table = onb.enCursoList.length
+    ? '<div class="ins-sec-head" style="font-size:0.9rem">Clientes en onboarding</div><div class="ins-card" style="padding:0;overflow:hidden"><div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:0.85rem"><thead><tr>'+
+      ['Cliente','Tipo','En proceso','Avance'].map(function(h){return '<th style="text-align:left;padding:9px 14px;font-size:0.62rem;text-transform:uppercase;letter-spacing:0.06em;color:var(--muted);background:#fafbfc;border-bottom:1px solid #eef1f5">'+h+'</th>';}).join('')+'</tr></thead><tbody>'+trs+'</tbody></table></div></div>'
+    : '<div class="ins-card" style="padding:18px;color:var(--muted);font-size:0.85rem">No hay clientes en onboarding ahora mismo. (Si esperabas ver clientes aquí, revisa que los checklists de implementación tengan datos.)</div>';
+  var note='<div style="font-size:0.72rem;color:var(--muted);margin-top:14px"><b>En onboarding</b> = clientes con implementación (FE y/o ADM) que aún no llega al 100% (transición a contadora). <b>Días a 1ra sesión</b> = del inicio de la implementación al hito "Sesión 1 impartida". <b>Satisfacción</b> = promedio (1–10) de las puntuaciones que la implementadora carga en el checklist de onboarding.</div>';
+  var proj='<div style="margin-top:18px">'+dashProyectosHTML('onboarding')+'</div>';
+  if(dk) dk.innerHTML=head+tiles+table+note+proj;
 }
 function dashBackBtn(){
   return '<button onclick="renderStrategicDashboard()" style="border:1px solid var(--border,#e5e7eb);background:#fff;border-radius:8px;padding:6px 12px;font-size:0.8rem;cursor:pointer;margin-bottom:14px">← Volver a vista general</button>';
@@ -1637,6 +1851,7 @@ function dashOpenSystem(sid){
   if(sid==='fulfillment'){ renderFulfillmentDetail(); return; }
   if(sid==='ventas'){ dashVentasDetail(); return; }
   if(sid==='leads'){ dashLeadsDetail(); return; }
+  if(sid==='onboarding'){ dashOnboardingDetail(); return; }
   DASH_VIEW=sid;
   var s=DASH_SISTEMAS.find(function(x){return x.id===sid;});
   var h=dashBackBtn()+'<div class="ins-sec-head">'+s.icon+' '+s.nombre+'</div>'+
@@ -1794,6 +2009,163 @@ async function dashReload(){
   else { renderStrategicDashboard(); }
 }
 
+// ══════════════════════════════════════════════════════════════
+//  INICIO DEL CERRADOR (rol comercial) — cola de seguimiento por fecha + campanita
+//  Estilo Sales Workspace: lo primero es "¿a quién contacto ahora?".
+// ══════════════════════════════════════════════════════════════
+var CML={ leadsMap:{}, misLeads:[], seg:[], notas:{}, tareas:{} };
+async function loadComercialInsight(nombre){
+  var yr=(INS_SEL&&INS_SEL.anio)||new Date().getFullYear();
+  var _mine=function(resp){ if(!resp||!nombre) return false; var r=(''+resp).toLowerCase().trim(), n=(''+nombre).toLowerCase().trim(); return r===n || n.indexOf(r)>=0 || r.indexOf(n)>=0; };
+  var leadsMap={}, misLeads=[];
+  try{ var lr=await sb.from('leads').select('*').eq('anio',yr); (lr.data||[]).forEach(function(l){ leadsMap[l.id]=l; if(_mine(l.responsable)) misLeads.push(l); }); }catch(e){}
+  var seg=[], notas={}, tareas={};
+  try{ var sr=await sb.from('lead_seguimiento').select('*'); seg=(sr.data||[]).filter(function(s){ return _mine(s.responsable); }); }catch(e){}
+  var ids=seg.map(function(s){ return s.lead_id; });
+  if(ids.length){
+    try{ var nr=await sb.from('lead_notas').select('*').in('lead_id',ids).order('created_at',{ascending:false}); (nr.data||[]).forEach(function(r){ (notas[r.lead_id]=notas[r.lead_id]||[]).push(r); }); }catch(e){}
+    try{ var tr=await sb.from('lead_tareas').select('*').in('lead_id',ids); (tr.data||[]).forEach(function(r){ (tareas[r.lead_id]=tareas[r.lead_id]||[]).push(r); }); }catch(e){}
+  }
+  return { leadsMap:leadsMap, misLeads:misLeads, seg:seg, notas:notas, tareas:tareas };
+}
+async function renderComercialInsight(){
+  INS_VIEW.preview=null;
+  // El cerrador arranca en el MES ACTUAL y respeta el selector (sincroniza MES_INS/ANIO_INS).
+  if(INS_SEL){ MES_INS=INS_SEL.mes; ANIO_INS=INS_SEL.anio; }
+  else { var _d=new Date(); MES_INS=MESES_WF[_d.getMonth()]; ANIO_INS=_d.getFullYear(); }
+  renderWelcome();
+  var dk=document.getElementById('dashboard-kpis'); if(dk) dk.innerHTML='<div style="padding:20px;color:var(--muted);font-size:0.9rem">Cargando tu inicio…</div>';
+  CML=await loadComercialInsight(userName);
+  cmlRender();
+}
+function cmlOpenLead(id){ openModule('comercial', false, '#seglead='+id); }
+function cmlRender(){
+  var hoy=new Date().toISOString().split('T')[0];
+  var plus=function(n){ var d=new Date(hoy+'T00:00:00'); d.setDate(d.getDate()+n); return d.toISOString().split('T')[0]; };
+  var fmtF=function(f){ return f?new Date(f+'T00:00:00').toLocaleDateString('es-DO',{day:'2-digit',month:'short'}):'Sin fecha'; };
+  var mesLbl=(MES_INS||''); mesLbl=mesLbl.charAt(0).toUpperCase()+mesLbl.slice(1);
+  // Filas de seguimiento activas
+  var rows=CML.seg.filter(function(s){ return s.estado==='activo'; }).map(function(s){ var notas=CML.notas[s.lead_id]||[]; return { s:s, L:CML.leadsMap[s.lead_id], ultimaNota:(notas.length?notas[0]:null) }; });
+  var venc=rows.filter(function(r){ return r.s.proxima_fecha && r.s.proxima_fecha<hoy; }).length;
+  var hoyN=rows.filter(function(r){ return r.s.proxima_fecha===hoy; }).length;
+  var sem=rows.filter(function(r){ return r.s.proxima_fecha && r.s.proxima_fecha>hoy && r.s.proxima_fecha<=plus(7); }).length;
+  var sinF=rows.filter(function(r){ return !r.s.proxima_fecha; }).length;
+  rows.sort(function(a,b){ var af=a.s.proxima_fecha||'9999-99', bf=b.s.proxima_fecha||'9999-99'; return af<bf?-1:(af>bf?1:0); });
+
+  var h=insMonthSelector();
+  // ── Hero: seguimiento por fecha ──
+  h+='<div class="ins-sec-head">'+insIco('clock')+'Seguimiento por fecha</div>';
+  h+='<div class="ins-tiles" style="margin-bottom:10px">'+
+    insTileHTML(venc,'Vencidos','', venc>0?'var(--red)':'var(--navy)','alert',"openModule('comercial',false,'#seg')")+
+    insTileHTML(hoyN,'Para hoy','', hoyN>0?'var(--amber)':'var(--navy)','clock',"openModule('comercial',false,'#seg')")+
+    insTileHTML(sem,'Esta semana','','var(--blue)','activity',"openModule('comercial',false,'#seg')")+
+    insTileHTML(sinF,'Sin fecha','', sinF>0?'#8b5cf6':'var(--navy)','circle',"openModule('comercial',false,'#seg')")+
+    '</div>';
+  var qBody;
+  if(!rows.length){ qBody='<div class="ins-card" style="padding:16px;color:var(--muted);font-size:0.85rem">No tienes leads en seguimiento. Agrégalos desde <b>Comercial → Seguimiento</b> o con la 🔔 en el Pipeline.</div>'; }
+  else {
+    qBody='<div style="max-height:300px;overflow:auto"><table style="width:100%;border-collapse:collapse;font-size:0.8rem"><thead><tr>'+
+      ['Lead','Última nota','Próximo','',''].map(function(t){ return '<th style="position:sticky;top:0;background:#fff;z-index:1;text-align:left;padding:7px 9px;font-size:0.62rem;text-transform:uppercase;letter-spacing:0.3px;color:var(--muted);border-bottom:2px solid var(--border,#e5e7eb)">'+t+'</th>'; }).join('')+'</tr></thead><tbody>';
+    rows.forEach(function(r){ var L=r.L; var nom=L?(L.nombre||'—'):('Lead #'+r.s.lead_id); var emp=L?(L.empresa||''):'';
+      var vc=r.s.proxima_fecha&&r.s.proxima_fecha<hoy, he=r.s.proxima_fecha===hoy;
+      var fc=vc?'color:var(--red);font-weight:700':(he?'color:var(--amber);font-weight:700':'color:var(--muted)');
+      qBody+='<tr onclick="cmlOpenLead('+r.s.lead_id+')" style="cursor:pointer;border-bottom:1px solid #f1f5f9">'+
+        '<td style="padding:8px 9px"><div style="font-weight:600;color:var(--navy)">'+insEsc(nom)+'</div>'+(emp?'<div style="font-size:0.72rem;color:var(--light)">'+insEsc(emp)+'</div>':'')+'</td>'+
+        '<td style="padding:8px 9px;max-width:210px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+(r.ultimaNota?insEsc(r.ultimaNota.texto):'—')+'</td>'+
+        '<td style="padding:8px 9px;white-space:nowrap;'+fc+'">'+fmtF(r.s.proxima_fecha)+(vc?' ⚠':'')+'</td>'+
+        '<td style="padding:8px 9px;text-align:center"><button onclick="cmlBell('+r.s.lead_id+',event)" title="Agendar próximo seguimiento" style="border:1px solid var(--border,#e5e7eb);background:#fff;border-radius:8px;padding:3px 9px;cursor:pointer;font-size:0.95rem;line-height:1">🔔</button></td>'+
+        '<td style="padding:8px 9px;text-align:right"><button onclick="event.stopPropagation();cmlOpenLead('+r.s.lead_id+')" style="border:1px solid var(--blue);color:var(--blue);background:#fff;border-radius:8px;padding:4px 10px;font-size:0.74rem;font-weight:600;cursor:pointer;font-family:inherit">Abrir</button></td></tr>';
+    });
+    qBody+='</tbody></table></div>';
+  }
+  h+=insSec('cmlseg','🗓️ Cola de seguimiento'+(rows.length?(' ('+rows.length+')'):''), qBody);
+
+  // ── Mis números del mes ──
+  var mesLeads=CML.misLeads.filter(function(l){ return l.mes===MES_INS; });
+  var total=mesLeads.length;
+  var gan=mesLeads.filter(function(l){ return l.funnel==='Cerrado Ganado'; });
+  var cierres=gan.length;
+  var tasa=total>0?(cierres/total*100):null;
+  var incS=(MESES_WF.indexOf(MES_INS)>=2);
+  var cotizado=mesLeads.reduce(function(s,l){ return s+dashLeadTotal(l); },0);
+  var vendido=gan.reduce(function(s,l){ return s+dashLeadVendido(l,incS); },0);
+  h+='<div class="ins-sec-head">'+insIco('activity')+'Mis números — '+insEsc(mesLbl)+'</div>';
+  h+='<div class="ins-tiles" style="margin-bottom:16px">'+
+    insTileHTML(total,'Leads','','var(--navy)','users')+
+    insTileHTML('US$ '+dashFmt(cotizado),'Cotizado','','var(--blue)','activity')+
+    insTileHTML(cierres,'Cierres','', cierres>0?'var(--green)':'var(--navy)','check')+
+    insTileHTML(tasa!=null?tasa.toFixed(1)+'%':'—','Tasa de cierre','','var(--navy)','activity')+
+    insTileHTML('US$ '+dashFmt(vendido),'Vendido','','var(--green)','check')+
+    '</div>';
+
+  // ── Leads calientes sin fecha ──
+  var conFecha={}; CML.seg.forEach(function(s){ if(s.proxima_fecha) conFecha[s.lead_id]=true; });
+  var vistos={}, calientes=[];
+  CML.misLeads.forEach(function(l){
+    if(vistos[l.id]) return;
+    var abierto=(l.funnel!=='Cerrado Ganado'&&l.funnel!=='Cerrado Perdido'&&l.funnel!=='No Aplica'&&l.funnel!=='No Show');
+    if(l.temperatura==='Caliente' && abierto && !conFecha[l.id]){ vistos[l.id]=true; calientes.push(l); }
+  });
+  var calBody;
+  if(!calientes.length){ calBody='<div class="ins-card" style="padding:16px;color:var(--muted);font-size:0.85rem">No hay leads calientes sin agendar. 🔥</div>'; }
+  else {
+    calBody='<div style="display:flex;flex-direction:column;gap:6px">';
+    calientes.slice(0,20).forEach(function(l){
+      calBody+='<div style="display:flex;align-items:center;gap:10px;background:#fff;border:1px solid var(--border,#e5e7eb);border-radius:10px;padding:9px 12px">'+
+        '<div style="flex:1;min-width:0"><span style="font-weight:600;color:var(--navy)">'+insEsc(l.nombre||'—')+'</span>'+(l.empresa?(' <span style="color:var(--light);font-size:0.78rem">'+insEsc(l.empresa)+'</span>'):'')+'</div>'+
+        '<span style="font-size:0.64rem;font-weight:600;padding:2px 8px;border-radius:999px;background:#eef2ff;color:var(--blue);white-space:nowrap">'+insEsc(l.funnel||'')+'</span>'+
+        '<button onclick="cmlBell('+l.id+',event)" title="Agendar seguimiento" style="border:1px solid var(--border,#e5e7eb);background:#fff;border-radius:8px;padding:3px 9px;cursor:pointer;font-size:0.95rem;line-height:1">🔔</button></div>';
+    });
+    calBody+='</div>';
+  }
+  h+=insSec('cmlcal','🔥 Calientes sin agendar'+(calientes.length?(' ('+calientes.length+')'):''), calBody);
+
+  // ── Mis tareas de hoy ──
+  var tareasHoy=[];
+  Object.keys(CML.tareas).forEach(function(lid){ (CML.tareas[lid]||[]).forEach(function(t){ if(!t.done && t.fecha_limite===hoy){ tareasHoy.push({ t:t, lid:lid }); } }); });
+  var thBody;
+  if(!tareasHoy.length){ thBody='<div class="ins-card" style="padding:16px;color:var(--muted);font-size:0.85rem">No tienes tareas para hoy. 🎉</div>'; }
+  else {
+    thBody='<div style="display:flex;flex-direction:column;gap:6px">';
+    tareasHoy.forEach(function(x){ var L=CML.leadsMap[x.lid]; var nom=L?(L.nombre||''):'';
+      thBody+='<div style="display:flex;align-items:center;gap:10px;background:#fff;border:1px solid var(--border,#e5e7eb);border-radius:10px;padding:9px 12px;font-size:0.85rem"><span style="color:var(--muted);display:flex">'+insIco('check')+'</span><span style="flex:1">'+insEsc(x.t.texto)+(nom?(' <span style="color:var(--muted);font-size:0.78rem">· '+insEsc(nom)+'</span>'):'')+'</span></div>';
+    });
+    thBody+='</div>';
+  }
+  h+=insSec('cmltareas','✅ Mis tareas de hoy'+(tareasHoy.length?(' ('+tareasHoy.length+')'):''), thBody);
+
+  var dk=document.getElementById('dashboard-kpis'); if(dk) dk.innerHTML=h;
+}
+// Campanita: agendar/mover la próxima fecha de seguimiento de un lead en un clic.
+function cmlBell(leadId, ev){
+  if(ev) ev.stopPropagation();
+  var existing=CML.seg.find(function(s){ return Number(s.lead_id)===Number(leadId); });
+  var cur=(existing&&existing.proxima_fecha)?existing.proxima_fecha:'';
+  var L=CML.leadsMap[leadId]; var nom=L?(L.nombre||'Lead'):'Lead';
+  var m=document.createElement('div'); m.id='cml-bell';
+  m.setAttribute('style','position:fixed;inset:0;background:rgba(30,40,60,.45);display:flex;align-items:center;justify-content:center;z-index:4000;padding:16px');
+  m.onclick=function(e){ if(e.target===m) cmlBellClose(); };
+  m.innerHTML='<div style="background:#fff;border-radius:14px;max-width:360px;width:100%;padding:20px">'+
+    '<div style="font-weight:700;color:var(--navy);font-size:1rem;margin-bottom:2px">Agendar seguimiento</div>'+
+    '<div style="font-size:0.82rem;color:var(--muted);margin-bottom:14px">'+insEsc(nom)+'</div>'+
+    '<div style="font-size:0.7rem;text-transform:uppercase;letter-spacing:0.3px;color:var(--muted);font-weight:700;margin-bottom:5px">Próxima fecha de contacto</div>'+
+    '<input type="date" id="cml-bell-date" value="'+cur+'" style="width:100%;padding:9px 11px;border:1px solid var(--border,#e5e7eb);border-radius:8px;font-family:inherit;font-size:0.9rem;box-sizing:border-box">'+
+    '<div style="display:flex;justify-content:flex-end;gap:8px;margin-top:16px"><button onclick="cmlBellClose()" style="border:1px solid var(--border,#e5e7eb);background:#fff;border-radius:8px;padding:7px 14px;cursor:pointer;font-size:0.85rem;font-family:inherit">Cancelar</button><button onclick="cmlSaveFecha('+leadId+')" style="border:none;background:var(--navy);color:#fff;border-radius:8px;padding:7px 14px;cursor:pointer;font-size:0.85rem;font-weight:600;font-family:inherit">Guardar</button></div></div>';
+  document.body.appendChild(m);
+  setTimeout(function(){ var d=document.getElementById('cml-bell-date'); if(d) d.focus(); },40);
+}
+function cmlBellClose(){ var m=document.getElementById('cml-bell'); if(m) m.remove(); }
+async function cmlSaveFecha(leadId){
+  var d=document.getElementById('cml-bell-date'); var fecha=(d&&d.value)?d.value:null;
+  var existing=CML.seg.find(function(s){ return Number(s.lead_id)===Number(leadId); });
+  try{
+    if(existing){ await sb.from('lead_seguimiento').update({ proxima_fecha:fecha, updated_at:new Date().toISOString() }).eq('lead_id',leadId); }
+    else { var r=await sb.from('lead_seguimiento').insert({ lead_id:leadId, responsable:userName, estado:'activo', proxima_fecha:fecha }); if(r.error){ alert('Error: '+r.error.message); return; } }
+  }catch(e){ alert('No se pudo guardar la fecha.'); return; }
+  cmlBellClose();
+  CML=await loadComercialInsight(userName); cmlRender();
+}
+
 async function renderHomeContent(){
   // Registro rol → Insight: cada rol aterriza en su propio inicio.
   //  contadores → panel personal | admin → dashboard de equipo | resto → inicio genérico (placeholder hasta tener panel propio)
@@ -1802,7 +2174,8 @@ async function renderHomeContent(){
     renderInsights(userName, data, false);
     return;
   }
-  if (userRole !== 'admin') { await renderGenericInsight(); return; } // impuestos / comercial / implementaciones
+  if (userRole === 'comercial') { await renderComercialInsight(); return; } // inicio del cerrador (Naomi)
+  if (userRole !== 'admin') { await renderGenericInsight(); return; } // impuestos / implementaciones
   // Admin: el inicio ES el Dashboard Estratégico (Nivel 1). El dashboard de equipo vive en Fulfillment.
   await renderStrategicDashboard();
 }
@@ -2024,6 +2397,39 @@ function renderInsights(nombre, data, isPreview){
 
   INS_VIEW.preview = isPreview ? nombre : null; // si admin ve el panel de una contadora, el cambio de mes se queda aquí
   var h = insMonthSelector();
+
+  // ── Mis tickets (va PRIMERO, arriba del estatus): tickets abiertos donde la contadora es responsable ──
+  var tickets = data.tickets||[];
+  var ticketsBody;
+  if (!tickets.length) {
+    ticketsBody = '<div class="ins-card" style="padding:16px;color:var(--muted);font-size:0.85rem">No tienes tickets abiertos. 🎉</div>';
+  } else {
+    var INS_PRIO_C = {'Urgente':'var(--red)','Alta':'var(--amber)','Media':'var(--blue)','Baja':'#9ca3af'};
+    var _tth = function(txt){ return '<th style="position:sticky;top:0;background:#fff;z-index:1;text-align:left;padding:7px 9px;font-size:0.62rem;text-transform:uppercase;letter-spacing:0.3px;color:var(--muted);border-bottom:2px solid var(--border,#e5e7eb)">'+txt+'</th>'; };
+    var _tfmt = function(f){ return f ? new Date(f+'T00:00:00').toLocaleDateString('es-DO',{day:'2-digit',month:'short'}) : '—'; };
+    ticketsBody = '<div style="max-height:240px;overflow-x:auto;overflow-y:auto"><table style="width:100%;border-collapse:collapse;font-size:0.8rem">';
+    ticketsBody += '<thead><tr>'+['Ticket','Cliente','Prioridad','Inicio','Comprometida','Días','Estado'].map(_tth).join('')+'</tr></thead><tbody>';
+    tickets.forEach(function(t){
+      var venc = t.fecha_comprometida && t.fecha_comprometida < hoy;
+      var d1 = t.fecha_comprometida ? Math.round((new Date(t.fecha_comprometida+'T00:00:00') - new Date(hoy+'T00:00:00'))/86400000) : null;
+      var diasTxt, diasColor;
+      if (d1==null) { diasTxt='—'; diasColor='var(--muted)'; }
+      else if (d1<0) { diasTxt=Math.abs(d1)+'d atraso'; diasColor='var(--red)'; }
+      else if (d1===0) { diasTxt='vence hoy'; diasColor='var(--amber)'; }
+      else { diasTxt='faltan '+d1+'d'; diasColor=(d1<=2?'var(--amber)':'var(--muted)'); }
+      ticketsBody += '<tr onclick="openModule(\'tickets\')" style="cursor:pointer;border-bottom:1px solid #f1f5f9">'+
+        '<td style="padding:8px 9px;font-weight:600;color:var(--navy)">'+insEsc(t.titulo||'—')+'</td>'+
+        '<td style="padding:8px 9px;color:var(--muted);white-space:nowrap">'+insEsc(t.cliente||'—')+'</td>'+
+        '<td style="padding:8px 9px"><span style="font-size:0.64rem;font-weight:600;padding:2px 8px;border-radius:999px;color:#fff;background:'+(INS_PRIO_C[t.prioridad]||'#9ca3af')+'">'+insEsc(t.prioridad||'—')+'</span></td>'+
+        '<td style="padding:8px 9px;white-space:nowrap;color:var(--muted)">'+_tfmt(t.fecha_inicio)+'</td>'+
+        '<td style="padding:8px 9px;white-space:nowrap;color:'+(venc?'var(--red)':'var(--muted)')+';font-weight:'+(venc?'700':'400')+'">'+_tfmt(t.fecha_comprometida)+(venc?' ⚠':'')+'</td>'+
+        '<td style="padding:8px 9px;white-space:nowrap;color:'+diasColor+';font-weight:600">'+diasTxt+'</td>'+
+        '<td style="padding:8px 9px;white-space:nowrap;color:var(--muted)">'+insEsc(t.estado||'—')+'</td>'+
+      '</tr>';
+    });
+    ticketsBody += '</tbody></table></div>';
+  }
+  h += insSec('tickets', '🎫 Mis tickets'+(tickets.length?(' ('+tickets.length+')'):''), ticketsBody);
 
   // ── Estatus: workflows (4 arriba) + evaluación (5 abajo) en una sola sección ──
   var ws = computeWorkflowStats(nombre);
